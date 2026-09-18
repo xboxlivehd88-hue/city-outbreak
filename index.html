@@ -61,7 +61,7 @@ WASD — Move<br>Shift — Sprint<br>Mouse — Aim + Look<br>Click — Single Sh
     <button data-buy="grenade">Grenade — $175</button>
     <button data-buy="nuke">TACTICAL NUKE — $100 (TEST)</button>
     <button id="readyNext" class="readyBtn">READY — START NEXT WAVE</button>
-    <p>Take your time. The next wave will not start until you press Ready.</p></div><div id="startScreen"><h1>CITY OUTBREAK</h1><p>Survive increasingly aggressive zombie waves with improved weapon feedback.</p><button id="start">START OUTBREAK</button><button id="restart">RESTART</button><p class="small">WASD move • Shift sprint • Locked center crosshair • Mouse look • Click = single shot • Hold click = full auto • R reload<br>ENHANCED BUILD: optimized combat, improved tactical roles, car collision/avoidance, varied death falls and upgraded atmosphere<br>Zombie AI uses chargers, flankers, interceptors and stalkers that predict movement, spread out and surround you<br>Zombies collapse when killed, stay as corpses, can lose arms, and limp after leg damage<br>Graphics upgrade: textured brick/window building facades, rooftop detail, solid building collision, improved lighting/shadows and upgraded vehicles<br>Parked sedans, SUVs, pickups and vans now fill the streets<br>PISTOL PURCHASE FIXED • weapon unlock state now initializes correctly<br>Center-locked FPS aiming added • crosshair now stays centered while the camera follows the mouse<br>Zombie spawns are checked against buildings/cars, so they should appear in open streets and alleys instead of inside structures<br>FREEZE FIX: shared audio buffers, explicit audio cleanup, much lower FX buildup, dead-body shadow shutdown and shorter corpse lifetime<br>STABILITY FIX: hit effects reuse GPU resources, FX are capped, zombie shadow cost is reduced, and invalid positions self-recover<br>DROPS MECHANIC: zombies have a random chance to leave physical ammo, cash or health pickups; ammo caps at 20 rounds, cash at $25, health at 100, with +100 health intentionally ultra-rare<br>HIGHER GEOMETRY PASS: more face rings and cheek planes, deeper chest volume, fuller shoulders, chunkier hands with thumb/finger mass, and more defined thighs/calves/feet<br>OPAQUE RIG FIX: zombie materials now render double-sided and fully opaque so faceted limbs/torso no longer disappear from certain angles<br>RIGGED ZOMBIE MODEL PASS: custom embedded glTF SkinnedMesh with 17-bone skeleton, faceted geometry and real Shamble/Sprint/Attack/Hit skeletal animation clips<br>SURROUNDEAD HARD REBUILD: obvious faceted mannequin anatomy, six-plane heads, larger glowing eyes, chunky shoulders/hands, chest physically ahead of the hips, distance-driven footsteps and attacks that keep moving into the player<br>SURROUNDEAD ZOMBIE SPEC PASS: faceted mannequin-like humans, glowing warning-light eyes, broad damage patches, civilian/work clothing, chest-led shambling and clearer special zombie types<br>HOTFIX: corrected outer-clothing material wiring that caused customProgramCacheKey renderer crashes<br>CITYSCAPE PASS: denser NYC/major-US-city inspired streets, more realistic facades, setbacks, storefront bands, sidewalks, crosswalks, rooftop details and deeper background skyline massing<br>SURROUNDEAD DEEP-DIVE PASS: flatter human faces, cleaner outer clothing silhouettes, grounded shambling locomotion, reduced hover-bob, and walk cycles tied more closely to real movement<br>ZOMBIE BASE MESH REPLACED: one tapered human torso, articulated elbows/knees, flat facial features and a visibly different low-poly human silhouette<br>SURROUNDEAD-INSPIRED PASS: simpler low-poly human silhouettes, cleaner anatomy, less assembled-part look, and zombies that read as people first<br>HUMAN FIXUP PASS 4: less broken-looking joints, more natural arm hang, fuller legs, cleaner faces and smoother shambling motion<br>HUMAN REALISM PASS 3: cleaner body taper, more human facial planes, better wrists/hands, layered clothing and more grounded weight-shifting walks<br>HUMAN PROPORTION FIX: zombies now use much cleaner human silhouettes, narrower shoulders, longer limbs, smaller hands and less blob-like bodies<br>Zombie realism pass: less fantasy deformation, more believable anatomy, decay, torn clothing, asymmetry and human-looking injury<br>Savage zombie pass: nastier face damage, exposed bone/flesh, deeper torso wounds, limb tears and more aggressive attack lunges/mauls<br>Major zombie redesign: rounder body shapes, layered chest/hips, improved arms and legs, head/neck/jaw detail, and more lifelike shambling animation<br>Realism pass: guns now use firearm-like receivers, stocks, magazines, barrels, rails, sights, optics and controls<br>Five weapons have separate magazines/reserve ammo: rifle, SMG, shotgun, pistol and DMR<br>Shop sells every ammo type separately • upgraded procedural gun models include barrels, sights, stocks, magazines, rails and optics<br>G throws a timed grenade with area damage • buy more grenades in the shop<br>N deploys a Tactical Nuke during a wave • Tactical Nukes are shop-only and cost $100 for testing<br>Shop opens automatically after every wave • mouse cursor is released for upgrades • Ready locks aim again<br>Improved recoil • shell casings • hit markers • zombie stagger • impact effects<br>Sound begins after clicking Start.</p></div>
+    <p>Take your time. The next wave will not start until you press Ready.</p></div><div id="startScreen"><h1>CITY OUTBREAK</h1><p>Survive increasingly aggressive zombie waves with improved weapon feedback.</p><button id="start">START OUTBREAK</button><button id="restart">RESTART</button><p class="small">WASD move • Shift sprint • Locked center crosshair • Mouse look • Click = single shot • Hold click = full auto • R reload<br>ENHANCED BUILD: optimized combat, improved tactical roles, car collision/avoidance, varied death falls and upgraded atmosphere<br>Zombie AI uses chargers, flankers, interceptors and stalkers that predict movement, spread out and surround you<br>Zombies collapse when killed, stay as corpses, can lose arms, and limp after leg damage<br>Graphics upgrade: textured brick/window building facades, rooftop detail, solid building collision, improved lighting/shadows and upgraded vehicles<br>Parked sedans, SUVs, pickups and vans now fill the streets<br>PISTOL PURCHASE FIXED • weapon unlock state now initializes correctly<br>Center-locked FPS aiming added • crosshair now stays centered while the camera follows the mouse<br>Zombie spawns are checked against buildings/cars, so they should appear in open streets and alleys instead of inside structures<br>FREEZE FIX: shared audio buffers, explicit audio cleanup, much lower FX buildup, dead-body shadow shutdown and shorter corpse lifetime<br>STABILITY FIX: hit effects reuse GPU resources, FX are capped, zombie shadow cost is reduced, and invalid positions self-recover<br>PERFORMANCE SPAWN CAP: maximum 20 living zombies at once; queued wave zombies spawn as open slots appear; drops expire after 15 seconds and corpses are removed after 10 seconds<br>DROPS MECHANIC: zombies have a random chance to leave physical ammo, cash or health pickups; ammo caps at 20 rounds, cash at $25, health at 100, with +100 health intentionally ultra-rare<br>HIGHER GEOMETRY PASS: more face rings and cheek planes, deeper chest volume, fuller shoulders, chunkier hands with thumb/finger mass, and more defined thighs/calves/feet<br>OPAQUE RIG FIX: zombie materials now render double-sided and fully opaque so faceted limbs/torso no longer disappear from certain angles<br>RIGGED ZOMBIE MODEL PASS: custom embedded glTF SkinnedMesh with 17-bone skeleton, faceted geometry and real Shamble/Sprint/Attack/Hit skeletal animation clips<br>SURROUNDEAD HARD REBUILD: obvious faceted mannequin anatomy, six-plane heads, larger glowing eyes, chunky shoulders/hands, chest physically ahead of the hips, distance-driven footsteps and attacks that keep moving into the player<br>SURROUNDEAD ZOMBIE SPEC PASS: faceted mannequin-like humans, glowing warning-light eyes, broad damage patches, civilian/work clothing, chest-led shambling and clearer special zombie types<br>HOTFIX: corrected outer-clothing material wiring that caused customProgramCacheKey renderer crashes<br>CITYSCAPE PASS: denser NYC/major-US-city inspired streets, more realistic facades, setbacks, storefront bands, sidewalks, crosswalks, rooftop details and deeper background skyline massing<br>SURROUNDEAD DEEP-DIVE PASS: flatter human faces, cleaner outer clothing silhouettes, grounded shambling locomotion, reduced hover-bob, and walk cycles tied more closely to real movement<br>ZOMBIE BASE MESH REPLACED: one tapered human torso, articulated elbows/knees, flat facial features and a visibly different low-poly human silhouette<br>SURROUNDEAD-INSPIRED PASS: simpler low-poly human silhouettes, cleaner anatomy, less assembled-part look, and zombies that read as people first<br>HUMAN FIXUP PASS 4: less broken-looking joints, more natural arm hang, fuller legs, cleaner faces and smoother shambling motion<br>HUMAN REALISM PASS 3: cleaner body taper, more human facial planes, better wrists/hands, layered clothing and more grounded weight-shifting walks<br>HUMAN PROPORTION FIX: zombies now use much cleaner human silhouettes, narrower shoulders, longer limbs, smaller hands and less blob-like bodies<br>Zombie realism pass: less fantasy deformation, more believable anatomy, decay, torn clothing, asymmetry and human-looking injury<br>Savage zombie pass: nastier face damage, exposed bone/flesh, deeper torso wounds, limb tears and more aggressive attack lunges/mauls<br>Major zombie redesign: rounder body shapes, layered chest/hips, improved arms and legs, head/neck/jaw detail, and more lifelike shambling animation<br>Realism pass: guns now use firearm-like receivers, stocks, magazines, barrels, rails, sights, optics and controls<br>Five weapons have separate magazines/reserve ammo: rifle, SMG, shotgun, pistol and DMR<br>Shop sells every ammo type separately • upgraded procedural gun models include barrels, sights, stocks, magazines, rails and optics<br>G throws a timed grenade with area damage • buy more grenades in the shop<br>N deploys a Tactical Nuke during a wave • Tactical Nukes are shop-only and cost $100 for testing<br>Shop opens automatically after every wave • mouse cursor is released for upgrades • Ready locks aim again<br>Improved recoil • shell casings • hit markers • zombie stagger • impact effects<br>Sound begins after clicking Start.</p></div>
 </div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <script type="module">
@@ -448,7 +448,7 @@ function capFX(){
  while(impacts.length>36){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
  while(casings.length>28){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
 }
-let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30}},grenades=2,nukes=0,nukeInProgress=false,running=false,dying=false,reloading=false,between=false,waveTimer=0,lastCount=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},msgTimer,hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null;
+let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30}},grenades=2,nukes=0,nukeInProgress=false,waveTarget=0,waveSpawned=0,running=false,dying=false,reloading=false,between=false,waveTimer=0,lastCount=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},msgTimer,hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null;
 
 const weaponDefs={
  rifle:{name:"RIFLE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12},
@@ -809,7 +809,7 @@ function medkit(x,z){let g=new THREE.Group();box(1,.38,.72,M(0xe7e4da),0,.35,0,g
 // Drop type weights: ammo 50%, money 30%, health 20%.
 // Maximums requested: ammo 20 rounds, money $25, health 100.
 // Health 100 is intentionally the rarest single drop tier.
-const DROP_CHANCE=.32, DROP_LIFETIME=45, DROP_PICKUP_RADIUS=1.45, MAX_ACTIVE_DROPS=32;
+const DROP_CHANCE=.32, DROP_LIFETIME=15, DROP_PICKUP_RADIUS=1.45, MAX_ACTIVE_DROPS=32;
 const dropGeo={
  ammo:new THREE.BoxGeometry(.56,.28,.38),
  money:new THREE.BoxGeometry(.50,.16,.32),
@@ -915,26 +915,42 @@ function updateDrops(dt){
 }
 
 const living=()=>zombies.filter(z=>!z.dead);
+const MAX_ACTIVE_ZOMBIES=20;
+const waveRemainingCount=()=>living().length+Math.max(0,waveTarget-waveSpawned);
 function validZombieSpawn(x,z){
  if(insideBuilding(x,z,.8))return false;
  for(const c of parkedCars)if(Math.hypot(x-c.position.x,z-c.position.z)<2.7)return false;
  return Math.hypot(x-px,z-pz)>11;
 }
+function spawnOneZombie(i){
+ let sx=px,sz=pz,ok=false;
+ for(let tries=0;tries<60&&!ok;tries++){
+   let a=rnd()*Math.PI*2,dist=14+rnd()*18;
+   sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;
+   ok=validZombieSpawn(sx,sz);
+ }
+ if(!ok){
+   let a=rnd()*Math.PI*2,dist=20+rnd()*10;
+   sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;
+   let safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
+ }
+ makeZombie(sx,sz,i);
+}
+function spawnQueuedZombies(){
+ if(!running||dying||between)return;
+ while(living().length<MAX_ACTIVE_ZOMBIES&&waveSpawned<waveTarget){
+   spawnOneZombie(waveSpawned);
+   waveSpawned++;
+ }
+}
 function spawnWave(){
  let d=diff(wave);
- for(let i=0;i<d.count;i++){
-   let sx=px,sz=pz,ok=false;
-   for(let tries=0;tries<60&&!ok;tries++){
-     let a=rnd()*Math.PI*2,dist=14+rnd()*18;
-     sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;
-     ok=validZombieSpawn(sx,sz);
-   }
-   if(!ok){let a=rnd()*Math.PI*2,dist=20+rnd()*10;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;let safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
-   makeZombie(sx,sz,i);
- }
+ waveTarget=d.count;
+ waveSpawned=0;
+ spawnQueuedZombies();
  ui()
 }
-function ui(){healthText.textContent=Math.ceil(Math.max(0,health));healthBar.style.width=Math.max(0,health)+"%";healthBar.style.background=health>60?"#55a45c":health>30?"#c49b43":"#ae3535";ammoEl.textContent=A().mag+" / "+A().reserve;killsEl.textContent="KILLS "+kills;headsEl.textContent="HEADSHOTS "+heads;waveEl.textContent="WAVE "+wave;remainingEl.textContent="ZOMBIES "+living().length;cashEl.textContent="CASH $"+cash;shopCash.textContent="CASH $"+cash;weaponNameEl.textContent=wd().name;grenadeEl.textContent="GRENADES "+grenades;nukeEl.textContent="NUKES "+nukes}
+function ui(){healthText.textContent=Math.ceil(Math.max(0,health));healthBar.style.width=Math.max(0,health)+"%";healthBar.style.background=health>60?"#55a45c":health>30?"#c49b43":"#ae3535";ammoEl.textContent=A().mag+" / "+A().reserve;killsEl.textContent="KILLS "+kills;headsEl.textContent="HEADSHOTS "+heads;waveEl.textContent="WAVE "+wave;remainingEl.textContent="ZOMBIES "+waveRemainingCount();cashEl.textContent="CASH $"+cash;shopCash.textContent="CASH $"+cash;weaponNameEl.textContent=wd().name;grenadeEl.textContent="GRENADES "+grenades;nukeEl.textContent="NUKES "+nukes}
 function show(s){msg.textContent=s;msg.classList.add("show");clearTimeout(msgTimer);msgTimer=setTimeout(()=>msg.classList.remove("show"),1000)}
 function burst(pos,big=false){
  const count=big?14:4;
@@ -1158,10 +1174,12 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
    z.g.position.z+=Math.cos(z.g.rotation.y)*dt*.12;
    if(Math.abs(z.g.rotation[axis]-target)<.035)z.falling=false;
  }
- if(z.corpseAge>8&&z.g.parent)scene.remove(z.g);
+ if(z.corpseAge>10&&z.g.parent){if(z.mixer){z.mixer.stopAllAction();if(z.rigVisual)z.mixer.uncacheRoot(z.rigVisual)}scene.remove(z.g);z.cleaned=true;}
 }
+if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
+spawnQueuedZombies();
 const active=living();
-const highlightLast=active.length<=5;
+const highlightLast=waveRemainingCount()<=5;
 for(let z of active){
  if(!Number.isFinite(z.g.position.x)||!Number.isFinite(z.g.position.y)||!Number.isFinite(z.g.position.z)){
    const a=rnd()*Math.PI*2,dist=16+rnd()*8;let safe=pushOutsideBuilding(px+Math.sin(a)*dist,pz+Math.cos(a)*dist,.85);
@@ -1336,7 +1354,7 @@ for(const c of parkedCars){if(Math.hypot(z.g.position.x-c.position.x,z.g.positio
    const ap=slideBuilding(ox,oz,ox+ax*lunge,oz+az*lunge,.50);z.g.position.x=ap.x;z.g.position.z=ap.z;
  }
  if(z.cool<=0)bite(z)
-}if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0)beginBreak();ui()}
+}if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak();ui()}
 let perfTick=0;
 cv.addEventListener("webglcontextlost",e=>{e.preventDefault();console.error("CITY OUTBREAK: WebGL context lost");show("GRAPHICS RESET — REFRESH IF NEEDED")});
 function perfGuard(dt){
@@ -1345,7 +1363,7 @@ function perfGuard(dt){
 }
 function resize(){ren.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",resize);resize();
 function frame(t){let dt=Math.min(.04,(t-last)/1000);last=t;update(dt);ren.render(scene,cam);requestAnimationFrame(frame)}requestAnimationFrame(frame);
-function reset(){initAudio();stopAuto();clearKeys();for(let z of zombies)scene.remove(z.g);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30}};grenades=2;nukes=0;nukeInProgress=false;rebuildGun();dying=false;between=false;reloading=false;death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){initAudio();stopAuto();clearKeys();for(let z of zombies)scene.remove(z.g);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;rebuildGun();dying=false;between=false;reloading=false;death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();document.querySelector("#start").onclick=reset;document.querySelector("#restart").onclick=reset;
 addEventListener("keydown",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(["w","a","s","d","r","g","n","1","2","3","4","5","shift"].includes(k))e.preventDefault()});
 addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});addEventListener("blur",()=>{clearKeys();stopAuto()});document.addEventListener("visibilitychange",()=>{if(document.hidden){clearKeys();stopAuto()}});
