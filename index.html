@@ -8,11 +8,12 @@
 html,body{margin:0;background:#111;color:#fff;font-family:Arial,sans-serif;height:100%;overflow:hidden}
 #game{position:relative;width:100%;height:100%}
 canvas{display:block;width:100%;height:100%;cursor:none}
-.hud{position:absolute;left:16px;top:16px;background:#000b;padding:12px;border-radius:10px;font-size:14px;pointer-events:none}
+.hud{position:absolute;left:16px;bottom:16px;top:auto;background:#000b;padding:11px 12px;border-radius:10px;font-size:14px;pointer-events:none;min-width:202px;box-shadow:0 4px 16px #0007}
 .stats{position:absolute;right:16px;top:16px;background:#000b;padding:12px;border-radius:10px;text-align:right;pointer-events:none}
-.track{width:200px;height:16px;background:#222;border:1px solid #888;border-radius:10px;overflow:hidden;margin:5px 0 8px}
+.track{width:200px;height:13px;background:#222;border:1px solid #777;border-radius:10px;overflow:hidden;margin:4px 0 8px}
 #healthBar{height:100%;width:100%;background:#55a45c}
-#sprintHUD{margin-top:10px;text-align:left}
+#healthLabel{display:flex;justify-content:space-between;gap:12px;font-size:11px;font-weight:900;letter-spacing:.8px;color:#ddd}
+#sprintHUD{margin-top:6px;text-align:left}
 #sprintLabel{display:flex;justify-content:space-between;gap:12px;font-size:11px;font-weight:900;letter-spacing:.8px;color:#ddd}
 #sprintTrack{width:200px;height:11px;background:#202020;border:1px solid #777;border-radius:8px;overflow:hidden;margin-top:4px}
 #sprintFill{height:100%;width:100%;background:#58b96a;transition:width .05s linear}
@@ -48,8 +49,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 <body>
 <div id="game">
 <canvas id="cv" tabindex="0"></canvas>
-<div class="hud"><b>HEALTH <span id="healthText">100</span></b><div class="track"><div id="healthBar"></div></div>
-WASD — Move<br>Shift — Sprint<br>Mouse — Aim + Look<br>Click — Single Shot<br>Hold Click — Full Auto<br>R — Reload<br>1/2/3/4/5/6 — Weapons<br>G — Throw Grenade<br>N — Deploy Tactical Nuke<br><b>Headshot = instant kill</b><div id="sprintHUD"><div id="sprintLabel"><span>SPRINT</span><span id="sprintState">READY</span></div><div id="sprintTrack"><div id="sprintFill"></div></div></div></div>
+<div class="hud"><div id="healthLabel"><span>HEALTH</span><span id="healthText">100</span></div><div class="track"><div id="healthBar"></div></div><div id="sprintHUD"><div id="sprintLabel"><span>SPRINT</span><span id="sprintState">READY</span></div><div id="sprintTrack"><div id="sprintFill"></div></div></div></div>
 <div class="stats"><span id="ammo">12 / 72</span><br><span id="kills">KILLS 0</span><br><span id="heads">HEADSHOTS 0</span><br><span id="wave">WAVE 1</span><br><span id="remaining">ZOMBIES 6</span><br><span id="cash">CASH $0</span><br><span id="weaponName">RIFLE</span><br><span id="grenadeCount">GRENADES 2</span><br><span id="nukeCount">NUKES 0</span></div><div id="bossHUD"><div id="bossName"></div><div id="bossSub">BOSS THREAT</div><div id="bossTrack"><div id="bossFill"></div></div></div>
 <div id="crosshair"></div><div id="hitmarker">×</div><div id="damage"></div><div id="nukeFlash"></div><div id="nukeShock"></div>
 <div id="announce"><b id="big"></b><span id="small"></span></div>
