@@ -1,1 +1,250 @@
-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
+,2,0,2,3,4,6,5,4,7,6,0,4,5,0,5,1,1,5,6,1,6,2,2,6,7,2,7,3,3,7,4,3,4,0];
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setIndex(idx);geo.computeVertexNormals();
+ const q=new THREE.Mesh(geo,m);q.position.set(x,y,z);q.castShadow=true;q.receiveShadow=true;p.add(q);return q;
+}
+
+
+// Procedural building facades + solid collision volumes.  The texture is generated
+// in-browser, so the city keeps working as a single self-contained game build.
+const buildingColliders=[];
+function facadeMaterial(base,variant=0){
+ const cv=document.createElement('canvas');cv.width=160;cv.height=256;const c=cv.getContext('2d'),style=variant%6;
+ const col=new THREE.Color(base),baseCss='#'+col.getHexString();c.fillStyle=baseCss;c.fillRect(0,0,160,256);
+
+ if(style===0||style===3){
+   c.globalAlpha=.22;c.strokeStyle='#171717';c.lineWidth=1;
+   for(let y=0;y<256;y+=11){c.beginPath();c.moveTo(0,y);c.lineTo(160,y);c.stroke()}
+   for(let y=0,row=0;y<256;y+=22,row++)for(let x=(row%2)*11;x<160;x+=22){c.beginPath();c.moveTo(x,y);c.lineTo(x,y+11);c.stroke()}
+ }else if(style===1){
+   c.globalAlpha=.16;c.strokeStyle='#e4e0d6';
+   for(let x=8;x<160;x+=16){c.beginPath();c.moveTo(x,0);c.lineTo(x,256);c.stroke()}
+ }else if(style===2){
+   c.globalAlpha=.18;c.fillStyle='#111';
+   for(let y=0;y<256;y+=30)c.fillRect(0,y,160,3);
+ }else if(style===4){
+   c.globalAlpha=.12;c.fillStyle='#fff';
+   for(let y=0;y<256;y+=18)c.fillRect(0,y,160,2);
+   for(let x=0;x<160;x+=32)c.fillRect(x,0,2,256);
+ }else{
+   c.globalAlpha=.15;c.fillStyle='#111';
+   for(let i=0;i<90;i++)c.fillRect(Math.random()*160,Math.random()*256,2+Math.random()*7,1+Math.random()*4);
+ }
+ c.globalAlpha=1;
+
+ const cols=style===1?5:style===2?3:4,rows=style===4?11:9;
+ const sx=160/(cols+1),sy=226/(rows+1);
+ for(let row=0;row<rows;row++)for(let coln=0;coln<cols;coln++){
+   const ww=style===2?25:style===1?18:21,hh=style===4?10:14;
+   const x=sx*(coln+1)-ww/2,y=9+sy*row,lit=((row*7+coln*11+variant*13)%8===0);
+   c.fillStyle=lit?'#d7b66b':style===1?'#344b56':style===2?'#22333a':'#263d48';c.fillRect(x,y,ww,hh);
+   c.fillStyle='rgba(220,235,238,.15)';c.fillRect(x+2,y+2,Math.max(4,ww*.28),Math.max(5,hh-4));
+   c.strokeStyle='rgba(10,14,16,.72)';c.strokeRect(x-.5,y-.5,ww+1,hh+1);
+ }
+ c.fillStyle='rgba(30,30,30,.35)';c.fillRect(0,246,160,10);
+ c.fillStyle=style===3?'#2c3132':'#503723';c.fillRect(64,205,32,41);
+ c.strokeStyle='rgba(20,15,10,.85)';c.strokeRect(64.5,205.5,31,40);
+
+ if(style===5){
+   c.fillStyle='rgba(150,30,25,.75)';c.fillRect(18,178,124,16);
+   c.fillStyle='rgba(235,220,170,.8)';c.fillRect(28,182,104,4);
+ }
+
+ const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
+ tx.repeat.set(1.1+(variant%3)*.18,1.4+(variant%4)*.14);
+ return new THREE.MeshStandardMaterial({color:0xffffff,map:tx,roughness:.78+(style%3)*.06,metalness:style===1?.07:.02});
+}
+
+function zombieTex(baseHex,kind=0){
+ const cv=document.createElement("canvas");cv.width=192;cv.height=192;const c=cv.getContext("2d");
+ const base="#"+baseHex.toString(16).padStart(6,"0");c.fillStyle=base;c.fillRect(0,0,192,192);
+
+ for(let i=0;i<520;i++){
+   const x=Math.random()*192,y=Math.random()*192,r=1+Math.random()*9,a=.03+Math.random()*.11;
+   if(kind===0)c.fillStyle=`rgba(${45+Math.random()*85},${48+Math.random()*74},${38+Math.random()*60},${a})`;
+   else c.fillStyle=`rgba(${18+Math.random()*55},${18+Math.random()*52},${16+Math.random()*48},${a})`;
+   c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();
+ }
+ if(kind===0){
+   for(let i=0;i<34;i++){
+     c.fillStyle=`rgba(${70+Math.random()*85},${10+Math.random()*35},${14+Math.random()*35},${.06+Math.random()*.14})`;
+     c.beginPath();c.ellipse(Math.random()*192,Math.random()*192,4+Math.random()*16,2+Math.random()*8,Math.random()*Math.PI,0,Math.PI*2);c.fill();
+   }
+   for(let i=0;i<16;i++){
+     c.strokeStyle=`rgba(${70+Math.random()*40},${80+Math.random()*50},${120+Math.random()*70},${.04+Math.random()*.08})`;
+     c.lineWidth=.7+Math.random()*1.5;c.beginPath();let x=Math.random()*192,y=Math.random()*192;
+     c.moveTo(x,y);c.bezierCurveTo(x+10,y-6,x+22,y+12,x+30+(Math.random()-.5)*18,y+20+(Math.random()-.5)*18);c.stroke();
+   }
+ }else{
+   for(let i=0;i<28;i++){
+     c.strokeStyle=`rgba(12,12,12,${.08+Math.random()*.13})`;c.lineWidth=1+Math.random()*3;
+     c.beginPath();let y=Math.random()*192;c.moveTo(0,y);c.lineTo(192,y+(Math.random()-.5)*26);c.stroke();
+   }
+   for(let i=0;i<22;i++){
+     c.fillStyle=`rgba(210,205,190,${.025+Math.random()*.055})`;
+     c.fillRect(Math.random()*192,Math.random()*192,8+Math.random()*24,1+Math.random()*3);
+   }
+   for(let i=0;i<14;i++){
+     c.fillStyle=`rgba(90,20,18,${.05+Math.random()*.1})`;
+     c.beginPath();c.arc(Math.random()*192,Math.random()*192,2+Math.random()*9,0,Math.PI*2);c.fill();
+   }
+ }
+ const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
+ tx.repeat.set(kind===0?1.15:1.7,kind===0?1.15:1.7);
+ return new THREE.MeshStandardMaterial({color:0xffffff,map:tx,roughness:kind===0?.92:.98,metalness:0});
+}
+
+function addBuilding(w,h,d,x,z,base,variant){
+ const style=variant%6,mat=facadeMaterial(base,variant),q=box(w,h,d,mat,x,h/2,z);
+ buildingColliders.push({x,z,hx:w/2,hz:d/2});
+ const roof=M(style===1?0x30383c:style===3?0x554d46:0x4c5050,.94);
+ box(w*.94,.16,d*.94,roof,x,h+.08,z);
+
+ if(style===0){
+   box(w*.7,1.4,d*.62,facadeMaterial(base,variant+31),x,h+.78,z);
+   box(2.1,.7,1.55,M(0x6f7471,.72),x-w*.18,h+1.55,z+d*.12);
+ }else if(style===1){
+   for(let yy=h*.22;yy<h*.92;yy+=h*.19)box(w*1.015,.12,d*1.015,M(0x7b8080,.58),x,yy,z);
+   box(w*.45,.55,d*.35,M(0x32383a,.7),x+w*.12,h+.36,z);
+ }else if(style===2){
+   box(w*.72,h*.18,d*.72,facadeMaterial(base,variant+41),x,h+h*.09,z);
+   box(1.1,1.8,1.1,M(0x414748,.72),x-w*.22,h+1.0,z-d*.12);
+ }else if(style===3){
+   box(w*1.03,.28,d*1.03,M(0x756a5e,.82),x,h*.16,z);
+   box(w*1.03,.28,d*1.03,M(0x756a5e,.82),x,h*.58,z);
+   box(.85,2.2,.85,M(0x4a5050,.75),x+w*.2,h+1.1,z+d*.18);
+ }else if(style===4){
+   box(w*.82,1.0,d*.82,facadeMaterial(base,variant+53),x,h+.54,z);
+   for(const sx of [-1,1])box(.35,.7,d*.55,M(0x313637,.76),x+sx*w*.28,h+.42,z);
+ }else{
+   box(w*.9,.5,d*.24,M(0x2c3030,.8),x,h*.35,z-d*.4);
+   box(2.4,.5,.18,M(0x792b27,.7),x,h*.34,z-d*.51);
+   box(1.5,.7,1.5,M(0x555b59,.72),x-w*.2,h+.43,z);
+   box(.75,.35,.75,M(0x313839,.64),x+w*.22,h+.23,z-d*.18);
+ }
+ return q
+}
+function insideBuilding(x,z,r=.45){for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}return false}
+function slideBuilding(oldx,oldz,newx,newz,r=.45){
+ if(!insideBuilding(newx,newz,r))return{x:newx,z:newz};
+ if(!insideBuilding(newx,oldz,r))return{x:newx,z:oldz};
+ if(!insideBuilding(oldx,newz,r))return{x:oldx,z:newz};
+ return{x:oldx,z:oldz};
+}
+function pushOutsideBuilding(x,z,r=.45){
+ for(const b of buildingColliders){
+   const minX=b.x-b.hx-r,maxX=b.x+b.hx+r,minZ=b.z-b.hz-r,maxZ=b.z+b.hz+r;
+   if(x>minX&&x<maxX&&z>minZ&&z<maxZ){
+     const dL=x-minX,dR=maxX-x,dB=z-minZ,dT=maxZ-z,m=Math.min(dL,dR,dB,dT);
+     if(m===dL)x=minX;else if(m===dR)x=maxX;else if(m===dB)z=minZ;else z=maxZ;
+   }
+ }
+ return{x,z}
+}
+let ground=new THREE.Mesh(new THREE.PlaneGeometry(220,240),M(0x3d473d));ground.rotation.x=-Math.PI/2;scene.add(ground);box(25,.1,240,M(0x25282a),0,.05,30);box(220,.1,22,M(0x25282a),0,.06,30);box(4,.15,240,M(0x85847e),-14,.1,30);box(4,.15,240,M(0x85847e),14,.1,30);
+
+const fill=new THREE.DirectionalLight(0xaec8dc,.85);fill.position.set(28,18,35);scene.add(fill);
+const dustGeo=new THREE.BufferGeometry(),dustPts=[];for(let i=0;i<220;i++)dustPts.push((Math.random()-.5)*180,Math.random()*10,(Math.random()-.5)*220);
+dustGeo.setAttribute("position",new THREE.Float32BufferAttribute(dustPts,3));const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({size:.035,color:0xb9b4a4,transparent:true,opacity:.35}));scene.add(dust);
+const lineMat=M(0xd8c978,.82);
+for(let z=-85;z<145;z+=12)box(.16,.025,5.5,lineMat,0,.13,z);
+for(let x=-90;x<95;x+=13)box(5.5,.025,.16,lineMat,x,.14,30);
+function lamp(x,z,dir=1){
+ const g=new THREE.Group();
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,4.6,10),M(0x282d2d,.45));pole.position.y=2.3;g.add(pole);
+ const arm=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,1.1,8),M(0x282d2d,.45));arm.rotation.z=Math.PI/2;arm.position.set(.48*dir,4.45,0);g.add(arm);
+ const bulb=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),M(0xffd99a,.25));bulb.position.set(1*dir,4.45,0);g.add(bulb);
+ const hood=box(.32,.08,.28,M(0x202526,.55),.98*dir,4.53,0,g);
+ g.position.set(x,0,z);scene.add(g)
+}
+for(let z=-70;z<135;z+=28){lamp(-12,z,1);lamp(12,z+12,-1)}
+let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+let buildingId=0;
+for(let side of [-1,1]){
+  for(let z=-84;z<142;z+=14){
+    if(z>16&&z<46)continue;
+    let base=[0x555b5e,0x6c625b,0x4c565c,0x67645e][Math.floor(rnd()*4)];
+    let w1=10+rnd()*6,h1=15+rnd()*27,d1=12+rnd()*6,x1=side*(21+rnd()*6);
+    addBuilding(w1,h1,d1,x1,z,base,buildingId++);
+    if(rnd()>.18){
+      let w2=9+rnd()*5,h2=13+rnd()*24,d2=11+rnd()*5,x2=side*(37+rnd()*10);
+      addBuilding(w2,h2,d2,x2,z+(rnd()-.5)*4,base,buildingId++);
+    }
+  }
+}
+
+function car(x,z,rot=0,type=0){
+ const g=new THREE.Group(),body=[0x394b5c,0x6b2626,0x555753,0x2d3338,0x786d54][type%5];
+ const long=type===2?5.4:type===3?5.0:4.5, high=type===1?1.05:.72;
+ box(1.85,high,long,M(body,.55),0,.62,0,g);
+ box(1.62,.62,long*.48,M(type===3?0xe2e2d8:body,.5),0,1.22,-.12,g);
+ box(1.48,.38,.035,M(0x26353d,.18),0,1.28,-long*.25-.02,g).rotation.x=-.12;
+ for(const sx of [-.92,.92])for(const sz of [-long*.31,long*.31]){
+   const wh=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.18,10),M(0x151515,.9));
+   wh.rotation.z=Math.PI/2;wh.position.set(sx,.36,sz);g.add(wh)
+ }
+ 
+ // bumpers, windshield, rear glass and headlights
+ box(1.58,.34,.04,M(0x23343c,.18),0,1.34,-long*.245,g).rotation.x=-.18;
+ box(1.5,.30,.04,M(0x1d2c32,.2),0,1.31,long*.245,g).rotation.x=.15;
+ box(1.72,.12,.12,M(0x1d2021,.5),0,.48,-long*.51,g);
+ for(const hx of [-.58,.58])box(.32,.15,.04,M(0xe8d9a7,.22),hx,.69,-long*.505,g);
+ for(const hx of [-.58,.58])box(.28,.13,.04,M(0x8c2020,.3),hx,.68,long*.505,g);
+ g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
+ return g
+}
+const parkedCars=[];
+[
+ [-8,-55,0,0],[8,-38,Math.PI,1],[-8,-18,0,2],[8,2,Math.PI,3],
+ [-8,58,0,4],[8,78,Math.PI,0],[-8,103,0,1],[8,124,Math.PI,2],
+ [-34,25,Math.PI/2,3],[-51,35,-Math.PI/2,4],[32,35,Math.PI/2,0],[52,25,-Math.PI/2,1]
+].forEach((c,i)=>parkedCars.push(car(...c,i%5)));
+const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
+const FX={
+ bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
+ bloodGeoBig:new THREE.SphereGeometry(.075,5,4),
+ bloodMat:new THREE.MeshStandardMaterial({color:0x760909,roughness:.9}),
+ boneMat:new THREE.MeshStandardMaterial({color:0x82745c,roughness:.85}),
+ impactGeo:new THREE.SphereGeometry(.025,4,3),
+ impactMat:new THREE.MeshStandardMaterial({color:0xbbb6a8,roughness:.8}),
+ casingGeo:new THREE.CylinderGeometry(.025,.025,.12,7),
+ casingMat:new THREE.MeshStandardMaterial({color:0xb88a32,roughness:.35})
+};
+function capFX(){
+ while(parts.length>90){const p=parts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
+ while(impacts.length>36){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
+ while(casings.length>28){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
+}
+let zombies=[],kits=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30}},grenades=2,nukes=0,nukeInProgress=false,running=false,dying=false,reloading=false,between=false,waveTimer=0,lastCount=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},msgTimer,hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null;
+
+const weaponDefs={
+ rifle:{name:"RIFLE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12},
+ smg:{name:"SMG",rate:72,hold:150,spread:.012,pellets:1,body:.75,recoil:.065,baseMag:30},
+ shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.055,pellets:7,body:.72,recoil:.22,baseMag:6},
+ pistol:{name:"PISTOL",rate:240,hold:9999,spread:.007,pellets:1,body:1.15,recoil:.09,baseMag:15},
+ dmr:{name:"DMR",rate:330,hold:9999,spread:.0025,pellets:1,body:2.15,recoil:.16,baseMag:10}
+};
+function wd(){return weaponDefs[weapon]}
+function maxMag(w=weapon){
+ const base=weaponDefs[w].baseMag;
+ return base+(w==="shotgun"?Math.floor((magSize-12)/4):Math.max(0,magSize-12));
+}
+function A(){return ammoState[weapon]}
+
+function cyl(rad,len,mat,x,y,z,parent=gun,axis="z"){
+ const q=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,len,14),mat);
+ if(axis==="z")q.rotation.x=Math.PI/2; else if(axis==="x")q.rotation.z=Math.PI/2;
+ q.position.set(x,y,z);q.castShadow=true;parent.add(q);return q
+}
+function bevelBox(w,hh,d,mat,x,y,z,parent=gun){
+ const shape=new THREE.Shape();let r=Math.min(w,hh)*.12;
+ shape.moveTo(-w/2+r,-hh/2);shape.lineTo(w/2-r,-hh/2);shape.quadraticCurveTo(w/2,-hh/2,w/2,-hh/2+r);
+ shape.lineTo(w/2,hh/2-r);shape.quadraticCurveTo(w/2,hh/2,w/2-r,hh/2);shape.lineTo(-w/2+r,hh/2);
+ shape.quadraticCurveTo(-w/2,hh/2,-w/2,hh/2-r);shape.lineTo(-w/2,-hh/2+r);shape.quadraticCurveTo(-w/2,-hh/2,-w/2+r,-hh/2);
+ const geo=new THREE.ExtrudeGeometry(shape,{depth:d,bevelEnabled:true,bevelThickness:.025,bevelSize:.02,bevelSegments:2});
+ geo.center();let q=new THREE.Mesh(geo,mat);q.position.set(x,y,z);q.castShadow=true;parent.add(q);return q
+}
+function rebuildGun(){
+ while(gun.children.length)gun.remove(gun.children[0]);
+ const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
+ const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
+ const grip=(y,z,ang=-.22,mat=poly)=>{let 
