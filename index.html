@@ -35,7 +35,22 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 @keyframes nukeShock{0%{opacity:1;transform:translate(-50%,-50%) scale(.1)}100%{opacity:0;transform:translate(-50%,-50%) scale(65)}}
 #msg{position:absolute;bottom:10%;left:50%;transform:translateX(-50%);background:#000c;padding:8px 14px;border-radius:8px;opacity:0;pointer-events:none}
 #msg.show{opacity:1}
-#shop{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;display:none;background:#080a0bea;border:1px solid #777;border-radius:14px;padding:18px;text-align:center;min-width:310px}#shop.show{display:block}#shop h2{margin:0 0 8px}#shop button{display:block;width:100%;font-size:14px;margin:7px 0;padding:9px}#shop p{font-size:12px;color:#ccc;margin-bottom:0}#shop .readyBtn{margin-top:14px;font-weight:900;font-size:16px;background:#e8e8e8;color:#111}#startScreen{position:absolute;inset:0;background:linear-gradient(180deg,#0d0f10f2,#15191cf2);display:flex;align-items:center;justify-content:center;text-align:center;z-index:5;padding:24px;box-sizing:border-box}
+#shop{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;display:none;width:min(780px,92vw);max-height:88vh;overflow:auto;box-sizing:border-box;background:#080a0bf2;border:1px solid #ffffff30;border-radius:18px;padding:18px 20px 16px;text-align:center;box-shadow:0 22px 70px #000b;backdrop-filter:blur(5px)}
+#shop.show{display:block}
+#shopHeader{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;padding-bottom:11px;border-bottom:1px solid #ffffff16}
+#shop h2{margin:0;font-size:24px;letter-spacing:1.5px}
+#shopCash{background:#ffffff0d;border:1px solid #ffffff18;border-radius:999px;padding:7px 12px;font-weight:900;color:#9ee7a5;white-space:nowrap}
+#shopGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left}
+.shopSection{background:#ffffff07;border:1px solid #ffffff12;border-radius:12px;padding:11px}
+.shopSection h3{margin:0 0 8px;font-size:12px;letter-spacing:1.4px;color:#aeb7bc;text-transform:uppercase}
+.shopItems{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.shopSection button{width:100%;min-height:42px;font-size:12px;line-height:1.2;margin:0;padding:8px 9px;border-radius:8px;background:#252b2f;color:#f2f2f2;border:1px solid #ffffff14;text-align:left}
+.shopSection button:hover{background:#30383d}
+#shopFooter{margin-top:13px;padding-top:12px;border-top:1px solid #ffffff16}
+#shop p{font-size:12px;color:#c4c9cc;margin:8px 0 0}
+#shop .readyBtn{width:100%;margin:0;font-weight:900;font-size:15px;background:#e8e8e8;color:#111;padding:11px}
+@media(max-width:680px){#shopGrid{grid-template-columns:1fr}.shopItems{grid-template-columns:1fr 1fr}}
+@media(max-width:440px){.shopItems{grid-template-columns:1fr}#shop{padding:14px;width:95vw}}#startScreen{position:absolute;inset:0;background:linear-gradient(180deg,#0d0f10f2,#15191cf2);display:flex;align-items:center;justify-content:center;text-align:center;z-index:5;padding:24px;box-sizing:border-box}
 #startPanel{width:min(620px,92vw);background:#090b0dcc;border:1px solid #ffffff1f;border-radius:18px;padding:28px 30px 26px;box-shadow:0 20px 70px #000a;backdrop-filter:blur(5px)}
 #startPanel h1{font-size:44px;letter-spacing:4px;margin:0 0 6px}
 #startPanel .tagline{margin:0 0 20px;color:#bfc6ca;font-size:14px;letter-spacing:.5px}
@@ -65,26 +80,37 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 <div id="crosshair"></div><div id="hitmarker">×</div><div id="damage"></div><div id="nukeFlash"></div><div id="nukeShock"></div>
 <div id="announce"><b id="big"></b><span id="small"></span></div>
 <div id="death">YOU DIED</div><div id="msg"></div>
-<div id="shop"><h2>WAVE SHOP</h2><div id="shopCash">CASH $0</div>
-    <button data-buy="rifleAmmo">Rifle Ammo +36 — $120</button>
-<button data-buy="smgAmmo">SMG Ammo +60 — $110</button>
-<button data-buy="shotgunAmmo">Shotgun Shells +18 — $140</button>
-<button data-buy="pistolAmmo">Pistol Ammo +48 — $90</button>
-<button data-buy="dmrAmmo">DMR Ammo +24 — $160</button>
-<button data-buy="grenadeLauncherAmmo">Grenade Launcher Ammo +3 — $225</button>
-    <button data-buy="heal">Heal +40 — $150</button>
-    <button data-buy="mag">Magazine +4 — $250</button>
-    <button data-buy="damage">Damage Upgrade — $350</button>
-    <button data-buy="reload">Faster Reload — $300</button>
-    <button data-buy="smg">Unlock SMG — $500</button>
-    <button data-buy="shotgun">Unlock Shotgun — $700</button>
-<button data-buy="pistol">Unlock Pistol — $300</button>
-<button data-buy="dmr">Unlock DMR — $900</button>
-<button data-buy="grenadeLauncher">Unlock Grenade Launcher — $1200</button>
-    <button data-buy="grenade">Grenade — $175</button>
-    <button data-buy="nuke">TACTICAL NUKE — $100 (TEST)</button>
-    <button id="readyNext" class="readyBtn">READY — START NEXT WAVE</button>
-    <p id="shopNote">Take your time. The next wave will not start until you press Ready.</p></div><div id="startScreen"><div id="startPanel">
+<div id="shop">
+<div id="shopHeader"><h2>WAVE SHOP</h2><div id="shopCash">CASH $0</div></div>
+<div id="shopGrid">
+  <section class="shopSection"><h3>Ammo</h3><div class="shopItems">
+    <button data-buy="rifleAmmo">Rifle +36<br>$120</button>
+    <button data-buy="smgAmmo">SMG +60<br>$110</button>
+    <button data-buy="shotgunAmmo">Shotgun +18<br>$140</button>
+    <button data-buy="pistolAmmo">Pistol +48<br>$90</button>
+    <button data-buy="dmrAmmo">DMR +24<br>$160</button>
+    <button data-buy="grenadeLauncherAmmo">Launcher +3<br>$225</button>
+  </div></section>
+  <section class="shopSection"><h3>Upgrades</h3><div class="shopItems">
+    <button data-buy="heal">Heal +40<br>$150</button>
+    <button data-buy="mag">Magazine +4<br>$250</button>
+    <button data-buy="damage">Damage Upgrade<br>$350</button>
+    <button data-buy="reload">Faster Reload<br>$300</button>
+  </div></section>
+  <section class="shopSection"><h3>Weapons</h3><div class="shopItems">
+    <button data-buy="pistol">Unlock Pistol<br>$300</button>
+    <button data-buy="smg">Unlock SMG<br>$500</button>
+    <button data-buy="shotgun">Unlock Shotgun<br>$700</button>
+    <button data-buy="dmr">Unlock DMR<br>$900</button>
+    <button data-buy="grenadeLauncher">Unlock Grenade Launcher<br>$1200</button>
+  </div></section>
+  <section class="shopSection"><h3>Equipment</h3><div class="shopItems">
+    <button data-buy="grenade">Grenade<br>$175</button>
+    <button data-buy="nuke">Tactical Nuke<br>$100 TEST</button>
+  </div></section>
+</div>
+<div id="shopFooter"><button id="readyNext" class="readyBtn">READY — START NEXT WAVE</button><p id="shopNote">Take your time. The next wave will not start until you press Ready.</p></div>
+</div><div id="startScreen"><div id="startPanel">
 <h1>CITY OUTBREAK</h1>
 <p class="tagline">Survive the outbreak. Gear up between waves. Boss fight every 10 rounds.</p>
 <div id="controlsCard">
