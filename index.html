@@ -574,7 +574,7 @@ function nextBossName(){
 function ensureBossWaveName(w){if(isBossWave(w)&&!bossWaveName)bossWaveName=nextBossName();return bossWaveName}
 function bossWaveSpec(w){
  const mult=bossScaleFactor(w),tier=bossTier(w);
- return {name:ensureBossWaveName(w),hp:Math.round(160*mult),speed:1.18*mult,attack:.92/mult,damage:Math.round(18*mult),bounty:250+tier*75,specialCd:7.5/mult}
+ return {name:ensureBossWaveName(w),hp:Math.round(184*mult),speed:1.357*mult,attack:.80/mult,damage:Math.round(21*mult),bounty:250+tier*75,specialCd:6.5/mult}
 }
 function updateBossUI(){
  if(currentBoss&&!currentBoss.dead&&currentBoss.g.parent){
