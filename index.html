@@ -35,9 +35,20 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 @keyframes nukeShock{0%{opacity:1;transform:translate(-50%,-50%) scale(.1)}100%{opacity:0;transform:translate(-50%,-50%) scale(65)}}
 #msg{position:absolute;bottom:10%;left:50%;transform:translateX(-50%);background:#000c;padding:8px 14px;border-radius:8px;opacity:0;pointer-events:none}
 #msg.show{opacity:1}
-#shop{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;display:none;background:#080a0bea;border:1px solid #777;border-radius:14px;padding:18px;text-align:center;min-width:310px}#shop.show{display:block}#shop h2{margin:0 0 8px}#shop button{display:block;width:100%;font-size:14px;margin:7px 0;padding:9px}#shop p{font-size:12px;color:#ccc;margin-bottom:0}#shop .readyBtn{margin-top:14px;font-weight:900;font-size:16px;background:#e8e8e8;color:#111}#startScreen{position:absolute;inset:0;background:#111e;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:5}
+#shop{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;display:none;background:#080a0bea;border:1px solid #777;border-radius:14px;padding:18px;text-align:center;min-width:310px}#shop.show{display:block}#shop h2{margin:0 0 8px}#shop button{display:block;width:100%;font-size:14px;margin:7px 0;padding:9px}#shop p{font-size:12px;color:#ccc;margin-bottom:0}#shop .readyBtn{margin-top:14px;font-weight:900;font-size:16px;background:#e8e8e8;color:#111}#startScreen{position:absolute;inset:0;background:linear-gradient(180deg,#0d0f10f2,#15191cf2);display:flex;align-items:center;justify-content:center;text-align:center;z-index:5;padding:24px;box-sizing:border-box}
+#startPanel{width:min(620px,92vw);background:#090b0dcc;border:1px solid #ffffff1f;border-radius:18px;padding:28px 30px 26px;box-shadow:0 20px 70px #000a;backdrop-filter:blur(5px)}
+#startPanel h1{font-size:44px;letter-spacing:4px;margin:0 0 6px}
+#startPanel .tagline{margin:0 0 20px;color:#bfc6ca;font-size:14px;letter-spacing:.5px}
+#controlsCard{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;text-align:left;background:#ffffff08;border:1px solid #ffffff12;border-radius:12px;padding:14px 16px;margin:0 auto 18px}
+.controlRow{display:flex;align-items:center;justify-content:space-between;gap:14px;color:#d8dde0;font-size:13px;padding:5px 0}
+.key{display:inline-block;min-width:58px;text-align:center;padding:5px 8px;border-radius:7px;background:#1c2226;border:1px solid #ffffff24;color:#fff;font-weight:900;font-size:12px;box-shadow:inset 0 -2px 0 #0007}
+#startActions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+#startScreen button{font-size:16px;font-weight:900;padding:11px 20px;border:0;border-radius:9px;cursor:pointer;margin:0}
+#start{background:#e8e8e8;color:#111}
+#restart{background:#2b3034;color:#eee;border:1px solid #ffffff20}
 button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointer;margin:6px}
 .small{font-size:13px;color:#ddd;line-height:1.5}
+@media(max-width:560px){#controlsCard{grid-template-columns:1fr}#startPanel h1{font-size:34px}#startPanel{padding:22px 18px}}
 #bossHUD{position:absolute;left:50%;top:14px;transform:translateX(-50%);width:min(590px,74vw);display:none;pointer-events:none;z-index:6;text-align:center}
 #bossHUD.show{display:block}
 #bossName{font:900 23px/1 Arial,sans-serif;letter-spacing:1.8px;color:#ffe0e0;text-shadow:0 2px 8px #000}
@@ -73,7 +84,21 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
     <button data-buy="grenade">Grenade — $175</button>
     <button data-buy="nuke">TACTICAL NUKE — $100 (TEST)</button>
     <button id="readyNext" class="readyBtn">READY — START NEXT WAVE</button>
-    <p id="shopNote">Take your time. The next wave will not start until you press Ready.</p></div><div id="startScreen"><h1>CITY OUTBREAK</h1><p>Survive the outbreak.</p><button id="start">START OUTBREAK</button><button id="restart">RESTART</button><p class="small">WASD — Move • Shift — Sprint • Mouse — Aim<br>Click — Fire • R — Reload • 1–6 — Weapons<br>G — Grenade • N — Tactical Nuke</p></div>
+    <p id="shopNote">Take your time. The next wave will not start until you press Ready.</p></div><div id="startScreen"><div id="startPanel">
+<h1>CITY OUTBREAK</h1>
+<p class="tagline">Survive the outbreak. Gear up between waves. Boss fight every 10 rounds.</p>
+<div id="controlsCard">
+<div class="controlRow"><span>Move</span><span class="key">W A S D</span></div>
+<div class="controlRow"><span>Aim / Look</span><span class="key">MOUSE</span></div>
+<div class="controlRow"><span>Sprint</span><span class="key">SHIFT</span></div>
+<div class="controlRow"><span>Fire</span><span class="key">CLICK</span></div>
+<div class="controlRow"><span>Reload</span><span class="key">R</span></div>
+<div class="controlRow"><span>Weapons</span><span class="key">1 — 6</span></div>
+<div class="controlRow"><span>Grenade</span><span class="key">G</span></div>
+<div class="controlRow"><span>Tactical Nuke</span><span class="key">N</span></div>
+</div>
+<div id="startActions"><button id="start">START OUTBREAK</button><button id="restart">RESTART</button></div>
+</div></div>
 </div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <script type="module">
