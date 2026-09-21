@@ -422,7 +422,7 @@ for(const sx of [-16,16]){
   box(8,.10,110,sidewalk,sx,.11,-37);
   box(8,.10,110,sidewalk,sx,.11,97);
 }
-for(const sz of [16,44]){
+for(const sz of [14,46]){
   box(100,.10,8,sidewalk,-62,.12,sz);
   box(100,.10,8,sidewalk,62,.12,sz);
 }
@@ -442,7 +442,7 @@ for(const sx of [-16,16]){
   for(let z=-84;z<=10;z+=12)box(7.2,.016,.055,walkJoint,sx,.17,z);
   for(let z=50;z<=144;z+=12)box(7.2,.016,.055,walkJoint,sx,.17,z);
 }
-for(const sz of [16,44]){
+for(const sz of [14,46]){
   for(let x=-104;x<=-24;x+=12)box(.055,.016,7.2,walkJoint,x,.17,sz);
   for(let x=24;x<=104;x+=12)box(.055,.016,7.2,walkJoint,x,.17,sz);
 }
@@ -501,6 +501,15 @@ let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/429
 let buildingId=0;
 const cityPalettes=[0x6c5a4d,0x56606a,0x8a806f,0x4f555a,0x73685d,0x7d766b,0x5f666c,0x6a4b3e];
 
+// Reserve real sidewalk and alley space based on each building's footprint.
+// This prevents wide procedural buildings from covering sidewalks after generation.
+const AVENUE_WALK_OUTER=20.0,FRONT_BUILD_EDGE=20.8,MID_BUILD_EDGE=42.5,BACK_BUILD_EDGE=62.0;
+const CROSS_SOUTH_OUTER=10.0,CROSS_NORTH_OUTER=50.0;
+function avenueBuildingX(side,innerEdge,width,setback=0){return side*(innerEdge+width*.5+setback)}
+function crossBuildingZ(north,depth,setback=0){
+ return north?CROSS_NORTH_OUTER+depth*.5+setback:CROSS_SOUTH_OUTER-depth*.5-setback
+}
+
 // Front rows along the main avenue. Every few lots become low-rise storefronts
 // so the skyline is not made entirely from medium / tall boxes.
 for(let side of [-1,1]){
@@ -511,7 +520,7 @@ for(let side of [-1,1]){
     let w1=lowRise?8+rw*4:11+rw*5;
     let h1=lowRise?7+rh*8:18+rh*30;
     let d1=lowRise?9+rd*4:11+rd*6;
-    let x1=side*(22+rx*3.5);
+    let x1=avenueBuildingX(side,FRONT_BUILD_EDGE,w1,rx*1.35);
     addBuilding(w1,h1,d1,x1,z,base,buildingId++);
   }
 }
@@ -526,7 +535,7 @@ for(let side of [-1,1]){
     let w=lowRise?8+rw*4:9+rw*5;
     let h=lowRise?8+rh*9:20+rh*36;
     let d=lowRise?9+rd*4:10+rd*6;
-    let x=side*(44+rx*6);
+    let x=avenueBuildingX(side,MID_BUILD_EDGE,w,rx*3.5);
     addBuilding(w,h,d,x,z+(rz-.5)*3.5,base,buildingId++);
   }
 }
@@ -537,7 +546,7 @@ for(let side of [-1,1]){
   for(let z=-96;z<152;z+=18){
     let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
     const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),rz=rnd();
-    let w=11+rw*7,h=28+rh*42,d=11+rd*7,x=side*(68+rx*12);
+    let w=11+rw*7,h=28+rh*42,d=11+rd*7,x=avenueBuildingX(side,BACK_BUILD_EDGE,w,rx*7);
     addBuilding(w,h,d,x,z+(rz-.5)*4,base,buildingId++);
   }
 }
@@ -550,8 +559,8 @@ for(let x=-92;x<96;x+=14){
   let w=lowRise?8+rw*4:10+rw*6;
   let h=lowRise?6.5+rh*7:14+rh*18;
   let d=lowRise?8+rd*4:10+rd*5;
-  addBuilding(w,h,d,x,8+rz1*4,base,buildingId++);
-  addBuilding(w,h,d,x,52+rz2*4,base,buildingId++);
+  addBuilding(w,h,d,x,crossBuildingZ(false,d,.8+rz1*1.6),base,buildingId++);
+  addBuilding(w,h,d,x,crossBuildingZ(true,d,.8+rz2*1.6),base,buildingId++);
 }
 
 
