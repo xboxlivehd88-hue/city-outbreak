@@ -595,7 +595,7 @@ const ADS={
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
  dmr:{x:-.36,y:.010,z:-1.00,fov:48,rx:0},
  grenadeLauncher:{x:-.36,y:.040,z:-.45,fov:56,rx:0},
- m240:{x:-.36,y:.005,z:-2.05,fov:56,rx:0},
+ m240:{x:-.36,y:-.065,z:-1.62,fov:56,rx:0},
  awm:{x:-.36,y:.005,z:-.62,fov:28,rx:0}
 };
 function ads(){return ADS[weapon]||ADS.rifle}
@@ -699,7 +699,7 @@ function rebuildGun(){
    box(.50,.055,.46,dark,x,-.40,-1.28,gun);
    // bipod legs
    for(const sx of [-.19,.19]){let leg=cyl(.026,.82,steel,x+sx,-.52,-3.20,gun,"y");leg.rotation.z=sx<0?-.34:.34}
-   rearIron(-.82,-.010,.95);frontIron(-3.67,-.010,.90);
+   rearIron(-.82,.060,.95);frontIron(-3.67,.060,.90);
  }else if(weapon==='awm'){
    // AWM Ultimate: long precision rifle, skeletal stock, oversized scope and heavy fluted barrel.
    stock(-.35,M(0x38404a,.58));part(.34,.30,1.12,metal,-.29,-1.25);part(.29,.25,1.35,M(0x2f3a43,.60),-.27,-2.20);
