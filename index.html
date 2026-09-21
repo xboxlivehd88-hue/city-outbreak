@@ -1688,14 +1688,36 @@ function killZ(z,hs,p){
  ui()
 }
 function bite(z){if(z.cool>0)return;z.cool=z.attack;z.attackAnim=.62;z.attackSide=Math.random()>.5?1:-1;rigTransient(z,"Attack",.48);let armPenalty=((!z.armL.parent?1:0)+(!z.armR.parent?1:0))*.2;health=Math.max(0,health-z.damage*(1-armPenalty));biteS();damage.classList.add("show");setTimeout(()=>damage.classList.remove("show"),140);ui();if(health<=0){running=false;dying=true;stopAuto();clearKeys();death.classList.add("show")}else show("-"+z.damage+" HEALTH")}
-function reload(){if(reloading||A().mag===maxMag()||A().reserve<=0||dying)return;reloading=true;reloadS();show("RELOADING");setTimeout(()=>{let n=Math.min(maxMag()-A().mag,A().reserve);A().mag+=n;A().reserve-=n;reloading=false;ui()},Math.max(420,950-reloadLevel*120))}
+function reload(w=weapon){
+ const a=ammoState[w],cap=maxMag(w);
+ if(reloading||!a||a.mag===cap||a.reserve<=0||dying)return false;
+ reloading=true;reloadS();show("RELOADING");
+ setTimeout(()=>{
+   const n=Math.min(cap-a.mag,a.reserve);
+   a.mag+=n;a.reserve-=n;reloading=false;ui()
+ },Math.max(420,950-reloadLevel*120));
+ return true
+}
+function autoReloadIfEmpty(w=weapon){
+ const a=ammoState[w];
+ if(a&&a.mag<=0&&a.reserve>0&&!reloading&&!dying)reload(w)
+}
 const ray=new THREE.Raycaster();
 function fire(){
  if(!running||reloading||dying||between)return;
  if(weapon==="awm"&&performance.now()<awmReadyAt){show("CYCLING BOLT");return}
- if(A().mag<=0){tone(180,.05,"square",.08);show("EMPTY");return}
+ if(A().mag<=0){
+  tone(180,.05,"square",.08);
+  if(A().reserve>0){autoReloadIfEmpty(weapon)}else show("EMPTY");
+  return
+ }
  A().mag--;if(weapon==="awm")awmReadyAt=performance.now()+1150;weaponSound();if(weapon!=="grenadeLauncher")casing();recoil=Math.min(.3,recoil+wd().recoil);muzzle.intensity=10;setTimeout(()=>muzzle.intensity=0,42);ui();
- if(weapon==="grenadeLauncher"){fireGrenadeLauncherRound();return}
+ if(weapon==="grenadeLauncher"){
+  const firedWeapon=weapon;
+  fireGrenadeLauncherRound();
+  autoReloadIfEmpty(firedWeapon);
+  return
+ }
  let didHit=false,headHit=false,targets=[];
  for(const z of living())z.g.traverse(o=>{if(o.isMesh)targets.push(o)});
  for(let pellet=0;pellet<wd().pellets;pellet++){
@@ -1713,6 +1735,7 @@ function fire(){
    }
  }
  if(didHit)hitMark(headHit);
+ autoReloadIfEmpty(weapon);
 }
 function stopAuto(){triggerHeld=false;if(autoDelay){clearTimeout(autoDelay);autoDelay=null}if(autoTimer){clearInterval(autoTimer);autoTimer=null}}
 function triggerDown(){if(!running||dying||between)return;initAudio();fire();triggerHeld=true;if(autoDelay)clearTimeout(autoDelay);autoDelay=setTimeout(()=>{if(!triggerHeld||weapon==="shotgun"||weapon==="grenadeLauncher"||weapon==="awm")return;autoTimer=setInterval(()=>{if(triggerHeld)fire()},wd().rate)},wd().hold)}
