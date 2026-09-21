@@ -687,11 +687,15 @@ function rebuildGun(){
    box(.018,.12,.36,dark,x+.20,-.28,-1.17,gun);box(.20,.045,.08,dark,x,-.14,-.56,gun);
  }else if(weapon==='m240'){
    // M240-style belt-fed silhouette: narrow fixed stock, long receiver, top cover, perforated heat shield and bipod.
-   let mStock=bevelBox(.26,.26,.56,poly,x,-.40,-.36,gun);mStock.rotation.x=-.10;
-   box(.28,.30,.085,rubber,x,-.40,-.075,gun);
-   bevelBox(.24,.22,.42,poly,x,-.35,-.76,gun);
+   // Tapered shoulder stock grows toward the camera so ADS feels shouldered instead of floating.
+   let mStockNeck=bevelBox(.23,.20,.34,poly,x,-.36,-.78,gun);mStockNeck.rotation.x=-.06;
+   let mStockMid=bevelBox(.30,.30,.42,poly,x,-.45,-.48,gun);mStockMid.rotation.x=-.10;
+   let mStockRear=bevelBox(.36,.44,.26,poly,x,-.57,-.20,gun);mStockRear.rotation.x=-.12;
+   box(.39,.50,.085,rubber,x,-.60,-.075,gun);
    part(.40,.27,1.42,metal,-.34,-1.40);part(.34,.22,1.10,dark,-.33,-2.30);
-   grip(-.66,-.94,-.24,rubber);
+   // Smaller angled pistol grip; the old full-height block made the gun look suspended in space.
+   let mGrip=bevelBox(.20,.42,.26,rubber,x,-.61,-.94,gun);mGrip.rotation.x=-.22;
+   for(let yy=-.12;yy<.13;yy+=.075)box(.175,.016,.275,dark,x,-.61+yy,-.945,gun);
    // Low top cover / rail leaves the iron-sight channel open.
    box(.42,.10,.88,M(0x303638,.30),x,-.13,-1.34,gun);rail(-1.47,1.22,-.055);
    cyl(.074,1.82,steel,x,-.255,-3.34);muzzleBrake(-4.25,.118);
