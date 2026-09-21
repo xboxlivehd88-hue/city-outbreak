@@ -268,7 +268,9 @@ function facadeMaterial(base,variant=0){
 }
 
 
+const zombieTexCache=new Map();
 function zombieTex(baseHex,kind=0){
+ const cacheKey=baseHex+"|"+kind;if(zombieTexCache.has(cacheKey))return zombieTexCache.get(cacheKey);
  const cv=document.createElement("canvas");cv.width=192;cv.height=192;const c=cv.getContext("2d");
  const base="#"+baseHex.toString(16).padStart(6,"0");c.fillStyle=base;c.fillRect(0,0,192,192);
 
@@ -304,7 +306,7 @@ function zombieTex(baseHex,kind=0){
  }
  const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
  tx.repeat.set(kind===0?1.15:1.7,kind===0?1.15:1.7);
- return new THREE.MeshStandardMaterial({color:0xffffff,map:tx,roughness:kind===0?.92:.98,metalness:0,flatShading:true});
+ const mat=new THREE.MeshStandardMaterial({color:0xffffff,map:tx,roughness:kind===0?.92:.98,metalness:0,flatShading:true});zombieTexCache.set(cacheKey,mat);return mat;
 }
 
 
@@ -504,7 +506,12 @@ const FX={
  impactGeo:new THREE.SphereGeometry(.025,4,3),
  impactMat:new THREE.MeshStandardMaterial({color:0xbbb6a8,roughness:.8}),
  casingGeo:new THREE.CylinderGeometry(.025,.025,.12,7),
- casingMat:new THREE.MeshStandardMaterial({color:0xb88a32,roughness:.35})
+ casingMat:new THREE.MeshStandardMaterial({color:0xb88a32,roughness:.35}),
+ explosionGeo:new THREE.SphereGeometry(.055,5,4),
+ launcherDustMat:new THREE.MeshStandardMaterial({color:0x695946,roughness:.82}),
+ launcherFlashMat:new THREE.MeshStandardMaterial({color:0xd8a34a,roughness:.58,emissive:0x5a3108,emissiveIntensity:.32}),
+ grenadeDustMat:new THREE.MeshStandardMaterial({color:0x5c5142,roughness:.86}),
+ grenadeFlashMat:new THREE.MeshStandardMaterial({color:0xd29a46,roughness:.58,emissive:0x542b08,emissiveIntensity:.30})
 };
 function capFX(){
  while(parts.length>90){const p=parts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
@@ -731,7 +738,7 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
  rig.name="RiggedZombieVisual";
  rig.position.set(0,0,0);
  rig.scale.setScalar(1.02);
- const eye=rigEyeColor(kind), outfit=rigOutfitColor(kind,variant);
+ const eye=rigEyeColor(kind), outfit=rigOutfitColor(kind,variant),ownedRigMaterials=[];
  rig.traverse(o=>{
    if(!o.isMesh)return;
    o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;
@@ -756,7 +763,7 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
      if(nm.includes("eyes")){
        n.color.setHex(eye);n.emissive?.setHex(eye);n.emissiveIntensity=3.2;
      }
-     n.needsUpdate=true;return n;
+     n.needsUpdate=true;ownedRigMaterials.push(n);return n;
    });
    o.material=Array.isArray(o.material)?copies:copies[0];
    const finalMats=Array.isArray(o.material)?o.material:[o.material];
@@ -768,8 +775,14 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
  const baseName=(kind==="sprinter"||kind==="infected"||kind==="acidic")?"Sprint":"Shamble";
  const base=actions[baseName]||actions.Shamble||actions.Idle;
  if(base){base.enabled=true;base.setLoop(THREE.LoopRepeat,Infinity);base.play();}
- z.rigVisual=rig;z.mixer=mixer;z.rigActions=actions;z.rigBase=base;z.rigTransient=null;z.rigTransientT=0;
+ z.rigVisual=rig;z.mixer=mixer;z.rigActions=actions;z.rigBase=base;z.rigTransient=null;z.rigTransientT=0;z.rigMaterials=ownedRigMaterials;
  return true;
+}
+function releaseZombieVisual(z){
+ if(!z)return;
+ if(z.mixer){z.mixer.stopAllAction();if(z.rigVisual)z.mixer.uncacheRoot(z.rigVisual)}
+ if(z.rigMaterials){for(const m of z.rigMaterials){try{m.dispose()}catch(_){}}z.rigMaterials.length=0}
+ if(z.g&&z.g.parent)scene.remove(z.g)
 }
 
 function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
@@ -966,14 +979,9 @@ const dropGeo={
  health:new THREE.BoxGeometry(.54,.34,.42)
 };
 const dropMat={
- ammo:new THREE.MeshStandardMaterial({color:0x786b42,roughness:.72,metalness:.03}),
- money:new THREE.MeshStandardMaterial({color:0x477b48,roughness:.78}),
- health:new THREE.MeshStandardMaterial({color:0xe5e1d5,roughness:.72})
-};
-const dropGlow={
- ammo:new THREE.PointLight(0xe0b85c,.55,2.4,2),
- money:new THREE.PointLight(0x71d477,.55,2.4,2),
- health:new THREE.PointLight(0xff5555,.60,2.4,2)
+ ammo:new THREE.MeshStandardMaterial({color:0x786b42,emissive:0x3d2b0d,emissiveIntensity:.30,roughness:.72,metalness:.03}),
+ money:new THREE.MeshStandardMaterial({color:0x477b48,emissive:0x173f1b,emissiveIntensity:.30,roughness:.78}),
+ health:new THREE.MeshStandardMaterial({color:0xe5e1d5,emissive:0x511010,emissiveIntensity:.24,roughness:.72})
 };
 function weightedTier(r,tiers){
  let total=0;for(const t of tiers)total+=t[1];
@@ -990,13 +998,16 @@ function randomAmmoWeapon(){
  const pool=Object.keys(unlocked).filter(w=>unlocked[w]);
  return pool[Math.floor(rnd()*pool.length)]||weapon;
 }
+const dropLabelCache=new Map();
 function makeDropLabel(text,color=0xffffff){
+ const key=text+"|"+color;let mat=dropLabelCache.get(key);if(mat){const sp=new THREE.Sprite(mat);sp.scale.set(1.65,.52,1);sp.renderOrder=900;return sp}
  const cv=document.createElement("canvas");cv.width=256;cv.height=80;const c=cv.getContext("2d");
  c.clearRect(0,0,256,80);c.font="900 27px Arial";c.textAlign="center";c.textBaseline="middle";
  c.strokeStyle="rgba(0,0,0,.92)";c.lineWidth=8;c.strokeText(text,128,40);
  c.fillStyle="#"+color.toString(16).padStart(6,"0");c.fillText(text,128,40);
  const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;
- const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthTest:false,depthWrite:false}));
+ mat=new THREE.SpriteMaterial({map:tx,transparent:true,depthTest:false,depthWrite:false});dropLabelCache.set(key,mat);
+ const sp=new THREE.Sprite(mat);
  sp.scale.set(1.65,.52,1);sp.renderOrder=900;return sp
 }
 function spawnZombieDrop(pos){
@@ -1029,7 +1040,6 @@ function spawnZombieDrop(pos){
    box(.32,.035,.10,M(0xb52d2d,.72),0,.44,0,g);
  }
 
- const glow=dropGlow[type].clone();glow.position.y=.42;g.add(glow);
  const label=makeDropLabel(labelText,labelColor);label.position.set(0,1.03,0);g.add(label);
 
  // scatter slightly from corpse so multiple drops/corpses don't overlap perfectly
@@ -1050,7 +1060,6 @@ function spawnFixedDrop(pos,type,amount,ammoWeapon=null,ox=0,oz=0){
  }else{
    labelText="HEALTH +"+amount;labelColor=0xff7777;box(.12,.035,.30,M(0xb52d2d,.72),0,.44,0,g);box(.32,.035,.10,M(0xb52d2d,.72),0,.44,0,g);
  }
- const glow=dropGlow[type].clone();glow.intensity*=1.7;glow.position.y=.42;g.add(glow);
  const label=makeDropLabel(labelText,labelColor);label.position.set(0,1.03,0);g.add(label);
  g.position.set(pos.x+ox,.04,pos.z+oz);scene.add(g);
  drops.push({g,type,amount,weapon:ammoWeapon,life:DROP_LIFETIME,phase:rnd()*Math.PI*2,baseY:.04});
@@ -1309,7 +1318,7 @@ function fireGrenadeLauncherRound(){
 function explodeLauncherRound(g){
  noise(.34,.95,1100);tone(46,.42,"sine",.48);tone(92,.20,"square",.20);
  const p=g.q.position.clone();scene.remove(g.q);
- for(let i=0;i<34;i++){let q=new THREE.Mesh(new THREE.SphereGeometry(.022+rnd()*.055,5,4),M(i%4?0x695946:0xd8a34a));q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*12,rnd()*7,(rnd()-.5)*12),life:.30+rnd()*.45})}
+ for(let i=0;i<34;i++){let q=new THREE.Mesh(FX.explosionGeo,i%4?FX.launcherDustMat:FX.launcherFlashMat);q.scale.setScalar(.40+rnd()*1.0);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*12,rnd()*7,(rnd()-.5)*12),life:.30+rnd()*.45})}
  for(const z of living()){
    const d=z.g.position.distanceTo(p);
    if(d<6.5){
@@ -1331,7 +1340,7 @@ function throwGrenade(){
 function explodeGrenade(g){
  noise(.42,.95,900);tone(48,.45,"sine",.42);
  const p=g.q.position.clone();scene.remove(g.q);
- for(let i=0;i<55;i++){let q=new THREE.Mesh(new THREE.SphereGeometry(.025+Math.random()*.065,5,4),M(i%3?0x5c5142:0xd29a46));q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((Math.random()-.5)*10,Math.random()*7,(Math.random()-.5)*10),life:.45+Math.random()*.55})}
+ for(let i=0;i<55;i++){let q=new THREE.Mesh(FX.explosionGeo,i%3?FX.grenadeDustMat:FX.grenadeFlashMat);q.scale.setScalar(.45+rnd()*1.15);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*10,rnd()*7,(rnd()-.5)*10),life:.45+rnd()*.55})}
  for(const z of living()){let d=z.g.position.distanceTo(p);if(d<7.5){z.hp-=Math.max(1,Math.ceil((8-d)/2))*damageLevel;stagger(z,false);if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)))}}
 }
 
@@ -1369,11 +1378,12 @@ function detonateNuke(){
 }
 
 function clearKeys(){for(let k in keys)keys[k]=false}
+let sprintUiPct=-1,sprintUiColor="",sprintUiState="";
 function updateSprintUI(){
- const pct=Math.max(0,Math.min(100,sprintEnergy));
- sprintFill.style.width=pct+"%";
- sprintFill.style.background=pct>55?"#58b96a":pct>25?"#d5ad45":"#c64646";
- sprintState.textContent=sprintLocked?"RECOVERING":pct>=99?"READY":Math.ceil(pct)+"%";
+ const pct=Math.max(0,Math.min(100,sprintEnergy)),shown=Math.ceil(pct),color=pct>55?"#58b96a":pct>25?"#d5ad45":"#c64646",state=sprintLocked?"RECOVERING":pct>=99?"READY":shown+"%";
+ if(shown!==sprintUiPct){sprintUiPct=shown;sprintFill.style.width=shown+"%"}
+ if(color!==sprintUiColor){sprintUiColor=color;sprintFill.style.background=color}
+ if(state!==sprintUiState){sprintUiState=state;sprintState.textContent=state}
 }
 function move(dt){let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
 for(const c of parkedCars){let dx=px-c.position.x,dz=pz-c.position.z;if(Math.hypot(dx,dz)<2.45){px=oldx;pz=oldz;break}}
@@ -1385,7 +1395,7 @@ for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q
  if(g.launcher){
    let impact=g.q.position.y<.10||insideBuilding(g.q.position.x,g.q.position.z,.05);
    if(!impact){for(const c of parkedCars){if(Math.hypot(g.q.position.x-c.position.x,g.q.position.z-c.position.z)<1.45){impact=true;break}}}
-   if(!impact){for(const z of living()){if(g.q.position.distanceTo(z.g.position.clone().add(new THREE.Vector3(0,1,0)))<.70){impact=true;break}}}
+   if(!impact){for(const z of living()){const dx=g.q.position.x-z.g.position.x,dy=g.q.position.y-(z.g.position.y+1),dz=g.q.position.z-z.g.position.z;if(dx*dx+dy*dy+dz*dz<.49){impact=true;break}}}
    if(impact||g.fuse<=0){explodeLauncherRound(g);thrown.splice(i,1);continue}
  }else{
    if(g.q.position.y<.12){g.q.position.y=.12;g.v.y*=-.38;g.v.x*=.76;g.v.z*=.76}
@@ -1407,7 +1417,7 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
    z.g.position.z+=Math.cos(z.g.rotation.y)*dt*.12;
    if(Math.abs(z.g.rotation[axis]-target)<.035)z.falling=false;
  }
- if(z.corpseAge>10&&z.g.parent){if(z.mixer){z.mixer.stopAllAction();if(z.rigVisual)z.mixer.uncacheRoot(z.rigVisual)}scene.remove(z.g);z.cleaned=true;}
+ if(z.corpseAge>10&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
 }
 if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
 spawnQueuedZombies();
@@ -1591,16 +1601,17 @@ for(const c of parkedCars){if(Math.hypot(z.g.position.x-c.position.x,z.g.positio
    const ap=slideBuilding(ox,oz,ox+ax*lunge,oz+az*lunge,.50);z.g.position.x=ap.x;z.g.position.z=ap.z;
  }
  if(z.cool<=0&&!(z.kind==="boss"&&z.bossAttackState))bite(z)
-}if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak();ui()}
-let perfTick=0;
+}if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
+let perfTick=0;const DEBUG_PERF=new URLSearchParams(location.search).has("debug");
 cv.addEventListener("webglcontextlost",e=>{e.preventDefault();console.error("CITY OUTBREAK: WebGL context lost");show("GRAPHICS RESET — REFRESH IF NEEDED")});
 function perfGuard(dt){
+ if(!DEBUG_PERF)return;
  perfTick+=dt;
  if(perfTick>3){perfTick=0;console.log("CityOutbreak perf",{zombies:living().length,parts:parts.length,impacts:impacts.length,casings:casings.length,renderer:ren.info.render});}
 }
 function resize(){ren.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",resize);resize();
 function frame(t){let dt=Math.min(.04,(t-last)/1000);last=t;update(dt);ren.render(scene,cam);requestAnimationFrame(frame)}requestAnimationFrame(frame);
-function reset(){initAudio();stopAuto();clearKeys();for(let z of zombies)scene.remove(z.g);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){initAudio();stopAuto();clearKeys();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();document.querySelector("#start").onclick=reset;document.querySelector("#restart").onclick=reset;
 addEventListener("keydown",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(["w","a","s","d","r","g","n","1","2","3","4","5","6","shift"].includes(k))e.preventDefault()});
 addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});addEventListener("blur",()=>{clearKeys();stopAuto()});document.addEventListener("visibilitychange",()=>{if(document.hidden){clearKeys();stopAuto()}});
