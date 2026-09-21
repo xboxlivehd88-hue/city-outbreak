@@ -606,7 +606,7 @@ function batchStaticCity(){
 }
 
 function car(x,z,rot=0,type=0){
- // v105: v102 baseline preserved; sedan rebuilt from real midsize proportions with lofted 3D bodywork.
+ // v106: v105 sedan geometry retained; loft face winding and solid tinted glass fixed.
  // 0 sedan, 1 crossover, 2 wagon, 3 pickup, 4 compact hatch.
  const g=new THREE.Group(),body=[0x40566a,0x7b2d2d,0x5c625f,0x3c4347,0x81765d][type%5];
  const bodyMat=M(body,.54),trim=M(0x181b1d,.80),glass=M(0x22343d,.22),tire=M(0x111214,.97),rim=M(0x8f9394,.36);
@@ -635,7 +635,8 @@ function car(x,z,rot=0,type=0){
  if(!isSUV&&!isWagon&&!isPickup&&!isHatch){
    const SL=4.90,SW=1.85,SH=1.45,SR=.34;
    const frontZ=-1.415,rearZ=1.415;
-   glass.side=THREE.DoubleSide;
+   const sedanGlass=M(0x17272e,.40);
+   sedanGlass.side=THREE.DoubleSide;
 
    // Loft a sequence of real cross-sections. Each station has a lower width,
    // shoulder width and upper width, so the car narrows naturally toward the hood/roof.
@@ -652,7 +653,7 @@ function car(x,z,rot=0,type=0){
        const a=i*ring,b=(i+1)*ring;
        for(let k=0;k<ring;k++){
          const n=(k+1)%ring;
-         idx.push(a+k,b+k,b+n,a+k,b+n,a+n);
+         idx.push(a+k,b+n,b+k,a+k,a+n,b+n);
        }
      }
      // End caps.
@@ -704,8 +705,8 @@ function car(x,z,rot=0,type=0){
      [ .05,.88],[ .08,1.35],[ .30,1.37],[ .57,1.31],[ .87,1.14],[1.01,.88]
    ];
    for(const sx of [-.795,.795]){
-     profilePrism(frontSide,.016,glass,sx,.002);
-     profilePrism(rearSide,.016,glass,sx,.002);
+     profilePrism(frontSide,.016,sedanGlass,sx,.002);
+     profilePrism(rearSide,.016,sedanGlass,sx,.002);
      box(.020,.44,.050,trim,sx,1.105,.015,g);       // B pillar
      box(.016,.35,.020,trim,sx,.565,-.05,g);        // front door seam
      box(.016,.35,.020,trim,sx,.565,.96,g);         // rear door seam
@@ -715,8 +716,8 @@ function car(x,z,rot=0,type=0){
    }
 
    // Windshield and rear glass are true trapezoids rather than rotated rectangles.
-   panel4([-.76,.85,-.995],[ .76,.85,-.995],[ .60,1.31,-.685],[-.60,1.31,-.685],glass);
-   panel4([-.61,1.25,.86],[ .61,1.25,.86],[ .73,.84,1.095],[-.73,.84,1.095],glass);
+   panel4([-.76,.85,-.995],[ .76,.85,-.995],[ .60,1.31,-.685],[-.60,1.31,-.685],sedanGlass);
+   panel4([-.61,1.25,.86],[ .61,1.25,.86],[ .73,.84,1.095],[-.73,.84,1.095],sedanGlass);
 
    // Wheels use the real wheelbase ratio (~58% of overall length) and 18/19-inch stance.
    function sedanWheel(sx,sz){
