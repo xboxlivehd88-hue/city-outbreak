@@ -22,3 +22,6 @@ Browser-based first-person zombie survival game built with Three.js.
 2. Add proper GLB/GLTF zombie and weapon models.
 3. Add skeletal animation for walking, attacking, stumbling, death, and reloads.
 4. Improve collision, navigation, vehicle interaction, and environment detail.
+
+## Developer / Chat Handoff
+For the current gameplay state, tuning values, known issues, GitHub workflow, and next-chat instructions, read [HANDOFF.md](HANDOFF.md) before making changes.
