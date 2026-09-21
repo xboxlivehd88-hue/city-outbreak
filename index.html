@@ -606,82 +606,109 @@ function batchStaticCity(){
 }
 
 function car(x,z,rot=0,type=0){
- // Low-poly parked vehicles with real automotive proportions.
+ // v100 street vehicles: realistic low-poly proportions without expensive detail.
  // 0 sedan, 1 crossover, 2 wagon, 3 pickup, 4 compact hatch.
  const g=new THREE.Group(),body=[0x40566a,0x7b2d2d,0x5c625f,0x3c4347,0x81765d][type%5];
- const bodyMat=M(body,.50),trim=M(0x171a1c,.72),glass=M(0x24343d,.20),tire=M(0x111214,.94),rim=M(0x73787a,.38);
+ const bodyMat=M(body,.48),trim=M(0x171a1c,.76),glass=M(0x1c303a,.16),tire=M(0x101112,.95),rim=M(0x8a8e8e,.34);
+ const headMat=M(0xe7ddb9,.24),tailMat=M(0xa52323,.30),plateMat=M(0xc9c7bc,.46);
  const isSUV=type===1,isWagon=type===2,isPickup=type===3,isHatch=type===4;
- const long=isWagon?4.95:isPickup?5.15:isSUV?4.72:isHatch?4.22:4.58;
- const wide=isSUV||isPickup?1.92:isHatch?1.76:1.84;
- const sill=isSUV||isPickup?.68:.56;
- const wheelR=isSUV||isPickup?.36:.33;
- const frontAx=-long*.31,rearAx=long*.31;
 
- // Lower body: tapered beltline, separate hood/trunk, and visible rocker panels.
- taperedPrism(wide*.94,wide,sill,long*.94,long,bodyMat,0,.38,0,g);
- box(wide*.90,.13,long*.78,bodyMat,0,.73,0,g);
- box(wide*.88,.10,long*.72,trim,0,.21,0,g);
+ const L=isPickup?5.18:isWagon?4.86:isSUV?4.68:isHatch?4.12:4.52;
+ const W=isPickup?1.90:isSUV?1.88:isWagon?1.82:isHatch?1.73:1.80;
+ const wheelR=isPickup?.37:isSUV?.36:isHatch?.31:.33;
+ const axleFront=-L*.315,axleRear=L*.315;
+ const shellH=isPickup?.50:isSUV?.55:.46;
+ const beltY=.55+shellH*.48;
 
- // Hood and rear deck create a recognizable front/rear instead of one rectangular block.
- const hoodD=isPickup?1.25:isSUV?1.08:isHatch?.82:1.05;
- taperedPrism(wide*.82,wide*.91,.18,hoodD*.84,hoodD,bodyMat,0,.82,-long*.39,g);
- if(!isHatch&&!isWagon&&!isSUV&&!isPickup){
-   taperedPrism(wide*.80,wide*.88,.16,.68,.82,bodyMat,0,.81,long*.405,g);
- }
+ // Main body is low and long. The top is narrower than the rocker line,
+ // which gets rid of the old shoebox silhouette.
+ taperedPrism(W*.88,W,shellH,L*.91,L,bodyMat,0,.32+shellH*.5,0,g);
+ box(W*.86,.075,L*.72,trim,0,.245,0,g);
 
- if(isPickup){
-   // Separate cab and open pickup bed.
-   taperedPrism(wide*.72,wide*.84,.72,1.35,1.58,bodyMat,0,1.14,-.45,g);
-   box(wide*.76,.36,1.56,M(0x252a2c,.62),0,.67,1.25,g);
-   box(wide*.84,.18,1.64,bodyMat,0,.85,1.25,g);
-   box(wide*.70,.055,1.43,M(0x17191a,.82),0,.96,1.25,g);
- }else{
-   const cabinD=isWagon?2.65:isSUV?2.38:isHatch?2.18:2.25;
-   const cabinH=isSUV?.83:isWagon?.72:isHatch?.69:.68;
-   const cabinZ=isWagon?.18:isHatch?.18:.08;
-   taperedPrism(wide*.68,wide*.84,cabinH,cabinD*.76,cabinD,bodyMat,0,1.12,cabinZ,g);
-   // Roof panel gives the greenhouse a flatter, believable top.
-   box(wide*.64,.08,cabinD*.70,bodyMat,0,1.52+(isSUV?.08:0),cabinZ+.02,g);
- }
+ // Real front overhang: low hood, grille and bumper.
+ const hoodLen=isPickup?1.34:isSUV?1.13:isHatch?.91:1.08;
+ const hoodZ=-L*.5+hoodLen*.52+.05;
+ taperedPrism(W*.75,W*.90,.16,hoodLen*.72,hoodLen,bodyMat,0,beltY+.09,hoodZ,g);
+ box(W*.68,.12,.045,trim,0,.55,-L*.505,g);
+ box(W*.90,.085,.09,trim,0,.34,-L*.515,g);
 
- // Windshields and rear glass are inset into the cabin slopes.
- const frontGlassZ=isPickup?-1.10:isSUV?-1.02:isWagon?-1.14:isHatch?-.91:-.98;
- const rearGlassZ=isPickup?.20:isSUV?1.08:isWagon?1.31:isHatch?1.05:1.08;
- let fw=box(wide*.67,.38,.035,glass,0,isSUV?1.28:1.23,frontGlassZ,g);fw.rotation.x=-.34;
- let rw=box(wide*.65,.34,.035,glass,0,isSUV?1.25:1.20,rearGlassZ,g);rw.rotation.x=.30;
-
- // Side glass, split into front/rear sections so the cabin reads as a real car from the street.
+ // Rear deck / tail shape.
  if(!isPickup){
-   const sideY=isSUV?1.25:1.20,sideLen=isWagon?1.02:isHatch?.82:.88;
-   for(const sx of [-wide*.425,wide*.425]){
-     box(.028,.34,sideLen,glass,sx,sideY,-.43,g);
-     box(.028,.34,sideLen,glass,sx,sideY,.53,g);
-   }
+   const deckLen=isHatch?.36:isWagon?.48:isSUV?.44:.78;
+   const deckZ=L*.5-deckLen*.52-.04;
+   taperedPrism(W*.76,W*.88,isHatch?.10:.14,deckLen*.72,deckLen,bodyMat,0,beltY+.075,deckZ,g);
+ }
+
+ let cabZ=0,cabD=0,cabTopY=0;
+ if(isPickup){
+   // Pickup cab is lower and longer than v99, with an actual open bed behind it.
+   cabD=1.72;cabZ=-.42;
+   taperedPrism(W*.62,W*.82,.62,cabD*.66,cabD,bodyMat,0,1.03,cabZ,g);
+   cabTopY=1.34;
+   box(W*.59,.055,cabD*.55,bodyMat,0,cabTopY,cabZ+.01,g);
+
+   const bedStart=.50,bedEnd=L*.47,bedLen=bedEnd-bedStart,bedZ=(bedStart+bedEnd)*.5;
+   box(.10,.36,bedLen,bodyMat,-W*.43,.70,bedZ,g);
+   box(.10,.36,bedLen,bodyMat,W*.43,.70,bedZ,g);
+   box(W*.86,.36,.10,bodyMat,0,.70,bedEnd,g);
+   box(W*.75,.055,bedLen*.88,trim,0,.52,bedZ,g);
+   box(W*.72,.08,.10,trim,0,.83,bedStart,g);
  }else{
-   for(const sx of [-wide*.425,wide*.425])box(.028,.36,.76,glass,sx,1.25,-.46,g);
+   // Cabins are deliberately lower and longer so the roofline reads like a real car.
+   cabD=isWagon?2.72:isSUV?2.50:isHatch?2.20:2.28;
+   const cabH=isSUV?.68:isWagon?.61:isHatch?.57:.58;
+   cabZ=isWagon?.18:isSUV?.10:isHatch?.17:.06;
+   taperedPrism(W*.60,W*.80,cabH,cabD*.62,cabD,bodyMat,0,.98+cabH*.5,cabZ,g);
+   cabTopY=.98+cabH;
+   box(W*.57,.05,cabD*.54,bodyMat,0,cabTopY+.02,cabZ,g);
  }
 
- // Four wheels with visible metal hubs.
- for(const sx of [-wide*.51,wide*.51])for(const sz of [frontAx,rearAx]){
-   const wh=new THREE.Mesh(new THREE.CylinderGeometry(wheelR,wheelR,.20,12),tire);
+ // Sloped front/rear glass panels sit on the cabin faces instead of floating upright.
+ const frontFace=cabZ-cabD*.43;
+ const rearFace=cabZ+cabD*.43;
+ let fw=box(W*.60,.34,.025,glass,0,cabTopY-.22,frontFace,g);fw.rotation.x=-.48;
+ let rw=box(W*.58,.31,.025,glass,0,cabTopY-.23,rearFace,g);rw.rotation.x=.46;
+
+ // Side windows: one continuous greenhouse split by a body-colored B pillar.
+ const sideX=W*.405;
+ const sideY=cabTopY-.23;
+ const sideDepth=isPickup?.72:isWagon?1.82:isSUV?1.54:isHatch?1.34:1.42;
+ for(const sx of [-sideX,sideX]){
+   box(.024,.30,sideDepth,glass,sx,sideY,cabZ,g);
+   box(.030,.34,.085,bodyMat,sx,sideY,cabZ+.05,g);
+ }
+
+ // Four properly tucked wheels. No black bars crossing the wheel arches.
+ for(const sx of [-W*.485,W*.485])for(const sz of [axleFront,axleRear]){
+   const wh=new THREE.Mesh(new THREE.CylinderGeometry(wheelR,wheelR,.18,14),tire);
    wh.rotation.z=Math.PI/2;wh.position.set(sx,wheelR,sz);g.add(wh);
-   const hub=new THREE.Mesh(new THREE.CylinderGeometry(wheelR*.48,wheelR*.48,.215,10),rim);
+   const hub=new THREE.Mesh(new THREE.CylinderGeometry(wheelR*.48,wheelR*.48,.19,10),rim);
    hub.rotation.z=Math.PI/2;hub.position.set(sx,wheelR,sz);g.add(hub);
+   const cap=new THREE.Mesh(new THREE.CylinderGeometry(wheelR*.17,wheelR*.17,.195,10),trim);
+   cap.rotation.z=Math.PI/2;cap.position.set(sx,wheelR,sz);g.add(cap);
  }
 
- // Front grille, bumpers, headlights, taillights and license-plate recess.
- box(wide*.72,.18,.055,trim,0,.58,-long*.505,g);
- box(wide*.90,.11,.10,trim,0,.35,-long*.515,g);
- box(wide*.88,.10,.10,trim,0,.36,long*.515,g);
- for(const hx of [-wide*.30,wide*.30]){
-   box(wide*.20,.16,.045,M(0xe8ddb6,.24),hx,.66,-long*.509,g);
-   box(wide*.18,.14,.045,M(0x9b2525,.32),hx,.64,long*.509,g);
+ // Wheel-arch shoulders use body color and sit above the tire instead of cutting across it.
+ for(const sz of [axleFront,axleRear]){
+   box(W*.88,.055,wheelR*1.35,bodyMat,0,wheelR*1.72,sz,g);
  }
- box(.44,.16,.025,M(0xc7c5b9,.42),0,.48,long*.522,g);
 
- // Mirrors and subtle wheel-arch brows add shape without expensive curves.
- for(const sx of [-wide*.51,wide*.51])box(.12,.10,.20,bodyMat,sx,1.08,-.55,g);
- for(const sz of [frontAx,rearAx])box(wide*.92,.055,.54,trim,0,.63,sz,g);
+ // Lights, grille, rear bumper and plate.
+ for(const hx of [-W*.29,W*.29]){
+   box(W*.18,.12,.032,headMat,hx,.64,-L*.509,g);
+   box(W*.17,.12,.032,tailMat,hx,.61,L*.509,g);
+ }
+ box(W*.86,.08,.085,trim,0,.34,L*.515,g);
+ box(.40,.13,.020,plateMat,0,.46,L*.522,g);
+
+ // Small mirrors mounted at the A-pillar.
+ for(const sx of [-W*.47,W*.47])box(.12,.085,.16,bodyMat,sx,cabTopY-.31,frontFace+.22,g);
+
+ // Pickup gets a simple rear bumper / tailgate line.
+ if(isPickup){
+   box(W*.82,.11,.07,trim,0,.39,L*.515,g);
+   box(W*.68,.035,.025,trim,0,.73,L*.508,g);
+ }
 
  g.position.set(x,0,z);g.rotation.y=rot;
  g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
