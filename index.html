@@ -502,7 +502,7 @@ function batchStaticCity(){
    const geos=[];
    for(const o of b.items){
      o.updateWorldMatrix(true,false);
-     const g=o.geometry.clone();g.applyMatrix4(o.matrixWorld);geos.push(g);originals.push(o)
+     const g=o.geometry.clone();g.applyMatrix4(o.matrixWorld);geos.push(g)
    }
    const merged=mergeGeometries(geos,false);
    for(const g of geos)g.dispose();
@@ -510,7 +510,7 @@ function batchStaticCity(){
    merged.computeBoundingBox();merged.computeBoundingSphere();
    const mesh=new THREE.Mesh(merged,b.material);
    mesh.name="CityBatch";mesh.castShadow=b.cast;mesh.receiveShadow=b.receive;mesh.matrixAutoUpdate=false;
-   scene.add(mesh);batches++;mergedObjects+=b.items.length;
+   scene.add(mesh);batches++;mergedObjects+=b.items.length;originals.push(...b.items);
  }
  for(const o of originals){if(o.parent)o.parent.remove(o);try{o.geometry.dispose()}catch(_){}}
  console.log("CityOutbreak city batching",{batches,mergedObjects,materials:buckets.size});
