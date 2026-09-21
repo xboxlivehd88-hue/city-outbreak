@@ -687,16 +687,16 @@ function rebuildGun(){
    box(.018,.12,.36,dark,x+.20,-.28,-1.17,gun);box(.20,.045,.08,dark,x,-.14,-.56,gun);
  }else if(weapon==='m240'){
    // Heavy belt-fed LMG silhouette: thick receiver, long barrel, top cover, heat shield and bipod.
-   stock(-.38,poly);part(.48,.38,1.35,metal,-.31,-1.28);part(.44,.31,1.20,dark,-.28,-2.22);
+   stock(-.38,poly);part(.44,.30,1.30,metal,-.35,-1.28);part(.38,.25,1.14,dark,-.34,-2.22);
    grip(-.67,-.88,-.24,rubber);
-   box(.52,.17,.84,M(0x303638,.30),x,-.10,-1.25,gun);rail(-1.40,1.18,-.055);
-   cyl(.078,1.85,steel,x,-.235,-3.30);muzzleBrake(-4.20,.125);
+   box(.46,.12,.78,M(0x303638,.30),x,-.12,-1.25,gun);rail(-1.40,1.18,-.055);
+   cyl(.078,1.85,steel,x,-.255,-3.30);muzzleBrake(-4.20,.125);
    // heat shield / gas system
-   box(.34,.23,1.15,M(0x1a1d1f,.34),x,-.24,-2.46,gun);
-   for(let zz=-2.05;zz>-2.95;zz-=.16)for(const sx of [-.14,.14])box(.025,.07,.08,dark,x+sx,-.23,zz,gun);
-   // hanging box magazine / ammo can
-   let can=part(.48,.58,.44,M(0x4f5a43,.72),-.68,-1.28);can.rotation.x=.03;
-   box(.50,.055,.46,dark,x,-.40,-1.28,gun);
+   box(.32,.19,1.15,M(0x1a1d1f,.34),x,-.29,-2.46,gun);
+   for(let zz=-2.05;zz>-2.95;zz-=.16)for(const sx of [-.14,.14])box(.025,.06,.08,dark,x+sx,-.27,zz,gun);
+   // Offset/slim ammo box keeps the ADS sight channel open like a real belt-fed gun.
+   let can=bevelBox(.34,.42,.36,M(0x4f5a43,.72),x+.14,-.73,-1.30,gun);can.rotation.x=.03;
+   box(.36,.045,.38,dark,x+.14,-.49,-1.30,gun);
    // bipod legs
    for(const sx of [-.19,.19]){let leg=cyl(.026,.82,steel,x+sx,-.52,-3.20,gun,"y");leg.rotation.z=sx<0?-.34:.34}
    rearIron(-.82,.060,.95);frontIron(-3.67,.060,.90);
