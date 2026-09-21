@@ -585,6 +585,17 @@ const weaponDefs={
  m240:{name:"M240 LMG",rate:78,hold:130,spread:.010,pellets:1,body:1.20,recoil:.09,baseMag:100},
  awm:{name:"AWM ULTIMATE",rate:1150,hold:9999,spread:.00055,pellets:1,body:8.0,recoil:.30,baseMag:5}
 };
+const ADS={
+ rifle:{x:-.36,y:.025,z:-.46,fov:56,rx:0},
+ smg:{x:-.36,y:.045,z:-.38,fov:54,rx:0},
+ shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
+ pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
+ dmr:{x:-.36,y:.015,z:-.54,fov:48,rx:0},
+ grenadeLauncher:{x:-.36,y:.040,z:-.45,fov:56,rx:0},
+ m240:{x:-.36,y:.025,z:-.58,fov:54,rx:0},
+ awm:{x:-.36,y:.005,z:-.62,fov:28,rx:0}
+};
+function ads(){return ADS[weapon]||ADS.rifle}
 function wd(){return weaponDefs[weapon]}
 function maxMag(w=weapon){
  if(w==="grenadeLauncher")return 6;
@@ -617,6 +628,16 @@ function rebuildGun(){
  const muzzleBrake=(z,rad=.105)=>{cyl(rad,.22,dark,x,-.235,z);for(const dx of [-.065,.065])box(.035,.08,.08,M(0x050606,.25),x+dx,-.235,z-.01,gun)};
  const optic=(z,y=-.025,scale=1)=>{cyl(.11*scale,.48*scale,dark,x,y,z);for(const zz of [-.18,.18]){let r=new THREE.Mesh(new THREE.TorusGeometry(.125*scale,.025*scale,8,16),metal);r.rotation.x=Math.PI/2;r.position.set(x,y,z+zz*scale);gun.add(r)}box(.20*scale,.055,.14*scale,dark,x,y+.12*scale,z,gun)};
  const frontSight=(z,y=-.08)=>{box(.035,.17,.04,dark,x,y,z,gun);box(.15,.035,.04,dark,x,y-.075,z,gun)};
+ const rearIron=(z,y=-.025,sc=1)=>{
+   const ring=new THREE.Mesh(new THREE.TorusGeometry(.074*sc,.014*sc,6,18),dark);ring.position.set(x,y,z);gun.add(ring);
+   box(.026,.17*sc,.055,dark,x-.095*sc,y-.055*sc,z,gun);box(.026,.17*sc,.055,dark,x+.095*sc,y-.055*sc,z,gun);
+   box(.22*sc,.035,.075,dark,x,y-.145*sc,z,gun);
+ };
+ const frontIron=(z,y=-.025,sc=1)=>{
+   box(.025,.115*sc,.045,dark,x,y-.057*sc,z,gun);
+   box(.024,.145*sc,.045,dark,x-.085*sc,y-.075*sc,z,gun);box(.024,.145*sc,.045,dark,x+.085*sc,y-.075*sc,z,gun);
+   box(.19*sc,.028,.055,dark,x,y-.145*sc,z,gun);
+ };
  const stock=(z,mat=poly)=>{let s=part(.36,.42,.70,mat,-.42,z);s.rotation.x=-.12;box(.38,.46,.11,rubber,x,-.42,z+.35,gun);return s};
 
  if(weapon==='rifle'){
@@ -626,7 +647,7 @@ function rebuildGun(){
    cyl(.062,1.18,steel,x,-.235,-2.70);muzzleBrake(-3.28,.10);rail(-1.46,1.35,-.095);
    // vented handguard slots
    for(let zz=-1.52;zz>-2.14;zz-=.16){for(const sx of [-.155,.155])box(.025,.08,.09,dark,x+sx,-.27,zz,gun)}
-   box(.15,.08,.34,dark,x,-.055,-1.22,gun);optic(-1.50,-.015,.78);frontSight(-2.42,-.11);
+   box(.15,.08,.34,dark,x,-.055,-1.22,gun);rearIron(-.69,-.025,.95);frontIron(-2.66,-.025,.90);
    // ejection port / charging handle
    box(.015,.115,.34,M(0x080909,.18),x+.19,-.27,-1.12,gun);box(.24,.045,.07,dark,x,-.16,-.57,gun);
  }else if(weapon==='smg'){
@@ -673,7 +694,7 @@ function rebuildGun(){
    box(.50,.055,.46,dark,x,-.40,-1.28,gun);
    // bipod legs
    for(const sx of [-.19,.19]){let leg=cyl(.026,.82,steel,x+sx,-.52,-3.20,gun,"y");leg.rotation.z=sx<0?-.34:.34}
-   frontSight(-3.67,-.10);
+   rearIron(-.82,-.025,1.0);frontIron(-3.67,-.025,.95);
  }else if(weapon==='awm'){
    // AWM Ultimate: long precision rifle, skeletal stock, oversized scope and heavy fluted barrel.
    stock(-.35,M(0x38404a,.58));part(.34,.30,1.12,metal,-.29,-1.25);part(.29,.25,1.35,M(0x2f3a43,.60),-.27,-2.20);
@@ -705,8 +726,9 @@ function rebuildGun(){
 
 function setAim(v){
  aiming=!!v&&running&&!dying&&!between&&document.pointerLockElement===cv;
+ if(!aiming)gun.visible=true;
  scopeOverlay.classList.toggle("show",aiming&&weapon==="awm");
- cross.style.opacity=aiming?(weapon==="awm"?"0":".38"):"1";
+ cross.style.opacity=aiming?"0":"1";
 }
 function setWeapon(w){if(!unlocked[w])return;stopAuto();setAim(false);weapon=w;rebuildGun();weaponNameEl.textContent=wd().name;show(wd().name);ui()}
 function weaponSound(){
@@ -1482,10 +1504,10 @@ function updateSprintUI(){
  if(color!==sprintUiColor){sprintUiColor=color;sprintFill.style.background=color}
  if(state!==sprintUiState){sprintUiState=state;sprintState.textContent=state}
 }
-function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const targetFov=aiming?(weapon==="awm"?28:50):70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
+function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
 for(const c of parkedCars){let dx=px-c.position.x,dz=pz-c.position.z;if(Math.hypot(dx,dz)<2.45){px=oldx;pz=oldz;break}}
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);gun.position.x=-.36*aimBlend;gun.position.z=aimBlend*.20+recoil*.42;gun.position.y=aimBlend*.13-recoil*.08;gun.rotation.x=recoil*2.05;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();gun.position.x=ac2.x*aimBlend;gun.position.z=ac2.z*aimBlend+recoil*.42;gun.position.y=ac2.y*aimBlend-recoil*.08;gun.rotation.x=(ac2.rx||0)*aimBlend+recoil*2.05;gun.rotation.y=0;gun.rotation.z=0;gun.visible=!(weapon==="awm"&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
@@ -1733,7 +1755,7 @@ document.addEventListener("pointerlockchange",()=>{
    if(running&&!between&&!dying)show("AIM LOCKED");
  }
 });
-document.addEventListener("mousemove",e=>{if(document.pointerLockElement===cv){const adsLook=aiming?(weapon==="awm"?.38:.68):1;yaw-=e.movementX*lookSensitivity*adsLook;pitch-=e.movementY*lookSensitivity*.9*adsLook;pitch=Math.max(-1.05,Math.min(1.05,pitch));aimX=0;aimY=0;}});
+document.addEventListener("mousemove",e=>{if(document.pointerLockElement===cv){const adsLook=aiming?(weapon==="awm"?.34:.72):1;yaw-=e.movementX*lookSensitivity*adsLook;pitch-=e.movementY*lookSensitivity*.9*adsLook;pitch=Math.max(-1.05,Math.min(1.05,pitch));aimX=0;aimY=0;}});
 cv.addEventListener("pointerdown",e=>{
  if(e.button===0){cv.focus();if(document.pointerLockElement!==cv){cv.requestPointerLock?.();e.preventDefault();return}triggerDown();e.preventDefault();return}
  if(e.button===2){if(document.pointerLockElement===cv)setAim(true);e.preventDefault()}
