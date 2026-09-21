@@ -20,7 +20,11 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 #crosshair{position:absolute;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%);pointer-events:none}
 #crosshair:before,#crosshair:after{content:"";position:absolute;background:white;box-shadow:0 0 3px #000}
 #crosshair:before{width:26px;height:2px;top:12px}
-#crosshair:after{width:2px;height:26px;left:12px}#hitmarker{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.65);font:900 34px Arial;color:#fff;opacity:0;pointer-events:none;text-shadow:0 0 4px #000;transition:opacity .05s,transform .05s}#hitmarker.show{opacity:1;transform:translate(-50%,-50%) scale(1)}#hitmarker.head{color:#ffd36a;font-size:42px}
+#crosshair:after{width:2px;height:26px;left:12px}
+#scopeOverlay{position:absolute;inset:0;display:none;pointer-events:none;z-index:3;background:radial-gradient(circle at center,transparent 0 28vh,rgba(0,0,0,.93) 28.6vh 100%)}
+#scopeOverlay.show{display:block}
+#scopeOverlay:before{content:"";position:absolute;left:50%;top:50%;width:56vh;height:56vh;max-width:70vw;max-height:70vw;transform:translate(-50%,-50%);border:2px solid #111;border-radius:50%;box-shadow:0 0 0 1px #ffffff18}
+#scopeOverlay:after{content:"";position:absolute;left:50%;top:50%;width:1px;height:56vh;max-height:70vw;transform:translate(-50%,-50%);background:#161616;box-shadow:-28vh 0 0 transparent}#hitmarker{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.65);font:900 34px Arial;color:#fff;opacity:0;pointer-events:none;text-shadow:0 0 4px #000;transition:opacity .05s,transform .05s}#hitmarker.show{opacity:1;transform:translate(-50%,-50%) scale(1)}#hitmarker.head{color:#ffd36a;font-size:42px}
 #announce,#death{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;pointer-events:none;opacity:0;text-shadow:0 3px 10px #000}
 #announce.show{opacity:1} #announce b{font-size:64px} #announce span{font-size:22px;font-weight:bold}
 #death{font-size:54px;font-weight:900;letter-spacing:8px;background:#2000;transition:1.5s}
@@ -77,7 +81,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 <canvas id="cv" tabindex="0"></canvas>
 <div class="hud"><div id="healthLabel"><span>HEALTH</span><span id="healthText">100</span></div><div class="track"><div id="healthBar"></div></div><div id="sprintHUD"><div id="sprintLabel"><span>SPRINT</span><span id="sprintState">READY</span></div><div id="sprintTrack"><div id="sprintFill"></div></div></div></div>
 <div class="stats"><span id="ammo">12 / 72</span><br><span id="kills">KILLS 0</span><br><span id="heads">HEADSHOTS 0</span><br><span id="wave">WAVE 1</span><br><span id="remaining">ZOMBIES 6</span><br><span id="cash">CASH $0</span><br><span id="weaponName">RIFLE</span><br><span id="grenadeCount">GRENADES 2</span><br><span id="nukeCount">NUKES 0</span></div><div id="bossHUD"><div id="bossName"></div><div id="bossSub">BOSS THREAT</div><div id="bossTrack"><div id="bossFill"></div></div></div>
-<div id="crosshair"></div><div id="hitmarker">×</div><div id="damage"></div><div id="nukeFlash"></div><div id="nukeShock"></div>
+<div id="crosshair"></div><div id="scopeOverlay"></div><div id="hitmarker">×</div><div id="damage"></div><div id="nukeFlash"></div><div id="nukeShock"></div>
 <div id="announce"><b id="big"></b><span id="small"></span></div>
 <div id="death">YOU DIED</div><div id="msg"></div>
 <div id="shop">
@@ -90,6 +94,8 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
     <button data-buy="pistolAmmo">Pistol +48<br>$90</button>
     <button data-buy="dmrAmmo">DMR +24<br>$160</button>
     <button data-buy="grenadeLauncherAmmo">Launcher +3<br>$225</button>
+    <button data-buy="m240Ammo">M240 +100<br>$275</button>
+    <button data-buy="awmAmmo">AWM +10<br>$300</button>
   </div></section>
   <section class="shopSection"><h3>Upgrades</h3><div class="shopItems">
     <button data-buy="heal">Heal +40<br>$150</button>
@@ -103,6 +109,8 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
     <button data-buy="shotgun">Unlock Shotgun<br>$700</button>
     <button data-buy="dmr">Unlock DMR<br>$900</button>
     <button data-buy="grenadeLauncher">Unlock Grenade Launcher<br>$1200</button>
+    <button data-buy="m240">Unlock M240 LMG<br>$1800</button>
+    <button data-buy="awm">Unlock AWM Ultimate<br>$2200</button>
   </div></section>
   <section class="shopSection"><h3>Equipment</h3><div class="shopItems">
     <button data-buy="grenade">Grenade<br>$175</button>
@@ -117,9 +125,10 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 <div class="controlRow"><span>Move</span><span class="key">W A S D</span></div>
 <div class="controlRow"><span>Aim / Look</span><span class="key">MOUSE</span></div>
 <div class="controlRow"><span>Sprint</span><span class="key">SHIFT</span></div>
-<div class="controlRow"><span>Fire</span><span class="key">CLICK</span></div>
+<div class="controlRow"><span>Fire</span><span class="key">LEFT CLICK</span></div>
+<div class="controlRow"><span>Aim Down Sights</span><span class="key">RIGHT CLICK</span></div>
 <div class="controlRow"><span>Reload</span><span class="key">R</span></div>
-<div class="controlRow"><span>Weapons</span><span class="key">1 — 6</span></div>
+<div class="controlRow"><span>Weapons</span><span class="key">1 — 8</span></div>
 <div class="controlRow"><span>Grenade</span><span class="key">G</span></div>
 <div class="controlRow"><span>Tactical Nuke</span><span class="key">N</span></div>
 </div>
@@ -139,7 +148,7 @@ try{
  console.log("CITY OUTBREAK: custom rigged zombie loaded",zombieRigAsset.animations.map(a=>a.name));
 }catch(e){zombieRigError=e;console.error("CITY OUTBREAK: zombie rig failed to load",e)}
 
-const cv=document.querySelector("#cv"),cross=document.querySelector("#crosshair"),healthText=document.querySelector("#healthText"),healthBar=document.querySelector("#healthBar"),ammoEl=document.querySelector("#ammo"),killsEl=document.querySelector("#kills"),headsEl=document.querySelector("#heads"),waveEl=document.querySelector("#wave"),remainingEl=document.querySelector("#remaining"),cashEl=document.querySelector("#cash"),weaponNameEl=document.querySelector("#weaponName"),grenadeEl=document.querySelector("#grenadeCount"),nukeEl=document.querySelector("#nukeCount"),nukeFlash=document.querySelector("#nukeFlash"),nukeShock=document.querySelector("#nukeShock"),shop=document.querySelector("#shop"),shopCash=document.querySelector("#shopCash"),shopNote=document.querySelector("#shopNote"),damage=document.querySelector("#damage"),hitmarker=document.querySelector("#hitmarker"),announce=document.querySelector("#announce"),big=document.querySelector("#big"),small=document.querySelector("#small"),death=document.querySelector("#death"),msg=document.querySelector("#msg"),startScreen=document.querySelector("#startScreen"),bossHUD=document.querySelector("#bossHUD"),bossFill=document.querySelector("#bossFill"),bossNameEl=document.querySelector("#bossName"),bossSubEl=document.querySelector("#bossSub"),sprintFill=document.querySelector("#sprintFill"),sprintState=document.querySelector("#sprintState");
+const cv=document.querySelector("#cv"),cross=document.querySelector("#crosshair"),healthText=document.querySelector("#healthText"),healthBar=document.querySelector("#healthBar"),ammoEl=document.querySelector("#ammo"),killsEl=document.querySelector("#kills"),headsEl=document.querySelector("#heads"),waveEl=document.querySelector("#wave"),remainingEl=document.querySelector("#remaining"),cashEl=document.querySelector("#cash"),weaponNameEl=document.querySelector("#weaponName"),grenadeEl=document.querySelector("#grenadeCount"),nukeEl=document.querySelector("#nukeCount"),nukeFlash=document.querySelector("#nukeFlash"),nukeShock=document.querySelector("#nukeShock"),shop=document.querySelector("#shop"),shopCash=document.querySelector("#shopCash"),shopNote=document.querySelector("#shopNote"),damage=document.querySelector("#damage"),hitmarker=document.querySelector("#hitmarker"),announce=document.querySelector("#announce"),big=document.querySelector("#big"),small=document.querySelector("#small"),death=document.querySelector("#death"),msg=document.querySelector("#msg"),startScreen=document.querySelector("#startScreen"),bossHUD=document.querySelector("#bossHUD"),bossFill=document.querySelector("#bossFill"),bossNameEl=document.querySelector("#bossName"),bossSubEl=document.querySelector("#bossSub"),sprintFill=document.querySelector("#sprintFill"),sprintState=document.querySelector("#sprintState"),scopeOverlay=document.querySelector("#scopeOverlay");
 let ac,master,audioOn=false,noiseBuffer=null;
 function initAudio(){
  if(!ac){
@@ -564,7 +573,7 @@ function capFX(){
  while(impacts.length>36){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
  while(casings.length>28){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
 }
-let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0}},grenades=2,nukes=0,nukeInProgress=false,waveTarget=0,waveSpawned=0,currentBoss=null,bossWaveName="",usedBossNames=[],running=false,dying=false,reloading=false,between=false,waveTimer=0,lastCount=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},msgTimer,hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null,sprintEnergy=100,sprintLocked=false;
+let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false,m240:false,awm:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}},grenades=2,nukes=0,nukeInProgress=false,waveTarget=0,waveSpawned=0,currentBoss=null,bossWaveName="",usedBossNames=[],running=false,dying=false,reloading=false,between=false,waveTimer=0,lastCount=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},msgTimer,hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null,sprintEnergy=100,sprintLocked=false,aiming=false,aimBlend=0,awmReadyAt=0;
 
 const weaponDefs={
  rifle:{name:"RIFLE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12},
@@ -572,7 +581,9 @@ const weaponDefs={
  shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.055,pellets:7,body:.72,recoil:.22,baseMag:6},
  pistol:{name:"PISTOL",rate:240,hold:9999,spread:.007,pellets:1,body:1.15,recoil:.09,baseMag:15},
  dmr:{name:"DMR",rate:330,hold:9999,spread:.0025,pellets:1,body:2.15,recoil:.16,baseMag:10},
- grenadeLauncher:{name:"GRENADE LAUNCHER",rate:900,hold:9999,spread:0,pellets:1,body:0,recoil:.28,baseMag:6}
+ grenadeLauncher:{name:"GRENADE LAUNCHER",rate:900,hold:9999,spread:0,pellets:1,body:0,recoil:.28,baseMag:6},
+ m240:{name:"M240 LMG",rate:78,hold:130,spread:.010,pellets:1,body:1.20,recoil:.09,baseMag:100},
+ awm:{name:"AWM ULTIMATE",rate:1150,hold:9999,spread:.00055,pellets:1,body:8.0,recoil:.30,baseMag:5}
 };
 function wd(){return weaponDefs[weapon]}
 function maxMag(w=weapon){
@@ -648,6 +659,33 @@ function rebuildGun(){
    rail(-1.72,1.62,-.095);optic(-1.66,-.015,1.0);frontSight(-3.22,-.10);
    for(let zz=-1.72;zz>-2.55;zz-=.17){for(const sx of [-.15,.15])box(.025,.075,.10,dark,x+sx,-.27,zz,gun)}
    box(.018,.12,.36,dark,x+.20,-.28,-1.17,gun);box(.20,.045,.08,dark,x,-.14,-.56,gun);
+ }else if(weapon==='m240'){
+   // Heavy belt-fed LMG silhouette: thick receiver, long barrel, top cover, heat shield and bipod.
+   stock(-.38,poly);part(.48,.38,1.35,metal,-.31,-1.28);part(.44,.31,1.20,dark,-.28,-2.22);
+   grip(-.67,-.88,-.24,rubber);
+   box(.52,.17,.84,M(0x303638,.30),x,-.10,-1.25,gun);rail(-1.40,1.18,-.055);
+   cyl(.078,1.85,steel,x,-.235,-3.30);muzzleBrake(-4.20,.125);
+   // heat shield / gas system
+   box(.34,.23,1.15,M(0x1a1d1f,.34),x,-.24,-2.46,gun);
+   for(let zz=-2.05;zz>-2.95;zz-=.16)for(const sx of [-.14,.14])box(.025,.07,.08,dark,x+sx,-.23,zz,gun);
+   // hanging box magazine / ammo can
+   let can=part(.48,.58,.44,M(0x4f5a43,.72),-.68,-1.28);can.rotation.x=.03;
+   box(.50,.055,.46,dark,x,-.40,-1.28,gun);
+   // bipod legs
+   for(const sx of [-.19,.19]){let leg=cyl(.026,.82,steel,x+sx,-.52,-3.20,gun,"y");leg.rotation.z=sx<0?-.34:.34}
+   frontSight(-3.67,-.10);
+ }else if(weapon==='awm'){
+   // AWM Ultimate: long precision rifle, skeletal stock, oversized scope and heavy fluted barrel.
+   stock(-.35,M(0x38404a,.58));part(.34,.30,1.12,metal,-.29,-1.25);part(.29,.25,1.35,M(0x2f3a43,.60),-.27,-2.20);
+   grip(-.64,-.82,-.28,rubber);magazine(-.61,-1.28,.20,.40,.28,.04);
+   cyl(.060,2.10,steel,x,-.225,-3.65);muzzleBrake(-4.72,.115);
+   rail(-1.63,1.45,-.08);optic(-1.66,-.005,1.24);
+   // scope bell and rear eyepiece
+   cyl(.155,.30,dark,x,-.005,-2.00);cyl(.115,.24,dark,x,-.005,-1.25);
+   for(let zz=-2.18;zz>-3.15;zz-=.19){for(const sx of [-.13,.13])box(.022,.06,.12,dark,x+sx,-.26,zz,gun)}
+   // folding bipod
+   for(const sx of [-.16,.16]){let leg=cyl(.022,.72,steel,x+sx,-.48,-3.18,gun,"y");leg.rotation.z=sx<0?-.30:.30}
+   box(.018,.12,.36,dark,x+.19,-.28,-1.18,gun);
  }else if(weapon==='grenadeLauncher'){
    // Break-action style grenade launcher with a thick tube, compact stock and large trigger housing.
    stock(-.30,poly);part(.40,.34,.92,metal,-.30,-1.12);grip(-.62,-.76,-.27,rubber);
@@ -661,14 +699,21 @@ function rebuildGun(){
    const guard=new THREE.Mesh(new THREE.TorusGeometry(.11,.025,8,16,Math.PI),dark);guard.rotation.z=Math.PI;guard.position.set(x,-.48,weapon==='shotgun'?-1.02:-.94);gun.add(guard);
  }
  for(const dx of [-.12,.12]){let pin=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.025,8),brass);pin.rotation.z=Math.PI/2;pin.position.set(x+dx,-.29,weapon==='pistol'?-.88:-1.0);gun.add(pin)}
- const muzzleZ=weapon==='shotgun'?-3.38:weapon==='smg'?-2.36:weapon==='pistol'?-1.56:weapon==='dmr'?-4.13:weapon==='grenadeLauncher'?-3.12:-3.40;
+ const muzzleZ=weapon==='shotgun'?-3.38:weapon==='smg'?-2.36:weapon==='pistol'?-1.56:weapon==='dmr'?-4.13:weapon==='m240'?-4.34:weapon==='awm'?-4.84:weapon==='grenadeLauncher'?-3.12:-3.40;
  muzzle=new THREE.PointLight(0xffb35a,0,4);muzzle.position.set(x,-.23,muzzleZ);gun.add(muzzle);
 }
 
-function setWeapon(w){if(!unlocked[w])return;stopAuto();weapon=w;rebuildGun();weaponNameEl.textContent=wd().name;show(wd().name);ui()}
+function setAim(v){
+ aiming=!!v&&running&&!dying&&!between&&document.pointerLockElement===cv;
+ scopeOverlay.classList.toggle("show",aiming&&weapon==="awm");
+ cross.style.opacity=aiming?(weapon==="awm"?"0":".38"):"1";
+}
+function setWeapon(w){if(!unlocked[w])return;stopAuto();setAim(false);weapon=w;rebuildGun();weaponNameEl.textContent=wd().name;show(wd().name);ui()}
 function weaponSound(){
  if(weapon==="pistol"){noise(.075,.38,1100);tone(125,.055,"square",.13);return}
  if(weapon==="dmr"){noise(.13,.62,1450);tone(78,.10,"square",.19);return}
+ if(weapon==="m240"){noise(.095,.62,1650);tone(74,.085,"square",.18);tone(112,.045,"sine",.06);return}
+ if(weapon==="awm"){noise(.20,.92,1500);tone(54,.16,"square",.28);tone(92,.11,"sine",.12,.02);return}
  if(weapon==="grenadeLauncher"){noise(.14,.72,850);tone(62,.18,"square",.30);tone(118,.08,"sine",.12,.02);return}if(weapon==="shotgun"){noise(.16,.8,1800);tone(58,.22,"square",.34)}else if(weapon==="smg"){noise(.07,.5,2300);tone(105,.09,"square",.18)}else gunS()}
 function diff(w){return{count:6+(w-1)*3,hp:3+Math.floor((w-1)*.7),speed:1.15+(w-1)*.12,attack:Math.max(.32,.86-(w-1)*.04),damage:10+Math.floor((w-1)/3)*2,strafe:Math.min(.78,(w-1)*.06),surge:Math.min(.95,(w-1)*.07)}}
 const BOSS_NAME_POOL=["GORE TITAN","THE REND KING","MAWBREAKER","THE ABATTOIR","RIBCAGE","MEATSAINT","BUTCHER PRIME","BLOODHOWL","THE SPLIT-JAW","THE RED GIANT","MARROWLORD","GUTSPIKE","THE CARRION OX","SCARFLESH","THE RUINED HERCULES","GRAVEBULK"];
@@ -1263,13 +1308,14 @@ function reload(){if(reloading||A().mag===maxMag()||A().reserve<=0||dying)return
 const ray=new THREE.Raycaster();
 function fire(){
  if(!running||reloading||dying||between)return;
+ if(weapon==="awm"&&performance.now()<awmReadyAt){show("CYCLING BOLT");return}
  if(A().mag<=0){tone(180,.05,"square",.08);show("EMPTY");return}
- A().mag--;weaponSound();if(weapon!=="grenadeLauncher")casing();recoil=Math.min(.3,recoil+wd().recoil);muzzle.intensity=10;setTimeout(()=>muzzle.intensity=0,42);ui();
+ A().mag--;if(weapon==="awm")awmReadyAt=performance.now()+1150;weaponSound();if(weapon!=="grenadeLauncher")casing();recoil=Math.min(.3,recoil+wd().recoil);muzzle.intensity=10;setTimeout(()=>muzzle.intensity=0,42);ui();
  if(weapon==="grenadeLauncher"){fireGrenadeLauncherRound();return}
  let didHit=false,headHit=false,targets=[];
  for(const z of living())z.g.traverse(o=>{if(o.isMesh)targets.push(o)});
  for(let pellet=0;pellet<wd().pellets;pellet++){
-   const sx=aimX+(Math.random()-.5)*wd().spread,sy=aimY+(Math.random()-.5)*wd().spread;
+   const adsSpread=aiming?(weapon==="awm"?.08:.38):1,sx=aimX+(Math.random()-.5)*wd().spread*adsSpread,sy=aimY+(Math.random()-.5)*wd().spread*adsSpread;
    ray.setFromCamera(new THREE.Vector2(sx,sy),cam);
    let hit=ray.intersectObjects(targets,false)[0];
    if(hit&&hit.distance<80){
@@ -1285,7 +1331,7 @@ function fire(){
  if(didHit)hitMark(headHit);
 }
 function stopAuto(){triggerHeld=false;if(autoDelay){clearTimeout(autoDelay);autoDelay=null}if(autoTimer){clearInterval(autoTimer);autoTimer=null}}
-function triggerDown(){if(!running||dying||between)return;initAudio();fire();triggerHeld=true;if(autoDelay)clearTimeout(autoDelay);autoDelay=setTimeout(()=>{if(!triggerHeld||weapon==="shotgun"||weapon==="grenadeLauncher")return;autoTimer=setInterval(()=>{if(triggerHeld)fire()},wd().rate)},wd().hold)}
+function triggerDown(){if(!running||dying||between)return;initAudio();fire();triggerHeld=true;if(autoDelay)clearTimeout(autoDelay);autoDelay=setTimeout(()=>{if(!triggerHeld||weapon==="shotgun"||weapon==="grenadeLauncher"||weapon==="awm")return;autoTimer=setInterval(()=>{if(triggerHeld)fire()},wd().rate)},wd().hold)}
 function triggerUp(){stopAuto()}
 
 function openShop(){
@@ -1297,7 +1343,7 @@ function openShop(){
 }
 function toggleShop(){if(!between)return;openShop()}
 function buy(type){
- const needUnlock={smgAmmo:"smg",shotgunAmmo:"shotgun",pistolAmmo:"pistol",dmrAmmo:"dmr",grenadeLauncherAmmo:"grenadeLauncher"};
+ const needUnlock={smgAmmo:"smg",shotgunAmmo:"shotgun",pistolAmmo:"pistol",dmrAmmo:"dmr",grenadeLauncherAmmo:"grenadeLauncher",m240Ammo:"m240",awmAmmo:"awm"};
  if(needUnlock[type]&&!unlocked[needUnlock[type]]){show("UNLOCK "+weaponDefs[needUnlock[type]].name+" FIRST");return}
  let price=0,ok=false;
 
@@ -1307,6 +1353,8 @@ function buy(type){
  if(type==="pistolAmmo"){price=90;if(cash>=price){cash-=price;ammoState.pistol.reserve+=48;show("+48 PISTOL AMMO");ok=true}}
  if(type==="dmrAmmo"){price=160;if(cash>=price){cash-=price;ammoState.dmr.reserve+=24;show("+24 DMR AMMO");ok=true}}
  if(type==="grenadeLauncherAmmo"){price=225;if(launcherAmmoTotal()>=10){show("GRENADE LAUNCHER AMMO FULL");ok=true}else if(cash>=price){const n=addGrenadeLauncherAmmo(3);cash-=price;show("+"+n+" GRENADE LAUNCHER ROUNDS");ok=true}}
+ if(type==="m240Ammo"){price=275;if(cash>=price){cash-=price;ammoState.m240.reserve+=100;show("+100 M240 AMMO");ok=true}}
+ if(type==="awmAmmo"){price=300;if(cash>=price){cash-=price;ammoState.awm.reserve+=10;show("+10 AWM ROUNDS");ok=true}}
  if(type==="heal"){price=150;if(cash>=price){cash-=price;health=Math.min(100,health+40);show("+40 HEALTH");ok=true}}
  if(type==="mag"){price=250;if(cash>=price){cash-=price;magSize+=4;show("MAGAZINE UPGRADED");ok=true}}
  if(type==="damage"){price=350;if(cash>=price){cash-=price;damageLevel++;show("DAMAGE LEVEL "+damageLevel);ok=true}}
@@ -1317,6 +1365,8 @@ function buy(type){
  if(type==="pistol"){price=300;if(unlocked.pistol){show("PISTOL ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.pistol=true;show("PISTOL UNLOCKED");ok=true}}
  if(type==="dmr"){price=900;if(unlocked.dmr){show("DMR ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.dmr=true;show("DMR UNLOCKED");ok=true}}
  if(type==="grenadeLauncher"){price=1200;if(unlocked.grenadeLauncher){show("GRENADE LAUNCHER ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.grenadeLauncher=true;ammoState.grenadeLauncher.mag=6;ammoState.grenadeLauncher.reserve=0;show("GRENADE LAUNCHER UNLOCKED — 6 ROUND MAGAZINE");ok=true}}
+ if(type==="m240"){price=1800;if(unlocked.m240){show("M240 ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.m240=true;ammoState.m240.mag=100;ammoState.m240.reserve=200;show("M240 LMG UNLOCKED");ok=true}}
+ if(type==="awm"){price=2200;if(unlocked.awm){show("AWM ULTIMATE ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.awm=true;ammoState.awm.mag=5;ammoState.awm.reserve=20;show("AWM ULTIMATE UNLOCKED");ok=true}}
  if(type==="shotgun"){price=700;if(unlocked.shotgun){show("SHOTGUN ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.shotgun=true;show("SHOTGUN UNLOCKED");ok=true}}
  if(!ok&&cash<price)show("NOT ENOUGH CASH");ui()
 }
@@ -1432,10 +1482,10 @@ function updateSprintUI(){
  if(color!==sprintUiColor){sprintUiColor=color;sprintFill.style.background=color}
  if(state!==sprintUiState){sprintUiState=state;sprintState.textContent=state}
 }
-function move(dt){let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
+function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const targetFov=aiming?(weapon==="awm"?28:50):70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
 for(const c of parkedCars){let dx=px-c.position.x,dz=pz-c.position.z;if(Math.hypot(dx,dz)<2.45){px=oldx;pz=oldz;break}}
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);gun.position.z=recoil*.42;gun.position.y=-recoil*.08;gun.rotation.x=recoil*2.05;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);gun.position.x=-.36*aimBlend;gun.position.z=aimBlend*.20+recoil*.42;gun.position.y=aimBlend*.13-recoil*.08;gun.rotation.x=recoil*2.05;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
@@ -1669,13 +1719,13 @@ function perfGuard(dt){
 }
 function resize(){ren.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",resize);resize();
 function frame(t){let dt=Math.min(.04,(t-last)/1000);last=t;update(dt);ren.render(scene,cam);requestAnimationFrame(frame)}requestAnimationFrame(frame);
-function reset(){initAudio();stopAuto();clearKeys();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){initAudio();stopAuto();clearKeys();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();document.querySelector("#start").onclick=reset;document.querySelector("#restart").onclick=reset;
-addEventListener("keydown",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(["w","a","s","d","r","g","n","1","2","3","4","5","6","shift"].includes(k))e.preventDefault()});
-addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});addEventListener("blur",()=>{clearKeys();stopAuto()});document.addEventListener("visibilitychange",()=>{if(document.hidden){clearKeys();stopAuto()}});
+addEventListener("keydown",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(k==="7")setWeapon("m240");if(k==="8")setWeapon("awm");if(["w","a","s","d","r","g","n","1","2","3","4","5","6","7","8","shift"].includes(k))e.preventDefault()});
+addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});addEventListener("blur",()=>{clearKeys();stopAuto();setAim(false)});document.addEventListener("visibilitychange",()=>{if(document.hidden){clearKeys();stopAuto();setAim(false)}});
 document.addEventListener("pointerlockchange",()=>{
  if(document.pointerLockElement!==cv){
-   stopAuto();
+   stopAuto();setAim(false);
    if(between){document.body.style.cursor="default";shop.style.cursor="default"}
    else if(running&&!dying)show("CLICK GAME TO LOCK AIM");
  }else{
@@ -1683,10 +1733,13 @@ document.addEventListener("pointerlockchange",()=>{
    if(running&&!between&&!dying)show("AIM LOCKED");
  }
 });
-document.addEventListener("mousemove",e=>{if(document.pointerLockElement===cv){yaw-=e.movementX*lookSensitivity;pitch-=e.movementY*lookSensitivity*.9;pitch=Math.max(-1.05,Math.min(1.05,pitch));aimX=0;aimY=0;}});
-cv.addEventListener("pointerdown",e=>{if(e.button===0){cv.focus();if(document.pointerLockElement!==cv){cv.requestPointerLock?.();e.preventDefault();return}triggerDown();e.preventDefault()}});
-addEventListener("pointerup",e=>{if(e.button===0)triggerUp()});
-cv.addEventListener("pointercancel",triggerUp);
+document.addEventListener("mousemove",e=>{if(document.pointerLockElement===cv){const adsLook=aiming?(weapon==="awm"?.38:.68):1;yaw-=e.movementX*lookSensitivity*adsLook;pitch-=e.movementY*lookSensitivity*.9*adsLook;pitch=Math.max(-1.05,Math.min(1.05,pitch));aimX=0;aimY=0;}});
+cv.addEventListener("pointerdown",e=>{
+ if(e.button===0){cv.focus();if(document.pointerLockElement!==cv){cv.requestPointerLock?.();e.preventDefault();return}triggerDown();e.preventDefault();return}
+ if(e.button===2){if(document.pointerLockElement===cv)setAim(true);e.preventDefault()}
+});
+addEventListener("pointerup",e=>{if(e.button===0)triggerUp();if(e.button===2)setAim(false)});
+cv.addEventListener("pointercancel",()=>{triggerUp();setAim(false)});
 cv.addEventListener("contextmenu",e=>e.preventDefault());
 updateSprintUI();ui();
 
