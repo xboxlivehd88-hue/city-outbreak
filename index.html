@@ -104,13 +104,13 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
     <button data-buy="reload">Faster Reload<br>$300</button>
   </div></section>
   <section class="shopSection"><h3>Weapons</h3><div class="shopItems">
-    <button data-buy="pistol">Unlock Pistol<br>$300</button>
-    <button data-buy="smg">Unlock SMG<br>$500</button>
-    <button data-buy="shotgun">Unlock Shotgun<br>$700</button>
-    <button data-buy="dmr">Unlock DMR<br>$900</button>
-    <button data-buy="grenadeLauncher">Unlock Grenade Launcher<br>$1200</button>
-    <button data-buy="m240">Unlock M240 LMG<br>$1800</button>
-    <button data-buy="awm">Unlock AWM Ultimate<br>$2200</button>
+    <button data-buy="pistol">Unlock Pistol<br>$1 TEST</button>
+    <button data-buy="smg">Unlock SMG<br>$1 TEST</button>
+    <button data-buy="shotgun">Unlock Shotgun<br>$1 TEST</button>
+    <button data-buy="dmr">Unlock DMR<br>$1 TEST</button>
+    <button data-buy="grenadeLauncher">Unlock Grenade Launcher<br>$1 TEST</button>
+    <button data-buy="m240">Unlock M240 LMG<br>$1 TEST</button>
+    <button data-buy="awm">Unlock AWM Ultimate<br>$1 TEST</button>
   </div></section>
   <section class="shopSection"><h3>Equipment</h3><div class="shopItems">
     <button data-buy="grenade">Grenade<br>$175</button>
@@ -586,13 +586,13 @@ const weaponDefs={
  awm:{name:"AWM ULTIMATE",rate:1150,hold:9999,spread:.00055,pellets:1,body:8.0,recoil:.30,baseMag:5}
 };
 const ADS={
- rifle:{x:-.36,y:-.135,z:-.92,fov:58,rx:0},
+ rifle:{x:-.36,y:.005,z:-1.16,fov:58,rx:0},
  smg:{x:-.36,y:.045,z:-.38,fov:54,rx:0},
  shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
  dmr:{x:-.36,y:.015,z:-.54,fov:48,rx:0},
  grenadeLauncher:{x:-.36,y:.040,z:-.45,fov:56,rx:0},
- m240:{x:-.36,y:-.145,z:-1.02,fov:56,rx:0},
+ m240:{x:-.36,y:.005,z:-1.24,fov:56,rx:0},
  awm:{x:-.36,y:.005,z:-.62,fov:28,rx:0}
 };
 function ads(){return ADS[weapon]||ADS.rifle}
@@ -628,15 +628,17 @@ function rebuildGun(){
  const muzzleBrake=(z,rad=.105)=>{cyl(rad,.22,dark,x,-.235,z);for(const dx of [-.065,.065])box(.035,.08,.08,M(0x050606,.25),x+dx,-.235,z-.01,gun)};
  const optic=(z,y=-.025,scale=1)=>{cyl(.11*scale,.48*scale,dark,x,y,z);for(const zz of [-.18,.18]){let r=new THREE.Mesh(new THREE.TorusGeometry(.125*scale,.025*scale,8,16),metal);r.rotation.x=Math.PI/2;r.position.set(x,y,z+zz*scale);gun.add(r)}box(.20*scale,.055,.14*scale,dark,x,y+.12*scale,z,gun)};
  const frontSight=(z,y=-.08)=>{box(.035,.17,.04,dark,x,y,z,gun);box(.15,.035,.04,dark,x,y-.075,z,gun)};
- const rearIron=(z,y=-.025,sc=1)=>{
-   const ring=new THREE.Mesh(new THREE.TorusGeometry(.074*sc,.014*sc,6,18),dark);ring.position.set(x,y,z);gun.add(ring);
-   box(.026,.17*sc,.055,dark,x-.095*sc,y-.055*sc,z,gun);box(.026,.17*sc,.055,dark,x+.095*sc,y-.055*sc,z,gun);
-   box(.22*sc,.035,.075,dark,x,y-.145*sc,z,gun);
+ const rearIron=(z,y=-.010,sc=1)=>{
+   const ring=new THREE.Mesh(new THREE.TorusGeometry(.070*sc,.012*sc,6,18),dark);ring.position.set(x,y,z);gun.add(ring);
+   box(.19*sc,.040,.095,dark,x,y-.088*sc,z,gun);
+   box(.026,.075*sc,.060,dark,x-.072*sc,y-.050*sc,z,gun);
+   box(.026,.075*sc,.060,dark,x+.072*sc,y-.050*sc,z,gun);
  };
- const frontIron=(z,y=-.025,sc=1)=>{
-   box(.025,.115*sc,.045,dark,x,y-.057*sc,z,gun);
-   box(.024,.145*sc,.045,dark,x-.085*sc,y-.075*sc,z,gun);box(.024,.145*sc,.045,dark,x+.085*sc,y-.075*sc,z,gun);
-   box(.19*sc,.028,.055,dark,x,y-.145*sc,z,gun);
+ const frontIron=(z,y=-.010,sc=1)=>{
+   box(.022,.115*sc,.045,dark,x,y-.055*sc,z,gun);
+   box(.022,.105*sc,.050,dark,x-.070*sc,y-.068*sc,z,gun);
+   box(.022,.105*sc,.050,dark,x+.070*sc,y-.068*sc,z,gun);
+   box(.17*sc,.032,.070,dark,x,y-.122*sc,z,gun);
  };
  const stock=(z,mat=poly)=>{let s=part(.36,.42,.70,mat,-.42,z);s.rotation.x=-.12;box(.38,.46,.11,rubber,x,-.42,z+.35,gun);return s};
 
@@ -647,7 +649,7 @@ function rebuildGun(){
    cyl(.062,1.18,steel,x,-.235,-2.70);muzzleBrake(-3.28,.10);rail(-1.46,1.35,-.095);
    // vented handguard slots
    for(let zz=-1.52;zz>-2.14;zz-=.16){for(const sx of [-.155,.155])box(.025,.08,.09,dark,x+sx,-.27,zz,gun)}
-   box(.15,.08,.34,dark,x,-.055,-1.22,gun);rearIron(-.69,.135,.90);frontIron(-2.66,.135,.86);
+   box(.15,.08,.34,dark,x,-.055,-1.22,gun);rearIron(-.69,-.010,.90);frontIron(-2.66,-.010,.86);
    // ejection port / charging handle
    box(.015,.115,.34,M(0x080909,.18),x+.19,-.27,-1.12,gun);box(.24,.045,.07,dark,x,-.16,-.57,gun);
  }else if(weapon==='smg'){
@@ -694,7 +696,7 @@ function rebuildGun(){
    box(.50,.055,.46,dark,x,-.40,-1.28,gun);
    // bipod legs
    for(const sx of [-.19,.19]){let leg=cyl(.026,.82,steel,x+sx,-.52,-3.20,gun,"y");leg.rotation.z=sx<0?-.34:.34}
-   rearIron(-.82,.145,.95);frontIron(-3.67,.145,.90);
+   rearIron(-.82,-.010,.95);frontIron(-3.67,-.010,.90);
  }else if(weapon==='awm'){
    // AWM Ultimate: long precision rifle, skeletal stock, oversized scope and heavy fluted barrel.
    stock(-.35,M(0x38404a,.58));part(.34,.30,1.12,metal,-.29,-1.25);part(.29,.25,1.35,M(0x2f3a43,.60),-.27,-2.20);
@@ -726,7 +728,7 @@ function rebuildGun(){
 
 function setAim(v){
  aiming=!!v&&running&&!dying&&!between&&document.pointerLockElement===cv;
- if(!aiming)gun.visible=true;
+ if(!aiming){gun.visible=true;if(aimBlend<=.01)gun.scale.setScalar(1)}
  scopeOverlay.classList.toggle("show",aiming&&weapon==="awm");
  cross.style.opacity=aiming?"0":"1";
 }
@@ -1381,15 +1383,15 @@ function buy(type){
  if(type==="mag"){price=250;if(cash>=price){cash-=price;magSize+=4;show("MAGAZINE UPGRADED");ok=true}}
  if(type==="damage"){price=350;if(cash>=price){cash-=price;damageLevel++;show("DAMAGE LEVEL "+damageLevel);ok=true}}
  if(type==="reload"){price=300;if(cash>=price){cash-=price;reloadLevel++;show("FASTER RELOAD");ok=true}}
- if(type==="smg"){price=500;if(unlocked.smg){show("SMG ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.smg=true;show("SMG UNLOCKED");ok=true}}
+ if(type==="smg"){price=1;if(unlocked.smg){show("SMG ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.smg=true;show("SMG UNLOCKED");ok=true}}
  if(type==="grenade"){price=175;if(cash>=price){cash-=price;grenades++;show("+1 GRENADE");ok=true}}
  if(type==="nuke"){price=100;if(cash>=price){cash-=price;nukes++;show("TACTICAL NUKE ACQUIRED");ok=true}}
- if(type==="pistol"){price=300;if(unlocked.pistol){show("PISTOL ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.pistol=true;show("PISTOL UNLOCKED");ok=true}}
- if(type==="dmr"){price=900;if(unlocked.dmr){show("DMR ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.dmr=true;show("DMR UNLOCKED");ok=true}}
- if(type==="grenadeLauncher"){price=1200;if(unlocked.grenadeLauncher){show("GRENADE LAUNCHER ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.grenadeLauncher=true;ammoState.grenadeLauncher.mag=6;ammoState.grenadeLauncher.reserve=0;show("GRENADE LAUNCHER UNLOCKED — 6 ROUND MAGAZINE");ok=true}}
- if(type==="m240"){price=1800;if(unlocked.m240){show("M240 ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.m240=true;ammoState.m240.mag=100;ammoState.m240.reserve=200;show("M240 LMG UNLOCKED");ok=true}}
- if(type==="awm"){price=2200;if(unlocked.awm){show("AWM ULTIMATE ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.awm=true;ammoState.awm.mag=5;ammoState.awm.reserve=20;show("AWM ULTIMATE UNLOCKED");ok=true}}
- if(type==="shotgun"){price=700;if(unlocked.shotgun){show("SHOTGUN ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.shotgun=true;show("SHOTGUN UNLOCKED");ok=true}}
+ if(type==="pistol"){price=1;if(unlocked.pistol){show("PISTOL ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.pistol=true;show("PISTOL UNLOCKED");ok=true}}
+ if(type==="dmr"){price=1;if(unlocked.dmr){show("DMR ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.dmr=true;show("DMR UNLOCKED");ok=true}}
+ if(type==="grenadeLauncher"){price=1;if(unlocked.grenadeLauncher){show("GRENADE LAUNCHER ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.grenadeLauncher=true;ammoState.grenadeLauncher.mag=6;ammoState.grenadeLauncher.reserve=0;show("GRENADE LAUNCHER UNLOCKED — 6 ROUND MAGAZINE");ok=true}}
+ if(type==="m240"){price=1;if(unlocked.m240){show("M240 ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.m240=true;ammoState.m240.mag=100;ammoState.m240.reserve=200;show("M240 LMG UNLOCKED");ok=true}}
+ if(type==="awm"){price=1;if(unlocked.awm){show("AWM ULTIMATE ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.awm=true;ammoState.awm.mag=5;ammoState.awm.reserve=20;show("AWM ULTIMATE UNLOCKED");ok=true}}
+ if(type==="shotgun"){price=1;if(unlocked.shotgun){show("SHOTGUN ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.shotgun=true;show("SHOTGUN UNLOCKED");ok=true}}
  if(!ok&&cash<price)show("NOT ENOUGH CASH");ui()
 }
 shop.querySelectorAll("[data-buy]").forEach(b=>b.addEventListener("click",()=>buy(b.dataset.buy)));
@@ -1507,7 +1509,7 @@ function updateSprintUI(){
 function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
 for(const c of parkedCars){let dx=px-c.position.x,dz=pz-c.position.z;if(Math.hypot(dx,dz)<2.45){px=oldx;pz=oldz;break}}
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();gun.position.x=ac2.x*aimBlend;gun.position.z=ac2.z*aimBlend+recoil*.42;gun.position.y=ac2.y*aimBlend-recoil*.08;gun.rotation.x=(ac2.rx||0)*aimBlend+recoil*2.05;gun.rotation.y=0;gun.rotation.z=0;gun.visible=!(weapon==="awm"&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();gun.position.x=ac2.x*aimBlend;gun.position.z=ac2.z*aimBlend+recoil*.42;gun.position.y=ac2.y*aimBlend-recoil*.08;gun.rotation.x=(ac2.rx||0)*aimBlend+recoil*2.05;gun.rotation.y=0;gun.rotation.z=0;const adsScale=1-aimBlend*.16;gun.scale.setScalar(adsScale);gun.visible=!(weapon==="awm"&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
@@ -1741,7 +1743,7 @@ function perfGuard(dt){
 }
 function resize(){ren.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",resize);resize();
 function frame(t){let dt=Math.min(.04,(t-last)/1000);last=t;update(dt);ren.render(scene,cam);requestAnimationFrame(frame)}requestAnimationFrame(frame);
-function reset(){initAudio();stopAuto();clearKeys();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){initAudio();stopAuto();clearKeys();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();document.querySelector("#start").onclick=reset;document.querySelector("#restart").onclick=reset;
 addEventListener("keydown",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(k==="7")setWeapon("m240");if(k==="8")setWeapon("awm");if(["w","a","s","d","r","g","n","1","2","3","4","5","6","7","8","shift"].includes(k))e.preventDefault()});
 addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});addEventListener("blur",()=>{clearKeys();stopAuto();setAim(false)});document.addEventListener("visibilitychange",()=>{if(document.hidden){clearKeys();stopAuto();setAim(false)}});
