@@ -604,26 +604,88 @@ function batchStaticCity(){
  for(const o of originals){if(o.parent)o.parent.remove(o);try{o.geometry.dispose()}catch(_){}}
  console.log("CityOutbreak city batching",{batches,mergedObjects,materials:buckets.size});
 }
-batchStaticCity();
 
 function car(x,z,rot=0,type=0){
- const g=new THREE.Group(),body=[0x394b5c,0x6b2626,0x555753,0x2d3338,0x786d54][type%5];
- const long=type===2?5.4:type===3?5.0:4.5, high=type===1?1.05:.72;
- box(1.85,high,long,M(body,.55),0,.62,0,g);
- box(1.62,.62,long*.48,M(type===3?0xe2e2d8:body,.5),0,1.22,-.12,g);
- box(1.48,.38,.035,M(0x26353d,.18),0,1.28,-long*.25-.02,g).rotation.x=-.12;
- for(const sx of [-.92,.92])for(const sz of [-long*.31,long*.31]){
-   const wh=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.18,10),M(0x151515,.9));
-   wh.rotation.z=Math.PI/2;wh.position.set(sx,.36,sz);g.add(wh)
+ // Low-poly parked vehicles with real automotive proportions.
+ // 0 sedan, 1 crossover, 2 wagon, 3 pickup, 4 compact hatch.
+ const g=new THREE.Group(),body=[0x40566a,0x7b2d2d,0x5c625f,0x3c4347,0x81765d][type%5];
+ const bodyMat=M(body,.50),trim=M(0x171a1c,.72),glass=M(0x24343d,.20),tire=M(0x111214,.94),rim=M(0x73787a,.38);
+ const isSUV=type===1,isWagon=type===2,isPickup=type===3,isHatch=type===4;
+ const long=isWagon?4.95:isPickup?5.15:isSUV?4.72:isHatch?4.22:4.58;
+ const wide=isSUV||isPickup?1.92:isHatch?1.76:1.84;
+ const sill=isSUV||isPickup?.68:.56;
+ const wheelR=isSUV||isPickup?.36:.33;
+ const frontAx=-long*.31,rearAx=long*.31;
+
+ // Lower body: tapered beltline, separate hood/trunk, and visible rocker panels.
+ taperedPrism(wide*.94,wide,sill,long*.94,long,bodyMat,0,.38,0,g);
+ box(wide*.90,.13,long*.78,bodyMat,0,.73,0,g);
+ box(wide*.88,.10,long*.72,trim,0,.21,0,g);
+
+ // Hood and rear deck create a recognizable front/rear instead of one rectangular block.
+ const hoodD=isPickup?1.25:isSUV?1.08:isHatch?.82:1.05;
+ taperedPrism(wide*.82,wide*.91,.18,hoodD*.84,hoodD,bodyMat,0,.82,-long*.39,g);
+ if(!isHatch&&!isWagon&&!isSUV&&!isPickup){
+   taperedPrism(wide*.80,wide*.88,.16,.68,.82,bodyMat,0,.81,long*.405,g);
  }
- 
- // bumpers, windshield, rear glass and headlights
- box(1.58,.34,.04,M(0x23343c,.18),0,1.34,-long*.245,g).rotation.x=-.18;
- box(1.5,.30,.04,M(0x1d2c32,.2),0,1.31,long*.245,g).rotation.x=.15;
- box(1.72,.12,.12,M(0x1d2021,.5),0,.48,-long*.51,g);
- for(const hx of [-.58,.58])box(.32,.15,.04,M(0xe8d9a7,.22),hx,.69,-long*.505,g);
- for(const hx of [-.58,.58])box(.28,.13,.04,M(0x8c2020,.3),hx,.68,long*.505,g);
- g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
+
+ if(isPickup){
+   // Separate cab and open pickup bed.
+   taperedPrism(wide*.72,wide*.84,.72,1.35,1.58,bodyMat,0,1.14,-.45,g);
+   box(wide*.76,.36,1.56,M(0x252a2c,.62),0,.67,1.25,g);
+   box(wide*.84,.18,1.64,bodyMat,0,.85,1.25,g);
+   box(wide*.70,.055,1.43,M(0x17191a,.82),0,.96,1.25,g);
+ }else{
+   const cabinD=isWagon?2.65:isSUV?2.38:isHatch?2.18:2.25;
+   const cabinH=isSUV?.83:isWagon?.72:isHatch?.69:.68;
+   const cabinZ=isWagon?.18:isHatch?.18:.08;
+   taperedPrism(wide*.68,wide*.84,cabinH,cabinD*.76,cabinD,bodyMat,0,1.12,cabinZ,g);
+   // Roof panel gives the greenhouse a flatter, believable top.
+   box(wide*.64,.08,cabinD*.70,bodyMat,0,1.52+(isSUV?.08:0),cabinZ+.02,g);
+ }
+
+ // Windshields and rear glass are inset into the cabin slopes.
+ const frontGlassZ=isPickup?-1.10:isSUV?-1.02:isWagon?-1.14:isHatch?-.91:-.98;
+ const rearGlassZ=isPickup?.20:isSUV?1.08:isWagon?1.31:isHatch?1.05:1.08;
+ let fw=box(wide*.67,.38,.035,glass,0,isSUV?1.28:1.23,frontGlassZ,g);fw.rotation.x=-.34;
+ let rw=box(wide*.65,.34,.035,glass,0,isSUV?1.25:1.20,rearGlassZ,g);rw.rotation.x=.30;
+
+ // Side glass, split into front/rear sections so the cabin reads as a real car from the street.
+ if(!isPickup){
+   const sideY=isSUV?1.25:1.20,sideLen=isWagon?1.02:isHatch?.82:.88;
+   for(const sx of [-wide*.425,wide*.425]){
+     box(.028,.34,sideLen,glass,sx,sideY,-.43,g);
+     box(.028,.34,sideLen,glass,sx,sideY,.53,g);
+   }
+ }else{
+   for(const sx of [-wide*.425,wide*.425])box(.028,.36,.76,glass,sx,1.25,-.46,g);
+ }
+
+ // Four wheels with visible metal hubs.
+ for(const sx of [-wide*.51,wide*.51])for(const sz of [frontAx,rearAx]){
+   const wh=new THREE.Mesh(new THREE.CylinderGeometry(wheelR,wheelR,.20,12),tire);
+   wh.rotation.z=Math.PI/2;wh.position.set(sx,wheelR,sz);g.add(wh);
+   const hub=new THREE.Mesh(new THREE.CylinderGeometry(wheelR*.48,wheelR*.48,.215,10),rim);
+   hub.rotation.z=Math.PI/2;hub.position.set(sx,wheelR,sz);g.add(hub);
+ }
+
+ // Front grille, bumpers, headlights, taillights and license-plate recess.
+ box(wide*.72,.18,.055,trim,0,.58,-long*.505,g);
+ box(wide*.90,.11,.10,trim,0,.35,-long*.515,g);
+ box(wide*.88,.10,.10,trim,0,.36,long*.515,g);
+ for(const hx of [-wide*.30,wide*.30]){
+   box(wide*.20,.16,.045,M(0xe8ddb6,.24),hx,.66,-long*.509,g);
+   box(wide*.18,.14,.045,M(0x9b2525,.32),hx,.64,long*.509,g);
+ }
+ box(.44,.16,.025,M(0xc7c5b9,.42),0,.48,long*.522,g);
+
+ // Mirrors and subtle wheel-arch brows add shape without expensive curves.
+ for(const sx of [-wide*.51,wide*.51])box(.12,.10,.20,bodyMat,sx,1.08,-.55,g);
+ for(const sz of [frontAx,rearAx])box(wide*.92,.055,.54,trim,0,.63,sz,g);
+
+ g.position.set(x,0,z);g.rotation.y=rot;
+ g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ scene.add(g);
  return g
 }
 const parkedCars=[];
@@ -632,6 +694,12 @@ const parkedCars=[];
  [-8,58,0,4],[8,78,Math.PI,0],[-8,103,0,1],[8,124,Math.PI,2],
  [-34,25,Math.PI/2,3],[-51,35,-Math.PI/2,4],[32,35,Math.PI/2,0],[52,25,-Math.PI/2,1]
 ].forEach((c,i)=>parkedCars.push(car(...c,i%5)));
+
+// Batch the cars together with the static city so the improved vehicle detail
+// does not bring back the old draw-call problem. parkedCars groups stay as cheap
+// collision anchors after their meshes are merged into the city batches.
+batchStaticCity();
+
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
