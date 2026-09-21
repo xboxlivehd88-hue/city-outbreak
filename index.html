@@ -1410,7 +1410,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    shoulderDrop,pauseClock,attackAnim,attackSide,feral,twitch,snapBias,snapRate,nightmareType,armDrop,kind,groundY:0,
    hp,maxHP:hp,dead:false,speed,attack,damage,strafe,surge,bossName:kind==="boss"?(bossSpec?.name||bossWaveName||"BOSS"):"",bossBounty:kind==="boss"?(bossSpec?.bounty||250):0,bossSpecialCd:kind==="boss"?(bossSpec?.specialCd||7.5):0,bossAttackState:"",bossAttackT:0,bossChargeHit:false,
    cool:0,groan:1+rnd()*3,step:.2+rnd()*.38,phase:rnd()*6.28,zig:rnd()>.5?1:-1,surgeT:.5+rnd()*2,stagger:0,staggerDir:1,
-   leftArmHP:2,rightArmHP:2,legDamage:0,falling:false,corpseAge:0,fallDir:rnd()>.5?1:-1,fallAxis:rnd()>.55?"z":"x",fallSpeed:3.2+rnd()*2.1,
+   leftArmHP:2,rightArmHP:2,leftLegHP:2.5,rightLegHP:2.5,legDamage:0,leftArmDetached:false,rightArmDetached:false,leftLegDetached:false,rightLegDetached:false,ragdoll:null,falling:false,corpseAge:0,fallDir:rnd()>.5?1:-1,fallAxis:rnd()>.55?"z":"x",fallSpeed:3.2+rnd()*2.1,
    role:(()=>{let r=rnd();if(kind==="boss")return "charger";if(kind==="sprinter"||kind==="infected"||kind==="acidic")return r<.58?"charger":"interceptor";if(kind==="crawler")return "charger";if(kind==="radiated")return r<.62?"charger":"flanker";if(wave<2)return "charger";return r<.58?"charger":r<.82?"flanker":"stalker"})(),
    side:i%2?1:-1,think:rnd()*.05,targetX:px,targetZ:pz,bravery:.75+rnd()*.5,groupOffset:(rnd()-.5)*5,
    strideScale:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.18:kind==="boss"?.88:1.0};
@@ -1667,20 +1667,124 @@ function stagger(z,hs){
   if(!boss)rigTransient(z,"Hit",hs?.34:.28);
 }
 
+function rigBone(z,name){return z.rigVisual?z.rigVisual.getObjectByName(name):null}
+function hideRigLimb(z,name){
+ const b=rigBone(z,name);
+ if(!b)return;
+ b.scale.set(.001,.001,.001);
+ b.updateMatrixWorld(true);
+}
+function addLimbStump(z,pos,leg=false){
+ const q=new THREE.Mesh(FX.bloodGeoBig,FX.bloodMat);
+ q.position.copy(pos);
+ q.scale.set(leg?.95:.78,leg?.48:.42,leg?.95:.78);
+ q.castShadow=false;q.receiveShadow=false;z.g.add(q);
+}
+function launchDetachedLimb(z,limb,side,leg=false){
+ if(!limb||!limb.parent)return false;
+ const local=limb.position.clone();
+ limb.traverse(o=>{if(o.isMesh){o.visible=true;o.castShadow=false;o.receiveShadow=false}});
+ z.g.updateMatrixWorld(true);limb.updateMatrixWorld(true);
+ scene.attach(limb);
+ const push=(side==="left"?-1:1);
+ parts.push({
+   q:limb,
+   v:new THREE.Vector3(push*(.9+rnd()*1.3)+(rnd()-.5)*.6,leg?1.5+rnd()*1.4:2.0+rnd()*1.8,(rnd()-.5)*2.2),
+   spin:new THREE.Vector3((rnd()-.5)*9,(rnd()-.5)*11,(rnd()-.5)*9),
+   life:8,limb:true
+ });
+ addLimbStump(z,local,leg);capFX();return true;
+}
 function detachArm(z,side){
- const arm=side==="left"?z.armL:z.armR;if(!arm||!arm.parent)return;
- const wp=new THREE.Vector3();arm.getWorldPosition(wp);arm.parent.remove(arm);scene.add(arm);arm.position.copy(wp);
- arm.rotation.set(Math.random()*2,Math.random()*2,Math.random()*2);
- parts.push({q:arm,v:new THREE.Vector3((Math.random()-.5)*2.5,2+Math.random()*1.8,(Math.random()-.5)*2.5),life:7,limb:true});
+ const key=side==="left"?"leftArmDetached":"rightArmDetached";
+ if(z[key])return;
+ const arm=side==="left"?z.armL:z.armR;
+ if(!launchDetachedLimb(z,arm,side,false))return;
+ z[key]=true;
+ hideRigLimb(z,side==="left"?"L_UpperArm":"R_UpperArm");
+ if(side==="left")z.armL=new THREE.Group();else z.armR=new THREE.Group();
  noise(.12,.22,350);show(side==="left"?"LEFT ARM OFF":"RIGHT ARM OFF");
 }
+function detachLeg(z,side){
+ const key=side==="left"?"leftLegDetached":"rightLegDetached";
+ if(z[key])return;
+ const leg=side==="left"?z.legL:z.legR;
+ if(!launchDetachedLimb(z,leg,side,true))return;
+ z[key]=true;
+ hideRigLimb(z,side==="left"?"L_UpperLeg":"R_UpperLeg");
+ if(side==="left")z.legL=new THREE.Group();else z.legR=new THREE.Group();
+ z.legDamage=3;
+ noise(.15,.25,280);show(side==="left"?"LEFT LEG OFF":"RIGHT LEG OFF");
+}
 function limbDamage(z,part,amount){
- if(part==="leftArm"){z.leftArmHP-=amount;if(z.leftArmHP<=0)detachArm(z,"left")}
- if(part==="rightArm"){z.rightArmHP-=amount;if(z.rightArmHP<=0)detachArm(z,"right")}
- if(part==="leftLeg"||part==="rightLeg"){z.legDamage=Math.min(3,z.legDamage+amount);z.stagger=Math.max(z.stagger,.32)}
+ if(part==="leftArm"&&!z.leftArmDetached){z.leftArmHP-=amount;if(z.leftArmHP<=0)detachArm(z,"left")}
+ if(part==="rightArm"&&!z.rightArmDetached){z.rightArmHP-=amount;if(z.rightArmHP<=0)detachArm(z,"right")}
+ if(part==="leftLeg"&&!z.leftLegDetached){z.leftLegHP-=amount;z.legDamage=Math.min(3,z.legDamage+amount*.55);z.stagger=Math.max(z.stagger,.32);if(z.leftLegHP<=0)detachLeg(z,"left")}
+ if(part==="rightLeg"&&!z.rightLegDetached){z.rightLegHP-=amount;z.legDamage=Math.min(3,z.legDamage+amount*.55);z.stagger=Math.max(z.stagger,.32);if(z.rightLegHP<=0)detachLeg(z,"right")}
+}
+
+function beginRagdoll(z,force=1){
+ if(z.ragdoll)return;
+ if(z.mixer)z.mixer.stopAllAction();
+ z.g.rotation.order="YXZ";z.falling=true;
+ const fallAxis=z.fallAxis||((rnd()>.5)?"x":"z"),dir=z.fallDir||1;
+ const d=Math.hypot(z.g.position.x-px,z.g.position.z-pz)||1;
+ const awayX=(z.g.position.x-px)/d,awayZ=(z.g.position.z-pz)/d;
+ const rag=z.ragdoll={
+   t:0,bones:[],
+   targetX:z.g.rotation.x+(fallAxis==="x"?dir*(1.15+rnd()*.24):(rnd()-.5)*.22),
+   targetZ:z.g.rotation.z+(fallAxis==="z"?dir*(1.15+rnd()*.24):(rnd()-.5)*.22),
+   targetY:z.g.rotation.y+(rnd()-.5)*.22,
+   vx:awayX*(.30+.18*rnd())*force+(rnd()-.5)*.16,
+   vz:awayZ*(.30+.18*rnd())*force+(rnd()-.5)*.16
+ };
+ const add=(o,dx,dy,dz,speed=7,wob=.09)=>{
+   if(!o||!o.parent)return;
+   rag.bones.push({o,tx:o.rotation.x+dx,ty:o.rotation.y+dy,tz:o.rotation.z+dz,speed,wob,phase:rnd()*6.28});
+ };
+ if(z.rigVisual){
+   add(rigBone(z,"Hips"), .18*dir,(rnd()-.5)*.22,(rnd()-.5)*.18,6,.05);
+   add(rigBone(z,"Spine"), .34*dir,(rnd()-.5)*.30,(rnd()-.5)*.28,7,.07);
+   add(rigBone(z,"Chest"), .46*dir,(rnd()-.5)*.36,(rnd()-.5)*.34,7,.08);
+   add(rigBone(z,"Neck"), -.24*dir,(rnd()-.5)*.25,(rnd()-.5)*.26,8,.08);
+   add(rigBone(z,"Head"), -.58*dir,(rnd()-.5)*.38,(rnd()-.5)*.48,8,.10);
+   add(rigBone(z,"L_UpperArm"), .68+(rnd()-.5)*.45,(rnd()-.5)*.30,-.62-rnd()*.32,6,.13);
+   add(rigBone(z,"L_LowerArm"), .78+rnd()*.45,(rnd()-.5)*.28,-.28-rnd()*.25,6,.14);
+   add(rigBone(z,"R_UpperArm"), .68+(rnd()-.5)*.45,(rnd()-.5)*.30,.62+rnd()*.32,6,.13);
+   add(rigBone(z,"R_LowerArm"), .78+rnd()*.45,(rnd()-.5)*.28,.28+rnd()*.25,6,.14);
+   add(rigBone(z,"L_UpperLeg"), -.32+(rnd()-.5)*.55,(rnd()-.5)*.18,-.20-rnd()*.18,6,.08);
+   add(rigBone(z,"L_LowerLeg"), .48+rnd()*.42,0,-.10-rnd()*.12,6,.09);
+   add(rigBone(z,"R_UpperLeg"), .18+(rnd()-.5)*.55,(rnd()-.5)*.18,.20+rnd()*.18,6,.08);
+   add(rigBone(z,"R_LowerLeg"), .42+rnd()*.44,0,.10+rnd()*.12,6,.09);
+ }else{
+   add(z.torso,.42*dir,(rnd()-.5)*.24,(rnd()-.5)*.28,7,.08);
+   add(z.head,-.55*dir,(rnd()-.5)*.35,(rnd()-.5)*.45,8,.10);
+   add(z.armL,.72,0,-.55,6,.12);add(z.elbowL,.70,0,-.22,6,.12);
+   add(z.armR,.72,0,.55,6,.12);add(z.elbowR,.70,0,.22,6,.12);
+   add(z.legL,-.25,0,-.20,6,.08);add(z.kneeL,.55,0,-.10,6,.08);
+   add(z.legR,.20,0,.20,6,.08);add(z.kneeR,.50,0,.10,6,.08);
+ }
+}
+function updateRagdoll(z,dt){
+ if(!z.ragdoll)beginRagdoll(z);
+ const r=z.ragdoll;r.t+=dt;
+ const a=1-Math.exp(-dt*4.8);
+ z.g.rotation.x+=(r.targetX-z.g.rotation.x)*a;
+ z.g.rotation.z+=(r.targetZ-z.g.rotation.z)*a;
+ z.g.rotation.y+=(r.targetY-z.g.rotation.y)*(1-Math.exp(-dt*2.4));
+ z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
+ const drag=Math.exp(-dt*4.2);r.vx*=drag;r.vz*=drag;
+ z.g.position.y+=(-.10-z.g.position.y)*(1-Math.exp(-dt*3.6));
+ for(const b of r.bones){
+   const ba=1-Math.exp(-dt*b.speed),w=Math.exp(-r.t*3.4)*b.wob;
+   b.o.rotation.x+=(b.tx-b.o.rotation.x)*ba+Math.sin(r.t*10.5+b.phase)*w*dt;
+   b.o.rotation.y+=(b.ty-b.o.rotation.y)*ba+Math.sin(r.t*8.7+b.phase+1.3)*w*.65*dt;
+   b.o.rotation.z+=(b.tz-b.o.rotation.z)*ba+Math.sin(r.t*11.8+b.phase+2.1)*w*.75*dt;
+ }
+ if(r.t>1.35&&Math.abs(z.g.rotation.x-r.targetX)<.045&&Math.abs(z.g.rotation.z-r.targetZ)<.045)z.falling=false;
 }
 function killZ(z,hs,p){
- if(z.dead)return;z.dead=true;if(z.mixer)z.mixer.stopAllAction();if(z.marker)z.marker.visible=false;z.falling=true;z.corpseAge=0;kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;bossHUD.classList.remove("show");show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
+ if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;beginRagdoll(z);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;bossHUD.classList.remove("show");show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
  if(hs){heads++;headS();burst(p,true);if(z.head&&z.head.parent)z.g.remove(z.head)}
  else{noise(.12,.16,260)}
  // Dead bodies keep the silhouette but stop expensive shadow work immediately.
@@ -1868,8 +1972,9 @@ function detonateNuke(){
      if(z.dead)continue;
      if(rnd()<DROP_CHANCE*.42)spawnZombieDrop(z.g.position);
      z.dead=true;if(z.marker)z.marker.visible=false;
-     z.falling=true;z.corpseAge=3.5;
+     z.corpseAge=3.5;
      z.fallDir=rnd()>.5?1:-1;z.fallAxis=rnd()>.5?"x":"z";
+     beginRagdoll(z,1.35);
      z.g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    }
    kills+=victims.length;
@@ -1909,18 +2014,14 @@ for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q
 for(let i=casings.length-1;i>=0;i--){let c=casings[i];c.life-=dt;c.v.y-=4.5*dt;c.q.position.addScaledVector(c.v,dt);c.q.rotation.x+=c.spin*dt;c.q.rotation.z+=c.spin*.7*dt;if(c.q.position.y<.04){c.q.position.y=.04;c.v.y*=-.22;c.v.x*=.72;c.v.z*=.72}if(c.life<=0){scene.remove(c.q);casings.splice(i,1)}}
 for(let i=impacts.length-1;i>=0;i--){let p=impacts[i];p.life-=dt;p.v.y-=3*dt;p.q.position.addScaledVector(p.v,dt);if(p.life<=0){scene.remove(p.q);impacts.splice(i,1)}}
 for(let i=parts.length-1;i>=0;i--){let p=parts[i];p.life-=dt;p.v.y-=5*dt;p.q.position.addScaledVector(p.v,dt);
-if(p.limb&&p.q.position.y<.08){p.q.position.y=.08;p.v.y*=-.22;p.v.x*=.7;p.v.z*=.7;p.q.rotation.x+=dt*5}
+if(p.limb){
+ const sp=p.spin||new THREE.Vector3(4,5,3);p.q.rotation.x+=sp.x*dt;p.q.rotation.y+=sp.y*dt;p.q.rotation.z+=sp.z*dt;
+ if(p.q.position.y<.08){p.q.position.y=.08;p.v.y*=-.20;p.v.x*=.68;p.v.z*=.68;sp.multiplyScalar(.62)}
+}
 if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math.min(1.2,cam.rotation.z+dt*.5);cam.position.y=Math.max(.25,cam.position.y-dt*.55);return}if(!running)return;move(dt);updateDrops(dt);if(between){return}for(let z of zombies){
  if(!z.dead)continue;
  z.corpseAge+=dt;
- if(z.falling){
-   const target=z.fallDir*1.48,axis=z.fallAxis==="x"?"x":"z";
-   z.g.rotation[axis]+=(target-z.g.rotation[axis])*Math.min(1,dt*z.fallSpeed);
-   z.g.position.y=Math.max(-.18,z.g.position.y-dt*.28);
-   z.g.position.x+=Math.sin(z.g.rotation.y)*dt*.12;
-   z.g.position.z+=Math.cos(z.g.rotation.y)*dt*.12;
-   if(Math.abs(z.g.rotation[axis]-target)<.035)z.falling=false;
- }
+ if(z.falling)updateRagdoll(z,dt);
  if(z.corpseAge>10&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
 }
 if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
