@@ -1727,61 +1727,99 @@ function beginRagdoll(z,force=1){
  if(z.ragdoll)return;
  if(z.mixer)z.mixer.stopAllAction();
  z.g.rotation.order="YXZ";z.falling=true;
- const fallAxis=z.fallAxis||((rnd()>.5)?"x":"z"),dir=z.fallDir||1;
+
+ const side=z.fallDir||((rnd()>.5)?1:-1);
+ const collapse=rnd();
+ const forward=collapse<.46?1:collapse<.72?-1:(rnd()>.5?1:-1)*.30;
+ const sideFall=collapse>.68?side*(.72+rnd()*.25):side*(.20+rnd()*.20);
  const d=Math.hypot(z.g.position.x-px,z.g.position.z-pz)||1;
  const awayX=(z.g.position.x-px)/d,awayZ=(z.g.position.z-pz)/d;
+
  const rag=z.ragdoll={
    t:0,bones:[],
-   targetX:z.g.rotation.x+(fallAxis==="x"?dir*(1.15+rnd()*.24):(rnd()-.5)*.22),
-   targetZ:z.g.rotation.z+(fallAxis==="z"?dir*(1.15+rnd()*.24):(rnd()-.5)*.22),
-   targetY:z.g.rotation.y+(rnd()-.5)*.22,
-   vx:awayX*(.30+.18*rnd())*force+(rnd()-.5)*.16,
-   vz:awayZ*(.30+.18*rnd())*force+(rnd()-.5)*.16
+   baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
+   targetX:z.g.rotation.x+forward*(.58+rnd()*.18),
+   targetZ:z.g.rotation.z+sideFall,
+   targetY:z.g.rotation.y+(rnd()-.5)*.28,
+   vx:awayX*(.24+.18*rnd())*force+(rnd()-.5)*.12,
+   vz:awayZ*(.24+.18*rnd())*force+(rnd()-.5)*.12,
+   hips:null,hipsStartY:0,hipsTargetY:0
  };
- const add=(o,dx,dy,dz,speed=7,wob=.09)=>{
+
+ const add=(o,dx,dy,dz,delay=.08,duration=.72,wob=.12)=>{
    if(!o||!o.parent)return;
-   rag.bones.push({o,tx:o.rotation.x+dx,ty:o.rotation.y+dy,tz:o.rotation.z+dz,speed,wob,phase:rnd()*6.28});
+   rag.bones.push({
+     o,
+     sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
+     tx:o.rotation.x+dx,ty:o.rotation.y+dy,tz:o.rotation.z+dz,
+     delay,duration,wob,phase:rnd()*6.28
+   });
  };
+
  if(z.rigVisual){
-   add(rigBone(z,"Hips"), .18*dir,(rnd()-.5)*.22,(rnd()-.5)*.18,6,.05);
-   add(rigBone(z,"Spine"), .34*dir,(rnd()-.5)*.30,(rnd()-.5)*.28,7,.07);
-   add(rigBone(z,"Chest"), .46*dir,(rnd()-.5)*.36,(rnd()-.5)*.34,7,.08);
-   add(rigBone(z,"Neck"), -.24*dir,(rnd()-.5)*.25,(rnd()-.5)*.26,8,.08);
-   add(rigBone(z,"Head"), -.58*dir,(rnd()-.5)*.38,(rnd()-.5)*.48,8,.10);
-   add(rigBone(z,"L_UpperArm"), .68+(rnd()-.5)*.45,(rnd()-.5)*.30,-.62-rnd()*.32,6,.13);
-   add(rigBone(z,"L_LowerArm"), .78+rnd()*.45,(rnd()-.5)*.28,-.28-rnd()*.25,6,.14);
-   add(rigBone(z,"R_UpperArm"), .68+(rnd()-.5)*.45,(rnd()-.5)*.30,.62+rnd()*.32,6,.13);
-   add(rigBone(z,"R_LowerArm"), .78+rnd()*.45,(rnd()-.5)*.28,.28+rnd()*.25,6,.14);
-   add(rigBone(z,"L_UpperLeg"), -.32+(rnd()-.5)*.55,(rnd()-.5)*.18,-.20-rnd()*.18,6,.08);
-   add(rigBone(z,"L_LowerLeg"), .48+rnd()*.42,0,-.10-rnd()*.12,6,.09);
-   add(rigBone(z,"R_UpperLeg"), .18+(rnd()-.5)*.55,(rnd()-.5)*.18,.20+rnd()*.18,6,.08);
-   add(rigBone(z,"R_LowerLeg"), .42+rnd()*.44,0,.10+rnd()*.12,6,.09);
+   const hips=rigBone(z,"Hips");
+   rag.hips=hips;
+   if(hips){rag.hipsStartY=hips.position.y;rag.hipsTargetY=Math.max(.20,hips.position.y-.62-rnd()*.10)}
+
+   // Knees give way first, then the pelvis and torso fold, with head/arms arriving late.
+   add(rigBone(z,"L_UpperLeg"), .65+(rnd()-.5)*.30,(rnd()-.5)*.14,-.20-rnd()*.18,.00,.40,.07);
+   add(rigBone(z,"R_UpperLeg"), .25+(rnd()-.5)*.55,(rnd()-.5)*.14, .20+rnd()*.18,.00,.43,.07);
+   add(rigBone(z,"L_LowerLeg"),-1.15-rnd()*.35,0,-.10-rnd()*.10,.02,.42,.08);
+   add(rigBone(z,"R_LowerLeg"),-1.05-rnd()*.40,0, .10+rnd()*.10,.03,.45,.08);
+
+   add(hips,forward*.25,(rnd()-.5)*.18,side*.24,.08,.55,.06);
+   add(rigBone(z,"Spine"),forward*.52,(rnd()-.5)*.26,side*.30,.12,.62,.10);
+   add(rigBone(z,"Chest"),forward*.68,(rnd()-.5)*.34,side*.38,.15,.68,.12);
+
+   add(rigBone(z,"L_UpperArm"),.85+rnd()*.55,(rnd()-.5)*.30,-.78-rnd()*.38,.08,.72,.18);
+   add(rigBone(z,"L_LowerArm"),1.05+rnd()*.55,(rnd()-.5)*.25,-.38-rnd()*.28,.13,.68,.20);
+   add(rigBone(z,"R_UpperArm"),.85+rnd()*.55,(rnd()-.5)*.30, .78+rnd()*.38,.09,.72,.18);
+   add(rigBone(z,"R_LowerArm"),1.05+rnd()*.55,(rnd()-.5)*.25, .38+rnd()*.28,.14,.68,.20);
+
+   add(rigBone(z,"Neck"),-forward*.40,(rnd()-.5)*.30,-side*.25,.22,.58,.14);
+   add(rigBone(z,"Head"),-forward*.72,(rnd()-.5)*.46,-side*.48,.27,.62,.19);
  }else{
-   add(z.torso,.42*dir,(rnd()-.5)*.24,(rnd()-.5)*.28,7,.08);
-   add(z.head,-.55*dir,(rnd()-.5)*.35,(rnd()-.5)*.45,8,.10);
-   add(z.armL,.72,0,-.55,6,.12);add(z.elbowL,.70,0,-.22,6,.12);
-   add(z.armR,.72,0,.55,6,.12);add(z.elbowR,.70,0,.22,6,.12);
-   add(z.legL,-.25,0,-.20,6,.08);add(z.kneeL,.55,0,-.10,6,.08);
-   add(z.legR,.20,0,.20,6,.08);add(z.kneeR,.50,0,.10,6,.08);
+   // Crawlers/procedural fallback get the same staged loose-joint collapse.
+   add(z.legL,.65,0,-.25,.00,.38,.08);add(z.kneeL,-1.15,0,-.12,.02,.42,.08);
+   add(z.legR,.30,0,.25,.00,.40,.08);add(z.kneeR,-1.05,0,.12,.03,.44,.08);
+   add(z.torso,forward*.72,(rnd()-.5)*.25,side*.38,.12,.68,.13);
+   add(z.armL,1.0,0,-.72,.08,.70,.18);add(z.elbowL,1.05,0,-.30,.14,.67,.18);
+   add(z.armR,1.0,0,.72,.09,.70,.18);add(z.elbowR,1.05,0,.30,.15,.67,.18);
+   add(z.head,-forward*.70,(rnd()-.5)*.35,-side*.42,.26,.60,.18);
  }
 }
 function updateRagdoll(z,dt){
  if(!z.ragdoll)beginRagdoll(z);
  const r=z.ragdoll;r.t+=dt;
- const a=1-Math.exp(-dt*4.8);
- z.g.rotation.x+=(r.targetX-z.g.rotation.x)*a;
- z.g.rotation.z+=(r.targetZ-z.g.rotation.z)*a;
- z.g.rotation.y+=(r.targetY-z.g.rotation.y)*(1-Math.exp(-dt*2.4));
- z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
- const drag=Math.exp(-dt*4.2);r.vx*=drag;r.vz*=drag;
- z.g.position.y+=(-.10-z.g.position.y)*(1-Math.exp(-dt*3.6));
- for(const b of r.bones){
-   const ba=1-Math.exp(-dt*b.speed),w=Math.exp(-r.t*3.4)*b.wob;
-   b.o.rotation.x+=(b.tx-b.o.rotation.x)*ba+Math.sin(r.t*10.5+b.phase)*w*dt;
-   b.o.rotation.y+=(b.ty-b.o.rotation.y)*ba+Math.sin(r.t*8.7+b.phase+1.3)*w*.65*dt;
-   b.o.rotation.z+=(b.tz-b.o.rotation.z)*ba+Math.sin(r.t*11.8+b.phase+2.1)*w*.75*dt;
+
+ const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
+
+ // Hips physically drop before the whole body finishes going over.
+ if(r.hips){
+   const h=smooth(r.t/.48);
+   r.hips.position.y=r.hipsStartY+(r.hipsTargetY-r.hipsStartY)*h;
  }
- if(r.t>1.35&&Math.abs(z.g.rotation.x-r.targetX)<.045&&Math.abs(z.g.rotation.z-r.targetZ)<.045)z.falling=false;
+
+ // Root tilt comes in later, after knees/hips have already started collapsing.
+ const root=smooth((r.t-.18)/.82);
+ z.g.rotation.x=r.baseX+(r.targetX-r.baseX)*root;
+ z.g.rotation.z=r.baseZ+(r.targetZ-r.baseZ)*root;
+ z.g.rotation.y=r.baseY+(r.targetY-r.baseY)*smooth((r.t-.20)/1.05);
+
+ z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
+ const drag=Math.exp(-dt*4.0);r.vx*=drag;r.vz*=drag;
+ const drop=smooth((r.t-.12)/.92);
+ z.g.position.y=-.08*drop;
+
+ for(const b of r.bones){
+   const t=smooth((r.t-b.delay)/b.duration);
+   const loose=(1-t)*Math.exp(-Math.max(0,r.t-b.delay)*2.8)*b.wob;
+   b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*13.0+b.phase)*loose;
+   b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*10.2+b.phase+1.4)*loose*.65;
+   b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*11.6+b.phase+2.2)*loose*.80;
+ }
+
+ if(r.t>1.45)z.falling=false;
 }
 function killZ(z,hs,p){
  if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;beginRagdoll(z);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;bossHUD.classList.remove("show");show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
@@ -1832,8 +1870,11 @@ function fire(){
      let z=hit.object.userData.zombie;if(!z)continue;
      let hs=hit.object.userData.isHead===true,part=hit.object.userData.part||"body";
      let shotDamage=wd().body*damageLevel;
-     if(hs){if(z.kind==="boss")z.hp-=Math.max(shotDamage*2.6,4.5);else z.hp=0}else z.hp-=shotDamage;
-     limbDamage(z,part,weapon==="shotgun"?shotDamage*2:shotDamage);
+     const limbHit=part==="leftArm"||part==="rightArm"||part==="leftLeg"||part==="rightLeg";
+     const healthDamage=part==="leftArm"||part==="rightArm"?shotDamage*.15:
+                        part==="leftLeg"||part==="rightLeg"?shotDamage*.18:shotDamage;
+     if(hs){if(z.kind==="boss")z.hp-=Math.max(shotDamage*2.6,4.5);else z.hp=0}else z.hp-=healthDamage;
+     if(limbHit)limbDamage(z,part,weapon==="shotgun"?shotDamage*2:shotDamage);
      impactFX(hit.point);burst(hit.point,false);stagger(z,hs);didHit=true;headHit=headHit||hs;
      if(z.hp<=0&&!z.dead)killZ(z,hs,hit.point);
    }
