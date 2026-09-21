@@ -606,7 +606,7 @@ function batchStaticCity(){
 }
 
 function car(x,z,rot=0,type=0){
- // v104: v102 baseline restored; sedan rebuilt as the dedicated realism prototype.
+ // v105: v102 baseline preserved; sedan rebuilt from real midsize proportions with lofted 3D bodywork.
  // 0 sedan, 1 crossover, 2 wagon, 3 pickup, 4 compact hatch.
  const g=new THREE.Group(),body=[0x40566a,0x7b2d2d,0x5c625f,0x3c4347,0x81765d][type%5];
  const bodyMat=M(body,.54),trim=M(0x181b1d,.80),glass=M(0x22343d,.22),tire=M(0x111214,.97),rim=M(0x8f9394,.36);
@@ -630,86 +630,130 @@ function car(x,z,rot=0,type=0){
    const q=new THREE.Mesh(geo,mat);q.position.x=xOffset;q.castShadow=false;q.receiveShadow=false;g.add(q);return q;
  }
 
- // Dedicated sedan prototype. The other four body classes remain exactly on the v102 baseline.
+ // Dedicated sedan prototype. Camry/K5-class proportions: ~4.9m long, ~1.85m wide,
+ // ~1.45m tall, ~2.83m wheelbase. The other four car classes remain on v102.
  if(!isSUV&&!isWagon&&!isPickup&&!isHatch){
-   const SL=4.72,SW=1.82,SR=.320;
-   const frontZ=-1.55,rearZ=1.50;
+   const SL=4.90,SW=1.85,SH=1.45,SR=.34;
+   const frontZ=-1.415,rearZ=1.415;
+   glass.side=THREE.DoubleSide;
 
-   // Lower body: broad at the rocker, narrower at the shoulder. This gives a real car cross-section
-   // instead of the old vertical-sided extrusion.
-   taperedPrism(SW*.84,SW,.43,SL*.86,SL*.96,bodyMat,0,.485,0,g);
-   taperedPrism(SW*.75,SW*.88,.20,SL*.74,SL*.84,bodyMat,0,.755,.015,g);
+   // Loft a sequence of real cross-sections. Each station has a lower width,
+   // shoulder width and upper width, so the car narrows naturally toward the hood/roof.
+   function sedanLoft(sections,mat){
+     const ring=6,pos=[],idx=[];
+     for(const q of sections){
+       pos.push(
+         -q.wb,q.y0,q.z, q.wb,q.y0,q.z,
+          q.wm,q.ym,q.z, q.wt,q.yt,q.z,
+         -q.wt,q.yt,q.z,-q.wm,q.ym,q.z
+       );
+     }
+     for(let i=0;i<sections.length-1;i++){
+       const a=i*ring,b=(i+1)*ring;
+       for(let k=0;k<ring;k++){
+         const n=(k+1)%ring;
+         idx.push(a+k,b+k,b+n,a+k,b+n,a+n);
+       }
+     }
+     // End caps.
+     idx.push(0,2,1,0,3,2,0,4,3,0,5,4);
+     const o=(sections.length-1)*ring;
+     idx.push(o,o+1,o+2,o,o+2,o+3,o,o+3,o+4,o,o+4,o+5);
+     const geo=new THREE.BufferGeometry();
+     geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+     geo.setIndex(idx);geo.computeVertexNormals();
+     const m=new THREE.Mesh(geo,mat);m.castShadow=false;m.receiveShadow=false;g.add(m);return m;
+   }
 
-   // Long low hood and restrained trunk deck.
-   taperedPrism(SW*.70,SW*.82,.15,.88,1.18,bodyMat,0,.855,-1.50,g);
-   taperedPrism(SW*.66,SW*.79,.13,.54,.84,bodyMat,0,.835,1.61,g);
+   function panel4(a,b,c,d,mat){
+     const geo=new THREE.BufferGeometry();
+     geo.setAttribute("position",new THREE.Float32BufferAttribute([...a,...b,...c,...d],3));
+     geo.setIndex([0,1,2,0,2,3]);geo.computeVertexNormals();
+     const m=new THREE.Mesh(geo,mat);m.castShadow=false;m.receiveShadow=false;g.add(m);return m;
+   }
 
-   // Cabin shell has a real windshield/roof/rear-glass sweep rather than a box.
-   const cabin=[
-     [-.80,.79],[-.67,.96],[-.47,1.22],[-.25,1.35],
-     [ .05,1.40],[ .36,1.39],[ .58,1.31],[ .82,1.08],
-     [1.01,.80]
-   ];
-   profilePrism(cabin,SW*.76,bodyMat,0,.024);
+   // One continuous lower body. The hood, fenders, doors, quarter panels and trunk
+   // are all part of the same loft, eliminating the stacked-box look.
+   sedanLoft([
+     {z:-2.45,y0:.19,ym:.42,yt:.57,wb:.68,wm:.79,wt:.70},
+     {z:-2.25,y0:.18,ym:.47,yt:.67,wb:.84,wm:.91,wt:.80},
+     {z:-1.42,y0:.17,ym:.51,yt:.79,wb:.91,wm:.93,wt:.83},
+     {z:-1.03,y0:.17,ym:.52,yt:.84,wb:.92,wm:.94,wt:.84},
+     {z: -.55,y0:.17,ym:.52,yt:.82,wb:.92,wm:.94,wt:.85},
+     {z:  .55,y0:.17,ym:.52,yt:.80,wb:.92,wm:.94,wt:.85},
+     {z: 1.42,y0:.17,ym:.50,yt:.77,wb:.91,wm:.93,wt:.83},
+     {z: 2.16,y0:.18,ym:.46,yt:.69,wb:.84,wm:.90,wt:.79},
+     {z: 2.45,y0:.19,ym:.42,yt:.57,wb:.69,wm:.80,wt:.71}
+   ],bodyMat);
 
-   // Four individual side windows. Their shapes follow the cabin rake and leave actual A/B/C pillars.
+   // Greenhouse is another loft, with a curved roof arc and tapered glasshouse.
+   sedanLoft([
+     {z:-1.02,y0:.80,ym:.84,yt:.90,wb:.82,wm:.79,wt:.73},
+     {z: -.70,y0:.82,ym:1.10,yt:1.30,wb:.80,wm:.70,wt:.62},
+     {z: -.28,y0:.83,ym:1.24,yt:1.41,wb:.78,wm:.66,wt:.60},
+     {z:  .28,y0:.83,ym:1.28,yt:1.44,wb:.77,wm:.65,wt:.59},
+     {z:  .72,y0:.82,ym:1.20,yt:1.38,wb:.76,wm:.64,wt:.60},
+     {z: 1.10,y0:.80,ym:1.02,yt:1.20,wb:.80,wm:.69,wt:.64}
+   ],bodyMat);
+
+   // Proper four-door side glass, with visible A/B/C pillars.
    const frontSide=[
-     [-.67,.91],[-.43,1.20],[-.23,1.30],[-.04,1.31],[-.03,.91]
+     [-.91,.87],[-.68,1.12],[-.50,1.30],[-.27,1.35],[-.08,1.35],[-.05,.88]
    ];
    const rearSide=[
-     [ .06,.91],[ .08,1.31],[ .34,1.31],[ .54,1.24],[ .82,.97],[ .86,.91]
+     [ .05,.88],[ .08,1.35],[ .30,1.37],[ .57,1.31],[ .87,1.14],[1.01,.88]
    ];
-   for(const sx of [-SW*.386,SW*.386]){
-     profilePrism(frontSide,.018,glass,sx,.003);
-     profilePrism(rearSide,.018,glass,sx,.003);
-     // B pillar, door gaps, handles and one quiet shoulder crease.
-     box(.022,.39,.050,bodyMat,sx,1.105,.015,g);
-     box(.020,.37,.022,trim,sx,.655,-.08,g);
-     box(.020,.37,.022,trim,sx,.655,.78,g);
-     box(.030,.020,.13,trim,sx,.855,-.18,g);
-     box(.030,.020,.13,trim,sx,.855,.46,g);
-     box(.014,.018,SL*.53,trim,sx,.725,.08,g);
+   for(const sx of [-.795,.795]){
+     profilePrism(frontSide,.016,glass,sx,.002);
+     profilePrism(rearSide,.016,glass,sx,.002);
+     box(.020,.44,.050,trim,sx,1.105,.015,g);       // B pillar
+     box(.016,.35,.020,trim,sx,.565,-.05,g);        // front door seam
+     box(.016,.35,.020,trim,sx,.565,.96,g);         // rear door seam
+     box(.030,.020,.13,trim,sx,.865,-.22,g);        // handles
+     box(.030,.020,.13,trim,sx,.865,.54,g);
+     box(.014,.018,SL*.54,trim,sx,.705,.05,g);      // shoulder line
    }
 
-   // Front and rear glass for convincing 3/4 views.
-   let sfw=box(SW*.59,.30,.022,glass,0,1.115,-.69,g);sfw.rotation.x=-.53;
-   let srw=box(SW*.56,.27,.022,glass,0,1.105,.91,g);srw.rotation.x=.47;
+   // Windshield and rear glass are true trapezoids rather than rotated rectangles.
+   panel4([-.76,.85,-.995],[ .76,.85,-.995],[ .60,1.31,-.685],[-.60,1.31,-.685],glass);
+   panel4([-.61,1.25,.86],[ .61,1.25,.86],[ .73,.84,1.095],[-.73,.84,1.095],glass);
 
-   // Thin roof panel follows the greenhouse without becoming a big block.
-   taperedPrism(SW*.50,SW*.57,.045,.55,.82,bodyMat,0,1.405,.13,g);
-
-   // Wheels are larger than v102 and tucked into the body, closer to real sedan proportions.
-   for(const sx of [-SW*.485,SW*.485])for(const sz of [frontZ,rearZ]){
-     const wh=new THREE.Mesh(new THREE.CylinderGeometry(SR,SR,.165,18),tire);
+   // Wheels use the real wheelbase ratio (~58% of overall length) and 18/19-inch stance.
+   function sedanWheel(sx,sz){
+     const wh=new THREE.Mesh(new THREE.CylinderGeometry(SR,SR,.18,20),tire);
      wh.rotation.z=Math.PI/2;wh.position.set(sx,SR,sz);g.add(wh);
-     const hub=new THREE.Mesh(new THREE.CylinderGeometry(SR*.52,SR*.52,.171,14),rim);
+     const disc=new THREE.Mesh(new THREE.CylinderGeometry(SR*.61,SR*.61,.184,18),trim);
+     disc.rotation.z=Math.PI/2;disc.position.set(sx,SR,sz);g.add(disc);
+     const hub=new THREE.Mesh(new THREE.CylinderGeometry(SR*.48,SR*.48,.190,18),rim);
      hub.rotation.z=Math.PI/2;hub.position.set(sx,SR,sz);g.add(hub);
-     const cap=new THREE.Mesh(new THREE.CylinderGeometry(SR*.12,SR*.12,.176,12),trim);
+     const cap=new THREE.Mesh(new THREE.CylinderGeometry(SR*.10,SR*.10,.194,12),trim);
      cap.rotation.z=Math.PI/2;cap.position.set(sx,SR,sz);g.add(cap);
    }
+   const wheelX=SW*.492;
+   sedanWheel(-wheelX,frontZ);sedanWheel(wheelX,frontZ);
+   sedanWheel(-wheelX,rearZ);sedanWheel(wheelX,rearZ);
 
-   // Mirrors sit at the base of the A pillar, not floating on the door.
-   for(const sx of [-SW*.455,SW*.455])box(.080,.050,.125,bodyMat,sx,1.015,-.70,g);
+   // Mirrors at the A-pillars.
+   for(const sx of [-.865,.865])box(.085,.052,.135,bodyMat,sx,1.00,-.82,g);
 
-   // Slim modern lighting and bumpers. Less visual weight than the v103 family treatment.
-   box(SW*.58,.060,.024,trim,0,.505,-SL*.505,g);
-   box(SW*.82,.048,.050,trim,0,.305,-SL*.515,g);
-   box(SW*.78,.046,.050,trim,0,.315, SL*.515,g);
-   for(const hx of [-SW*.285,SW*.285]){
-     box(SW*.135,.070,.020,headMat,hx,.610,-SL*.510,g);
-     box(SW*.130,.066,.020,tailMat,hx,.585, SL*.510,g);
-   }
-   box(.34,.078,.016,plateMat,0,.435,SL*.522,g);
+   // Modern restrained face: thin lamps, broad lower opening, no oversized cartoon bumper.
+   box(SW*.57,.055,.025,trim,0,.50,-SL*.506,g);
+   box(SW*.76,.045,.045,trim,0,.31,-SL*.515,g);
+   for(const hx of [-SW*.285,SW*.285])box(SW*.145,.070,.020,headMat,hx,.615,-SL*.510,g);
 
-   // Small lower sill gives the body some grounded mass without a cartoon outline.
-   box(SW*.78,.040,SL*.47,trim,0,.255,.02,g);
+   // Rear light/plate treatment.
+   box(SW*.72,.040,.045,trim,0,.31,SL*.515,g);
+   for(const hx of [-SW*.285,SW*.285])box(SW*.140,.068,.020,tailMat,hx,.585,SL*.510,g);
+   box(.35,.080,.016,plateMat,0,.43,SL*.522,g);
+
+   // Low black rocker trim gives the car visual weight without a protruding shelf.
+   box(SW*.77,.035,SL*.54,trim,0,.225,.02,g);
 
    g.position.set(x,0,z);g.rotation.y=rot;
    g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    scene.add(g);
    return g;
  }
-
  let bodyProfile,windowProfile=null;
  if(isPickup){
    bodyProfile=[
