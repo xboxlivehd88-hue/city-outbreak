@@ -823,16 +823,21 @@ function tickBossSpecial(z,dt,dist){
  }
 }
 
+let lastZombieMarkerMaterial=null;
 function createLastZombieMarker(){
- const cv=document.createElement("canvas");cv.width=96;cv.height=96;const c=cv.getContext("2d");
- c.translate(48,48);
- c.fillStyle="rgba(255,60,60,.95)";
- c.beginPath();c.moveTo(0,-28);c.lineTo(23,0);c.lineTo(0,28);c.lineTo(-23,0);c.closePath();c.fill();
- c.strokeStyle="rgba(255,255,255,.95)";c.lineWidth=5;c.stroke();
- c.beginPath();c.arc(0,0,10,0,Math.PI*2);c.fillStyle="rgba(255,220,80,.95)";c.fill();
- const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;
- const mat=new THREE.SpriteMaterial({map:tx,transparent:true,depthTest:false,depthWrite:false});
- const spr=new THREE.Sprite(mat);spr.scale.set(1.35,1.35,1);spr.renderOrder=999;return spr
+ // One tiny shared texture/material for all last-zombie markers.
+ // Markers are created lazily only when the wave reaches five remaining.
+ if(!lastZombieMarkerMaterial){
+   const cv=document.createElement("canvas");cv.width=48;cv.height=48;const c=cv.getContext("2d");
+   c.translate(24,24);
+   c.beginPath();c.moveTo(-10,-5);c.lineTo(10,-5);c.lineTo(0,11);c.closePath();
+   c.fillStyle="rgba(235,58,52,.96)";c.fill();
+   c.strokeStyle="rgba(25,25,25,.92)";c.lineWidth=3;c.lineJoin="round";c.stroke();
+   const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;
+   tx.minFilter=THREE.LinearFilter;tx.magFilter=THREE.LinearFilter;
+   lastZombieMarkerMaterial=new THREE.SpriteMaterial({map:tx,transparent:true,depthTest:false,depthWrite:false});
+ }
+ const spr=new THREE.Sprite(lastZombieMarkerMaterial);spr.scale.set(.62,.62,1);spr.renderOrder=999;return spr
 }
 
 
@@ -1041,7 +1046,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    hazardMist.scale.set(1.0,1.55,1.0);hazardMist.position.y=1.02;g.add(hazardMist);
  }
 
- const marker=createLastZombieMarker();marker.position.set(0,kind==="boss"?3.55:2.60,0);marker.visible=false;g.add(marker);
+ let marker=null;
  let safe=pushOutsideBuilding(x,z,.50);g.position.set(safe.x,0,safe.z);scene.add(g);
 
  const baseArmLX=.22+rnd()*.045,baseArmRX=.20+rnd()*.045,
@@ -1564,11 +1569,12 @@ for(let z of active){
    const a=rnd()*Math.PI*2,dist=16+rnd()*8;let safe=pushOutsideBuilding(px+Math.sin(a)*dist,pz+Math.cos(a)*dist,.85);
    z.g.position.set(safe.x,0,safe.z);z.targetX=px;z.targetZ=pz;z.stagger=.25;
  }
- if(z.marker){
-   z.marker.visible=highlightLast;
-   const pulse=1+.14*Math.sin(last*.01+z.phase*2.2);
-   z.marker.scale.set(1.35*pulse,1.35*pulse,1);
+ if(highlightLast&&!z.marker){
+   z.marker=createLastZombieMarker();
+   z.marker.position.set(0,2.48,0);
+   z.g.add(z.marker);
  }
+ if(z.marker)z.marker.visible=highlightLast;
 
 z.cool=Math.max(0,z.cool-dt);z.stagger=Math.max(0,(z.stagger||0)-dt);z.attackAnim=Math.max(0,z.attackAnim-dt);
 if(z.mixer){
