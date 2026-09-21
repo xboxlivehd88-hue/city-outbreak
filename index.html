@@ -411,21 +411,50 @@ function pushOutsideBuilding(x,z,r=.45){
  return{x,z}
 }
 
-// Ground plane + denser city street treatment.
-let ground=new THREE.Mesh(new THREE.PlaneGeometry(260,280),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
-const asphalt=M(0x242628,.96), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
+// Ground plane + cleaner city street / sidewalk treatment.
+let ground=new THREE.Mesh(new THREE.PlaneGeometry(280,300),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
+const asphalt=M(0x242628,.96), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
 box(24,.10,244,asphalt,0,.05,30);           // avenue
 box(224,.10,24,asphalt,0,.06,30);           // cross street
-box(8,.10,244,sidewalk,-16,.11,30); box(8,.10,244,sidewalk,16,.11,30);
-box(224,.10,8,sidewalk,0,.12,16); box(224,.10,8,sidewalk,0,.12,44);
-box(.45,.18,244,curb,-12.2,.13,30); box(.45,.18,244,curb,12.2,.13,30);
-box(224,.18,.45,curb,0,.13,18.2); box(224,.18,.45,curb,0,.13,41.8);
+
+// Sidewalks stop at the intersection instead of visually continuing through the road.
+for(const sx of [-16,16]){
+  box(8,.10,110,sidewalk,sx,.11,-37);
+  box(8,.10,110,sidewalk,sx,.11,97);
+}
+for(const sz of [16,44]){
+  box(100,.10,8,sidewalk,-62,.12,sz);
+  box(100,.10,8,sidewalk,62,.12,sz);
+}
+
+// Curbs are segmented at each road opening so the four corners read clearly.
+for(const cx of [-12.2,12.2]){
+  box(.45,.18,110.2,curb,cx,.13,-36.9);
+  box(.45,.18,110.2,curb,cx,.13,96.9);
+}
+for(const cz of [18.2,41.8]){
+  box(99.8,.18,.45,curb,-62.1,.13,cz);
+  box(99.8,.18,.45,curb,62.1,.13,cz);
+}
+
+// Low-cost sidewalk panel joints add scale without adding unique materials or lights.
+for(const sx of [-16,16]){
+  for(let z=-84;z<=10;z+=12)box(7.2,.016,.055,walkJoint,sx,.17,z);
+  for(let z=50;z<=144;z+=12)box(7.2,.016,.055,walkJoint,sx,.17,z);
+}
+for(const sz of [16,44]){
+  for(let x=-104;x<=-24;x+=12)box(.055,.016,7.2,walkJoint,x,.17,sz);
+  for(let x=24;x<=104;x+=12)box(.055,.016,7.2,walkJoint,x,.17,sz);
+}
+
 for(let z=-84;z<146;z+=12)box(.18,.025,5.7,lanePaint,0,.13,z);
 for(let x=-96;x<101;x+=14)box(5.7,.025,.18,lanePaint,x,.14,30);
-for(let o=-7;o<=7;o+=2)box(1.2,.03,.45,crosswalk,o,.15,18.9);
-for(let o=-7;o<=7;o+=2)box(1.2,.03,.45,crosswalk,o,.15,41.1);
-for(let o=21;o<=35;o+=2)box(.45,.03,1.2,crosswalk,-11.1,.15,o);
-for(let o=21;o<=35;o+=2)box(.45,.03,1.2,crosswalk,11.1,.15,o);
+
+// Compact zebra crossings now sit entirely on asphalt between the curb openings.
+for(let o=-8;o<=8;o+=2)box(1.25,.03,.52,crosswalk,o,.15,19.05);
+for(let o=-8;o<=8;o+=2)box(1.25,.03,.52,crosswalk,o,.15,40.95);
+for(let o=21;o<=39;o+=2)box(.52,.03,1.25,crosswalk,-11.05,.15,o);
+for(let o=21;o<=39;o+=2)box(.52,.03,1.25,crosswalk,11.05,.15,o);
 
 const fill=new THREE.DirectionalLight(0xb3cfe4,.95);fill.position.set(28,18,35);scene.add(fill);
 const dustGeo=new THREE.BufferGeometry(),dustPts=[];for(let i=0;i<240;i++)dustPts.push((Math.random()-.5)*210,Math.random()*11,(Math.random()-.5)*250);
@@ -443,47 +472,86 @@ for(let z=-78;z<140;z+=24){lamp(-12,z,1);lamp(12,z+12,-1)}
 // Small street props for city feel.
 for(let z=-60;z<126;z+=28){box(.22,1.1,.22,M(0x626866,.75),-13.0,.65,z);box(.22,1.1,.22,M(0x626866,.75),13.0,.65,z+10)}
 
+// Concrete Jersey-style barriers create street chicanes / escape routes.
+// They share a material and use the existing collision system, so they stay cheap after city batching.
+const barrierConcrete=M(0x92918b,.90),barrierTop=M(0xb6b3aa,.84);
+function concreteBarrier(x,z,rot=0,len=4.6){
+ const g=new THREE.Group();
+ box(len,.62,.54,barrierConcrete,0,.38,0,g);
+ box(len*.84,.10,.58,barrierTop,0,.72,0,g);
+ box(.72,.16,.82,barrierConcrete,-len*.34,.12,0,g);
+ box(.72,.16,.82,barrierConcrete,len*.34,.12,0,g);
+ g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
+ const alongX=Math.abs(Math.cos(rot))>.7;
+ buildingColliders.push({x,z,hx:alongX?len*.50:.48,hz:alongX?.48:len*.50});
+ return g
+}
+// Staggered placement leaves walkable gaps instead of walling off whole streets.
+concreteBarrier(-4.8,-72,0,4.8);
+concreteBarrier(5.0,-30,0,4.6);
+concreteBarrier(-4.8,92,0,4.8);
+concreteBarrier(5.0,138,0,4.6);
+concreteBarrier(-72,25,Math.PI/2,4.8);
+concreteBarrier(-61,35,Math.PI/2,4.6);
+concreteBarrier(70,35,Math.PI/2,4.8);
+concreteBarrier(62,25,Math.PI/2,4.6);
+
 
 let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 let buildingId=0;
 const cityPalettes=[0x6c5a4d,0x56606a,0x8a806f,0x4f555a,0x73685d,0x7d766b,0x5f666c,0x6a4b3e];
 
-// Front rows along the main avenue.
+// Front rows along the main avenue. Every few lots become low-rise storefronts
+// so the skyline is not made entirely from medium / tall boxes.
 for(let side of [-1,1]){
   for(let z=-86;z<144;z+=12.5){
     if(z>16&&z<44)continue;
     let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
-    let w1=11+rnd()*5,h1=18+rnd()*30,d1=11+rnd()*6,x1=side*(22+rnd()*3.5);
+    const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),lowRise=(buildingId%6===0);
+    let w1=lowRise?8+rw*4:11+rw*5;
+    let h1=lowRise?7+rh*8:18+rh*30;
+    let d1=lowRise?9+rd*4:11+rd*6;
+    let x1=side*(22+rx*3.5);
     addBuilding(w1,h1,d1,x1,z,base,buildingId++);
   }
 }
 
-// Mid-depth rows for denser skyline.
+// Mid-depth rows are pushed outward and narrowed slightly. This guarantees a more
+// usable service alley between the front and middle rows instead of random squeeze gaps.
 for(let side of [-1,1]){
   for(let z=-90;z<146;z+=15){
     if(z>12&&z<48&&rnd()>.35)continue;
     let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
-    let w=10+rnd()*7,h=20+rnd()*36,d=10+rnd()*6,x=side*(37+rnd()*7);
-    addBuilding(w,h,d,x,z+(rnd()-.5)*3.5,base,buildingId++);
+    const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),rz=rnd(),lowRise=(buildingId%8===3);
+    let w=lowRise?8+rw*4:9+rw*5;
+    let h=lowRise?8+rh*9:20+rh*36;
+    let d=lowRise?9+rd*4:10+rd*6;
+    let x=side*(44+rx*6);
+    addBuilding(w,h,d,x,z+(rz-.5)*3.5,base,buildingId++);
   }
 }
 
-// Background towers, mostly visual density. Still collidable if reached.
+// Background towers move outward too, keeping the new alleys accessible while
+// preserving a dense skyline and the existing batching strategy.
 for(let side of [-1,1]){
   for(let z=-96;z<152;z+=18){
     let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
-    let w=12+rnd()*10,h=28+rnd()*42,d=12+rnd()*8,x=side*(56+rnd()*14);
-    addBuilding(w,h,d,x,z+(rnd()-.5)*4,base,buildingId++);
+    const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),rz=rnd();
+    let w=11+rw*7,h=28+rh*42,d=11+rd*7,x=side*(68+rx*12);
+    addBuilding(w,h,d,x,z+(rz-.5)*4,base,buildingId++);
   }
 }
 
-// Cross-street frontage to make the center junction feel like a city block.
+// Cross-street frontage mixes in a few genuinely small buildings.
 for(let x=-92;x<96;x+=14){
   if(x>-14&&x<14)continue;
   let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
-  let w=10+rnd()*6,h=14+rnd()*18,d=10+rnd()*5;
-  addBuilding(w,h,d,x,8+rnd()*4,base,buildingId++);
-  addBuilding(w,h,d,x,52+rnd()*4,base,buildingId++);
+  const rw=rnd(),rh=rnd(),rd=rnd(),rz1=rnd(),rz2=rnd(),lowRise=(buildingId%5===0);
+  let w=lowRise?8+rw*4:10+rw*6;
+  let h=lowRise?6.5+rh*7:14+rh*18;
+  let d=lowRise?8+rd*4:10+rd*5;
+  addBuilding(w,h,d,x,8+rz1*4,base,buildingId++);
+  addBuilding(w,h,d,x,52+rz2*4,base,buildingId++);
 }
 
 
