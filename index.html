@@ -606,24 +606,26 @@ function batchStaticCity(){
 }
 
 function car(x,z,rot=0,type=0){
- // v101: profile-built street vehicles based on real car side proportions.
+ // v102: refined low-poly vehicles with softer real-world proportions.
  // 0 sedan, 1 crossover, 2 wagon, 3 pickup, 4 compact hatch.
  const g=new THREE.Group(),body=[0x40566a,0x7b2d2d,0x5c625f,0x3c4347,0x81765d][type%5];
- const bodyMat=M(body,.50),trim=M(0x171a1c,.78),glass=M(0x1a2a31,.18),tire=M(0x101112,.96),rim=M(0x909493,.34);
- const headMat=M(0xe9dfbe,.24),tailMat=M(0xa92121,.30),plateMat=M(0xc9c7bc,.46);
+ const bodyMat=M(body,.54),trim=M(0x181b1d,.80),glass=M(0x22343d,.22),tire=M(0x111214,.97),rim=M(0x8f9394,.36);
+ const headMat=M(0xded7bc,.30),tailMat=M(0x8f2020,.34),plateMat=M(0xbdbbb2,.50);
  const isSUV=type===1,isWagon=type===2,isPickup=type===3,isHatch=type===4;
- const L=isPickup?5.18:isWagon?4.82:isSUV?4.62:isHatch?4.18:4.56;
- const W=isPickup?1.92:isSUV?1.88:isWagon?1.82:isHatch?1.76:1.82;
- const wheelR=isPickup?.38:isSUV?.36:isHatch?.31:.33;
- const frontAx=-L*.335,rearAx=L*.335;
+ const L=isPickup?5.22:isWagon?4.86:isSUV?4.68:isHatch?4.20:4.58;
+ const W=isPickup?1.90:isSUV?1.86:isWagon?1.80:isHatch?1.74:1.80;
+ const wheelR=isPickup?.35:isSUV?.335:isHatch?.292:.305;
+ const frontAx=-L*.34,rearAx=L*.34;
 
- // Extrude a clean side profile across vehicle width. This gives the cars a true
- // hood -> windshield -> roof -> rear silhouette instead of stacked rectangular boxes.
- function profilePrism(points,width,mat,xOffset=0){
+ // Slight single-segment bevel softens the toy-like hard edges without adding much geometry.
+ function profilePrism(points,width,mat,xOffset=0,bevel=.028){
    const sh=new THREE.Shape();
    points.forEach((pt,i)=>{const sx=-pt[0],sy=pt[1];if(i===0)sh.moveTo(sx,sy);else sh.lineTo(sx,sy)});
    sh.closePath();
-   const geo=new THREE.ExtrudeGeometry(sh,{depth:width,bevelEnabled:false,steps:1});
+   const geo=new THREE.ExtrudeGeometry(sh,{
+     depth:width,steps:1,
+     bevelEnabled:bevel>0,bevelSegments:1,bevelSize:bevel,bevelThickness:bevel
+   });
    geo.translate(0,0,-width*.5);geo.rotateY(Math.PI/2);
    const q=new THREE.Mesh(geo,mat);q.position.x=xOffset;q.castShadow=false;q.receiveShadow=false;g.add(q);return q;
  }
@@ -631,111 +633,125 @@ function car(x,z,rot=0,type=0){
  let bodyProfile,windowProfile=null;
  if(isPickup){
    bodyProfile=[
-     [-L*.50,.27],[-L*.50,.50],[-L*.47,.66],[-L*.30,.75],[-L*.20,.79],
-     [-L*.13,.83],[ L*.50,.77],[ L*.50,.27]
+     [-L*.50,.26],[-L*.50,.46],[-L*.485,.58],[-L*.445,.66],[-L*.30,.72],
+     [-L*.20,.76],[-L*.12,.79],[ L*.47,.75],[ L*.495,.67],[ L*.50,.26]
    ];
  }else if(isSUV){
    bodyProfile=[
-     [-L*.50,.27],[-L*.50,.54],[-L*.46,.72],[-L*.29,.80],[-L*.20,.84],
-     [-L*.10,1.28],[-L*.01,1.47],[ L*.25,1.46],[ L*.39,1.32],
-     [ L*.47,.87],[ L*.50,.72],[ L*.50,.27]
+     [-L*.50,.26],[-L*.50,.48],[-L*.485,.61],[-L*.44,.70],[-L*.28,.76],
+     [-L*.19,.79],[-L*.115,1.17],[-L*.045,1.35],[ L*.04,1.42],
+     [ L*.23,1.40],[ L*.34,1.30],[ L*.42,1.05],[ L*.475,.76],
+     [ L*.495,.64],[ L*.50,.26]
    ];
    windowProfile=[
-     [-L*.155,1.00],[-L*.08,1.28],[-L*.005,1.39],[L*.22,1.38],[L*.36,1.26],[L*.405,1.00]
+     [-L*.145,.95],[-L*.092,1.16],[-L*.035,1.30],[ L*.04,1.34],
+     [ L*.21,1.33],[ L*.31,1.24],[ L*.38,1.04],[ L*.395,.95]
    ];
  }else if(isWagon){
    bodyProfile=[
-     [-L*.50,.27],[-L*.50,.52],[-L*.46,.69],[-L*.30,.77],[-L*.20,.82],
-     [-L*.10,1.26],[-L*.01,1.42],[ L*.31,1.41],[ L*.43,1.27],
-     [ L*.48,.82],[ L*.50,.68],[ L*.50,.27]
+     [-L*.50,.26],[-L*.50,.47],[-L*.485,.60],[-L*.44,.68],[-L*.29,.74],
+     [-L*.20,.78],[-L*.115,1.14],[-L*.045,1.31],[ L*.04,1.38],
+     [ L*.29,1.36],[ L*.37,1.28],[ L*.43,1.08],[ L*.475,.75],
+     [ L*.495,.63],[ L*.50,.26]
    ];
    windowProfile=[
-     [-L*.155,1.00],[-L*.08,1.25],[-L*.005,1.35],[L*.29,1.34],[L*.405,1.23],[L*.445,1.00]
+     [-L*.145,.94],[-L*.092,1.14],[-L*.035,1.27],[ L*.04,1.31],
+     [ L*.27,1.30],[ L*.35,1.22],[ L*.405,1.04],[ L*.42,.94]
    ];
  }else if(isHatch){
    bodyProfile=[
-     [-L*.50,.27],[-L*.50,.50],[-L*.46,.67],[-L*.28,.75],[-L*.18,.81],
-     [-L*.09,1.23],[ L*.01,1.38],[ L*.20,1.37],[ L*.37,1.14],
-     [ L*.47,.79],[ L*.50,.65],[ L*.50,.27]
+     [-L*.50,.26],[-L*.50,.46],[-L*.482,.59],[-L*.43,.67],[-L*.27,.73],
+     [-L*.18,.77],[-L*.10,1.12],[-L*.03,1.28],[ L*.06,1.34],
+     [ L*.19,1.32],[ L*.30,1.20],[ L*.38,1.01],[ L*.465,.73],
+     [ L*.49,.61],[ L*.50,.26]
    ];
    windowProfile=[
-     [-L*.145,.98],[-L*.07,1.22],[L*.015,1.31],[L*.19,1.30],[L*.325,1.12],[L*.37,.98]
+     [-L*.145,.93],[-L*.088,1.12],[-L*.028,1.24],[ L*.055,1.27],
+     [ L*.18,1.25],[ L*.275,1.15],[ L*.34,.98],[ L*.355,.93]
    ];
  }else{
-   // Sedan: classic three-box proportions with a low hood and distinct trunk.
+   // Sedan: lower hood, long greenhouse, gentle roof arc and distinct but subtle trunk.
    bodyProfile=[
-     [-L*.50,.27],[-L*.50,.50],[-L*.46,.67],[-L*.29,.75],[-L*.20,.81],
-     [-L*.10,1.22],[-L*.01,1.39],[ L*.18,1.40],[ L*.31,1.25],
-     [ L*.38,.84],[ L*.47,.80],[ L*.50,.65],[ L*.50,.27]
+     [-L*.50,.26],[-L*.50,.47],[-L*.485,.59],[-L*.44,.67],[-L*.29,.73],
+     [-L*.20,.77],[-L*.115,1.10],[-L*.055,1.25],[-L*.005,1.31],
+     [ L*.09,1.35],[ L*.18,1.34],[ L*.26,1.27],[ L*.33,1.13],
+     [ L*.385,.86],[ L*.445,.79],[ L*.48,.76],[ L*.50,.64],[ L*.50,.26]
    ];
    windowProfile=[
-     [-L*.145,.99],[-L*.075,1.21],[-L*.005,1.32],[L*.17,1.33],[L*.275,1.20],[L*.325,.99]
+     [-L*.145,.93],[-L*.095,1.10],[-L*.045,1.22],[ L*.005,1.27],
+     [ L*.09,1.30],[ L*.17,1.29],[ L*.235,1.23],[ L*.295,1.10],[ L*.315,.93]
    ];
  }
 
- profilePrism(bodyProfile,W,bodyMat);
+ profilePrism(bodyProfile,W,bodyMat,0,.035);
 
  if(isPickup){
-   // Real pickup layout: front cab occupies roughly the front half, then an open bed.
+   // Lower, thinner pickup cab and thinner bed walls.
    const cab=[
-     [-L*.22,.78],[-L*.12,1.18],[-L*.04,1.39],[L*.105,1.39],
-     [L*.19,1.23],[L*.22,.78]
+     [-L*.22,.75],[-L*.145,.98],[-L*.095,1.16],[-L*.035,1.29],
+     [ L*.045,1.34],[ L*.12,1.33],[ L*.18,1.22],[ L*.215,.75]
    ];
-   profilePrism(cab,W*.90,bodyMat);
+   profilePrism(cab,W*.88,bodyMat,0,.030);
    const cabGlass=[
-     [-L*.145,.98],[-L*.095,1.18],[-L*.035,1.31],[L*.075,1.31],
-     [L*.145,1.18],[L*.17,.98]
+     [-L*.155,.93],[-L*.105,1.10],[-L*.06,1.21],[-L*.02,1.25],
+     [ L*.07,1.25],[ L*.135,1.15],[ L*.165,.93]
    ];
-   for(const sx of [-W*.456,W*.456])profilePrism(cabGlass,.026,glass,sx);
+   for(const sx of [-W*.45,W*.45])profilePrism(cabGlass,.022,glass,sx,.006);
 
    const bedStart=L*.22,bedEnd=L*.47,bedLen=bedEnd-bedStart,bedZ=(bedStart+bedEnd)*.5;
-   // Bed sides are thin, with a dark recessed floor so it reads as actually open.
-   box(.09,.31,bedLen,bodyMat,-W*.455,.78,bedZ,g);
-   box(.09,.31,bedLen,bodyMat, W*.455,.78,bedZ,g);
-   box(W*.91,.31,.09,bodyMat,0,.78,bedEnd,g);
-   box(W*.76,.045,bedLen*.88,trim,0,.58,bedZ,g);
-   box(W*.80,.055,.08,trim,0,.91,bedStart,g);
+   box(.065,.25,bedLen,bodyMat,-W*.455,.73,bedZ,g);
+   box(.065,.25,bedLen,bodyMat, W*.455,.73,bedZ,g);
+   box(W*.91,.25,.065,bodyMat,0,.73,bedEnd,g);
+   box(W*.77,.032,bedLen*.89,trim,0,.565,bedZ,g);
+   box(W*.80,.04,.06,trim,0,.86,bedStart,g);
  }else{
-   // Side glass follows the real roofline. Thin body pillars break the greenhouse naturally.
-   for(const sx of [-W*.456,W*.456])profilePrism(windowProfile,.025,glass,sx);
-   for(const sx of [-W*.462,W*.462]){
-     box(.026,.34,.060,bodyMat,sx,1.14,isWagon?L*.08:isSUV?L*.07:isHatch?L*.06:L*.065,g);
+   // Side glass hugs the roof profile. Pillars are deliberately thin.
+   for(const sx of [-W*.452,W*.452])profilePrism(windowProfile,.021,glass,sx,.005);
+   const pillarZ=isWagon?L*.075:isSUV?L*.065:isHatch?L*.055:L*.060;
+   for(const sx of [-W*.458,W*.458]){
+     box(.022,.29,.045,bodyMat,sx,1.08,pillarZ,g);
    }
  }
 
- // Front and rear glazing add depth in 3/4 views.
- const frontGlassZ=isPickup?-L*.13:-L*.11;
- const rearGlassZ=isPickup?L*.15:(isWagon?L*.34:isSUV?L*.34:isHatch?L*.30:L*.285);
- let fw=box(W*.64,.30,.030,glass,0,isPickup?1.17:1.16,frontGlassZ,g);fw.rotation.x=-.48;
- let rw=box(W*.60,.27,.030,glass,0,isPickup?1.15:1.14,rearGlassZ,g);rw.rotation.x=.46;
+ // Front/rear glass panels for 3/4 views, with shallower rake than v101.
+ const frontGlassZ=isPickup?-L*.13:-L*.115;
+ const rearGlassZ=isPickup?L*.15:(isWagon?L*.35:isSUV?L*.345:isHatch?L*.31:L*.292);
+ let fw=box(W*.60,.26,.024,glass,0,isPickup?1.11:1.09,frontGlassZ,g);fw.rotation.x=-.40;
+ let rw=box(W*.57,.23,.024,glass,0,isPickup?1.10:1.07,rearGlassZ,g);rw.rotation.x=.38;
 
- // Wheels sit near the corners like real road cars, with no fake rectangular arch pieces.
- for(const sx of [-W*.505,W*.505])for(const sz of [frontAx,rearAx]){
-   const wh=new THREE.Mesh(new THREE.CylinderGeometry(wheelR,wheelR,.18,14),tire);
+ // Smaller wheels and hubs reduce the cartoon look. Wheels remain near the corners.
+ for(const sx of [-W*.497,W*.497])for(const sz of [frontAx,rearAx]){
+   const wh=new THREE.Mesh(new THREE.CylinderGeometry(wheelR,wheelR,.16,16),tire);
    wh.rotation.z=Math.PI/2;wh.position.set(sx,wheelR,sz);g.add(wh);
-   const hub=new THREE.Mesh(new THREE.CylinderGeometry(wheelR*.48,wheelR*.48,.19,10),rim);
+   const hub=new THREE.Mesh(new THREE.CylinderGeometry(wheelR*.46,wheelR*.46,.17,12),rim);
    hub.rotation.z=Math.PI/2;hub.position.set(sx,wheelR,sz);g.add(hub);
-   const cap=new THREE.Mesh(new THREE.CylinderGeometry(wheelR*.15,wheelR*.15,.195,10),trim);
+   const cap=new THREE.Mesh(new THREE.CylinderGeometry(wheelR*.11,wheelR*.11,.175,12),trim);
    cap.rotation.z=Math.PI/2;cap.position.set(sx,wheelR,sz);g.add(cap);
  }
 
- // Details stay small and horizontal so they support the silhouette instead of dominating it.
- box(W*.68,.105,.040,trim,0,.54,-L*.505,g);
- box(W*.88,.075,.075,trim,0,.32,-L*.516,g);
- box(W*.84,.070,.075,trim,0,.33,L*.516,g);
- for(const hx of [-W*.30,W*.30]){
-   box(W*.17,.11,.028,headMat,hx,.64,-L*.510,g);
-   box(W*.16,.105,.028,tailMat,hx,.61,L*.510,g);
+ // Thin restrained details: lights, grille, bumper and plate.
+ box(W*.62,.075,.026,trim,0,.50,-L*.505,g);
+ box(W*.84,.055,.055,trim,0,.31,-L*.516,g);
+ box(W*.80,.052,.055,trim,0,.32,L*.516,g);
+ for(const hx of [-W*.29,W*.29]){
+   box(W*.145,.075,.021,headMat,hx,.59,-L*.510,g);
+   box(W*.14,.072,.021,tailMat,hx,.57,L*.510,g);
  }
- box(.38,.11,.018,plateMat,0,.45,L*.522,g);
+ box(.34,.08,.016,plateMat,0,.43,L*.522,g);
 
- // Door handles and mirrors make the side view read at close range.
- for(const sx of [-W*.47,W*.47]){
-   box(.10,.065,.15,bodyMat,sx,1.00,-L*.09,g);
+ // Subtle body crease and tiny mirrors/handles help close-up readability.
+ for(const sx of [-W*.46,W*.46]){
+   box(.018,.025,L*.56,trim,sx,.70,.03,g);
+   box(.075,.050,.11,bodyMat,sx,1.00,-L*.10,g);
    if(!isPickup){
-     box(.06,.035,.18,trim,sx,.91,-L*.02,g);
-     box(.06,.035,.18,trim,sx,.91,L*.17,g);
+     box(.045,.022,.12,trim,sx,.85,-L*.02,g);
+     box(.045,.022,.12,trim,sx,.85,L*.16,g);
    }
+ }
+
+ if(isPickup){
+   box(W*.78,.075,.055,trim,0,.34,L*.515,g);
+   box(W*.65,.024,.020,trim,0,.71,L*.508,g);
  }
 
  g.position.set(x,0,z);g.rotation.y=rot;
