@@ -590,7 +590,7 @@ const weaponDefs={
 };
 const ADS={
  rifle:{x:-.36,y:.005,z:-1.16,fov:58,rx:0},
- smg:{x:-.36,y:.045,z:-.38,fov:54,rx:0},
+ smg:{x:-.36,y:.030,z:-.92,fov:54,rx:0},
  shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
  dmr:{x:-.36,y:.015,z:-.54,fov:48,rx:0},
@@ -660,7 +660,7 @@ function rebuildGun(){
    part(.38,.34,.92,metal,-.30,-1.05);part(.34,.30,.48,poly,-.29,-1.58);grip(-.62,-.82,-.18);
    magazine(-.67,-1.18,.20,.62,.26,-.05);cyl(.06,.58,steel,x,-.245,-1.94);muzzleBrake(-2.23,.095);rail(-1.20,.86,-.10);
    for(const sx of [-.18,.18])cyl(.027,.70,steel,x+sx,-.30,-.45);box(.43,.33,.10,rubber,x,-.31,-.08,gun);
-   optic(-1.18,-.045,.60);frontSight(-1.78,-.10);box(.018,.12,.26,dark,x+.20,-.28,-.90,gun);
+   rearIron(-.68,-.010,.82);frontIron(-1.86,-.010,.78);box(.018,.12,.26,dark,x+.20,-.28,-.90,gun);
  }else if(weapon==='shotgun'){
    // Pump shotgun with twin tubes, ribbed fore-end, receiver and shoulder stock.
    stock(-.42,wood);part(.37,.30,.86,metal,-.30,-1.10);grip(-.61,-.72,-.30,wood);
