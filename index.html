@@ -169,7 +169,7 @@ function groan(v){
  o.start(t);o.stop(t+.60)
 }
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x89999a);scene.fog=new THREE.FogExp2(0x89999a,.0052);
-const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,1.45));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.42;
+const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,1.25));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.42;
 scene.add(new THREE.HemisphereLight(0xcbd9dc,0x596158,1.75));let sun=new THREE.DirectionalLight(0xffe5bd,3.15);sun.position.set(-35,48,-25);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-70;sun.shadow.camera.right=70;sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;scene.add(sun);
 const M=(c,r=.82)=>new THREE.MeshStandardMaterial({color:c,roughness:r});
 const EM=(c,e=.95,r=.28)=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:e,roughness:r});
@@ -326,7 +326,7 @@ function addFireEscape(x,y,z,h,side,p=scene){
  }
 }
 function addBuilding(w,h,d,x,z,base,variant){
- const style=variant%8,mat=facadeMaterial(base,variant),q=box(w,h,d,mat,x,h/2,z);
+ const style=variant%8,mat=facadeMaterial(base,variant),q=box(w,h,d,mat,x,h/2,z);q.userData.cityMain=true;
  buildingColliders.push({x,z,hx:w/2,hz:d/2});
  const roof=M(style===1?0x2f3940:style===3?0x5e4d42:style===5?0x626867:0x505556,.94);
  box(w*.96,.18,d*.96,roof,x,h+.09,z);
@@ -470,6 +470,16 @@ for(let x=-92;x<96;x+=14){
   addBuilding(w,h,d,x,52+rnd()*4,base,buildingId++);
 }
 
+
+// Static-city shadow cleanup: decorative roofs, curbs, paint, storefront trim,
+// lamps and rooftop props no longer enter the shadow pass. Large building masses
+// still cast shadows, which preserves the city's depth without the huge draw-call cost.
+scene.traverse(o=>{
+ if(!o.isMesh)return;
+ if(o.userData.cityMain){o.castShadow=true;o.receiveShadow=false}
+ else{o.castShadow=false;o.receiveShadow=false}
+});
+ground.receiveShadow=true;
 
 function car(x,z,rot=0,type=0){
  const g=new THREE.Group(),body=[0x394b5c,0x6b2626,0x555753,0x2d3338,0x786d54][type%5];
@@ -1602,12 +1612,23 @@ for(const c of parkedCars){if(Math.hypot(z.g.position.x-c.position.x,z.g.positio
  }
  if(z.cool<=0&&!(z.kind==="boss"&&z.bossAttackState))bite(z)
 }if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
-let perfTick=0;const DEBUG_PERF=new URLSearchParams(location.search).has("debug");
+let perfTick=0,perfFrames=0,perfTime=0,perfMaxMs=0,perfHud=null;const DEBUG_PERF=new URLSearchParams(location.search).has("debug");
+if(DEBUG_PERF){
+ perfHud=document.createElement("div");
+ perfHud.style.cssText="position:fixed;left:14px;top:14px;z-index:99998;background:#050708dd;color:#dfe7ea;border:1px solid #ffffff25;border-radius:9px;padding:8px 10px;font:12px/1.45 monospace;pointer-events:none;white-space:pre";
+ perfHud.textContent="PERFORMANCE\ncollecting...";
+ document.body.appendChild(perfHud)
+}
 cv.addEventListener("webglcontextlost",e=>{e.preventDefault();console.error("CITY OUTBREAK: WebGL context lost");show("GRAPHICS RESET — REFRESH IF NEEDED")});
 function perfGuard(dt){
  if(!DEBUG_PERF)return;
- perfTick+=dt;
- if(perfTick>3){perfTick=0;console.log("CityOutbreak perf",{zombies:living().length,parts:parts.length,impacts:impacts.length,casings:casings.length,renderer:ren.info.render});}
+ perfTick+=dt;perfTime+=dt;perfFrames++;perfMaxMs=Math.max(perfMaxMs,dt*1000);
+ if(perfTick>=1){
+   const fps=Math.round(perfFrames/Math.max(.001,perfTime)),avg=(perfTime/perfFrames*1000).toFixed(1),ri=ren.info.render;
+   perfHud.textContent="PERFORMANCE\nFPS "+fps+"  AVG "+avg+"ms  MAX "+perfMaxMs.toFixed(1)+"ms\nDRAWS "+ri.calls+"  TRIANGLES "+ri.triangles+"\nZOMBIES "+living().length+"  FX "+(parts.length+impacts.length+casings.length)+"\nPIXEL RATIO "+ren.getPixelRatio().toFixed(2);
+   console.log("CityOutbreak perf",{fps,avgMs:avg,maxMs:perfMaxMs.toFixed(1),zombies:living().length,parts:parts.length,impacts:impacts.length,casings:casings.length,renderer:ri});
+   perfTick=0;perfFrames=0;perfTime=0;perfMaxMs=0;
+ }
 }
 function resize(){ren.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",resize);resize();
 function frame(t){let dt=Math.min(.04,(t-last)/1000);last=t;update(dt);ren.render(scene,cam);requestAnimationFrame(frame)}requestAnimationFrame(frame);
