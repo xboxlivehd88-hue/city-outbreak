@@ -908,6 +908,44 @@ function carPointCollision(c,x,z,pad=.35){
  const qx=Math.max(Math.abs(lx)-hw,0),qz=Math.max(Math.abs(lz)-hl,0);
  return qx*qx+qz*qz<pad*pad;
 }
+function zombiePointBlocked(x,z,r=.50){
+ if(insideBuilding(x,z,r))return true;
+ for(const c of parkedCars)if(carPointCollision(c,x,z,r))return true;
+ return false;
+}
+function chooseZombieAvoidSide(z,nx,nz,r=.50){
+ const sideX=-nz,sideZ=nx,probe=1.35;
+ const lx=z.g.position.x+sideX*probe+nx*.20,lz=z.g.position.z+sideZ*probe+nz*.20;
+ const rx=z.g.position.x-sideX*probe+nx*.20,rz=z.g.position.z-sideZ*probe+nz*.20;
+ const leftFree=!zombiePointBlocked(lx,lz,r),rightFree=!zombiePointBlocked(rx,rz,r);
+ if(leftFree&&!rightFree)return 1;
+ if(rightFree&&!leftFree)return -1;
+ if(leftFree&&rightFree){
+   const ld=Math.hypot(px-lx,pz-lz),rd=Math.hypot(px-rx,pz-rz);
+   return ld<=rd?1:-1;
+ }
+ return z.avoidSide||z.side||1;
+}
+function moveZombieSmart(z,ox,oz,stepX,stepZ,r=.50){
+ const tx=ox+stepX,tz=oz+stepZ;
+ if(!zombiePointBlocked(tx,tz,r))return{x:tx,z:tz,blocked:false};
+
+ const mag=Math.hypot(stepX,stepZ)||.001,nx=stepX/mag,nz=stepZ/mag;
+ let side=z.avoidSide||z.side||1,sx=-nz*side,sz=nx*side;
+ const tries=[
+   [ox+sx*mag*1.18+nx*mag*.12,oz+sz*mag*1.18+nz*mag*.12],
+   [ox+sx*mag*.92,oz+sz*mag*.92],
+   [ox-sx*mag*1.05+nx*mag*.08,oz-sz*mag*1.05+nz*mag*.08]
+ ];
+ for(let i=0;i<tries.length;i++){
+   const p=tries[i];
+   if(!zombiePointBlocked(p[0],p[1],r)){
+     if(i===2)z.avoidSide=-side;
+     return{x:p[0],z:p[1],blocked:true};
+   }
+ }
+ return{x:ox,z:oz,blocked:true};
+}
 
 // Batch the cars together with the static city so the improved vehicle detail
 // does not bring back the old draw-call problem. parkedCars groups stay as cheap
@@ -1431,6 +1469,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    leftArmHP:2,rightArmHP:2,leftLegHP:2.5,rightLegHP:2.5,legDamage:0,leftArmDetached:false,rightArmDetached:false,leftLegDetached:false,rightLegDetached:false,ragdoll:null,knockdown:null,falling:false,corpseAge:0,fallDir:rnd()>.5?1:-1,fallAxis:rnd()>.55?"z":"x",fallSpeed:3.2+rnd()*2.1,
    role:(()=>{let r=rnd();if(kind==="boss")return "charger";if(kind==="sprinter"||kind==="infected"||kind==="acidic")return r<.58?"charger":"interceptor";if(kind==="crawler")return "charger";if(kind==="radiated")return r<.62?"charger":"flanker";if(wave<2)return "charger";return r<.58?"charger":r<.82?"flanker":"stalker"})(),
    side:i%2?1:-1,think:rnd()*.05,targetX:px,targetZ:pz,bravery:.75+rnd()*.5,groupOffset:(rnd()-.5)*5,
+   avoidSide:i%2?1:-1,avoidT:0,stuckT:0,lastNavX:safe.x,lastNavZ:safe.z,navFlipCooldown:0,
    strideScale:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.18:kind==="boss"?.88:1.0};
 
  if(kind==="crawler"){
@@ -2377,10 +2416,12 @@ z.groan-=dt;z.step-=dt;z.surgeT-=dt;z.pauseClock-=dt;
 let animRate=0;
 if(z.pauseClock<=0){z.pauseClock=1.1+rnd()*3.2;if(rnd()<.22)z.stagger=Math.max(z.stagger,.10+rnd()*.12)}
 if(z.surgeT<=0){z.surgeT=.65+rnd()*1.7;z.zig*=-1}z.think-=dt;
+z.avoidT=Math.max(0,(z.avoidT||0)-dt);z.navFlipCooldown=Math.max(0,(z.navFlipCooldown||0)-dt);
 const playerDistToZombie=Math.hypot(px-z.g.position.x,pz-z.g.position.z);
+const huntMode=highlightLast&&z.kind!=="boss";
 if(z.kind==="boss")tickBossSpecial(z,dt,playerDistToZombie);
 if(z.think<=0){
- z.think=.08+rnd()*.10;
+ z.think=huntMode?.025+rnd()*.025:.08+rnd()*.10;
  const speed=Math.hypot(playerVX,playerVZ),lead=Math.min(1.5,speed*.14);
  let tx=px, tz=pz;
 
@@ -2406,7 +2447,7 @@ if(z.think<=0){
  // Keep every role strongly biased toward the player.
  tx=px+(tx-px)*.42;
  tz=pz+(tz-pz)*.42;
- if(playerDistToZombie<6||active.length<=2){tx=px;tz=pz;}
+ if(huntMode||playerDistToZombie<6||active.length<=2){tx=px;tz=pz;}
  z.targetX=tx;z.targetZ=tz;
 }
 let dx=z.targetX-z.g.position.x,dz=z.targetZ-z.g.position.z,d=playerDistToZombie||.001;
@@ -2511,6 +2552,22 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  for(const o of active){if(o===z)continue;let ox=z.g.position.x-o.g.position.x,oz=z.g.position.z-o.g.position.z,od=Math.hypot(ox,oz);if(od>0&&od<1.65){sepX+=ox/od*(1.65-od);sepZ+=oz/od*(1.65-od)}}
  nx+=sepX*.55;nz+=sepZ*.55;
  let nl=Math.hypot(nx,nz)||1;nx/=nl;nz/=nl;
+
+ // Look ahead instead of waiting to physically grind into a wall/car.
+ const probeDist=(huntMode?1.55:1.15)+Math.min(.75,z.speed*.16);
+ const aheadBlocked=zombiePointBlocked(z.g.position.x+nx*probeDist,z.g.position.z+nz*probeDist,.52);
+ if(aheadBlocked&&z.avoidT<=0){
+   z.avoidSide=chooseZombieAvoidSide(z,nx,nz,.52);
+   z.avoidT=huntMode?1.05:.78;
+ }
+ if(z.avoidT>0){
+   const ax=-nz*z.avoidSide,az=nx*z.avoidSide;
+   const direct=huntMode?.34:.24;
+   nx=ax*(1-direct)+nx*direct;
+   nz=az*(1-direct)+nz*direct;
+   const al=Math.hypot(nx,nz)||1;nx/=al;nz/=al;
+ }
+
  let zig=Math.sin(z.phase*.55)*z.strafe*z.zig*.28,
  surge=1+(Math.sin(z.phase*1.35)>.72?z.surge*0.6:0),
  shamble=(z.nightmareType==="twitch"?1.00:z.nightmareType==="brute"?.88:z.nightmareType==="crawler"?.90:.84)
@@ -2520,16 +2577,33 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  if(kind==="boss"&&z.bossAttackState==="charge")surge*=2.35;
  if(kind==="boss"&&z.bossAttackState==="slam")stun*=.05;
  let ox=z.g.position.x,oz=z.g.position.z;
-let stepX=(nx+sx*zig)*z.speed*surge*shamble*stun*limpSlow*dt,stepZ=(nz+sz*zig)*z.speed*surge*shamble*stun*limpSlow*dt;
+ const huntSpeed=huntMode?(playerDistToZombie>35?1.72:playerDistToZombie>18?1.56:1.42):1;
+ const navSpeed=z.speed*huntSpeed;
+let stepX=(nx+sx*zig)*navSpeed*surge*shamble*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*surge*shamble*stun*limpSlow*dt;
 let moveLen=Math.hypot(stepX,stepZ);
 const strideRate=(kind==="sprinter"||kind==="infected"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
 z.phase += moveLen*strideRate;
-let zp=slideBuilding(ox,oz,ox+stepX,oz+stepZ,.50);z.g.position.x=zp.x;z.g.position.z=zp.z;
-for(const c of parkedCars){if(carPointCollision(c,z.g.position.x,z.g.position.z,.52)){let cp=slideBuilding(ox,oz,ox+sx*z.side*z.speed*dt,oz+sz*z.side*z.speed*dt,.50);z.g.position.x=cp.x;z.g.position.z=cp.z;break}}if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else{
+let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,.50);z.g.position.x=zp.x;z.g.position.z=zp.z;
+
+ const moved=Math.hypot(z.g.position.x-ox,z.g.position.z-oz);
+ if(moveLen>.012&&moved<moveLen*.28){
+   z.stuckT=(z.stuckT||0)+dt;
+ }else{
+   z.stuckT=Math.max(0,(z.stuckT||0)-dt*2.5);
+ }
+ if(z.stuckT>.32){
+   if(z.navFlipCooldown<=0){
+     z.avoidSide*=-1;
+     z.navFlipCooldown=.45;
+   }
+   z.avoidT=huntMode?1.20:.95;
+   z.stuckT=0;
+   z.think=0;
+ }if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else{
  if(z.attackAnim>0&&d>.001){
    const ax=(px-z.g.position.x)/d,az=(pz-z.g.position.z)/d;
    const ox=z.g.position.x,oz=z.g.position.z,lunge=(z.kind==="boss"?.38:z.kind==="crawler"?.16:.28)*dt;
-   const ap=slideBuilding(ox,oz,ox+ax*lunge,oz+az*lunge,.50);z.g.position.x=ap.x;z.g.position.z=ap.z;
+   const ap=moveZombieSmart(z,ox,oz,ax*lunge,az*lunge,.50);z.g.position.x=ap.x;z.g.position.z=ap.z;
  }
  if(z.cool<=0&&!(z.kind==="boss"&&z.bossAttackState))bite(z)
 }
