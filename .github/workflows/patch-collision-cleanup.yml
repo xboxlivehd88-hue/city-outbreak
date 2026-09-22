@@ -1,0 +1,26 @@
+name: One-shot player zombie collision patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-collision-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch player/zombie collision and round cleanup
+        run: python3 .github/patch_collision_cleanup.py
+      - name: Commit patch
+        run: |
+          git config user.name 'city-outbreak-bot'
+          git config user.email 'city-outbreak-bot@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Add player zombie collision and round corpse cleanup'
+          git push origin main
