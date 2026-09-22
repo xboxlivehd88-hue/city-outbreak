@@ -1523,6 +1523,7 @@ function rebuildGun(){
  const muzzleZ=weapon==='shotgun'?-3.38:weapon==='smg'?-2.36:weapon==='pistol'?-1.56:weapon==='dmr'?-4.13:weapon==='m240'?-4.34:weapon==='awm'?-4.84:weapon==='grenadeLauncher'?-3.12:-3.40;
  muzzle=new THREE.PointLight(0xffb35a,0,4);muzzle.position.set(x,-.23,muzzleZ);gun.add(muzzle);
  addPlayerHands();
+ gun.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
 }
 
 function setAim(v){
@@ -1661,7 +1662,7 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
  const eye=rigEyeColor(kind), outfit=rigOutfitColor(kind,variant),ownedRigMaterials=[];
  rig.traverse(o=>{
    if(!o.isMesh)return;
-   o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;
+   o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;o.userData.visualOnly=true;
    // The invisible procedural geometry remains responsible for shooting/hit zones.
    o.raycast=()=>{};
    const mats=Array.isArray(o.material)?o.material:[o.material];
@@ -1781,7 +1782,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    let eye=new THREE.Mesh(new THREE.SphereGeometry(.022,6,4),eyeMat);
    eye.position.set(ex,.018,-.137);head.add(eye);
  }
- let eyeGlow=new THREE.PointLight(eyeCol,kind==="boss"?1.1:.72,2.1,2.1);eyeGlow.position.set(0,.02,-.18);head.add(eyeGlow);
+ // Eye glow stays in the eye/emissive material; avoid a dynamic PointLight on every zombie.
  let nose=taperedPrism(.030,.018,.055,.024,.016,skin,0,-.010,-.126,head);nose.rotation.x=Math.PI/2;
  let mouth=box(.075,.012,.008,kind==="acidic"?ZM(0xaa1616,.75):ZM(0x361718,.9),0,-.112,-.128,head);
  if(i%3!==0){let hair=box(.19,.040,.135,ZM(i%2?0x221d19:0x30271f,.94),0,.145,-.005,head);hair.rotation.x=-.02}
@@ -1991,7 +1992,15 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  head.userData.part="head";torso.userData.part="torso";pelvis.userData.part="torso";
  armL.traverse(o=>{if(o.isMesh)o.userData.part="leftArm"});armR.traverse(o=>{if(o.isMesh)o.userData.part="rightArm"});
  legL.traverse(o=>{if(o.isMesh)o.userData.part="leftLeg"});legR.traverse(o=>{if(o.isMesh)o.userData.part="rightLeg"});
- g.traverse(o=>{if(o.isMesh){o.userData.zombie=zz;if(!o.userData.part)o.userData.part="body";const major=(o===torso||o===head||o===pelvis);o.castShadow=major;o.receiveShadow=major}});
+ const hitMeshes=[];
+ g.traverse(o=>{
+   if(!o.isMesh)return;
+   if(o.userData.visualOnly){o.castShadow=false;o.receiveShadow=false;return}
+   o.userData.zombie=zz;if(!o.userData.part)o.userData.part="body";
+   const major=(o===torso||o===head||o===pelvis);o.castShadow=major;o.receiveShadow=major;
+   hitMeshes.push(o)
+ });
+ zz.hitMeshes=hitMeshes;
  zombies.push(zz);if(kind==="boss")currentBoss=zz
 }
 
@@ -2074,7 +2083,7 @@ function spawnZombieDrop(pos){
 
  // scatter slightly from corpse so multiple drops/corpses don't overlap perfectly
  g.position.set(pos.x+(rnd()-.5)*.65,.04,pos.z+(rnd()-.5)*.65);
- scene.add(g);
+ g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});scene.add(g);
  drops.push({g,type,amount,weapon:ammoWeapon,life:DROP_LIFETIME,phase:rnd()*Math.PI*2,baseY:.04});
 }
 function spawnFixedDrop(pos,type,amount,ammoWeapon=null,ox=0,oz=0){
@@ -2091,7 +2100,7 @@ function spawnFixedDrop(pos,type,amount,ammoWeapon=null,ox=0,oz=0){
    labelText="HEALTH +"+amount;labelColor=0xff7777;box(.12,.035,.30,M(0xb52d2d,.72),0,.44,0,g);box(.32,.035,.10,M(0xb52d2d,.72),0,.44,0,g);
  }
  const label=makeDropLabel(labelText,labelColor);label.position.set(0,1.03,0);g.add(label);
- g.position.set(pos.x+ox,.04,pos.z+oz);scene.add(g);
+ g.position.set(pos.x+ox,.04,pos.z+oz);g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});scene.add(g);
  drops.push({g,type,amount,weapon:ammoWeapon,life:DROP_LIFETIME,phase:rnd()*Math.PI*2,baseY:.04});
 }
 function spawnBossRewardCache(pos){
@@ -2136,6 +2145,7 @@ function updateDrops(dt){
 }
 
 const living=()=>zombies.filter(z=>!z.dead);
+const activeFrame=[];
 function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
 const MAX_ACTIVE_ZOMBIES=20;
 const waveRemainingCount=()=>livingCount()+Math.max(0,waveTarget-waveSpawned);
@@ -2451,7 +2461,7 @@ function autoReloadIfEmpty(w=weapon){
  const a=ammoState[w];
  if(a&&a.mag<=0&&a.reserve>0&&!reloading&&!dying)reload(w)
 }
-const ray=new THREE.Raycaster();
+const ray=new THREE.Raycaster(),rayAim=new THREE.Vector2(),rayTargets=[];
 function fire(){
  if(!running||reloading||dying||between)return;
  if(weapon==="awm"&&performance.now()<awmReadyAt){show("CYCLING BOLT");return}
@@ -2467,12 +2477,12 @@ function fire(){
   autoReloadIfEmpty(firedWeapon);
   return
  }
- let didHit=false,headHit=false,targets=[];
- for(const z of zombies){if(z.dead)continue;z.g.traverse(o=>{if(o.isMesh)targets.push(o)})}
+ let didHit=false,headHit=false;rayTargets.length=0;
+ for(const z of zombies){if(z.dead)continue;if(z.hitMeshes)rayTargets.push(...z.hitMeshes)}
  for(let pellet=0;pellet<wd().pellets;pellet++){
    const adsSpread=aiming?(weapon==="awm"?.08:.38):1,sx=aimX+(Math.random()-.5)*wd().spread*adsSpread,sy=aimY+(Math.random()-.5)*wd().spread*adsSpread;
-   ray.setFromCamera(new THREE.Vector2(sx,sy),cam);
-   let hit=ray.intersectObjects(targets,false)[0];
+   rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
+   let hit=ray.intersectObjects(rayTargets,false)[0];
    if(hit&&hit.distance<80){
      let z=hit.object.userData.zombie;if(!z)continue;
      let hs=hit.object.userData.isHead===true,part=hit.object.userData.part||"body";
@@ -2883,8 +2893,8 @@ for(let i=casings.length-1;i>=0;i--){let c=casings[i];c.life-=dt;c.v.y-=4.5*dt;c
 for(let i=impacts.length-1;i>=0;i--){let p=impacts[i];p.life-=dt;p.v.y-=3*dt;p.q.position.addScaledVector(p.v,dt);if(p.life<=0){scene.remove(p.q);impacts.splice(i,1)}}
 for(let i=parts.length-1;i>=0;i--){let p=parts[i];p.life-=dt;p.v.y-=5*dt;p.q.position.addScaledVector(p.v,dt);
 if(p.limb||p.reloadMag){
- const sp=p.spin||new THREE.Vector3(4,5,3);p.q.rotation.x+=sp.x*dt;p.q.rotation.y+=sp.y*dt;p.q.rotation.z+=sp.z*dt;
- if(p.q.position.y<.08){p.q.position.y=.08;p.v.y*=-.20;p.v.x*=.68;p.v.z*=.68;sp.multiplyScalar(.62)}
+ const sp=p.spin,sx=sp?sp.x:4,sy=sp?sp.y:5,sz=sp?sp.z:3;p.q.rotation.x+=sx*dt;p.q.rotation.y+=sy*dt;p.q.rotation.z+=sz*dt;
+ if(p.q.position.y<.08){p.q.position.y=.08;p.v.y*=-.20;p.v.x*=.68;p.v.z*=.68;if(sp)sp.multiplyScalar(.62)}
 }
 if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math.min(1.2,cam.rotation.z+dt*.5);cam.position.y=Math.max(.25,cam.position.y-dt*.55);return}if(!running)return;move(dt);updateDrops(dt);if(between){return}for(let z of zombies){
  if(!z.dead)continue;
@@ -2894,7 +2904,8 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
 }
 if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
 spawnQueuedZombies();
-const active=living();
+activeFrame.length=0;for(const z of zombies)if(!z.dead)activeFrame.push(z);
+const active=activeFrame;
 updateBossUI();
 const highlightLast=(active.length+Math.max(0,waveTarget-waveSpawned))<=5&&!currentBoss;
 for(let z of active){
