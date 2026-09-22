@@ -1100,7 +1100,7 @@ function zombieRouteWaypoint(z){
 batchStaticCity();
 
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
-let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="";
+let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false;
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
  bloodGeoBig:new THREE.SphereGeometry(.075,5,4),
@@ -1169,10 +1169,10 @@ const HAND_POSES={
  rifle:{left:[.18,-.45,-1.72],right:[.36,-.62,-.74],reload:[.10,-.16,.50]},
  smg:{left:[.18,-.46,-1.43],right:[.36,-.62,-.82],reload:[.10,-.18,.31]},
  shotgun:{left:[.17,-.43,-1.83],right:[.36,-.61,-.72],reload:[.08,-.14,.63]},
- pistol:{left:[.20,-.56,-.80],right:[.36,-.60,-.72],reload:[-.22,-.42,.34]},
+ pistol:{left:[.20,-.56,-.80],right:[.36,-.60,-.72],reload:[.14,-.13,.07]},
  dmr:{left:[.17,-.46,-2.00],right:[.36,-.63,-.80],reload:[.10,-.16,.66]},
  grenadeLauncher:{left:[.17,-.46,-1.58],right:[.36,-.62,-.76],reload:[.09,-.13,.58]},
- m240:{left:[.15,-.45,-2.03],right:[.36,-.64,-.82],reload:[.12,.08,.72]},
+ m240:{left:[.15,-.45,-2.03],right:[.36,-.64,-.82],reload:[.32,-.18,.55]},
  awm:{left:[.16,-.46,-2.08],right:[.36,-.64,-.82],reload:[.10,-.14,.70]}
 };
 function fpsArmSegment(a,b,r,mat,parent){
@@ -1196,21 +1196,81 @@ function addPlayerHands(){
  playerHandRig={right,left,pose};
 }
 function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
+const DETACHABLE_RELOAD_WEAPONS=new Set(["rifle","smg","pistol","dmr","m240","awm"]);
+function detachableMagazineReload(w=reloadWeapon||weapon){return DETACHABLE_RELOAD_WEAPONS.has(w)&&!!playerReloadPart}
 function reloadPoseProgress(){
- if(!reloading||reloadDurationMs<=0)return{p:0,arch:0,hand:0,mag:0};
+ if(!reloading||reloadDurationMs<=0)return{p:0,arch:0,hand:0,mag:0,grab:0};
  const p=Math.max(0,Math.min(1,(performance.now()-reloadStartedAt)/reloadDurationMs));
  const arch=Math.sin(Math.PI*p);
- const hand=p<.30?smoothReload01(p/.30):p<.68?1:smoothReload01((1-p)/.32);
- const mag=p<.28?0:p<.46?smoothReload01((p-.28)/.18):p<.66?1:smoothReload01((1-p)/.34);
- return{p,arch,hand,mag};
+ const hand=p<.25?smoothReload01(p/.25):p<.76?1:smoothReload01((1-p)/.24);
+ const mag=p<.22?0:p<.40?smoothReload01((p-.22)/.18):p<.76?1:smoothReload01((1-p)/.24);
+ const grab=detachableMagazineReload()?(p<.28?0:p<.43?smoothReload01((p-.28)/.15):p<.50?1:p<.64?smoothReload01((.64-p)/.14):0):0;
+ return{p,arch,hand,mag,grab};
 }
+function clearReloadMagazineFX(showReal=true){
+ if(reloadFreshMag&&reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
+ reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
+ reloadOldMagDropped=false;reloadMagInserted=false;
+ if(showReal&&playerReloadPart){
+   playerReloadPart.visible=true;
+   if(playerReloadPart.userData.reloadHome)playerReloadPart.position.copy(playerReloadPart.userData.reloadHome);
+   if(playerReloadPart.userData.reloadHomeQuat)playerReloadPart.quaternion.copy(playerReloadPart.userData.reloadHomeQuat);
+ }
+}
+function beginReloadMagazineFX(){
+ clearReloadMagazineFX(true);
+ reloadOldMagDropped=false;reloadMagInserted=false;
+}
+function tossOldReloadMagazine(){
+ if(!detachableMagazineReload()||reloadOldMagDropped||!playerReloadPart.parent)return;
+ const oldMag=playerReloadPart.clone(true);oldMag.name="DiscardedMagazine";oldMag.visible=true;
+ oldMag.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ oldMag.position.copy(playerReloadPart.position);oldMag.quaternion.copy(playerReloadPart.quaternion);oldMag.scale.copy(playerReloadPart.scale);
+ gun.add(oldMag);gun.updateMatrixWorld(true);scene.attach(oldMag);
+ const throwV=new THREE.Vector3(-1.65,-1.15,.55).applyQuaternion(cam.quaternion);
+ parts.push({q:oldMag,v:throwV,life:1.20,reloadMag:true,spin:new THREE.Vector3(7.5,5.2,8.8)});
+ playerReloadPart.visible=false;reloadOldMagDropped=true;
+}
+function spawnFreshReloadMagazine(){
+ if(!detachableMagazineReload()||reloadFreshMag||reloadMagInserted||!playerHandRig)return;
+ const fresh=playerReloadPart.clone(true);fresh.name="FreshReloadMagazine";fresh.visible=true;
+ fresh.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ playerHandRig.left.add(fresh);
+ const hp=playerHandRig.pose.left;
+ fresh.position.set(hp[0]+.015,hp[1]-.13,hp[2]+.055);
+ const homeQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
+ fresh.quaternion.copy(homeQ);fresh.rotation.z+=.10;
+ reloadFreshMag=fresh;reloadFreshAttached=false;
+}
+function updateReloadMagazineFX(rp){
+ if(!reloading||!detachableMagazineReload())return;
+ if(rp.p>=.22&&!reloadOldMagDropped)tossOldReloadMagazine();
+ if(rp.p>=.38&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
+ if(rp.p>=.54&&reloadFreshMag&&!reloadFreshAttached){
+   playerHandRig.left.updateMatrixWorld(true);gun.attach(reloadFreshMag);
+   reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
+ }
+ if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
+   const t=smoothReload01((rp.p-.54)/.22),home=playerReloadPart.userData.reloadHome;
+   reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,home,t);
+   const targetQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
+   reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
+   if(rp.p>=.76){
+     if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
+     reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
+     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.visible=true;reloadMagInserted=true;
+   }
+ }
+}
+function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
+ clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry){try{o.geometry.dispose()}catch(_){}}});
  gun.clear();playerHandRig=null;playerReloadPart=null;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
- const magazine=(y,z,w=.22,h=.48,d=.32,ang=.08)=>{let q=part(w,h,d,metal,y,z);q.rotation.x=ang;q.userData.reloadHome=q.position.clone();playerReloadPart=q;box(w*.72,.035,d*1.03,dark,0,h*.22,0,q);return q};
+ const magazine=(y,z,w=.22,h=.48,d=.32,ang=.08)=>{let q=part(w,h,d,metal,y,z);q.rotation.x=ang;q.userData.reloadHome=q.position.clone();q.userData.reloadHomeQuat=q.quaternion.clone();playerReloadPart=q;box(w*.72,.035,d*1.03,dark,0,h*.22,0,q);return q};
  const rail=(z,len=.7,y=-.095)=>{box(.24,.045,len,dark,x,y,z,gun);for(let dz=-len*.42;dz<len*.43;dz+=.09)box(.27,.018,.025,metal,x,y-.028,z+dz,gun)};
  const muzzleBrake=(z,rad=.105)=>{cyl(rad,.22,dark,x,-.235,z);for(const dx of [-.065,.065])box(.035,.08,.08,M(0x050606,.25),x+dx,-.235,z-.01,gun)};
  const optic=(z,y=-.025,scale=1)=>{cyl(.11*scale,.48*scale,dark,x,y,z);for(const zz of [-.18,.18]){let r=new THREE.Mesh(new THREE.TorusGeometry(.125*scale,.025*scale,8,16),metal);r.rotation.x=Math.PI/2;r.position.set(x,y,z+zz*scale);gun.add(r)}box(.20*scale,.055,.14*scale,dark,x,y+.12*scale,z,gun)};
@@ -1256,6 +1316,7 @@ function rebuildGun(){
    // Semi-auto pistol: distinct slide/frame, exposed barrel, sights and textured grip.
    part(.30,.20,.90,M(0x343a3d,.27),-.18,-1.02);part(.27,.20,.64,poly,-.34,-.88);
    let pg=grip(-.61,-.72,-.18,rubber);pg.scale.x=.92;pg.scale.z=.86;
+   magazine(-.69,-.73,.12,.32,.14,-.02);
    cyl(.043,.55,steel,x,-.205,-1.38);box(.17,.025,.30,dark,x,-.58,-.72,gun);
    // ejection port and slide serrations
    box(.12,.018,.22,M(0x111315,.18),x+.08,-.075,-.98,gun);
@@ -1288,7 +1349,8 @@ function rebuildGun(){
    for(let zz=-2.04;zz>-3.00;zz-=.16)for(const sx of [-.135,.135])box(.022,.055,.075,dark,x+sx,-.27,zz,gun);
    // Side-hung ammo box, kept clear of the centerline like the real gun.
    let can=bevelBox(.32,.38,.34,M(0x4f5a43,.72),x+.30,-.66,-1.48,gun);can.rotation.x=.03;
-   box(.34,.040,.36,dark,x+.30,-.45,-1.48,gun);
+   can.userData.reloadHome=can.position.clone();can.userData.reloadHomeQuat=can.quaternion.clone();playerReloadPart=can;
+   box(.34,.040,.36,dark,0,.21,0,can);
    // Compact carry handle offset to the right so it never blocks ADS.
    box(.035,.25,.035,dark,x+.20,-.005,-1.74,gun);
    box(.18,.035,.035,dark,x+.12,.105,-1.74,gun);
@@ -1331,7 +1393,7 @@ function setAim(v){
  scopeOverlay.classList.toggle("show",aiming&&weapon==="awm");
  cross.style.opacity=aiming?"0":"1";
 }
-function setWeapon(w){if(!unlocked[w])return;stopAuto();setAim(false);weapon=w;rebuildGun();weaponNameEl.textContent=wd().name;show(wd().name);ui()}
+function setWeapon(w){if(reloading||!unlocked[w])return;stopAuto();setAim(false);weapon=w;rebuildGun();weaponNameEl.textContent=wd().name;show(wd().name);ui()}
 function weaponSound(){
  if(weapon==="pistol"){noise(.075,.38,1100);tone(125,.055,"square",.13);return}
  if(weapon==="dmr"){noise(.13,.62,1450);tone(78,.10,"square",.19);return}
@@ -2208,10 +2270,10 @@ function reload(w=weapon){
  if(reloading||!a||a.mag===cap||a.reserve<=0||dying)return false;
  setAim(false);
  const duration=Math.max(420,950-reloadLevel*120);
- reloading=true;reloadStartedAt=performance.now();reloadDurationMs=duration;reloadWeapon=w;reloadS();show("RELOADING");
+ reloading=true;reloadStartedAt=performance.now();reloadDurationMs=duration;reloadWeapon=w;beginReloadMagazineFX();reloadS();show("RELOADING");
  setTimeout(()=>{
    const n=Math.min(cap-a.mag,a.reserve);
-   a.mag+=n;a.reserve-=n;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";ui()
+   a.mag+=n;a.reserve-=n;finishReloadMagazineFX();reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";ui()
  },duration);
  return true
 }
@@ -2600,16 +2662,13 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(playerHandRig){
-   const ro=playerHandRig.pose.reload,h=rp.hand;
-   playerHandRig.left.position.set(ro[0]*h,ro[1]*h,ro[2]*h);
-   playerHandRig.left.rotation.set(.10*h,0,-.18*h);
+   const ro=playerHandRig.pose.reload,h=rp.hand,g=rp.grab||0;
+   playerHandRig.left.position.set(ro[0]*h-.08*g,ro[1]*h-.30*g,ro[2]*h+.20*g);
+   playerHandRig.left.rotation.set(.10*h+.12*g,0,-.18*h-.10*g);
    playerHandRig.right.position.set(0,-.025*rp.arch,.02*rp.arch);
    playerHandRig.right.rotation.set(.04*rp.arch,0,.05*rp.arch);
  }
- if(playerReloadPart&&playerReloadPart.userData.reloadHome){
-   const home=playerReloadPart.userData.reloadHome,m=rp.mag;
-   playerReloadPart.position.copy(home);playerReloadPart.position.y-=.28*m;playerReloadPart.position.z+=.08*m;
- }
+ updateReloadMagazineFX(rp);
  gun.visible=!(weapon==="awm"&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
@@ -2636,7 +2695,7 @@ for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q
 for(let i=casings.length-1;i>=0;i--){let c=casings[i];c.life-=dt;c.v.y-=4.5*dt;c.q.position.addScaledVector(c.v,dt);c.q.rotation.x+=c.spin*dt;c.q.rotation.z+=c.spin*.7*dt;if(c.q.position.y<.04){c.q.position.y=.04;c.v.y*=-.22;c.v.x*=.72;c.v.z*=.72}if(c.life<=0){scene.remove(c.q);casings.splice(i,1)}}
 for(let i=impacts.length-1;i>=0;i--){let p=impacts[i];p.life-=dt;p.v.y-=3*dt;p.q.position.addScaledVector(p.v,dt);if(p.life<=0){scene.remove(p.q);impacts.splice(i,1)}}
 for(let i=parts.length-1;i>=0;i--){let p=parts[i];p.life-=dt;p.v.y-=5*dt;p.q.position.addScaledVector(p.v,dt);
-if(p.limb){
+if(p.limb||p.reloadMag){
  const sp=p.spin||new THREE.Vector3(4,5,3);p.q.rotation.x+=sp.x*dt;p.q.rotation.y+=sp.y*dt;p.q.rotation.z+=sp.z*dt;
  if(p.q.position.y<.08){p.q.position.y=.08;p.v.y*=-.20;p.v.x*=.68;p.v.z*=.68;sp.multiplyScalar(.62)}
 }
