@@ -1418,7 +1418,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    shoulderDrop,pauseClock,attackAnim,attackSide,feral,twitch,snapBias,snapRate,nightmareType,armDrop,kind,groundY:0,
    hp,maxHP:hp,dead:false,speed,attack,damage,strafe,surge,bossName:kind==="boss"?(bossSpec?.name||bossWaveName||"BOSS"):"",bossBounty:kind==="boss"?(bossSpec?.bounty||250):0,bossSpecialCd:kind==="boss"?(bossSpec?.specialCd||7.5):0,bossAttackState:"",bossAttackT:0,bossChargeHit:false,
    cool:0,groan:1+rnd()*3,step:.2+rnd()*.38,phase:rnd()*6.28,zig:rnd()>.5?1:-1,surgeT:.5+rnd()*2,stagger:0,staggerDir:1,
-   leftArmHP:2,rightArmHP:2,leftLegHP:2.5,rightLegHP:2.5,legDamage:0,leftArmDetached:false,rightArmDetached:false,leftLegDetached:false,rightLegDetached:false,ragdoll:null,falling:false,corpseAge:0,fallDir:rnd()>.5?1:-1,fallAxis:rnd()>.55?"z":"x",fallSpeed:3.2+rnd()*2.1,
+   leftArmHP:2,rightArmHP:2,leftLegHP:2.5,rightLegHP:2.5,legDamage:0,leftArmDetached:false,rightArmDetached:false,leftLegDetached:false,rightLegDetached:false,ragdoll:null,knockdown:null,falling:false,corpseAge:0,fallDir:rnd()>.5?1:-1,fallAxis:rnd()>.55?"z":"x",fallSpeed:3.2+rnd()*2.1,
    role:(()=>{let r=rnd();if(kind==="boss")return "charger";if(kind==="sprinter"||kind==="infected"||kind==="acidic")return r<.58?"charger":"interceptor";if(kind==="crawler")return "charger";if(kind==="radiated")return r<.62?"charger":"flanker";if(wave<2)return "charger";return r<.58?"charger":r<.82?"flanker":"stalker"})(),
    side:i%2?1:-1,think:rnd()*.05,targetX:px,targetZ:pz,bravery:.75+rnd()*.5,groupOffset:(rnd()-.5)*5,
    strideScale:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.18:kind==="boss"?.88:1.0};
@@ -1935,7 +1935,7 @@ function updateRagdoll(z,dt){
  if(r.t>(r.blast?1.85:1.62)&&(!r.blast||z.g.position.y<=-.079))z.falling=false;
 }
 function killZ(z,hs,p,ragForce=1,ragOrigin=null){
- if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;bossHUD.classList.remove("show");show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
+ if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;bossHUD.classList.remove("show");show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
  if(hs){heads++;headS();burst(p,true);if(z.head&&z.head.parent)z.g.remove(z.head)}
  else{noise(.12,.16,260)}
  // Dead bodies keep the silhouette but stop expensive shadow work immediately.
@@ -2092,16 +2092,124 @@ function fireGrenadeLauncherRound(){
  const vel=dir.multiplyScalar(25);vel.y+=1.1;scene.add(q);
  thrown.push({q,v:vel,fuse:3.0,launcher:true});
 }
+function beginKnockdown(z,origin,strength=1){
+ if(!z||z.dead||z.kind==="boss")return;
+ const dx=z.g.position.x-origin.x,dz=z.g.position.z-origin.z,d=Math.hypot(dx,dz)||1;
+ const nx=dx/d,nz=dz/d,cos=Math.cos(z.g.rotation.y),sin=Math.sin(z.g.rotation.y);
+ const localX=nx*cos-nz*sin,localZ=nx*sin+nz*cos;
+ const power=Math.max(.45,Math.min(1.9,strength));
+
+ if(z.knockdown){
+   z.knockdown.downDur=Math.max(z.knockdown.downDur,.48+power*.42);
+   z.knockdown.vx+=nx*(1.3+power*1.5);
+   z.knockdown.vz+=nz*(1.3+power*1.5);
+   return;
+ }
+
+ if(z.mixer)z.mixer.stopAllAction();
+ z.attackAnim=0;z.cool=Math.max(z.cool,.6);
+ z.stagger=0;z.blastT=0;
+
+ const k=z.knockdown={
+   t:0,
+   fallDur:.34+Math.min(.14,power*.06),
+   downDur:.42+power*.46+rnd()*.22,
+   riseDur:.72+rnd()*.18,
+   baseX:z.g.rotation.x,baseZ:z.g.rotation.z,baseYPos:z.g.position.y,
+   fallX:z.g.rotation.x+(-localZ)*(1.08+power*.18),
+   fallZ:z.g.rotation.z+( localX)*(1.08+power*.18),
+   vx:nx*(1.8+power*2.25),
+   vz:nz*(1.8+power*2.25),
+   bones:[]
+ };
+
+ const add=(o,dxr,dyr,dzr)=>{
+   if(!o||!o.parent)return;
+   k.bones.push({
+     o,
+     sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
+     tx:o.rotation.x+dxr,ty:o.rotation.y+dyr,tz:o.rotation.z+dzr,
+     phase:rnd()*6.28
+   });
+ };
+
+ if(z.rigVisual){
+   add(rigBone(z,"Hips"),.18*localZ,0,-.22*localX);
+   add(rigBone(z,"Spine"),.42+(rnd()-.5)*.18,(rnd()-.5)*.14,-localX*.28);
+   add(rigBone(z,"Chest"),.48+(rnd()-.5)*.22,(rnd()-.5)*.18,-localX*.34);
+   add(rigBone(z,"Neck"),-.30,(rnd()-.5)*.18,localX*.22);
+   add(rigBone(z,"Head"),-.52,(rnd()-.5)*.28,localX*.34);
+   add(rigBone(z,"L_UpperArm"),.82+(rnd()-.5)*.30,0,-.62-rnd()*.24);
+   add(rigBone(z,"L_LowerArm"),.78+rnd()*.35,0,-.25-rnd()*.18);
+   add(rigBone(z,"R_UpperArm"),.82+(rnd()-.5)*.30,0,.62+rnd()*.24);
+   add(rigBone(z,"R_LowerArm"),.78+rnd()*.35,0,.25+rnd()*.18);
+   add(rigBone(z,"L_UpperLeg"),.38+(rnd()-.5)*.28,0,-.18);
+   add(rigBone(z,"L_LowerLeg"),-.72-rnd()*.28,0,-.08);
+   add(rigBone(z,"R_UpperLeg"),.28+(rnd()-.5)*.28,0,.18);
+   add(rigBone(z,"R_LowerLeg"),-.68-rnd()*.28,0,.08);
+ }else{
+   add(z.torso,.48+(rnd()-.5)*.18,0,-localX*.28);
+   add(z.head,-.46,(rnd()-.5)*.20,localX*.30);
+   add(z.armL,.86,0,-.58);add(z.elbowL,.72,0,-.22);
+   add(z.armR,.86,0,.58);add(z.elbowR,.72,0,.22);
+   add(z.legL,.38,0,-.16);add(z.kneeL,-.72,0,-.08);
+   add(z.legR,.28,0,.16);add(z.kneeR,-.68,0,.08);
+ }
+}
+function updateKnockdown(z,dt){
+ const k=z.knockdown;if(!k)return false;
+ k.t+=dt;
+ const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
+ const fallEnd=k.fallDur,downEnd=fallEnd+k.downDur,total=downEnd+k.riseDur;
+
+ let pose=1,root=1;
+ if(k.t<fallEnd){pose=smooth(k.t/fallEnd);root=smooth(k.t/fallEnd)}
+ else if(k.t<downEnd){pose=1;root=1}
+ else{const r=smooth((k.t-downEnd)/k.riseDur);pose=1-r;root=1-r}
+
+ z.g.rotation.x=k.baseX+(k.fallX-k.baseX)*root;
+ z.g.rotation.z=k.baseZ+(k.fallZ-k.baseZ)*root;
+ z.g.position.y=k.baseYPos-.055*root;
+
+ if(k.t<downEnd){
+   const ox=z.g.position.x,oz=z.g.position.z;
+   const bp=slideBuilding(ox,oz,ox+k.vx*dt,oz+k.vz*dt,.50);
+   z.g.position.x=bp.x;z.g.position.z=bp.z;
+   const drag=Math.exp(-dt*5.2);k.vx*=drag;k.vz*=drag;
+ }
+
+ for(const b of k.bones){
+   const loose=k.t<fallEnd?Math.sin(k.t*15+b.phase)*.045*(1-pose):0;
+   b.o.rotation.x=b.sx+(b.tx-b.sx)*pose+loose;
+   b.o.rotation.y=b.sy+(b.ty-b.sy)*pose+loose*.45;
+   b.o.rotation.z=b.sz+(b.tz-b.sz)*pose+loose*.65;
+ }
+
+ if(k.t>=total){
+   z.g.rotation.x=k.baseX;z.g.rotation.z=k.baseZ;z.g.position.y=k.baseYPos;
+   for(const b of k.bones){b.o.rotation.set(b.sx,b.sy,b.sz)}
+   z.knockdown=null;z.stagger=.10;z.think=0;
+   if(z.mixer&&z.rigBase){
+     z.mixer.stopAllAction();
+     z.rigBase.reset().fadeIn(.10).play();
+     z.rigTransient=null;z.rigTransientT=0;
+   }
+   return false;
+ }
+ return true;
+}
 function blastReact(z,origin,strength=1){
  if(!z||z.dead)return;
  const dx=z.g.position.x-origin.x,dz=z.g.position.z-origin.z,d=Math.hypot(dx,dz)||1;
- const bossScale=z.kind==="boss"?.32:1;
- z.blastT=Math.max(z.blastT||0,.28+.18*strength);
- z.blastVX=(dx/d)*(2.0+2.5*strength)*bossScale;
- z.blastVZ=(dz/d)*(2.0+2.5*strength)*bossScale;
- z.blastLean=(rnd()>.5?1:-1)*(.18+.18*strength)*bossScale;
- z.stagger=Math.max(z.stagger,z.kind==="boss"?.16:.48+.15*strength);
- if(z.mixer&&z.kind!=="boss")rigTransient(z,"Hit",.38+.10*strength);
+ if(z.kind==="boss"){
+   z.blastT=Math.max(z.blastT||0,.20+.10*strength);
+   z.blastVX=(dx/d)*(2.0+2.5*strength)*.32;
+   z.blastVZ=(dz/d)*(2.0+2.5*strength)*.32;
+   z.blastLean=(rnd()>.5?1:-1)*(.18+.18*strength)*.32;
+   z.stagger=Math.max(z.stagger,.16);
+   return;
+ }
+ beginKnockdown(z,origin,strength);
 }
 function explodeLauncherRound(g){
  noise(.34,.95,1100);tone(46,.42,"sine",.48);tone(92,.20,"square",.20);
@@ -2230,6 +2338,13 @@ for(let z of active){
    z.g.add(z.marker);
  }
  if(z.marker)z.marker.visible=highlightLast;
+
+ if(z.knockdown){
+   z.cool=Math.max(0,z.cool-dt);
+   z.groan-=dt;z.step-=dt;
+   updateKnockdown(z,dt);
+   continue;
+ }
 
 z.cool=Math.max(0,z.cool-dt);z.stagger=Math.max(0,(z.stagger||0)-dt);z.attackAnim=Math.max(0,z.attackAnim-dt);
 if(z.mixer){
