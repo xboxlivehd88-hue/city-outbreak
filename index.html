@@ -1210,7 +1210,7 @@ function rebuildGun(){
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
- const magazine=(y,z,w=.22,h=.48,d=.32,ang=.08)=>{let q=part(w,h,d,metal,y,z);q.rotation.x=ang;q.userData.reloadHome=q.position.clone();playerReloadPart=q;box(w*.72,.035,d*1.03,dark,x,y+h*.22,z,gun);return q};
+ const magazine=(y,z,w=.22,h=.48,d=.32,ang=.08)=>{let q=part(w,h,d,metal,y,z);q.rotation.x=ang;q.userData.reloadHome=q.position.clone();playerReloadPart=q;box(w*.72,.035,d*1.03,dark,0,h*.22,0,q);return q};
  const rail=(z,len=.7,y=-.095)=>{box(.24,.045,len,dark,x,y,z,gun);for(let dz=-len*.42;dz<len*.43;dz+=.09)box(.27,.018,.025,metal,x,y-.028,z+dz,gun)};
  const muzzleBrake=(z,rad=.105)=>{cyl(rad,.22,dark,x,-.235,z);for(const dx of [-.065,.065])box(.035,.08,.08,M(0x050606,.25),x+dx,-.235,z-.01,gun)};
  const optic=(z,y=-.025,scale=1)=>{cyl(.11*scale,.48*scale,dark,x,y,z);for(const zz of [-.18,.18]){let r=new THREE.Mesh(new THREE.TorusGeometry(.125*scale,.025*scale,8,16),metal);r.rotation.x=Math.PI/2;r.position.set(x,y,z+zz*scale);gun.add(r)}box(.20*scale,.055,.14*scale,dark,x,y+.12*scale,z,gun)};
@@ -2206,6 +2206,7 @@ function bite(z){if(z.cool>0)return;z.cool=z.attack;z.attackAnim=.62;z.attackSid
 function reload(w=weapon){
  const a=ammoState[w],cap=maxMag(w);
  if(reloading||!a||a.mag===cap||a.reserve<=0||dying)return false;
+ setAim(false);
  const duration=Math.max(420,950-reloadLevel*120);
  reloading=true;reloadStartedAt=performance.now();reloadDurationMs=duration;reloadWeapon=w;reloadS();show("RELOADING");
  setTimeout(()=>{
