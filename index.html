@@ -1100,6 +1100,7 @@ function zombieRouteWaypoint(z){
 batchStaticCity();
 
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
+let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="";
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
  bloodGeoBig:new THREE.SphereGeometry(.075,5,4),
@@ -1164,13 +1165,52 @@ function bevelBox(w,hh,d,mat,x,y,z,parent=gun){
  const geo=new THREE.ExtrudeGeometry(shape,{depth:d,bevelEnabled:true,bevelThickness:.025,bevelSize:.02,bevelSegments:2});
  geo.center();let q=new THREE.Mesh(geo,mat);q.position.set(x,y,z);q.castShadow=true;parent.add(q);return q
 }
+const HAND_POSES={
+ rifle:{left:[.18,-.45,-1.72],right:[.36,-.62,-.74],reload:[.10,-.16,.50]},
+ smg:{left:[.18,-.46,-1.43],right:[.36,-.62,-.82],reload:[.10,-.18,.31]},
+ shotgun:{left:[.17,-.43,-1.83],right:[.36,-.61,-.72],reload:[.08,-.14,.63]},
+ pistol:{left:[.20,-.56,-.80],right:[.36,-.60,-.72],reload:[-.22,-.42,.34]},
+ dmr:{left:[.17,-.46,-2.00],right:[.36,-.63,-.80],reload:[.10,-.16,.66]},
+ grenadeLauncher:{left:[.17,-.46,-1.58],right:[.36,-.62,-.76],reload:[.09,-.13,.58]},
+ m240:{left:[.15,-.45,-2.03],right:[.36,-.64,-.82],reload:[.12,.08,.72]},
+ awm:{left:[.16,-.46,-2.08],right:[.36,-.64,-.82],reload:[.10,-.14,.70]}
+};
+function fpsArmSegment(a,b,r,mat,parent){
+ const d=new THREE.Vector3().subVectors(b,a),len=d.length(),mid=new THREE.Vector3().addVectors(a,b).multiplyScalar(.5);
+ const q=new THREE.Mesh(new THREE.CylinderGeometry(r*.90,r,len,8),mat);q.position.copy(mid);
+ q.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.clone().normalize());q.castShadow=false;q.receiveShadow=false;parent.add(q);return q
+}
+function fpsHand(parent,hand,side,glove){
+ const palm=new THREE.Mesh(new THREE.SphereGeometry(.105,9,7),glove);palm.scale.set(.92,1.00,1.30);palm.position.copy(hand);palm.castShadow=false;parent.add(palm);
+ const thumb=new THREE.Mesh(new THREE.CylinderGeometry(.030,.038,.13,7),glove);thumb.position.set(hand.x+(side==='left'?.085:-.085),hand.y+.015,hand.z+.025);thumb.rotation.z=side==='left'?-.75:.75;thumb.rotation.x=.28;thumb.castShadow=false;parent.add(thumb);
+ for(let i=0;i<3;i++){const f=new THREE.Mesh(new THREE.CylinderGeometry(.020,.024,.13,6),glove);f.position.set(hand.x+(i-1)*.045,hand.y-.035,hand.z-.060);f.rotation.x=Math.PI/2;f.castShadow=false;parent.add(f)}
+}
+function addPlayerHands(){
+ const pose=HAND_POSES[weapon]||HAND_POSES.rifle;
+ const sleeve=M(0x27302d,.88),cuff=M(0x171b1b,.90),glove=M(0x111414,.82);
+ const right=new THREE.Group(),left=new THREE.Group();right.name='RightPlayerArm';left.name='LeftPlayerArm';gun.add(right,left);
+ const rs=new THREE.Vector3(.80,-1.12,.08),ls=new THREE.Vector3(-.35,-1.08,.06),rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
+ const rm=new THREE.Vector3().lerpVectors(rs,rh,.58),lm=new THREE.Vector3().lerpVectors(ls,lh,.58);
+ fpsArmSegment(rs,rm,.105,sleeve,right);fpsArmSegment(rm,rh,.086,cuff,right);fpsHand(right,rh,'right',glove);
+ fpsArmSegment(ls,lm,.105,sleeve,left);fpsArmSegment(lm,lh,.086,cuff,left);fpsHand(left,lh,'left',glove);
+ playerHandRig={right,left,pose};
+}
+function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
+function reloadPoseProgress(){
+ if(!reloading||reloadDurationMs<=0)return{p:0,arch:0,hand:0,mag:0};
+ const p=Math.max(0,Math.min(1,(performance.now()-reloadStartedAt)/reloadDurationMs));
+ const arch=Math.sin(Math.PI*p);
+ const hand=p<.30?smoothReload01(p/.30):p<.68?1:smoothReload01((1-p)/.32);
+ const mag=p<.28?0:p<.46?smoothReload01((p-.28)/.18):p<.66?1:smoothReload01((1-p)/.34);
+ return{p,arch,hand,mag};
+}
 function rebuildGun(){
  gun.traverse(o=>{if(o!==gun&&o.geometry){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();
+ gun.clear();playerHandRig=null;playerReloadPart=null;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
- const magazine=(y,z,w=.22,h=.48,d=.32,ang=.08)=>{let q=part(w,h,d,metal,y,z);q.rotation.x=ang;box(w*.72,.035,d*1.03,dark,x,y+h*.22,z,gun);return q};
+ const magazine=(y,z,w=.22,h=.48,d=.32,ang=.08)=>{let q=part(w,h,d,metal,y,z);q.rotation.x=ang;q.userData.reloadHome=q.position.clone();playerReloadPart=q;box(w*.72,.035,d*1.03,dark,x,y+h*.22,z,gun);return q};
  const rail=(z,len=.7,y=-.095)=>{box(.24,.045,len,dark,x,y,z,gun);for(let dz=-len*.42;dz<len*.43;dz+=.09)box(.27,.018,.025,metal,x,y-.028,z+dz,gun)};
  const muzzleBrake=(z,rad=.105)=>{cyl(rad,.22,dark,x,-.235,z);for(const dx of [-.065,.065])box(.035,.08,.08,M(0x050606,.25),x+dx,-.235,z-.01,gun)};
  const optic=(z,y=-.025,scale=1)=>{cyl(.11*scale,.48*scale,dark,x,y,z);for(const zz of [-.18,.18]){let r=new THREE.Mesh(new THREE.TorusGeometry(.125*scale,.025*scale,8,16),metal);r.rotation.x=Math.PI/2;r.position.set(x,y,z+zz*scale);gun.add(r)}box(.20*scale,.055,.14*scale,dark,x,y+.12*scale,z,gun)};
@@ -1282,6 +1322,7 @@ function rebuildGun(){
  for(const dx of [-.12,.12]){let pin=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.025,8),brass);pin.rotation.z=Math.PI/2;pin.position.set(x+dx,-.29,weapon==='pistol'?-.88:-1.0);gun.add(pin)}
  const muzzleZ=weapon==='shotgun'?-3.38:weapon==='smg'?-2.36:weapon==='pistol'?-1.56:weapon==='dmr'?-4.13:weapon==='m240'?-4.34:weapon==='awm'?-4.84:weapon==='grenadeLauncher'?-3.12:-3.40;
  muzzle=new THREE.PointLight(0xffb35a,0,4);muzzle.position.set(x,-.23,muzzleZ);gun.add(muzzle);
+ addPlayerHands();
 }
 
 function setAim(v){
@@ -2165,11 +2206,12 @@ function bite(z){if(z.cool>0)return;z.cool=z.attack;z.attackAnim=.62;z.attackSid
 function reload(w=weapon){
  const a=ammoState[w],cap=maxMag(w);
  if(reloading||!a||a.mag===cap||a.reserve<=0||dying)return false;
- reloading=true;reloadS();show("RELOADING");
+ const duration=Math.max(420,950-reloadLevel*120);
+ reloading=true;reloadStartedAt=performance.now();reloadDurationMs=duration;reloadWeapon=w;reloadS();show("RELOADING");
  setTimeout(()=>{
    const n=Math.min(cap-a.mag,a.reserve);
-   a.mag+=n;a.reserve-=n;reloading=false;ui()
- },Math.max(420,950-reloadLevel*120));
+   a.mag+=n;a.reserve-=n;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";ui()
+ },duration);
  return true
 }
 function autoReloadIfEmpty(w=weapon){
@@ -2547,7 +2589,27 @@ for(const c of parkedCars){
 }
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
 resolvePlayerZombieContact(oldx,oldz);
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*.16;gun.scale.setScalar(adsScale);gun.position.x=ac2.x*adsScale*aimBlend;gun.position.z=ac2.z*aimBlend+recoil*.42;gun.position.y=ac2.y*aimBlend-recoil*.08;gun.rotation.x=(ac2.rx||0)*aimBlend+recoil*2.05;gun.rotation.y=0;gun.rotation.z=0;gun.visible=!(weapon==="awm"&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*.16;const rp=reloadPoseProgress();
+ const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
+ gun.scale.setScalar(adsScale);
+ gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
+ gun.position.z=ac2.z*aimBlend+recoil*.42+rp.arch*.09;
+ gun.position.y=ac2.y*aimBlend-recoil*.08-rp.arch*(weapon==="m240"?.12:.18);
+ gun.rotation.x=(ac2.rx||0)*aimBlend+recoil*2.05+reloadTilt;
+ gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
+ gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
+ if(playerHandRig){
+   const ro=playerHandRig.pose.reload,h=rp.hand;
+   playerHandRig.left.position.set(ro[0]*h,ro[1]*h,ro[2]*h);
+   playerHandRig.left.rotation.set(.10*h,0,-.18*h);
+   playerHandRig.right.position.set(0,-.025*rp.arch,.02*rp.arch);
+   playerHandRig.right.rotation.set(.04*rp.arch,0,.05*rp.arch);
+ }
+ if(playerReloadPart&&playerReloadPart.userData.reloadHome){
+   const home=playerReloadPart.userData.reloadHome,m=rp.mag;
+   playerReloadPart.position.copy(home);playerReloadPart.position.y-=.28*m;playerReloadPart.position.z+=.08*m;
+ }
+ gun.visible=!(weapon==="awm"&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
@@ -2861,7 +2923,7 @@ function perfGuard(dt){
 }
 function resize(){ren.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",resize);resize();
 function frame(t){let dt=Math.min(.04,(t-last)/1000);last=t;update(dt);ren.render(scene,cam);requestAnimationFrame(frame)}requestAnimationFrame(frame);
-function reset(){initAudio();stopAuto();clearKeys();runStartTime=performance.now();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";document.body.style.cursor="";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){initAudio();stopAuto();clearKeys();runStartTime=performance.now();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:6,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";document.body.style.cursor="";running=true;spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();document.querySelector("#start").onclick=reset;document.querySelector("#restart").onclick=reset;document.querySelector("#deathRestart").onclick=reset;
 addEventListener("keydown",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(k==="7")setWeapon("m240");if(k==="8")setWeapon("awm");if(["w","a","s","d","r","g","n","1","2","3","4","5","6","7","8","shift"].includes(k))e.preventDefault()});
 addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});addEventListener("blur",()=>{clearKeys();stopAuto();setAim(false)});document.addEventListener("visibilitychange",()=>{if(document.hidden){clearKeys();stopAuto();setAim(false)}});
