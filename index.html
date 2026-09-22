@@ -1416,12 +1416,104 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    strideScale:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.18:kind==="boss"?.88:1.0};
 
  if(kind==="crawler"){
-   // Lower legs disappear; arms become the locomotion system.
+   // v111 crawler geometry pass: keep the low crawling silhouette, but replace the
+   // chunky mannequin pieces with rounder, higher-segment anatomy.
    kneeL.visible=false;kneeR.visible=false;
-   torso.position.set(0,.80,-.10);pelvis.position.set(0,.48,.03);neck.position.set(0,1.07,-.18);head.position.set(0,1.25,-.24);
-   legL.position.set(-hipOffset,.50,.12);legR.position.set(hipOffset,.50,.12);legL.rotation.x=-1.15;legR.rotation.x=-1.04;
+
+   // Rounded torso / pelvis. More segments only on crawlers, so the global zombie
+   // performance budget stays essentially unchanged.
+   try{torso.geometry.dispose()}catch(_){}
+   torso.geometry=new THREE.CylinderGeometry(.205,.160,.49,12,2,false);
+   torso.scale.set(1.08,1.0,.78);
+   torso.position.set(0,.80,-.10);
+   torso.rotation.x=-.24;
+
+   try{pelvis.geometry.dispose()}catch(_){}
+   pelvis.geometry=new THREE.CylinderGeometry(.165,.145,.23,10,2,false);
+   pelvis.scale.set(1.0,1.0,.82);
+   pelvis.position.set(0,.48,.03);
+   pelvis.rotation.x=-.18;
+
+   // A rounded shoulder/back mass removes the flat rectangular upper-body silhouette.
+   const crawlerBack=new THREE.Mesh(
+     new THREE.SphereGeometry(.255,12,8),
+     outfit===0?shirt:outerCloth
+   );
+   crawlerBack.scale.set(1.05,.72,.72);
+   crawlerBack.position.set(0,.95,-.08);
+   crawlerBack.rotation.x=-.18;
+   g.add(crawlerBack);
+
+   // Head becomes a proper rounded skull instead of a six-sided column.
+   try{head.geometry.dispose()}catch(_){}
+   head.geometry=new THREE.SphereGeometry(.155,12,9);
+   head.position.set(0,1.25,-.24);
+   head.scale.set(.94,1.08,.84);
+   head.rotation.set(-.18,0,0);
+
+   // Flatten the old blocky face add-ons so they read as surface detail instead of bricks.
+   forehead.scale.set(1.0,.60,.45);
+   cheekL.scale.set(.78,.82,.45);cheekR.scale.set(.78,.82,.45);
+   jaw.scale.set(.92,.72,.78);
+   browL.scale.z=.45;browR.scale.z=.45;
+
+   // Round neck / shoulders / elbows / hands.
+   try{neck.geometry.dispose()}catch(_){}
+   neck.geometry=new THREE.CylinderGeometry(.060,.072,.13,10);
+   neck.position.set(0,1.07,-.18);neck.rotation.x=-.42;
+
+   for(const s of [shoulderL,shoulderR]){
+     try{s.geometry.dispose()}catch(_){}
+     s.geometry=new THREE.SphereGeometry(.082,10,7);
+     s.scale.set(1.05,.92,.95);
+   }
+   shoulderL.position.set(-shoulderOffset,.99,-.12);
+   shoulderR.position.set( shoulderOffset,.99,-.12);
+
+   for(const a of [upperArmL,upperArmR]){
+     try{a.geometry.dispose()}catch(_){}
+     a.geometry=new THREE.CylinderGeometry(.062,.047,.34,10,2,false);
+   }
+   for(const e of [elbowJointL,elbowJointR]){
+     try{e.geometry.dispose()}catch(_){}
+     e.geometry=new THREE.SphereGeometry(.055,9,6);
+     e.scale.set(1.0,.86,.92);
+   }
+   for(const a of [foreArmL,foreArmR]){
+     try{a.geometry.dispose()}catch(_){}
+     a.geometry=new THREE.CylinderGeometry(.052,.037,.32,10,2,false);
+   }
+   for(const h of [handL,handR]){
+     try{h.geometry.dispose()}catch(_){}
+     h.geometry=new THREE.SphereGeometry(.054,9,6);
+     h.scale.set(.88,1.16,.92);
+   }
+
+   // Upper legs stay tucked under the body, but are smoother and more organic.
+   for(const t of [thighL,thighR]){
+     try{t.geometry.dispose()}catch(_){}
+     t.geometry=new THREE.CylinderGeometry(.080,.062,.36,9,2,false);
+   }
+
+   // Hide the stiff outer jacket shell on crawlers and replace it with a rounded cloth mass.
+   if(jacket){
+     jacket.visible=false;
+     const crawlerCloth=new THREE.Mesh(new THREE.SphereGeometry(.265,11,7),outerCloth);
+     crawlerCloth.scale.set(1.02,.68,.70);
+     crawlerCloth.position.set(0,.93,-.085);
+     crawlerCloth.rotation.x=-.18;
+     g.add(crawlerCloth);
+   }
+
+   // Re-pose the smoother limbs into a low, weight-bearing crawl.
+   legL.position.set(-hipOffset,.50,.12);legR.position.set(hipOffset,.50,.12);
+   legL.rotation.x=-1.18;legR.rotation.x=-1.08;
    armL.position.set(-shoulderOffset,.98,-.12);armR.position.set(shoulderOffset,.98,-.12);
-   g.rotation.x=-.08;
+   armL.rotation.x=.86;armR.rotation.x=.86;
+   armL.rotation.z=-.18;armR.rotation.z=.18;
+   elbowL.rotation.x=.48;elbowR.rotation.x=.48;
+
+   g.rotation.x=-.10;
  }
 
  attachRiggedZombie(zz,g,kind,i,hazardMist);
