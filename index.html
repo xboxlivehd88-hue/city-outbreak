@@ -100,7 +100,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 <div id="shopGrid">
   <section class="shopSection"><h3>Ammo</h3><div class="shopItems">
     <button data-buy="rifleAmmo">Rifle +36<br>$120</button>
-    <button data-buy="smgAmmo">SMG +60<br>$110</button>
+    <button data-buy="smgAmmo">MP5 +60<br>$110</button>
     <button data-buy="shotgunAmmo">Shotgun +18<br>$140</button>
     <button data-buy="pistolAmmo">Pistol +48<br>$90</button>
     <button data-buy="dmrAmmo">DMR +24<br>$160</button>
@@ -116,7 +116,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
   </div></section>
   <section class="shopSection"><h3>Weapons</h3><div class="shopItems">
     <button data-buy="pistol">Unlock Pistol<br>$1 TEST</button>
-    <button data-buy="smg">Unlock SMG<br>$1 TEST</button>
+    <button data-buy="smg">Unlock MP5<br>$1 TEST</button>
     <button data-buy="shotgun">Unlock Shotgun<br>$1 TEST</button>
     <button data-buy="dmr">Unlock DMR<br>$1 TEST</button>
     <button data-buy="grenadeLauncher">Unlock Grenade Launcher<br>$1 TEST</button>
@@ -1131,7 +1131,7 @@ let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0
 
 const weaponDefs={
  rifle:{name:"RIFLE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12},
- smg:{name:"SMG",rate:72,hold:150,spread:.012,pellets:1,body:.75,recoil:.065,baseMag:30},
+ smg:{name:"MP5",rate:72,hold:150,spread:.012,pellets:1,body:.75,recoil:.065,baseMag:30},
  shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.055,pellets:7,body:.72,recoil:.22,baseMag:8},
  pistol:{name:"PISTOL",rate:240,hold:9999,spread:.007,pellets:1,body:1.15,recoil:.09,baseMag:15},
  dmr:{name:"DMR",rate:330,hold:9999,spread:.0025,pellets:1,body:2.15,recoil:.16,baseMag:10},
@@ -1173,7 +1173,7 @@ function bevelBox(w,hh,d,mat,x,y,z,parent=gun){
 }
 const HAND_POSES={
  rifle:{left:[.18,-.45,-1.72],right:[.36,-.62,-.74],reload:[.10,-.16,.50]},
- smg:{left:[.18,-.46,-1.43],right:[.36,-.62,-.82],reload:[.10,-.18,.31]},
+ smg:{left:[.18,-.45,-1.60],right:[.36,-.62,-.82],reload:[.10,-.18,.31]},
  shotgun:{left:[.17,-.43,-1.83],right:[.36,-.61,-.72],reload:[.08,-.14,.63]},
  pistol:{left:[.20,-.56,-.80],right:[.36,-.60,-.72],reload:[.14,-.13,.07]},
  dmr:{left:[.17,-.46,-2.00],right:[.36,-.63,-.80],reload:[.10,-.16,.66]},
@@ -1359,11 +1359,37 @@ function rebuildGun(){
    // ejection port / charging handle
    box(.015,.115,.34,M(0x080909,.18),x+.19,-.27,-1.12,gun);box(.24,.045,.07,dark,x,-.16,-.57,gun);
  }else if(weapon==='smg'){
-   // Compact SMG with collapsible stock, short barrel and box magazine.
-   part(.38,.34,.92,metal,-.30,-1.05);part(.34,.30,.48,poly,-.29,-1.58);grip(-.62,-.82,-.18);
-   magazine(-.67,-1.18,.20,.62,.26,-.05);cyl(.06,.58,steel,x,-.245,-1.94);muzzleBrake(-2.23,.095);rail(-1.20,.86,-.10);
-   for(const sx of [-.18,.18])cyl(.027,.70,steel,x+sx,-.30,-.45);box(.43,.33,.10,rubber,x,-.31,-.08,gun);
-   rearIron(-.68,-.010,.82);frontIron(-1.86,-.010,.78);box(.018,.12,.26,dark,x+.20,-.28,-.90,gun);
+   // MP5-style compact roller-delayed SMG silhouette: tubular upper, polymer lower/handguard,
+   // curved magazine, hooded front sight and A3-style collapsible stock.
+   // Upper receiver and cocking tube.
+   cyl(.148,.98,metal,x,-.235,-1.08);cyl(.052,.92,steel,x,-.105,-1.32);
+   part(.405,.31,.72,poly,-.385,-1.03);grip(-.64,-.80,-.17);
+   // Classic compact polymer fore-end with subtle vent/rib detail.
+   let mp5Fore=part(.40,.285,.54,poly,-.30,-1.69);mp5Fore.rotation.x=.015;
+   for(const sx of [-.155,.155])for(let zz=-1.52;zz>-1.91;zz-=.13)box(.022,.07,.075,dark,x+sx,-.285,zz,gun);
+   // Short barrel and three-lug style muzzle profile.
+   cyl(.052,.50,steel,x,-.235,-2.07);cyl(.068,.17,dark,x,-.235,-2.375);
+   for(const sx of [-.055,.055])box(.027,.055,.09,steel,x+sx,-.235,-2.33,gun);
+   // Curved 30-round magazine. Keep the whole group as the reloadable part so the existing
+   // detachable-magazine animation continues to work unchanged.
+   const mp5Mag=new THREE.Group();mp5Mag.name="MP5Magazine";mp5Mag.position.set(x,-.61,-1.19);gun.add(mp5Mag);
+   let mp5m1=bevelBox(.19,.28,.24,metal,0,-.04,0,mp5Mag);mp5m1.rotation.x=-.035;
+   let mp5m2=bevelBox(.185,.27,.235,metal,0,-.285,-.035,mp5Mag);mp5m2.rotation.x=-.12;
+   let mp5m3=bevelBox(.17,.20,.22,metal,0,-.505,-.105,mp5Mag);mp5m3.rotation.x=-.22;
+   for(const mz of [-.075,0,.075])box(.018,.63,.018,dark,mz,-.25,.125,mp5Mag);
+   mp5Mag.userData.reloadHome=mp5Mag.position.clone();mp5Mag.userData.reloadHomeQuat=mp5Mag.quaternion.clone();playerReloadPart=mp5Mag;
+   // A3-style twin-rail retractable stock and butt plate.
+   for(const sx of [-.155,.155])cyl(.024,.76,steel,x+sx,-.30,-.43);
+   box(.39,.30,.085,rubber,x,-.31,-.055,gun);box(.33,.07,.11,dark,x,-.47,-.06,gun);
+   // Rear drum-style sight and iconic hooded front sight.
+   let mp5Rear=new THREE.Mesh(new THREE.TorusGeometry(.065,.018,8,18),dark);mp5Rear.position.set(x,-.065,-.67);gun.add(mp5Rear);
+   box(.16,.045,.11,dark,x,-.13,-.68,gun);
+   let mp5Hood=new THREE.Mesh(new THREE.TorusGeometry(.105,.022,8,20),dark);mp5Hood.position.set(x,-.13,-2.08);gun.add(mp5Hood);
+   box(.026,.12,.035,dark,x,-.20,-2.08,gun);
+   // Ejection port and left-side charging handle give the receiver its familiar MP5 profile.
+   box(.018,.105,.29,M(0x070808,.18),x+.158,-.245,-1.06,gun);
+   cyl(.025,.17,dark,x-.16,-.12,-1.58,gun,"x");
+   let mp5Knob=new THREE.Mesh(new THREE.SphereGeometry(.045,8,6),dark);mp5Knob.position.set(x-.245,-.12,-1.58);gun.add(mp5Knob);
  }else if(weapon==='shotgun'){
    // Pump shotgun with twin tubes, ribbed fore-end, receiver and shoulder stock.
    stock(-.42,wood);part(.37,.30,.86,metal,-.30,-1.10);grip(-.61,-.72,-.30,wood);
@@ -2435,7 +2461,7 @@ function buy(type){
  let price=0,ok=false;
 
  if(type==="rifleAmmo"){price=120;if(cash>=price){cash-=price;ammoState.rifle.reserve+=36;show("+36 RIFLE AMMO");ok=true}}
- if(type==="smgAmmo"){price=110;if(cash>=price){cash-=price;ammoState.smg.reserve+=60;show("+60 SMG AMMO");ok=true}}
+ if(type==="smgAmmo"){price=110;if(cash>=price){cash-=price;ammoState.smg.reserve+=60;show("+60 MP5 AMMO");ok=true}}
  if(type==="shotgunAmmo"){price=140;if(cash>=price){cash-=price;ammoState.shotgun.reserve+=18;show("+18 SHOTGUN SHELLS");ok=true}}
  if(type==="pistolAmmo"){price=90;if(cash>=price){cash-=price;ammoState.pistol.reserve+=48;show("+48 PISTOL AMMO");ok=true}}
  if(type==="dmrAmmo"){price=160;if(cash>=price){cash-=price;ammoState.dmr.reserve+=24;show("+24 DMR AMMO");ok=true}}
@@ -2446,7 +2472,7 @@ function buy(type){
  if(type==="mag"){price=250;if(cash>=price){cash-=price;magSize+=4;show("MAGAZINE UPGRADED");ok=true}}
  if(type==="damage"){price=350;if(cash>=price){cash-=price;damageLevel++;show("DAMAGE LEVEL "+damageLevel);ok=true}}
  if(type==="reload"){price=300;if(cash>=price){cash-=price;reloadLevel++;show("FASTER RELOAD");ok=true}}
- if(type==="smg"){price=1;if(unlocked.smg){show("SMG ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.smg=true;show("SMG UNLOCKED");ok=true}}
+ if(type==="smg"){price=1;if(unlocked.smg){show("MP5 ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.smg=true;show("MP5 UNLOCKED");ok=true}}
  if(type==="grenade"){price=175;if(cash>=price){cash-=price;grenades++;show("+1 GRENADE");ok=true}}
  if(type==="nuke"){price=100;if(cash>=price){cash-=price;nukes++;show("TACTICAL NUKE ACQUIRED");ok=true}}
  if(type==="pistol"){price=1;if(unlocked.pistol){show("PISTOL ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.pistol=true;show("PISTOL UNLOCKED");ok=true}}
