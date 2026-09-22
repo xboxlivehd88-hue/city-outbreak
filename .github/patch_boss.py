@@ -1,0 +1,94 @@
+from pathlib import Path
+
+p = Path('index.html')
+s = p.read_text()
+
+old = ''' if(kind==="boss"&&zz.rigVisual){
+   zz.rigVisual.scale.multiplyScalar(1.10);
+   const chestBone=zz.rigVisual.getObjectByName("Chest");if(chestBone)chestBone.scale.set(1.30,1.08,1.22);
+   for(const nm of ["L_UpperArm","R_UpperArm"]){const b=zz.rigVisual.getObjectByName(nm);if(b)b.scale.set(1.26,1.12,1.26)}
+   for(const nm of ["L_UpperLeg","R_UpperLeg"]){const b=zz.rigVisual.getObjectByName(nm);if(b)b.scale.set(1.14,1.08,1.14)}
+   zz.rigVisual.traverse(o=>{if(!o.isMesh)return;const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){const nm=(m.name||"").toLowerCase();if(nm.includes("wound"))m.color.setHex(0x780909);if(nm.includes("skin"))m.color.lerp(new THREE.Color(0x692724),.28);if(nm.includes("shirt"))m.color.lerp(new THREE.Color(0x3b1010),.42);m.needsUpdate=true}});
+   const goreGlow=new THREE.PointLight(0x8f1010,.7,4.5,2);goreGlow.position.set(0,1.55,.15);g.add(goreGlow);
+ }'''
+new = ''' if(kind==="boss"&&zz.rigVisual){
+   zz.rigVisual.scale.multiplyScalar(1.10);
+   const chestBone=zz.rigVisual.getObjectByName("Chest");if(chestBone)chestBone.scale.set(1.30,1.08,1.22);
+   for(const nm of ["L_UpperArm","R_UpperArm"]){const b=zz.rigVisual.getObjectByName(nm);if(b)b.scale.set(1.26,1.12,1.26)}
+   for(const nm of ["L_UpperLeg","R_UpperLeg"]){const b=zz.rigVisual.getObjectByName(nm);if(b)b.scale.set(1.14,1.08,1.14)}
+   zz.rigVisual.traverse(o=>{if(!o.isMesh)return;const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){const nm=(m.name||"").toLowerCase();if(nm.includes("wound"))m.color.setHex(0x780909);if(nm.includes("skin"))m.color.lerp(new THREE.Color(0x692724),.28);if(nm.includes("shirt"))m.color.lerp(new THREE.Color(0x3b1010),.42);m.needsUpdate=true}});
+
+   // Dedicated boss chest collision matching the enlarged visible model.
+   const bossHitMat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false});
+   const bossChestHitbox=new THREE.Mesh(new THREE.BoxGeometry(.72,.78,.48),bossHitMat);
+   bossChestHitbox.position.set(0,1.43,-.035);bossChestHitbox.userData.part="torso";bossChestHitbox.name="BossChestHitbox";g.add(bossChestHitbox);
+   zz.bossChestHitbox=bossChestHitbox;
+
+   const goreGlow=new THREE.PointLight(0x8f1010,.7,4.5,2);goreGlow.position.set(0,1.55,.15);g.add(goreGlow);
+ }'''
+if old not in s:
+    raise SystemExit('boss visual block not found')
+s = s.replace(old, new, 1)
+
+old = '''function blastReact(z,origin,strength=1){
+ if(!z||z.dead)return;
+ const dx=z.g.position.x-origin.x,dz=z.g.position.z-origin.z,d=Math.hypot(dx,dz)||1;
+ if(z.kind==="boss"){
+   z.blastT=Math.max(z.blastT||0,.20+.10*strength);
+   z.blastVX=(dx/d)*(2.0+2.5*strength)*.32;
+   z.blastVZ=(dz/d)*(2.0+2.5*strength)*.32;
+   z.blastLean=(rnd()>.5?1:-1)*(.18+.18*strength)*.32;
+   z.stagger=Math.max(z.stagger,.16);
+   return;
+ }
+ beginKnockdown(z,origin,strength);
+}'''
+new = '''function blastReact(z,origin,strength=1){
+ if(!z||z.dead)return;
+ if(z.kind==="boss"){
+   // Bosses flinch from explosives but never enter the old sideways blast-stagger pose.
+   z.blastT=0;z.blastVX=0;z.blastVZ=0;z.blastLean=0;z.stagger=0;
+   if(z.mixer)rigTransient(z,"Hit",Math.min(.34,.20+.06*strength));
+   z.cool=Math.max(z.cool,.16);
+   return;
+ }
+ beginKnockdown(z,origin,strength);
+}'''
+if old not in s:
+    raise SystemExit('blastReact block not found')
+s = s.replace(old, new, 1)
+
+old = '    else{blastReact(z,p,.70+force*1.15);stagger(z,false)}'
+new = '    else{blastReact(z,p,.70+force*1.15);if(z.kind!=="boss")stagger(z,false)}'
+if old not in s:
+    raise SystemExit('launcher stagger block not found')
+s = s.replace(old, new, 1)
+
+old = '    else{blastReact(z,p,.55+force*.95);stagger(z,false)}'
+new = '    else{blastReact(z,p,.55+force*.95);if(z.kind!=="boss")stagger(z,false)}'
+if old not in s:
+    raise SystemExit('grenade stagger block not found')
+s = s.replace(old, new, 1)
+
+old = '   if(!impact){for(const z of living()){const dx=g.q.position.x-z.g.position.x,dy=g.q.position.y-(z.g.position.y+1),dz=g.q.position.z-z.g.position.z;if(dx*dx+dy*dy+dz*dz<.49){impact=true;break}}}'
+new = '''   if(!impact){for(const z of living()){
+     const dx=g.q.position.x-z.g.position.x,dz=g.q.position.z-z.g.position.z;
+     if(z.kind==="boss"){
+       const chestY=z.g.position.y+1.43*(z.g.scale.y||1),dy=g.q.position.y-chestY;
+       if(dx*dx+dz*dz<.92*.92&&Math.abs(dy)<1.12){impact=true;break}
+     }else{
+       const dy=g.q.position.y-(z.g.position.y+1);
+       if(dx*dx+dy*dy+dz*dz<.49){impact=true;break}
+     }
+   }}'''
+if old not in s:
+    raise SystemExit('launcher projectile collision block not found')
+s = s.replace(old, new, 1)
+
+if 'BossChestHitbox' not in s or 'const chestY=z.g.position.y+1.43' not in s:
+    raise SystemExit('boss collision patch incomplete')
+if s.count('{') != s.count('}') or s.count('(') != s.count(')'):
+    raise SystemExit('syntax delimiter mismatch')
+
+p.write_text(s)
+print('boss patch applied')
