@@ -947,6 +947,153 @@ function moveZombieSmart(z,ox,oz,stepX,stepZ,r=.50){
  return{x:ox,z:oz,blocked:true};
 }
 
+const ZNAV_CELL=2.0,ZNAV_PAD=.56,ZNAV_MAX_NODES=1300;
+function zombieRouteClear(x1,z1,x2,z2,r=ZNAV_PAD){
+ const d=Math.hypot(x2-x1,z2-z1),steps=Math.max(1,Math.ceil(d/1.05));
+ for(let i=1;i<=steps;i++){
+   const t=i/steps;
+   if(zombiePointBlocked(x1+(x2-x1)*t,z1+(z2-z1)*t,r))return false;
+ }
+ return true;
+}
+function navNearestOpen(ix,iz,minX,maxX,minZ,maxZ){
+ const open=(x,z)=>x>=minX&&x<=maxX&&z>=minZ&&z<=maxZ&&!zombiePointBlocked(x*ZNAV_CELL,z*ZNAV_CELL,ZNAV_PAD);
+ if(open(ix,iz))return[ix,iz];
+ for(let r=1;r<=4;r++){
+   for(let x=ix-r;x<=ix+r;x++){
+     if(open(x,iz-r))return[x,iz-r];
+     if(open(x,iz+r))return[x,iz+r];
+   }
+   for(let z=iz-r+1;z<=iz+r-1;z++){
+     if(open(ix-r,z))return[ix-r,z];
+     if(open(ix+r,z))return[ix+r,z];
+   }
+ }
+ return null;
+}
+function navHeapPush(heap,node){
+ let i=heap.length;heap.push(node);
+ while(i>0){
+   const p=(i-1)>>1;
+   if(heap[p].f<=node.f)break;
+   heap[i]=heap[p];i=p;
+ }
+ heap[i]=node;
+}
+function navHeapPop(heap){
+ if(!heap.length)return null;
+ const root=heap[0],last=heap.pop();
+ if(heap.length){
+   let i=0;
+   while(true){
+     let l=i*2+1,r=l+1,b=i;
+     if(l<heap.length&&heap[l].f<(b===i?last.f:heap[b].f))b=l;
+     if(r<heap.length&&heap[r].f<(b===i?last.f:heap[b].f))b=r;
+     if(b===i)break;
+     heap[i]=heap[b];i=b;
+   }
+   heap[i]=last;
+ }
+ return root;
+}
+function buildZombieRoute(sx,sz,gx,gz){
+ if(zombieRouteClear(sx,sz,gx,gz))return[];
+
+ const margin=22,cell=ZNAV_CELL;
+ let minX=Math.floor((Math.min(sx,gx)-margin)/cell),maxX=Math.ceil((Math.max(sx,gx)+margin)/cell);
+ let minZ=Math.floor((Math.min(sz,gz)-margin)/cell),maxZ=Math.ceil((Math.max(sz,gz)+margin)/cell);
+ // Keep search bounded to the playable city so a bad route cannot explode CPU cost.
+ minX=Math.max(-72,minX);maxX=Math.min(72,maxX);
+ minZ=Math.max(-76,minZ);maxZ=Math.min(92,maxZ);
+
+ let s=navNearestOpen(Math.round(sx/cell),Math.round(sz/cell),minX,maxX,minZ,maxZ);
+ let g=navNearestOpen(Math.round(gx/cell),Math.round(gz/cell),minX,maxX,minZ,maxZ);
+ if(!s||!g)return null;
+
+ const key=(x,z)=>x+","+z,goalKey=key(g[0],g[1]);
+ const open=[],best=new Map(),closed=new Set();
+ const h=(x,z)=>Math.hypot(g[0]-x,g[1]-z);
+ const start={x:s[0],z:s[1],g:0,f:h(s[0],s[1]),parent:null};
+ navHeapPush(open,start);best.set(key(start.x,start.z),0);
+ const dirs=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,1.414],[-1,1,1.414],[1,-1,1.414],[-1,-1,1.414]];
+ let found=null,expanded=0;
+ while(open.length&&expanded++<ZNAV_MAX_NODES){
+   const cur=navHeapPop(open),ck=key(cur.x,cur.z);
+   if(closed.has(ck))continue;
+   if(ck===goalKey){found=cur;break}
+   closed.add(ck);
+
+   for(const d of dirs){
+     const nx=cur.x+d[0],nz=cur.z+d[1];
+     if(nx<minX||nx>maxX||nz<minZ||nz>maxZ)continue;
+     const nk=key(nx,nz);if(closed.has(nk))continue;
+     if(zombiePointBlocked(nx*cell,nz*cell,ZNAV_PAD))continue;
+     if(d[0]&&d[1]){
+       if(zombiePointBlocked((cur.x+d[0])*cell,cur.z*cell,ZNAV_PAD)||
+          zombiePointBlocked(cur.x*cell,(cur.z+d[1])*cell,ZNAV_PAD))continue;
+     }
+     const ng=cur.g+d[2];
+     if(ng>=(best.get(nk)??Infinity))continue;
+     best.set(nk,ng);
+     navHeapPush(open,{x:nx,z:nz,g:ng,f:ng+h(nx,nz),parent:cur});
+   }
+ }
+ if(!found)return null;
+
+ const raw=[];
+ for(let n=found;n&&n.parent;n=n.parent)raw.push({x:n.x*cell,z:n.z*cell});
+ raw.reverse();
+ if(!raw.length)return[];
+
+ // Line-of-sight smoothing removes grid zig-zag and leaves only useful corners.
+ const smooth=[],origin={x:sx,z:sz};
+ let anchor=origin,i=0;
+ while(i<raw.length){
+   let far=i;
+   for(let j=i;j<raw.length;j++){
+     if(zombieRouteClear(anchor.x,anchor.z,raw[j].x,raw[j].z,ZNAV_PAD))far=j;
+     else break;
+   }
+   const p=raw[far];smooth.push(p);anchor=p;i=far+1;
+ }
+ // End at the real player point when it is reachable from the last waypoint.
+ const last=smooth[smooth.length-1]||origin;
+ if(zombieRouteClear(last.x,last.z,gx,gz,ZNAV_PAD))smooth.push({x:gx,z:gz});
+ return smooth;
+}
+function updateZombieRoute(z,dt,huntMode){
+ z.navCheckT=Math.max(0,(z.navCheckT||0)-dt);
+ if(z.navPath&&z.navPath.length){
+   while(z.navIndex<z.navPath.length){
+     const w=z.navPath[z.navIndex];
+     if(Math.hypot(w.x-z.g.position.x,w.z-z.g.position.z)<1.15)z.navIndex++;
+     else break;
+   }
+   if(z.navIndex>=z.navPath.length){z.navPath=null;z.navIndex=0}
+ }
+
+ if(z.navCheckT>0)return;
+ z.navCheckT=huntMode?.32:.58;
+
+ const goalMoved=Math.hypot(px-(z.navGoalX??px),pz-(z.navGoalZ??pz))>(huntMode?3.2:4.8);
+ const directClear=zombieRouteClear(z.g.position.x,z.g.position.z,px,pz,ZNAV_PAD);
+ if(directClear){
+   z.navPath=null;z.navIndex=0;z.navGoalX=px;z.navGoalZ=pz;
+   return;
+ }
+ if(!z.navPath||goalMoved||z.navForceRepath){
+   const route=buildZombieRoute(z.g.position.x,z.g.position.z,px,pz);
+   z.navForceRepath=false;
+   z.navGoalX=px;z.navGoalZ=pz;
+   if(route&&route.length){z.navPath=route;z.navIndex=0;z.avoidT=0}
+   else{z.navPath=null;z.navIndex=0}
+ }
+}
+function zombieRouteWaypoint(z){
+ if(!z.navPath||z.navIndex>=z.navPath.length)return null;
+ return z.navPath[z.navIndex];
+}
+
 // Batch the cars together with the static city so the improved vehicle detail
 // does not bring back the old draw-call problem. parkedCars groups stay as cheap
 // collision anchors after their meshes are merged into the city batches.
@@ -1470,6 +1617,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    role:(()=>{let r=rnd();if(kind==="boss")return "charger";if(kind==="sprinter"||kind==="infected"||kind==="acidic")return r<.58?"charger":"interceptor";if(kind==="crawler")return "charger";if(kind==="radiated")return r<.62?"charger":"flanker";if(wave<2)return "charger";return r<.58?"charger":r<.82?"flanker":"stalker"})(),
    side:i%2?1:-1,think:rnd()*.05,targetX:px,targetZ:pz,bravery:.75+rnd()*.5,groupOffset:(rnd()-.5)*5,
    avoidSide:i%2?1:-1,avoidT:0,stuckT:0,lastNavX:safe.x,lastNavZ:safe.z,navFlipCooldown:0,
+   navPath:null,navIndex:0,navCheckT:rnd()*.45,navGoalX:px,navGoalZ:pz,navForceRepath:false,
    strideScale:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.18:kind==="boss"?.88:1.0};
 
  if(kind==="crawler"){
@@ -2389,7 +2537,7 @@ const highlightLast=waveRemainingCount()<=5&&!currentBoss;
 for(let z of active){
  if(!Number.isFinite(z.g.position.x)||!Number.isFinite(z.g.position.y)||!Number.isFinite(z.g.position.z)){
    const a=rnd()*Math.PI*2,dist=16+rnd()*8;let safe=pushOutsideBuilding(px+Math.sin(a)*dist,pz+Math.cos(a)*dist,.85);
-   z.g.position.set(safe.x,0,safe.z);z.targetX=px;z.targetZ=pz;z.stagger=.25;
+   z.g.position.set(safe.x,0,safe.z);z.targetX=px;z.targetZ=pz;z.stagger=.25;z.navPath=null;z.navIndex=0;z.navCheckT=0;
  }
  if(highlightLast&&!z.marker){
    z.marker=createLastZombieMarker();
@@ -2419,6 +2567,7 @@ if(z.surgeT<=0){z.surgeT=.65+rnd()*1.7;z.zig*=-1}z.think-=dt;
 z.avoidT=Math.max(0,(z.avoidT||0)-dt);z.navFlipCooldown=Math.max(0,(z.navFlipCooldown||0)-dt);
 const playerDistToZombie=Math.hypot(px-z.g.position.x,pz-z.g.position.z);
 const huntMode=highlightLast&&z.kind!=="boss";
+if(z.kind!=="boss")updateZombieRoute(z,dt,huntMode);
 if(z.kind==="boss")tickBossSpecial(z,dt,playerDistToZombie);
 if(z.think<=0){
  z.think=huntMode?.025+rnd()*.025:.08+rnd()*.10;
@@ -2448,6 +2597,11 @@ if(z.think<=0){
  tx=px+(tx-px)*.42;
  tz=pz+(tz-pz)*.42;
  if(huntMode||playerDistToZombie<6||active.length<=2){tx=px;tz=pz;}
+
+ // If direct pursuit is blocked, follow the A* corner route until line of sight opens again.
+ const wp=zombieRouteWaypoint(z);
+ if(wp){tx=wp.x;tz=wp.z}
+
  z.targetX=tx;z.targetZ=tz;
 }
 let dx=z.targetX-z.g.position.x,dz=z.targetZ-z.g.position.z,d=playerDistToZombie||.001;
@@ -2554,13 +2708,14 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  let nl=Math.hypot(nx,nz)||1;nx/=nl;nz/=nl;
 
  // Look ahead instead of waiting to physically grind into a wall/car.
+ const followingRoute=!!zombieRouteWaypoint(z);
  const probeDist=(huntMode?1.55:1.15)+Math.min(.75,z.speed*.16);
  const aheadBlocked=zombiePointBlocked(z.g.position.x+nx*probeDist,z.g.position.z+nz*probeDist,.52);
- if(aheadBlocked&&z.avoidT<=0){
+ if(!followingRoute&&aheadBlocked&&z.avoidT<=0){
    z.avoidSide=chooseZombieAvoidSide(z,nx,nz,.52);
    z.avoidT=huntMode?1.05:.78;
  }
- if(z.avoidT>0){
+ if(!followingRoute&&z.avoidT>0){
    const ax=-nz*z.avoidSide,az=nx*z.avoidSide;
    const direct=huntMode?.34:.24;
    nx=ax*(1-direct)+nx*direct;
@@ -2594,12 +2749,15 @@ let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,.50);z.g.position.x=zp.x;z.g.position
  }else{
    z.stuckT=Math.max(0,(z.stuckT||0)-dt*2.5);
  }
- if(z.stuckT>.32){
+ if(z.stuckT>.30){
+   z.navForceRepath=true;
+   z.navCheckT=0;
+   z.navPath=null;z.navIndex=0;
    if(z.navFlipCooldown<=0){
      z.avoidSide*=-1;
      z.navFlipCooldown=.45;
    }
-   z.avoidT=huntMode?1.20:.95;
+   z.avoidT=.20;
    z.stuckT=0;
    z.think=0;
  }if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else{
