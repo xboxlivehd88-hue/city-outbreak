@@ -1106,7 +1106,7 @@ function zombieRouteWaypoint(z){
 batchStaticCity();
 
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
-let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0;
+let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
  bloodGeoBig:new THREE.SphereGeometry(.075,5,4),
@@ -1221,6 +1221,10 @@ function reloadPoseProgress(){
 function clearReloadMagazineFX(showReal=true){
  if(reloadFreshMag&&reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
  reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
+ if(launcherFreshRound&&launcherFreshRound.parent)launcherFreshRound.parent.remove(launcherFreshRound);
+ launcherFreshRound=null;launcherRoundSeated=false;
+ if(launcherBreakRig)launcherBreakRig.rotation.x=0;
+ if(launcherChamberRound)launcherChamberRound.visible=false;
  reloadOldMagDropped=false;reloadMagInserted=false;
  if(showReal&&playerReloadPart){
    playerReloadPart.visible=true;
@@ -1231,6 +1235,35 @@ function clearReloadMagazineFX(showReal=true){
 function beginReloadMagazineFX(){
  clearReloadMagazineFX(true);
  reloadOldMagDropped=false;reloadMagInserted=false;
+}
+function makeLauncherReloadRound(parent){
+ const round=new THREE.Group();
+ const bodyMat=M(0x55643d,.62),rimMat=M(0xc39a4c,.34),noseMat=M(0x465638,.72);
+ const body=new THREE.Mesh(new THREE.CylinderGeometry(.095,.098,.30,10),bodyMat);body.rotation.x=Math.PI/2;body.castShadow=false;round.add(body);
+ const rim=new THREE.Mesh(new THREE.CylinderGeometry(.108,.108,.050,10),rimMat);rim.rotation.x=Math.PI/2;rim.position.z=.163;rim.castShadow=false;round.add(rim);
+ const nose=new THREE.Mesh(new THREE.SphereGeometry(.094,10,7),noseMat);nose.scale.set(1,1,.72);nose.position.z=-.155;nose.castShadow=false;round.add(nose);
+ parent.add(round);return round
+}
+function updateGrenadeLauncherReloadFX(rp){
+ if(!reloading||reloadWeapon!=="grenadeLauncher"||!launcherBreakRig)return;
+ const p=rp.p;
+ // Break the front half downward, hold it fully open while the round is loaded, then snap it shut.
+ const open=p<.20?smoothReload01(p/.20):p<.78?1:smoothReload01((1-p)/.22);
+ launcherBreakRig.rotation.x=-.72*open;
+
+ // A fresh grenade appears once the support hand reaches the pouch, then rides with the hand to the breech.
+ if(p>=.36&&!launcherFreshRound&&!launcherRoundSeated&&playerHandRig){
+   launcherFreshRound=makeLauncherReloadRound(playerHandRig.left);
+   const hp=playerHandRig.pose.left;
+   launcherFreshRound.position.set(hp[0]+.055,hp[1]-.020,hp[2]-.030);
+   launcherFreshRound.rotation.set(.06,0,-.04);
+ }
+ if(p>=.69&&!launcherRoundSeated){
+   if(launcherFreshRound&&launcherFreshRound.parent)launcherFreshRound.parent.remove(launcherFreshRound);
+   launcherFreshRound=null;launcherRoundSeated=true;
+   if(launcherChamberRound)launcherChamberRound.visible=true;
+   tone(540,.035,"square",.075);tone(760,.025,"square",.055,.035);
+ }
 }
 function tossOldReloadMagazine(){
  if(!detachableMagazineReload()||reloadOldMagDropped||!playerReloadPart.parent)return;
@@ -1292,7 +1325,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;
+ gun.clear();playerHandRig=null;playerReloadPart=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -1396,12 +1429,19 @@ function rebuildGun(){
    for(const sx of [-.16,.16]){let leg=cyl(.022,.72,steel,x+sx,-.48,-3.18,gun,"y");leg.rotation.z=sx<0?-.30:.30}
    box(.018,.12,.36,dark,x+.19,-.28,-1.18,gun);
  }else if(weapon==='grenadeLauncher'){
-   // Break-action style grenade launcher with a thick tube, compact stock and large trigger housing.
+   // Break-action grenade launcher: receiver stays with the stock while the complete front barrel half hinges downward.
    stock(-.30,poly);part(.40,.34,.92,metal,-.30,-1.12);grip(-.62,-.76,-.27,rubber);
-   cyl(.145,1.62,steel,x,-.23,-2.22);cyl(.112,1.45,dark,x,-.23,-2.18);
-   let ring=new THREE.Mesh(new THREE.TorusGeometry(.155,.032,10,18),metal);ring.rotation.x=Math.PI/2;ring.position.set(x,-.23,-3.02);gun.add(ring);
-   box(.32,.18,.44,poly,x,-.38,-1.58,gun);frontSight(-2.88,-.08);
-   box(.18,.10,.20,M(0x5b6d43,.65),x,-.49,-1.46,gun);
+   // Visible hinge/pivot at the breech makes the split obvious when the barrel opens.
+   const hinge=new THREE.Mesh(new THREE.CylinderGeometry(.075,.075,.48,10),dark);hinge.rotation.z=Math.PI/2;hinge.position.set(x,-.30,-1.43);gun.add(hinge);
+   launcherBreakRig=new THREE.Group();launcherBreakRig.name="GrenadeLauncherBreakBarrel";launcherBreakRig.position.set(x,-.30,-1.43);gun.add(launcherBreakRig);
+   cyl(.145,1.62,steel,0,.07,-.79,launcherBreakRig);cyl(.112,1.45,dark,0,.07,-.75,launcherBreakRig);
+   let ring=new THREE.Mesh(new THREE.TorusGeometry(.155,.032,10,18),metal);ring.rotation.x=Math.PI/2;ring.position.set(0,.07,-1.59);launcherBreakRig.add(ring);
+   box(.32,.18,.44,poly,0,-.08,-.15,launcherBreakRig);
+   box(.035,.17,.04,dark,0,.22,-1.45,launcherBreakRig);box(.15,.035,.04,dark,0,.145,-1.45,launcherBreakRig);
+   box(.18,.10,.20,M(0x5b6d43,.65),0,-.19,-.03,launcherBreakRig);
+   // Breech/chamber collar stays attached to the opening barrel.
+   let chamberRing=new THREE.Mesh(new THREE.TorusGeometry(.132,.022,8,16),metal);chamberRing.rotation.x=Math.PI/2;chamberRing.position.set(0,.07,-.015);launcherBreakRig.add(chamberRing);
+   launcherChamberRound=makeLauncherReloadRound(launcherBreakRig);launcherChamberRound.position.set(0,.07,-.10);launcherChamberRound.visible=false;
  }
  // Shared trigger/controls and small metallic fasteners.
  if(weapon!=='pistol'){
@@ -2326,7 +2366,7 @@ function reload(w=weapon){
    };
    reloading=true;reloadWeapon=w;beginReloadMagazineFX();show("RELOADING");loadShell();return true
  }
- const duration=DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
+ const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
  reloading=true;reloadStartedAt=performance.now();reloadDurationMs=duration;reloadWeapon=w;beginReloadMagazineFX();reloadS();show("RELOADING");
  setTimeout(()=>{
    if(seq!==reloadSequence||!reloading||reloadWeapon!==w)return;
@@ -2723,14 +2763,26 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(playerHandRig){
-   const ro=playerHandRig.pose.reload,h=rp.hand,pull=rp.pull||0,pouch=rp.pouch||0;
-   // Follow the old magazine as it is pulled free, then clearly reach away empty before returning with a fresh one.
-   playerHandRig.left.position.set(ro[0]*h-.10*pouch,ro[1]*h-.24*pull-.48*pouch,ro[2]*h+.05*pull+.22*pouch);
-   playerHandRig.left.rotation.set(.10*h+.11*pouch,0,-.18*h-.09*pouch);
+   if(reloading&&reloadWeapon==="grenadeLauncher"){
+     const p=rp.p;let lx=0,ly=0,lz=0,lr=0,t=0;
+     // Hand works the latch, drops to the pouch, carries the grenade to the open breech, then returns to the fore-end.
+     if(p<.18){t=smoothReload01(p/.18);lx=.08*t;ly=.08*t;lz=.08*t;lr=-.10*t}
+     else if(p<.38){t=smoothReload01((p-.18)/.20);lx=.08+(-.16-.08)*t;ly=.08+(-.52-.08)*t;lz=.08+(.24-.08)*t;lr=-.10+(-.24+.10)*t}
+     else if(p<.68){t=smoothReload01((p-.38)/.30);lx=-.16+(.18+.16)*t;ly=-.52+(.24+.52)*t;lz=.24+(.11-.24)*t;lr=-.24+(.10+.24)*t}
+     else if(p<.80){lx=.18;ly=.24;lz=.11;lr=.10}
+     else{t=smoothReload01((p-.80)/.20);lx=.18*(1-t);ly=.24*(1-t);lz=.11*(1-t);lr=.10*(1-t)}
+     playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06+lr,0,-.12-rp.arch*.08);
+   }else{
+     const ro=playerHandRig.pose.reload,h=rp.hand,pull=rp.pull||0,pouch=rp.pouch||0;
+     // Follow the old magazine as it is pulled free, then clearly reach away empty before returning with a fresh one.
+     playerHandRig.left.position.set(ro[0]*h-.10*pouch,ro[1]*h-.24*pull-.48*pouch,ro[2]*h+.05*pull+.22*pouch);
+     playerHandRig.left.rotation.set(.10*h+.11*pouch,0,-.18*h-.09*pouch);
+   }
    playerHandRig.right.position.set(0,-.025*rp.arch,.02*rp.arch);
    playerHandRig.right.rotation.set(.04*rp.arch,0,.05*rp.arch);
  }
  updateReloadMagazineFX(rp);
+ updateGrenadeLauncherReloadFX(rp);
  gun.visible=!(weapon==="awm"&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
