@@ -2579,8 +2579,8 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  let ox=z.g.position.x,oz=z.g.position.z;
  // Final-five rush: all remaining zombies move fast enough to pressure the player,
  // but are hard-capped below the player's 9 m/s full sprint.
- const huntTargetSpeed=playerDistToZombie>32?7.8:playerDistToZombie>16?7.4:7.0;
- const navSpeed=huntMode?Math.min(8.15,Math.max(huntTargetSpeed,z.speed)):z.speed;
+ const huntTargetSpeed=playerDistToZombie>32?5.8:playerDistToZombie>16?5.4:5.0;
+ const navSpeed=huntMode?Math.min(6.15,Math.max(huntTargetSpeed,z.speed)):z.speed;
  const motionScale=huntMode?1:surge*shamble;
 let stepX=(nx+sx*zig)*navSpeed*motionScale*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*motionScale*stun*limpSlow*dt;
 let moveLen=Math.hypot(stepX,stepZ);
