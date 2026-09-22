@@ -2255,6 +2255,13 @@ function buy(type){
  if(!ok&&cash<price)show("NOT ENOUGH CASH");ui()
 }
 shop.querySelectorAll("[data-buy]").forEach(b=>b.addEventListener("click",()=>buy(b.dataset.buy)));
+function clearRoundCorpses(){
+ // Anything still dead when the next round starts is removed in one cheap sweep.
+ for(const z of zombies){if(z.dead&&z.g&&z.g.parent)releaseZombieVisual(z)}
+ zombies=zombies.filter(z=>!z.dead);
+ // Detached zombie limbs are corpse debris too; clear them between rounds.
+ for(let i=parts.length-1;i>=0;i--){if(parts[i].limb){if(parts[i].q.parent)scene.remove(parts[i].q);parts.splice(i,1)}}
+}
 function beginBreak(){
  if(between||dying)return;
  between=true;stopAuto();
@@ -2269,6 +2276,7 @@ function readyNextWave(){
  shop.classList.remove("show");
  document.body.style.cursor="";
  between=false;
+ clearRoundCorpses();
  if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}
  wave++;ammoState.rifle.reserve+=18+wave*2;
  if(isBossWave(wave)){ensureBossWaveName(wave);big.textContent="WAVE "+wave+" — BOSS FIGHT";small.textContent=bossWaveName+" IS COMING"}else{big.textContent="WAVE "+wave;small.textContent=diff(wave).count+" ZOMBIES INCOMING"}
@@ -2487,6 +2495,37 @@ function detonateNuke(){
 }
 
 function clearKeys(){for(let k in keys)keys[k]=false}
+
+// Soft living-body collision: prevents the player and upright zombies from
+// ghosting through one another without turning enemies into rigid walls.
+function zombieContactRadius(z){return z.kind==="boss"?1.05:z.kind==="crawler"?.58:.72}
+function playerWorldBlocked(x,z){
+ if(insideBuilding(x,z,.62))return true;
+ for(const c of parkedCars)if(carPointCollision(c,x,z,.38))return true;
+ return false;
+}
+function resolvePlayerZombieContact(oldx,oldz){
+ for(const z of living()){
+   if(z.dead||z.knockdown)continue;
+   const minD=zombieContactRadius(z),zx=z.g.position.x,zz=z.g.position.z;
+   let dx=px-zx,dz=pz-zz,d=Math.hypot(dx,dz);
+   if(d>=minD)continue;
+   if(d<.001){dx=oldx-zx;dz=oldz-zz;d=Math.hypot(dx,dz);if(d<.001){dx=Math.sin(yaw);dz=Math.cos(yaw);d=1}}
+   const push=minD-d+.012,tx=px+dx/d*push,tz=pz+dz/d*push;
+   if(!playerWorldBlocked(tx,tz)){px=tx;pz=tz}else{px=oldx;pz=oldz}
+ }
+}
+function resolveZombiePlayerContact(z,oldx,oldz){
+ if(!z||z.dead||z.knockdown)return;
+ const minD=zombieContactRadius(z);
+ let dx=z.g.position.x-px,dz=z.g.position.z-pz,d=Math.hypot(dx,dz);
+ if(d>=minD)return;
+ if(d<.001){dx=oldx-px;dz=oldz-pz;d=Math.hypot(dx,dz);if(d<.001){dx=Math.sin(z.g.rotation.y);dz=Math.cos(z.g.rotation.y);d=1}}
+ const tx=px+dx/d*minD,tz=pz+dz/d*minD;
+ if(!zombiePointBlocked(tx,tz,.50)){z.g.position.x=tx;z.g.position.z=tz}
+ else{z.g.position.x=oldx;z.g.position.z=oldz}
+}
+
 let sprintUiPct=-1,sprintUiColor="",sprintUiState="";
 function updateSprintUI(){
  const pct=Math.max(0,Math.min(100,sprintEnergy)),shown=Math.ceil(pct),color=pct>55?"#58b96a":pct>25?"#d5ad45":"#c64646",state=sprintLocked?"RECOVERING":pct>=99?"READY":shown+"%";
@@ -2507,6 +2546,7 @@ for(const c of parkedCars){
  }
 }
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
+resolvePlayerZombieContact(oldx,oldz);
 stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*.16;gun.scale.setScalar(adsScale);gun.position.x=ac2.x*adsScale*aimBlend;gun.position.z=ac2.z*aimBlend+recoil*.42;gun.position.y=ac2.y*aimBlend-recoil*.08;gun.rotation.x=(ac2.rx||0)*aimBlend+recoil*2.05;gun.rotation.y=0;gun.rotation.z=0;gun.visible=!(weapon==="awm"&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
@@ -2756,6 +2796,7 @@ let moveLen=Math.hypot(stepX,stepZ);
 const strideRate=(kind==="sprinter"||kind==="infected"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
 z.phase += moveLen*strideRate;
 let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,.50);z.g.position.x=zp.x;z.g.position.z=zp.z;
+resolveZombiePlayerContact(z,ox,oz);
 
  const moved=Math.hypot(z.g.position.x-ox,z.g.position.z-oz);
  if(moveLen>.012&&moved<moveLen*.28){
@@ -2778,7 +2819,7 @@ let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,.50);z.g.position.x=zp.x;z.g.position
  if(z.attackAnim>0&&d>.001){
    const ax=(px-z.g.position.x)/d,az=(pz-z.g.position.z)/d;
    const ox=z.g.position.x,oz=z.g.position.z,lunge=(z.kind==="boss"?.38:z.kind==="crawler"?.16:.28)*dt;
-   const ap=moveZombieSmart(z,ox,oz,ax*lunge,az*lunge,.50);z.g.position.x=ap.x;z.g.position.z=ap.z;
+   const ap=moveZombieSmart(z,ox,oz,ax*lunge,az*lunge,.50);z.g.position.x=ap.x;z.g.position.z=ap.z;resolveZombiePlayerContact(z,ox,oz);
  }
  if(z.cool<=0&&!(z.kind==="boss"&&z.bossAttackState))bite(z)
 }
