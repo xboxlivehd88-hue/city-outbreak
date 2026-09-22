@@ -759,6 +759,7 @@ function car(x,z,rot=0,type=0){
    box(SW*.77,.035,SL*.54,trim,0,.225,.02,g);
 
    g.position.set(x,0,z);g.rotation.y=rot;
+   g.userData.carHalfW=SW*.48;g.userData.carHalfL=SL*.49;
    g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    scene.add(g);
    return g;
@@ -888,6 +889,7 @@ function car(x,z,rot=0,type=0){
  }
 
  g.position.set(x,0,z);g.rotation.y=rot;
+ g.userData.carHalfW=W*.48;g.userData.carHalfL=L*.49;
  g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
  scene.add(g);
  return g
@@ -898,6 +900,14 @@ const parkedCars=[];
  [-8,58,0,4],[8,78,Math.PI,0],[-8,103,0,1],[8,124,Math.PI,2],
  [-34,25,Math.PI/2,3],[-51,35,-Math.PI/2,4],[32,35,Math.PI/2,0],[52,25,-Math.PI/2,1]
 ].forEach((c,i)=>parkedCars.push(car(...c,i%5)));
+
+function carPointCollision(c,x,z,pad=.35){
+ const dx=x-c.position.x,dz=z-c.position.z,a=c.rotation.y,co=Math.cos(a),si=Math.sin(a);
+ const lx=co*dx-si*dz,lz=si*dx+co*dz;
+ const hw=c.userData.carHalfW||.88,hl=c.userData.carHalfL||2.30;
+ const qx=Math.max(Math.abs(lx)-hw,0),qz=Math.max(Math.abs(lz)-hl,0);
+ return qx*qx+qz*qz<pad*pad;
+}
 
 // Batch the cars together with the static city so the improved vehicle detail
 // does not bring back the old draw-call problem. parkedCars groups stay as cheap
@@ -1686,7 +1696,7 @@ const MAX_ACTIVE_ZOMBIES=20;
 const waveRemainingCount=()=>living().length+Math.max(0,waveTarget-waveSpawned);
 function validZombieSpawn(x,z){
  if(insideBuilding(x,z,.8))return false;
- for(const c of parkedCars)if(Math.hypot(x-c.position.x,z-c.position.z)<2.7)return false;
+ for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
  return Math.hypot(x-px,z-pz)>11;
 }
 function spawnOneZombie(i){
@@ -2293,7 +2303,17 @@ function updateSprintUI(){
  if(state!==sprintUiState){sprintUiState=state;sprintState.textContent=state}
 }
 function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
-for(const c of parkedCars){let dx=px-c.position.x,dz=pz-c.position.z;if(Math.hypot(dx,dz)<2.45){px=oldx;pz=oldz;break}}
+for(const c of parkedCars){
+ if(carPointCollision(c,px,pz,.38)){
+   const tx=px,tz=pz;
+   px=tx;pz=oldz;
+   if(carPointCollision(c,px,pz,.38)){
+     px=oldx;pz=tz;
+     if(carPointCollision(c,px,pz,.38)){px=oldx;pz=oldz}
+   }
+   break;
+ }
+}
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
 stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*.16;gun.scale.setScalar(adsScale);gun.position.x=ac2.x*adsScale*aimBlend;gun.position.z=ac2.z*aimBlend+recoil*.42;gun.position.y=ac2.y*aimBlend-recoil*.08;gun.rotation.x=(ac2.rx||0)*aimBlend+recoil*2.05;gun.rotation.y=0;gun.rotation.z=0;gun.visible=!(weapon==="awm"&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
@@ -2301,7 +2321,7 @@ perfGuard(dt);capFX();
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
  if(g.launcher){
    let impact=g.q.position.y<.10||insideBuilding(g.q.position.x,g.q.position.z,.05);
-   if(!impact){for(const c of parkedCars){if(Math.hypot(g.q.position.x-c.position.x,g.q.position.z-c.position.z)<1.45){impact=true;break}}}
+   if(!impact){for(const c of parkedCars){if(carPointCollision(c,g.q.position.x,g.q.position.z,.10)){impact=true;break}}}
    if(!impact){for(const z of living()){const dx=g.q.position.x-z.g.position.x,dy=g.q.position.y-(z.g.position.y+1),dz=g.q.position.z-z.g.position.z;if(dx*dx+dy*dy+dz*dz<.49){impact=true;break}}}
    if(impact||g.fuse<=0){explodeLauncherRound(g);thrown.splice(i,1);continue}
  }else{
@@ -2505,7 +2525,7 @@ let moveLen=Math.hypot(stepX,stepZ);
 const strideRate=(kind==="sprinter"||kind==="infected"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
 z.phase += moveLen*strideRate;
 let zp=slideBuilding(ox,oz,ox+stepX,oz+stepZ,.50);z.g.position.x=zp.x;z.g.position.z=zp.z;
-for(const c of parkedCars){if(Math.hypot(z.g.position.x-c.position.x,z.g.position.z-c.position.z)<2.15){let cp=slideBuilding(ox,oz,ox+sx*z.side*z.speed*dt,oz+sz*z.side*z.speed*dt,.50);z.g.position.x=cp.x;z.g.position.z=cp.z;break}}if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else{
+for(const c of parkedCars){if(carPointCollision(c,z.g.position.x,z.g.position.z,.52)){let cp=slideBuilding(ox,oz,ox+sx*z.side*z.speed*dt,oz+sz*z.side*z.speed*dt,.50);z.g.position.x=cp.x;z.g.position.z=cp.z;break}}if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else{
  if(z.attackAnim>0&&d>.001){
    const ax=(px-z.g.position.x)/d,az=(pz-z.g.position.z)/d;
    const ox=z.g.position.x,oz=z.g.position.z,lunge=(z.kind==="boss"?.38:z.kind==="crawler"?.16:.28)*dt;
