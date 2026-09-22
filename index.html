@@ -2577,9 +2577,12 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  if(kind==="boss"&&z.bossAttackState==="charge")surge*=2.35;
  if(kind==="boss"&&z.bossAttackState==="slam")stun*=.05;
  let ox=z.g.position.x,oz=z.g.position.z;
- const huntSpeed=huntMode?(playerDistToZombie>35?1.72:playerDistToZombie>18?1.56:1.42):1;
- const navSpeed=z.speed*huntSpeed;
-let stepX=(nx+sx*zig)*navSpeed*surge*shamble*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*surge*shamble*stun*limpSlow*dt;
+ // Final-five rush: all remaining zombies move fast enough to pressure the player,
+ // but are hard-capped below the player's 9 m/s full sprint.
+ const huntTargetSpeed=playerDistToZombie>32?7.8:playerDistToZombie>16?7.4:7.0;
+ const navSpeed=huntMode?Math.min(8.15,Math.max(huntTargetSpeed,z.speed)):z.speed;
+ const motionScale=huntMode?1:surge*shamble;
+let stepX=(nx+sx*zig)*navSpeed*motionScale*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*motionScale*stun*limpSlow*dt;
 let moveLen=Math.hypot(stepX,stepZ);
 const strideRate=(kind==="sprinter"||kind==="infected"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
 z.phase += moveLen*strideRate;
