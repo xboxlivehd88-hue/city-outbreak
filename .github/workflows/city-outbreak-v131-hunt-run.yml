@@ -1,0 +1,41 @@
+name: CITY OUTBREAK v131 hunt run
+on: [push]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Verify expected source
+        shell: bash
+        run: |
+          test "$(git hash-object index.html)" = "56fffe6c638b8e97f7065112449f000093a45586"
+      - name: Apply hunt run patch
+        run: python3 .github/city-outbreak-v131-hunt-run.py
+      - name: Validate JavaScript and diff
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, flags=re.S|re.I)
+          inline = max(scripts, key=len)
+          Path("/tmp/city-outbreak-v131.js").write_text(inline, encoding="utf-8")
+          PY
+          node --check /tmp/city-outbreak-v131.js
+          git diff --check
+      - name: Commit v131
+        shell: bash
+        run: |
+          git config user.name "CITY OUTBREAK Builder"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Add final-five walker hunt run animation v131"
+          git push origin HEAD:main
