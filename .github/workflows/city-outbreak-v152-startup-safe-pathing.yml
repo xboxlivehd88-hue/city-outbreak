@@ -1,0 +1,79 @@
+name: CITY OUTBREAK v152 startup-safe pathing
+on: [push]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Verify expected v151 source
+        shell: bash
+        run: |
+          test "$(git hash-object index.html)" = "b5e8f1007985f639a03a6baaa4e775cb0a95dcaf"
+      - name: Apply v152 patch
+        run: python3 .github/city-outbreak-v152-startup-safe-pathing.py
+      - name: Validate JavaScript and nav changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path("index.html").read_text(encoding="utf-8")
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,flags=re.S|re.I)
+          inline=max(scripts,key=len)
+          Path("/tmp/city-outbreak-v152.js").write_text(inline,encoding="utf-8")
+          assert 'const ZNAV_CELL=2.0,ZNAV_PAD=.72,ZNAV_MAX_NODES=1300;' in inline
+          assert 'Math.ceil(d/.85)' in inline
+          assert 'navFlipCooldown=1.15' in inline
+          assert 'z.avoidT=.55' in inline
+          assert 'MIN_RELIABLE_BUILDING_GAP' not in inline
+          assert 'sealNarrowBuildingGaps' not in inline
+          assert 'cityGapSeal' not in inline
+          PY
+          node --check /tmp/city-outbreak-v152.js
+          git diff --check
+      - name: Install browser driver
+        run: python3 -m pip install --quiet selenium
+      - name: Start local game server
+        run: |
+          python3 -m http.server 8000 >/tmp/city-http.log 2>&1 &
+          sleep 2
+      - name: Browser smoke test START OUTBREAK
+        run: |
+          python3 - <<'PY'
+          import time
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          from selenium.webdriver.support.ui import WebDriverWait
+          from selenium.webdriver.support import expected_conditions as EC
+          o=Options()
+          o.add_argument("--headless=new")
+          o.add_argument("--no-sandbox")
+          o.add_argument("--disable-dev-shm-usage")
+          o.add_argument("--disable-gpu")
+          d=webdriver.Chrome(options=o)
+          try:
+              d.get("http://127.0.0.1:8000/?v=152")
+              WebDriverWait(d,15).until(EC.element_to_be_clickable((By.ID,"start"))).click()
+              time.sleep(2)
+              display=d.execute_script("return getComputedStyle(document.getElementById('startScreen')).display")
+              if display!="none":
+                  raise SystemExit("START OUTBREAK smoke test failed: start screen remained visible")
+          finally:
+              d.quit()
+          PY
+      - name: Commit v152
+        shell: bash
+        run: |
+          git config user.name "CITY OUTBREAK Builder"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Restore startup and use safer zombie nav clearance v152"
+          git push origin HEAD:main
