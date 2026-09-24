@@ -1558,6 +1558,14 @@ function rebuildGun(){
      for(const propName of ["919 p320 17rnd empty mag_0","9x19_1","919_2","919 p320 17rnd mag_3"]){
        const prop=m17Root.getObjectByName(propName);if(prop&&prop.parent)prop.parent.remove(prop);
      }
+     // The source asset also carries two small brass display-round pieces that can
+     // survive under generic Object_* names. Keep only the actual assembled pistol
+     // branches from the GLTF scene root.
+     const sceneRoot=m17Root.getObjectByName("GLTF_SceneRootNode");
+     if(sceneRoot){
+       const keep=/^(m17fs barrel 4\.7in_4|m17fs slide_5|m17fs frame_6|m17fs slide release_7|m17fs trigga_8|m17fs safety_9)$/i;
+       for(const child of [...sceneRoot.children])if(!keep.test(child.name||""))sceneRoot.remove(child);
+     }
      m17Root.rotation.set(0,Math.PI/2,0);
      // Normalize only the assembled pistol, after applying its correct axis rotation.
      const bounds=new THREE.Box3().setFromObject(m17Root),size=new THREE.Vector3();bounds.getSize(size);
