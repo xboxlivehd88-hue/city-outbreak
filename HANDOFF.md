@@ -8,11 +8,11 @@ Last updated: 2026-09-24
 - Branch: `main`
 - Source of truth: root `index.html`
 - GitHub Pages: https://xboxlivehd88-hue.github.io/city-outbreak/
-- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=132
-- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=132&debug=1
-- Current `index.html` blob SHA at handoff: `cee06d57a9d89d59200b7a7bad8100592d33f45c`
-- Current branch HEAD before this handoff-doc commit: `7c6b2699c2ca579d5400f0ffd79901dfb7d8557e`
-- Latest gameplay commit: `08389875e386e0f0a634e3dc36d27f60f84f3a04` — `Improve walkers legless crawlers and drops v132`
+- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=139
+- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=139&debug=1
+- Current `index.html` blob SHA at handoff: `b4e68f63054d04acc56288be8239f2b74811d08b`
+- Current branch HEAD before this handoff-doc commit: `af3f1d55fe5a1227be6c7cec5ed69a120c2669ac`
+- Latest gameplay commit: `4f6e29de1a45250e42fe66d330fd544c1465fcd1` — `Add zombie gore and infected visual detail v139`
 - Pages deployment for the current branch completed successfully.
 
 IMPORTANT: the handoff/documentation commit comes after the gameplay commit. Do not treat the handoff commit as a gameplay change.
@@ -32,30 +32,29 @@ For every gameplay change:
 7. Give the user a cache-busted live link.
 8. Increment the cache-bust version by one for a new gameplay release.
 
-The next gameplay release after the current v132 should normally be **v133**.
+The next gameplay release after the current v139 should normally be **v140**.
 
 Do not tell the user GitHub/repo-write is unavailable unless a real GitHub connector call in that session actually fails. The user strongly prefers end-to-end execution.
 
 ## Immediate state / next-chat priority
 
-Current stable gameplay build is **v132**.
+Current stable gameplay build is **v139**.
 
-Latest user-requested changes in v132:
+Latest visual/zombie progression:
 
-- standing walker visual pass: fuller rig proportions, added neck bridge / upper-torso mass, and lower head position so the head reads as physically attached
-- both legs destroyed: surviving non-boss standing zombies convert in-place to the existing crawler style instead of simply remaining a fallen walker
-- detached limbs no longer intercept bullets
-- normal zombie drop chance increased by an absolute **+0.20** from **32% to 52%**
-- pickups float visibly higher above the ground
-- v131 final-five walker hunt/run animation is preserved
-- v130 performance cleanup is preserved
-- MP5 geometry/ADS work from v128-v129 is preserved
-- grenade-launcher break-action reload from v127 is preserved
+- v133 preserved the exact walker identity when both legs are lost and fixed visible neck/crawler identity
+- v134 gave converted crawlers dedicated low shooting/head/arm hitboxes and crawler grenade-impact height
+- v135 cleaned native crawler geometry and strengthened ragdolls across all zombie deaths
+- v136 corrected backward-looking knees and added smoother distance-synced walk/run locomotion
+- v137 softened flat shading and rounded walker silhouettes
+- v138 added human facial anatomy to walkers and native crawlers: nose, cheeks, ears, jaw/chin, brows, mouth, clavicle/shoulder transitions
+- **v139** adds the undead/gore pass: cooler corpse-like skin, darker/sunken eye sockets, wet dark-red face/jaw blood, collar/chest gore, stronger limb wounds, and properly repositioned crawler face/chest wounds
+- v139 intentionally preserves v136 movement speeds/AI/pathing, v134 hitboxes, v135 ragdolls, crawler conversion identity, drop rate 52%, and the 20-active-zombie performance cap
 
 Current live test:
-https://xboxlivehd88-hue.github.io/city-outbreak/?v=132
+https://xboxlivehd88-hue.github.io/city-outbreak/?v=139
 
-If the user reports a visual problem with walkers, crawler conversion, or pickups, fetch the newest `main:index.html` before changing anything and isolate the v132 logic first.
+If the user reports zombie visual issues next, fetch the newest `main:index.html` first. Do not undo the v136 locomotion correction or v134 converted-crawler hitboxes while tuning appearance.
 
 ## Current reload-system code to inspect
 
@@ -430,7 +429,7 @@ If starting a new chat, the user can paste this:
 > We are continuing my browser FPS game CITY OUTBREAK. Repo: `xboxlivehd88-hue/city-outbreak`, branch `main`, live site `https://xboxlivehd88-hue.github.io/city-outbreak/`. Read the root `HANDOFF.md` first, then fetch the latest `main:index.html`; never work from a stale copy. Do all GitHub edits/pushes/deploy checks for me. Current gameplay build is v124. Latest gameplay commit is `ec1e9c4472e03676a230a2a00df5140c62e32f41` (`Smooth magazine drop and fresh reload sequence`). Current work is first-person reload polish. We added visible hands, removable magazines, discarded-mag physics, a deliberate empty-hand pouch reach, fresh-mag pickup, and reinsertion. I have not yet confirmed v124 visually. First have me test `https://xboxlivehd88-hue.github.io/city-outbreak/?v=124`. If it still needs work, make old-mag removal/drop, empty-hand reach, fresh-mag pickup and insertion easier to see without changing the gun models/ADS. Preserve all existing zombie AI/pathing, boss behavior, collisions, performance optimizations, $1 test gun prices, and 20-active-zombie cap. After the next gameplay change push to main, verify Pages, and give me `?v=125`.
 
 
-## Recent release history (v125-v132)
+## Recent release history (v125-v139)
 
 - v125 — shotgun base 8 shells + shell-by-shell reload
 - v126 — maintenance/performance pass: nav-cell cache, async sequence guards, resource cleanup, hot-path allocation reductions
@@ -440,3 +439,11 @@ If starting a new chat, the user can paste this:
 - v130 — performance cleanup: removed per-zombie PointLights, cached hit meshes, reduced allocations/shadow work
 - v131 — normal walkers cross-fade to Sprint animation during final-five hunt mode without changing movement speed
 - v132 — walker geometry/head connection, double-leg-loss crawler conversion, drop chance 32%→52%, higher floating drops
+- v133 — same-zombie crawler conversion identity + native crawler head/neck cleanup
+- v134 — dedicated low converted-crawler hitboxes + crawler explosive collision fix
+- v135 — crawler geometry cleanup + stronger all-zombie ragdoll response
+- v136 — corrected knee bend direction + smoother distance-synced walking/running
+- v137 — smoother shading + rounded walker skull/jaw/body silhouette
+- v138 — humanized walker and native crawler facial/body anatomy
+- v139 — corpse tones, sunken sockets, face/jaw blood, collar/chest gore, crawler wound repositioning
+
