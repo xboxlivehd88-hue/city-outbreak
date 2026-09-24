@@ -1,0 +1,42 @@
+name: CITY OUTBREAK v153 start screen
+on:
+  push:
+    paths:
+      - '.github/workflows/v153-start-screen.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Guard source and patch start screen
+        run: |
+          test "$(git hash-object index.html)" = "67314c2d8f647d50281b9ca7711c7c1bfaeaaee7"
+          python3 .github/v153_start_patch.py
+          grep -q 'assets/city-outbreak-start-v153.jpg' index.html
+          grep -q 'id="showControls"' index.html
+          grep -q 'id="controlsModal"' index.html
+          grep -q 'function setStartControls(open)' index.html
+          test "$(grep -o 'id="start"' index.html | wc -l)" -eq 1
+      - name: Validate JavaScript and whitespace
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("index.html").read_text()
+          mods=re.findall(r'<script type="module">(.*?)</script>',s,re.S)
+          assert mods
+          Path("/tmp/city-outbreak-module.mjs").write_text(max(mods,key=len))
+          PY
+          node --check /tmp/city-outbreak-module.mjs
+          git diff --check
+      - name: Commit v153
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html assets/city-outbreak-start-v153.jpg
+          git commit -m "Add cinematic start screen and controls popup v153"
+          git push origin HEAD:main
