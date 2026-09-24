@@ -1131,8 +1131,12 @@ function tossOldReloadMagazine(){
  if(!detachableMagazineReload()||reloadOldMagDropped||!playerReloadPart.parent)return;
  const oldMag=playerReloadPart.clone(true);oldMag.name="DiscardedMagazine";oldMag.visible=true;
  oldMag.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ // First parent it to the gun, copy the local magwell transform, THEN update its
+ // world matrix before scene.attach(). Previously attach() ran with a stale matrix,
+ // which could throw the dropped magazine somewhere outside the camera view.
+ gun.add(oldMag);
  oldMag.position.copy(playerReloadPart.position);oldMag.quaternion.copy(playerReloadPart.quaternion);oldMag.scale.copy(playerReloadPart.scale);
- gun.add(oldMag);gun.updateMatrixWorld(true);scene.attach(oldMag);
+ gun.updateMatrixWorld(true);oldMag.updateMatrixWorld(true);scene.attach(oldMag);
  // Keep the discarded mag in the player's view for a moment instead of firing it off-screen.
  // Drop mostly straight down in camera space so it stays under the pistol on screen.
  const throwV=new THREE.Vector3(-.04,-.26,-.02).applyQuaternion(cam.quaternion);
@@ -1144,9 +1148,9 @@ function spawnFreshReloadMagazine(){
  const fresh=playerReloadPart.clone(true);fresh.name="FreshReloadMagazine";fresh.visible=true;
  fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
  playerHandRig.left.add(fresh);
- const hp=playerHandRig.pose.left;
- // It appears only once the empty hand has reached the pouch area, then rides back up in that hand.
- fresh.position.set(hp[0]+.012,hp[1]-.15,hp[2]+.050);
+ // Local coordinates here are relative to the hand itself. Do not add the hand's
+ // gun-space pose a second time; that was placing the fresh magazine far away.
+ fresh.position.set(0,.24,-.015);
  const homeQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
  fresh.quaternion.copy(homeQ);fresh.rotation.z+=.08;
  reloadFreshMag=fresh;reloadFreshAttached=false;
