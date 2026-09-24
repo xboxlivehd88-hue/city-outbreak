@@ -1157,6 +1157,22 @@ new GLTFLoader().load("assets/classic_m4.glb.glb",gltf=>{
  });
  if(weapon==="rifle")rebuildGun();
 },undefined,err=>console.warn("M4 GLB load failed; using procedural fallback",err));
+// v170: supplied SIG Sauer M17 GLB. Keep the old procedural pistol as a safe fallback.
+let m17ModelTemplate=null;
+new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
+ m17ModelTemplate=gltf.scene;
+ m17ModelTemplate.traverse(o=>{
+   o.userData.externalWeaponAsset=true;
+   if(o.isMesh){
+     o.castShadow=false;o.receiveShadow=false;
+     const mats=Array.isArray(o.material)?o.material:[o.material];
+     for(const mat of mats)if(mat)for(const key of ["map","normalMap","roughnessMap","metalnessMap"]){
+       const tx=mat[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
+     }
+   }
+ });
+ if(weapon==="pistol")rebuildGun();
+},undefined,err=>console.warn("M17 GLB load failed; using procedural fallback",err));
 let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
@@ -1535,16 +1551,34 @@ function rebuildGun(){
    box(.055,.045,1.55,dark,x,-.11,-2.27,gun);frontSight(-3.02,-.11);
    box(.02,.12,.28,dark,x+.20,-.30,-1.05,gun);
  }else if(weapon==='pistol'){
-   // Semi-auto pistol: distinct slide/frame, exposed barrel, sights and textured grip.
-   part(.30,.20,.90,M(0x343a3d,.27),-.18,-1.02);part(.27,.20,.64,poly,-.34,-.88);
-   let pg=grip(-.61,-.72,-.18,rubber);pg.scale.x=.92;pg.scale.z=.86;
-   magazine(-.69,-.73,.12,.32,.14,-.02);
-   cyl(.043,.55,steel,x,-.205,-1.38);box(.17,.025,.30,dark,x,-.58,-.72,gun);
-   // ejection port and slide serrations
-   box(.12,.018,.22,M(0x111315,.18),x+.08,-.075,-.98,gun);
-   for(let zz=-.72;zz>-.91;zz-=.045)box(.315,.035,.018,dark,x,-.17,zz,gun);
-   box(.07,.055,.05,dark,x,-.06,-.62,gun);box(.045,.075,.04,M(0xd8d8c7,.35),x,-.055,-1.48,gun);
-   const guard=new THREE.Mesh(new THREE.TorusGeometry(.105,.025,8,16,Math.PI*1.15),poly);guard.rotation.z=Math.PI;guard.position.set(x,-.46,-.98);gun.add(guard);
+   if(m17ModelTemplate){
+     const m17Root=m17ModelTemplate.clone(true);m17Root.name="ExternalM17SIG";
+     // Normalize arbitrary authoring units to a ~0.53-unit first-person pistol length.
+     const bounds=new THREE.Box3().setFromObject(m17Root),size=new THREE.Vector3();bounds.getSize(size);
+     const longest=Math.max(size.x,size.y,size.z)||1;m17Root.scale.setScalar(.53/longest);
+     // The supplied weapon is centered into the established pistol viewmodel slot.
+     const scaledBounds=new THREE.Box3().setFromObject(m17Root),center=new THREE.Vector3();scaledBounds.getCenter(center);
+     m17Root.position.set(x-center.x,-.30-center.y,-1.02-center.z);
+     m17Root.rotation.y=Math.PI;
+     m17Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+     gun.add(m17Root);
+     // Keep detachable-mag reload support when the model exposes a magazine node.
+     let m17Mag=null;m17Root.traverse(o=>{if(!m17Mag&&/mag(azine)?/i.test(o.name||""))m17Mag=o});
+     if(m17Mag){
+       gun.updateMatrixWorld(true);m17Root.updateMatrixWorld(true);gun.attach(m17Mag);
+       m17Mag.userData.externalWeaponAsset=true;m17Mag.userData.reloadHome=m17Mag.position.clone();m17Mag.userData.reloadHomeQuat=m17Mag.quaternion.clone();playerReloadPart=m17Mag;
+     }
+   }else{
+     // Procedural fallback while the external M17 is loading or if it fails.
+     part(.30,.20,.90,M(0x343a3d,.27),-.18,-1.02);part(.27,.20,.64,poly,-.34,-.88);
+     let pg=grip(-.61,-.72,-.18,rubber);pg.scale.x=.92;pg.scale.z=.86;
+     magazine(-.69,-.73,.12,.32,.14,-.02);
+     cyl(.043,.55,steel,x,-.205,-1.38);box(.17,.025,.30,dark,x,-.58,-.72,gun);
+     box(.12,.018,.22,M(0x111315,.18),x+.08,-.075,-.98,gun);
+     for(let zz=-.72;zz>-.91;zz-=.045)box(.315,.035,.018,dark,x,-.17,zz,gun);
+     box(.07,.055,.05,dark,x,-.06,-.62,gun);box(.045,.075,.04,M(0xd8d8c7,.35),x,-.055,-1.48,gun);
+     const guard=new THREE.Mesh(new THREE.TorusGeometry(.105,.025,8,16,Math.PI*1.15),poly);guard.rotation.z=Math.PI;guard.position.set(x,-.46,-.98);gun.add(guard);
+   }
  }else if(weapon==='dmr'){
    // Long-range marksman rifle with extended handguard, scope and heavier barrel.
    stock(-.36,M(0x3f342b,.68));part(.36,.31,1.18,metal,-.30,-1.18);part(.32,.28,1.12,poly,-.28,-2.10);
