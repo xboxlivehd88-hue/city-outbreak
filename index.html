@@ -1088,7 +1088,7 @@ function clearReloadMagazineFX(showReal=true){
  if(launcherChamberRound)launcherChamberRound.visible=false;
  reloadOldMagDropped=false;reloadMagInserted=false;
  if(showReal&&playerReloadPart){
-   playerReloadPart.visible=true;
+   playerReloadPart.visible=!playerReloadPart.userData.reloadOnly;
    if(playerReloadPart.userData.reloadHome)playerReloadPart.position.copy(playerReloadPart.userData.reloadHome);
    if(playerReloadPart.userData.reloadHomeQuat)playerReloadPart.quaternion.copy(playerReloadPart.userData.reloadHomeQuat);
  }
@@ -1096,6 +1096,7 @@ function clearReloadMagazineFX(showReal=true){
 function beginReloadMagazineFX(){
  clearReloadMagazineFX(true);
  reloadOldMagDropped=false;reloadMagInserted=false;
+ if(playerReloadPart&&playerReloadPart.userData.reloadOnly)playerReloadPart.visible=true;
 }
 function makeLauncherReloadRound(parent){
  const round=new THREE.Group();
@@ -1178,7 +1179,7 @@ function updateReloadMagazineFX(rp){
    if(rp.p>=.84){
      if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
      reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
-     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.visible=true;reloadMagInserted=true;
+     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.visible=!playerReloadPart.userData.reloadOnly;reloadMagInserted=true;
    }
  }
 }
@@ -1351,14 +1352,15 @@ function rebuildGun(){
      // the proven magwell transform so the shared reload system can pull/drop/insert it.
      const m17ReloadMag=m17Root.getObjectByName("919 p320 17rnd mag_3");
      if(m17ReloadMag){
+       // Reuse the real GLB magazine only for the reload sequence. The source node is
+       // a loose display prop, so hiding it at idle prevents the hanging magazine.
        m17Root.updateMatrixWorld(true);gun.updateMatrixWorld(true);gun.attach(m17ReloadMag);
-       m17ReloadMag.position.set(x,-.485,-.835);m17ReloadMag.rotation.set(-.16,0,0);
-       // Re-scale only the loose source prop to match the first-person pistol after re-parenting.
+       m17ReloadMag.position.set(x,-.405,-.745);m17ReloadMag.rotation.set(-.16,0,0);
        const mb=new THREE.Box3().setFromObject(m17ReloadMag),ms=new THREE.Vector3();mb.getSize(ms);
        const mh=Math.max(ms.x,ms.y,ms.z)||1;m17ReloadMag.scale.multiplyScalar(.285/mh);
-       m17ReloadMag.userData.externalWeaponAsset=true;
+       m17ReloadMag.userData.externalWeaponAsset=true;m17ReloadMag.userData.reloadOnly=true;
        m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
-       playerReloadPart=m17ReloadMag;
+       m17ReloadMag.visible=false;playerReloadPart=m17ReloadMag;
      }else playerReloadPart=null;
    }else{
      // Procedural fallback while the external M17 is loading or if it fails.
