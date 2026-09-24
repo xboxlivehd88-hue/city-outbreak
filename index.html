@@ -1088,7 +1088,7 @@ function clearReloadMagazineFX(showReal=true){
  if(launcherChamberRound)launcherChamberRound.visible=false;
  reloadOldMagDropped=false;reloadMagInserted=false;
  if(showReal&&playerReloadPart){
-   playerReloadPart.visible=!playerReloadPart.userData.reloadOnly;
+   if(playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});else playerReloadPart.visible=true;
    if(playerReloadPart.userData.reloadHome)playerReloadPart.position.copy(playerReloadPart.userData.reloadHome);
    if(playerReloadPart.userData.reloadHomeQuat)playerReloadPart.quaternion.copy(playerReloadPart.userData.reloadHomeQuat);
  }
@@ -1096,7 +1096,7 @@ function clearReloadMagazineFX(showReal=true){
 function beginReloadMagazineFX(){
  clearReloadMagazineFX(true);
  reloadOldMagDropped=false;reloadMagInserted=false;
- if(playerReloadPart&&playerReloadPart.userData.reloadOnly)playerReloadPart.visible=true;
+ if(playerReloadPart&&playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
 }
 function makeLauncherReloadRound(parent){
  const round=new THREE.Group();
@@ -1136,7 +1136,7 @@ function tossOldReloadMagazine(){
  // Keep the discarded mag in the player's view for a moment instead of firing it off-screen.
  const throwV=new THREE.Vector3(-.48,-.10,-.22).applyQuaternion(cam.quaternion);
  parts.push({q:oldMag,v:throwV,life:2.15,reloadMag:true,spin:new THREE.Vector3(4.2,3.1,5.0)});
- playerReloadPart.visible=false;reloadOldMagDropped=true;
+ playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadOldMagDropped=true;
 }
 function spawnFreshReloadMagazine(){
  if(!detachableMagazineReload()||reloadFreshMag||reloadMagInserted||!playerHandRig)return;
@@ -1182,7 +1182,7 @@ function updateReloadMagazineFX(rp){
      if(rp.p>=.90){
        if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
        reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
-       playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.visible=false;reloadMagInserted=true;
+       playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadMagInserted=true;
      }
    }
    return;
@@ -1403,7 +1403,10 @@ function rebuildGun(){
        const mh=Math.max(ms.x,ms.y,ms.z)||1;m17ReloadMag.scale.setScalar(.40/mh);
        m17ReloadMag.userData.reloadOnly=true;
        m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
-       m17ReloadMag.visible=false;playerReloadPart=m17ReloadMag;
+       // Do not hide the parent Group: clone(true) copies that hidden flag and the
+       // discarded/fresh magazines inherit invisibility. Hide only its render meshes at idle.
+       m17ReloadMag.traverse(o=>{if(o.isMesh)o.visible=false});
+       playerReloadPart=m17ReloadMag;
        document.documentElement.dataset.m17IdleMagazine="hidden";
        document.documentElement.dataset.m17SourceMagNodes=String(m17LooseProps.length);
      }else playerReloadPart=null;
