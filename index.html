@@ -1391,22 +1391,17 @@ function rebuildGun(){
      // the reload actor: reveal at reload start, pull/drop it, then clone it from the
      // pouch and insert the replacement. It is never part of the idle pistol hierarchy.
      if(m17ReloadTemplate){
-       // Put the raw GLB magazine inside a clean carrier. The source node contains
-       // presentation transforms from the asset file; using it directly made its
-       // geometry orbit away/disappear when rotated. Centering the real mesh inside
-       // this carrier gives the reload code a predictable origin.
+       // Use a dedicated first-person reload magazine. The source GLB magazine node
+       // has presentation transforms that have repeatedly made it unreliable as an
+       // animation actor. Keep the real pistol model, but use simple visible geometry
+       // for the moving magazine so the reload always reads clearly.
        const m17ReloadMag=new THREE.Group();m17ReloadMag.name="M17ReloadMagazineCarrier";
-       const magVisual=m17ReloadTemplate;magVisual.visible=true;
-       magVisual.traverse(o=>{o.visible=true;o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
-       m17ReloadMag.add(magVisual);
-       magVisual.updateMatrixWorld(true);
-       const rawBox=new THREE.Box3().setFromObject(magVisual),rawCenter=new THREE.Vector3(),rawSize=new THREE.Vector3();
-       rawBox.getCenter(rawCenter);rawBox.getSize(rawSize);
-       magVisual.position.sub(rawCenter);
-       const rawLongest=Math.max(rawSize.x,rawSize.y,rawSize.z)||1;
-       m17ReloadMag.scale.setScalar(.34/rawLongest);
-       m17ReloadMag.position.set(x,-.50,-.80);
-       m17ReloadMag.rotation.set(0,Math.PI/2,0);
+       const magBody=new THREE.Mesh(new THREE.BoxGeometry(.115,.34,.075),M(0x202326,.78));
+       const magBase=new THREE.Mesh(new THREE.BoxGeometry(.14,.035,.095),M(0x111315,.88));
+       magBase.position.y=-.185;
+       m17ReloadMag.add(magBody,magBase);
+       m17ReloadMag.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+       m17ReloadMag.position.set(x,-.54,-.80);m17ReloadMag.rotation.set(-.12,0,0);
        m17ReloadMag.userData.externalWeaponAsset=true;m17ReloadMag.userData.reloadOnly=true;
        m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
        gun.add(m17ReloadMag);
