@@ -500,3 +500,12 @@ Current essentials:
 - Procedural first-person arms fade out only during M4 ADS so they no longer form the giant V around the sight; arms remain visible at hip-fire and during reload.
 - No firing, damage, ammo, recoil, reload timing, or other weapon mechanics changed.
 - Gameplay commit: `ad5b172a8796c6e0c99520fc67212b82759c2936`.
+
+
+## v163 — M4 ADS stock occlusion fix
+- Screenshot review identified the large black teardrop in v162 as the imported full-world M4 buttstock rendering in front of/through the first-person camera, not an arm-placement problem.
+- Imported M4 meshes whose names contain stock/butt are tracked and hidden only once M4 ADS is substantially engaged; they remain visible at hip-fire and during reload.
+- ADS retuned to z -1.30, y .030, FOV 50 after removing the actual occluder.
+- Existing v162 procedural-arm ADS fade remains.
+- No firing, damage, ammo, recoil, reload timing, or other weapon mechanics changed.
+- Gameplay commit: `30101dc2baca8bd6c51f43b6920e922183f3fba6`.
