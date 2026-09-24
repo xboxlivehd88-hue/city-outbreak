@@ -476,3 +476,12 @@ Current essentials:
 - v151 — building-gap/pathing cleanup: building colliders are tagged by street row, adjacent same-row gaps under 2.70 m are automatically closed with visible low-cost service infill plus matching collision, while real alleys/streets/larger passages stay open; zombie stuck-side flip cooldown increased to 1.15s and local avoid hold to .55s so A* can take over instead of rapid left/right oscillation
 - v152 — startup regression repair: removed v151 startup-time physical gap-seal geometry/collider generation, kept the slower anti-oscillation stuck behavior, increased A* clearance from .56 to .72 and route-clear sampling from 1.05m to .85m so narrow squeeze gaps are treated more conservatively; validated with a real headless Chrome smoke test that clicked START OUTBREAK and successfully entered gameplay before commit
 
+
+
+## v160 — Uploaded M4 Carbine GLB
+- Integrated `assets/classic_m4.glb.glb` as the first-person M4 Carbine visual.
+- Preserved internal weapon key `rifle`, firing stats, ADS, recoil, ammo, hands, and reload systems.
+- Uses the existing procedural rifle as a fallback while the GLB loads or if loading fails.
+- The GLB's `Magazine_m4_0` is detached into gun-local space so the existing detachable-mag reload animation can operate on the model's real magazine.
+- GLB shared geometry is excluded from procedural viewmodel disposal to keep the cached template reusable.
+- Gameplay commit: `16c354d53e65a34c9d3843fe19f67e5e84cca44b`.
