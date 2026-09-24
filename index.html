@@ -442,7 +442,7 @@ const roadTexture=new THREE.TextureLoader().load("assets/textures/roads/road_alb
  tx.colorSpace=THREE.SRGBColorSpace;
  tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
  tx.repeat.set(4,24);
- tx.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+ tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
  asphalt.map=tx;asphalt.color.set(0xffffff);asphalt.needsUpdate=true;
 });
 box(24,.10,244,asphalt,0,.05,30);           // avenue
