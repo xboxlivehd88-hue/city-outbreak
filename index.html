@@ -1134,7 +1134,7 @@ function tossOldReloadMagazine(){
  oldMag.position.copy(playerReloadPart.position);oldMag.quaternion.copy(playerReloadPart.quaternion);oldMag.scale.copy(playerReloadPart.scale);
  gun.add(oldMag);gun.updateMatrixWorld(true);scene.attach(oldMag);
  // Keep the discarded mag in the player's view for a moment instead of firing it off-screen.
- const throwV=new THREE.Vector3(-.48,-.10,-.22).applyQuaternion(cam.quaternion);
+ const throwV=new THREE.Vector3(-.22,-.42,-.08).applyQuaternion(cam.quaternion);
  parts.push({q:oldMag,v:throwV,life:2.15,reloadMag:true,spin:new THREE.Vector3(4.2,3.1,5.0)});
  playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadOldMagDropped=true;
 }
@@ -1164,7 +1164,9 @@ function updateReloadMagazineFX(rp){
    // Start retrieving the fresh magazine while the old one is still visibly falling.
    if(rp.p>=.30&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
    if(reloadFreshMag&&!reloadFreshAttached){
-     reloadFreshMag.position.set(.02,-.12,.035);
+     // Hold the replacement by its bottom/base plate so the long body of the
+     // magazine projects clearly above the support hand instead of being buried in it.
+     reloadFreshMag.position.set(.02,.075,.025);
      reloadFreshMag.quaternion.copy(targetQ);
    }
    if(rp.p>=.64&&reloadFreshMag&&!reloadFreshAttached){
@@ -3311,8 +3313,8 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      if(p<.12){lx=0;ly=0;lz=0}
      else if(p<.36){t=smoothReload01((p-.12)/.24);lx=-.24*t;ly=-.72*t;lz=.25*t;rz=-.24*t}
      else if(p<.48){lx=-.24;ly=-.72;lz=.25;rz=-.24}
-     else if(p<.72){t=smoothReload01((p-.48)/.24);lx=-.24+.36*t;ly=-.72+.61*t;lz=.25-.19*t;rz=-.24+.12*t}
-     else if(p<.90){lx=.12;ly=-.11;lz=.06;rz=-.12}
+     else if(p<.72){t=smoothReload01((p-.48)/.24);lx=-.24+.36*t;ly=-.72+.52*t;lz=.25-.19*t;rz=-.24+.12*t}
+     else if(p<.90){lx=.12;ly=-.20;lz=.06;rz=-.12}
      else{t=smoothReload01((p-.90)/.10);lx=.12*(1-t);ly=-.11*(1-t);lz=.06*(1-t);rz=-.12*(1-t)}
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.08,0,rz);
    }else{
