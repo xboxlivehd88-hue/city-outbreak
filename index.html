@@ -1560,6 +1560,8 @@ function rebuildGun(){
      const scaledBounds=new THREE.Box3().setFromObject(m17Root),center=new THREE.Vector3();scaledBounds.getCenter(center);
      m17Root.position.set(x-center.x,-.30-center.y,-1.02-center.z);
      m17Root.rotation.y=Math.PI;
+     // Rotate the imported M17 forward 90 degrees in the first-person view.
+     m17Root.rotation.x=-Math.PI/2;
      // This Sketchfab GLB includes presentation props (two loose magazines and
      // loose 9mm rounds) alongside the actual pistol. They are intentionally
      // separated in the source asset, which is why they appeared floating under
