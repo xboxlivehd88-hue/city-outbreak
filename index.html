@@ -2480,7 +2480,10 @@ function randomDropAmount(type){
  return weightedTier(rnd(),[[5,40],[10,30],[15,20],[25,10]]);
 }
 function randomAmmoWeapon(){
- const pool=Object.keys(unlocked).filter(w=>unlocked[w]);
+ // Grenade-launcher pickups are only eligible while the player has room under
+ // the hard 10-round total cap. This prevents unusable launcher drops from
+ // being selected while full, and makes them eligible again after any round is fired.
+ const pool=Object.keys(unlocked).filter(w=>unlocked[w]&&(w!=="grenadeLauncher"||launcherAmmoTotal()<10));
  return pool[Math.floor(rnd()*pool.length)]||weapon;
 }
 const dropLabelCache=new Map();
@@ -2556,8 +2559,16 @@ function collectDrop(d){
    cash+=d.amount;show("CASH +$"+d.amount);
  }else{
    if(d.weapon==="grenadeLauncher"){
-     const added=addGrenadeLauncherAmmo(d.amount);if(added<=0)return false;
-     show("GRENADE LAUNCHER AMMO +"+added);
+     const added=addGrenadeLauncherAmmo(d.amount);
+     if(added<=0){
+       // If a launcher box was already on the ground when the player reached
+       // the 10-round cap, convert it to useful ammo instead of making the
+       // player wait until all launcher rounds are gone.
+       const pool=Object.keys(unlocked).filter(w=>unlocked[w]&&w!=="grenadeLauncher");
+       const fallback=pool[Math.floor(rnd()*pool.length)]||"rifle";
+       ammoState[fallback].reserve+=d.amount;
+       show(weaponDefs[fallback].name+" AMMO +"+d.amount);
+     }else show("GRENADE LAUNCHER AMMO +"+added);
    }else{
      ammoState[d.weapon].reserve+=d.amount;
      show(weaponDefs[d.weapon].name+" AMMO +"+d.amount);
