@@ -1344,18 +1344,20 @@ function rebuildGun(){
      m17Root.position.set(x-center.x,-.30-center.y,-1.02-center.z);
      m17Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
      gun.add(m17Root);
-     // The supplied GLB's "919 p320 17rnd mag_3" is a loose presentation prop,
-     // not the pistol's correctly seated magazine. Remove it so no magazine hangs
-     // under the gun. Use one compact game-side mag at the proven magwell position
-     // for the visible drop/insert reload beats.
-     const looseLoadedMag=m17Root.getObjectByName("919 p320 17rnd mag_3");
-     if(looseLoadedMag&&looseLoadedMag.parent)looseLoadedMag.parent.remove(looseLoadedMag);
-     const m17ReloadMag=new THREE.Group();m17ReloadMag.name="M17ReloadMagazine";
-     const mb=bevelBox(.105,.285,.080,metal,0,0,0,m17ReloadMag);mb.castShadow=false;
-     box(.102,.022,.084,dark,0,.143,0,m17ReloadMag);
-     m17ReloadMag.position.set(x,-.485,-.835);m17ReloadMag.rotation.x=-.16;gun.add(m17ReloadMag);
-     m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
-     playerReloadPart=m17ReloadMag;
+     // Use the actual detailed loaded magazine supplied by the M17 GLB as the
+     // reload magazine. Re-parent it into gun space, then seat that real model at
+     // the proven magwell transform so the shared reload system can pull/drop/insert it.
+     const m17ReloadMag=m17Root.getObjectByName("919 p320 17rnd mag_3");
+     if(m17ReloadMag){
+       m17Root.updateMatrixWorld(true);gun.updateMatrixWorld(true);gun.attach(m17ReloadMag);
+       m17ReloadMag.position.set(x,-.485,-.835);m17ReloadMag.rotation.set(-.16,0,0);
+       // Re-scale only the loose source prop to match the first-person pistol after re-parenting.
+       const mb=new THREE.Box3().setFromObject(m17ReloadMag),ms=new THREE.Vector3();mb.getSize(ms);
+       const mh=Math.max(ms.x,ms.y,ms.z)||1;m17ReloadMag.scale.multiplyScalar(.285/mh);
+       m17ReloadMag.userData.externalWeaponAsset=true;
+       m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
+       playerReloadPart=m17ReloadMag;
+     }else playerReloadPart=null;
    }else{
      // Procedural fallback while the external M17 is loading or if it fails.
      part(.30,.20,.90,M(0x343a3d,.27),-.18,-1.02);part(.27,.20,.64,poly,-.34,-.88);
