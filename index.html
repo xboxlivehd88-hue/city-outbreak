@@ -23,9 +23,12 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 #crosshair:after{width:2px;height:26px;left:12px}
 #scopeOverlay{position:fixed;inset:0;display:none;pointer-events:none;z-index:50;background:radial-gradient(circle at center,transparent 0 28vh,rgba(0,0,0,.93) 28.6vh 100%)}
 #scopeOverlay.show{display:block}
-#scopeOverlay.m4Scope{background:radial-gradient(circle at center,transparent 0 28vh,rgba(0,0,0,.88) 28.5vh 100%)}
-#scopeOverlay.m4Scope:before{border:12px solid #080909;box-shadow:0 0 18px #000}
+#scopeOverlay.m4Scope{background:radial-gradient(circle at center,transparent 0 37vh,#080909 37.4vh 46vh,rgba(0,0,0,.34) 46.8vh 100%)}
+#scopeOverlay.m4Scope:before{width:74vh;height:74vh;max-width:88vw;max-height:88vw;border:14px solid #080909;box-shadow:0 0 22px #0008}
+#scopeOverlay.m4Scope #scopeReticle{width:72vh;height:72vh;max-width:86vw;max-height:86vw}
 #scopeOverlay.m4Scope #scopeReticle:before,#scopeOverlay.m4Scope #scopeReticle:after{background:#090909;box-shadow:none}
+#scopeOverlay.m4Scope #scopeReticle:before{height:3px}
+#scopeOverlay.m4Scope #scopeReticle:after{width:3px}
 #scopeOverlay:before{content:"";position:absolute;left:50%;top:50%;width:56vh;height:56vh;max-width:70vw;max-height:70vw;transform:translate(-50%,-50%);border:2px solid #111;border-radius:50%;box-shadow:0 0 0 1px #ffffff18}
 #scopeOverlay:after{content:none}
 #scopeReticle{position:absolute;left:50%;top:50%;width:56vh;height:56vh;max-width:70vw;max-height:70vw;transform:translate(-50%,-50%);border-radius:50%;overflow:hidden}
@@ -1203,7 +1206,7 @@ const weaponDefs={
  awm:{name:"AWM ULTIMATE",rate:1150,hold:9999,spread:.00055,pellets:1,body:8.0,recoil:.30,baseMag:5}
 };
 const ADS={
- rifle:{x:-.36,y:.030,z:.72,fov:44,rx:0},
+ rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0},
  smg:{x:-.36,y:.033,z:-.40,fov:55,rx:-.01},
  shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
