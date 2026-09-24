@@ -1134,7 +1134,7 @@ batchStaticCity();
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 // v160: external M4 Carbine visual. Keep the procedural rifle as a safe fallback
 // until the GLB finishes loading, then rebuild only the current rifle viewmodel.
-let m4ModelTemplate=null;
+let m4ModelTemplate=null,m4AdsOccluders=[];
 new GLTFLoader().load("assets/classic_m4.glb.glb",gltf=>{
  m4ModelTemplate=gltf.scene;
  m4ModelTemplate.traverse(o=>{
@@ -1200,7 +1200,7 @@ const weaponDefs={
  awm:{name:"AWM ULTIMATE",rate:1150,hold:9999,spread:.00055,pellets:1,body:8.0,recoil:.30,baseMag:5}
 };
 const ADS={
- rifle:{x:-.36,y:.050,z:-1.62,fov:52,rx:0},
+ rifle:{x:-.36,y:.030,z:-1.30,fov:50,rx:0},
  smg:{x:-.36,y:.033,z:-.40,fov:55,rx:-.01},
  shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
@@ -1415,7 +1415,15 @@ function rebuildGun(){
      // existing CITY OUTBREAK gun, without touching rifle gameplay values.
      const m4Root=m4ModelTemplate.clone(true);m4Root.name="ExternalM4Carbine";
      m4Root.scale.setScalar(5.15);m4Root.rotation.y=Math.PI;m4Root.position.set(x,-.25,-1.66);
-     m4Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+     m4AdsOccluders=[];
+     m4Root.traverse(o=>{
+       o.userData.externalWeaponAsset=true;
+       if(o.isMesh){
+         o.castShadow=false;o.receiveShadow=false;
+         const n=(o.name||"").toLowerCase();
+         if(n.includes("stock")||n.includes("butt"))m4AdsOccluders.push(o);
+       }
+     });
      gun.add(m4Root);
      // Detach the model's real magazine into gun-local space so the existing
      // drop / fresh-mag / insert animation can keep working with the new visual.
@@ -3383,6 +3391,10 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    // They remain fully visible at hip-fire and during reload.
    const rifleAdsArmScale=(weapon==="rifle"&&!reloading)?Math.max(.001,1-aimBlend*1.35):1;
    playerHandRig.left.scale.setScalar(rifleAdsArmScale);playerHandRig.right.scale.setScalar(rifleAdsArmScale);
+   // The supplied full-world M4 includes its buttstock. In a true first-person ADS view
+   // that stock sits behind the eye/camera; hiding only that mesh prevents it from
+   // rendering as the giant black teardrop seen in v160-v162.
+   if(weapon==="rifle")for(const o of m4AdsOccluders)o.visible=aimBlend<.62||reloading;
    if(reloading&&reloadWeapon==="grenadeLauncher"){
      const p=rp.p;let lx=0,ly=0,lz=0,lr=0,t=0;
      // Hand works the latch, drops to the pouch, carries the grenade to the open breech, then returns to the fore-end.
