@@ -1900,16 +1900,44 @@ function releaseZombieVisual(z){
  if(z.g&&z.g.parent)scene.remove(z.g)
 }
 
+// v143: introduce special infected gradually instead of jumping from 0% on wave 1
+// straight to 42% on wave 2. Each new threat gets a wave to become readable before
+// the full mixed roster settles back near the old late-wave intensity.
+function rolledZombieKind(w,roll){
+ if(w<2)return "shambler";
+ if(w===2)return roll<.18?"sprinter":"shambler";
+ if(w===3){
+   if(roll<.08)return "crawler";
+   if(roll<.24)return "sprinter";
+   return "shambler";
+ }
+ if(w===4){
+   if(roll<.05)return "radiated";
+   if(roll<.13)return "crawler";
+   if(roll<.30)return "sprinter";
+   return "shambler";
+ }
+ if(w===5){
+   if(roll<.05)return "infected";
+   if(roll<.10)return "radiated";
+   if(roll<.19)return "crawler";
+   if(roll<.35)return "sprinter";
+   return "shambler";
+ }
+ // Wave 6 introduces acidic zombies at 38% total specials. Sprinters then gain
+ // 1.5 percentage points per wave until the total settles around 43%.
+ const sprinterChance=Math.min(.19,.14+Math.max(0,w-6)*.015);
+ if(roll<.04)return "acidic";
+ if(roll<.09)return "infected";
+ if(roll<.15)return "radiated";
+ if(roll<.24)return "crawler";
+ if(roll<.24+sprinterChance)return "sprinter";
+ return "shambler";
+}
+
 function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  let d=diff(wave),g=new THREE.Group(),scale=.90+rnd()*.045;
- let roll=rnd(),kind=forcedKind||"shambler";
- if(!forcedKind){
-  if(wave>=6&&roll<.07)kind="acidic";
-  else if(wave>=5&&roll<.13)kind="infected";
-  else if(wave>=4&&roll<.20)kind="radiated";
-  else if(wave>=3&&roll<.30)kind="crawler";
-  else if(wave>=2&&roll<.42)kind="sprinter";
- }
+ let roll=rnd(),kind=forcedKind||rolledZombieKind(wave,roll);
 
  const nightmareType = kind==="crawler"?"crawler":(kind==="boss"?"brute":((kind==="sprinter"||kind==="infected"||kind==="acidic")?"twitch":"normal"));
  const bodyType=i%3, outfit=i%4;
