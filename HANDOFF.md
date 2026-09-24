@@ -509,3 +509,11 @@ Current essentials:
 - Existing v162 procedural-arm ADS fade remains.
 - No firing, damage, ammo, recoil, reload timing, or other weapon mechanics changed.
 - Gameplay commit: `30101dc2baca8bd6c51f43b6920e922183f3fba6`.
+
+
+## v164 — Correct M4 ADS translation direction
+- Screenshot from v163 exposed the core ADS bug: the imported M4 root is already positioned at z -1.66, while the shared ADS system was adding another negative Z translation. That pushed the whole imported rifle farther away from the camera instead of bringing the optic to the eye.
+- Corrected rifle ADS z from -1.30 to +.72, keeping x centered at -.36 and y .030; FOV reset to 55 for a normal optic view.
+- Existing ADS-only arm fade and buttstock hiding remain.
+- No firing, damage, ammo, recoil, reload timing, or other weapon mechanics changed.
+- Gameplay commit: `610b34a5eb801141a94f637793e32377f72aeb95`.
