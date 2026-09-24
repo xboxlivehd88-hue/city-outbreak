@@ -8,11 +8,11 @@ Last updated: 2026-09-24
 - Branch: `main`
 - Source of truth: root `index.html`
 - GitHub Pages: https://xboxlivehd88-hue.github.io/city-outbreak/
-- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=140
-- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=140&debug=1
-- Current `index.html` blob SHA at handoff: `40b6f04f0904b21e72462f05fe63ade2c2170aca`
+- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=141
+- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=141&debug=1
+- Current `index.html` blob SHA at handoff: `f803711421f264f63241df4c1ea5a8a3b6faf5b9`
 - Current branch HEAD before this handoff-doc commit: `af3f1d55fe5a1227be6c7cec5ed69a120c2669ac`
-- Latest gameplay commit: `9b72d40ee4a52dd1aaa7ee1ddd889b66ba07e22e` — `Add delayed player health regeneration v140`
+- Latest gameplay commit: `880757d6bb057026bbeaeb12d140792b0e1c1ca7` — `Speed up delayed health regeneration v141`
 - Pages deployment for the current branch completed successfully.
 
 IMPORTANT: the handoff/documentation commit comes after the gameplay commit. Do not treat the handoff commit as a gameplay change.
@@ -32,13 +32,13 @@ For every gameplay change:
 7. Give the user a cache-busted live link.
 8. Increment the cache-bust version by one for a new gameplay release.
 
-The next gameplay release after the current v140 should normally be **v141**.
+The next gameplay release after the current v141 should normally be **v142**.
 
 Do not tell the user GitHub/repo-write is unavailable unless a real GitHub connector call in that session actually fails. The user strongly prefers end-to-end execution.
 
 ## Immediate state / next-chat priority
 
-Current stable gameplay build is **v140**.
+Current stable gameplay build is **v141**.
 
 Latest visual/zombie progression:
 
@@ -52,7 +52,7 @@ Latest visual/zombie progression:
 - v139 intentionally preserves v136 movement speeds/AI/pathing, v134 hitboxes, v135 ragdolls, crawler conversion identity, drop rate 52%, and the 20-active-zombie performance cap
 
 Current live test:
-https://xboxlivehd88-hue.github.io/city-outbreak/?v=140
+https://xboxlivehd88-hue.github.io/city-outbreak/?v=141
 
 If the user reports zombie visual issues next, fetch the newest `main:index.html` first. Do not undo the v136 locomotion correction or v134 converted-crawler hitboxes while tuning appearance.
 
@@ -447,4 +447,5 @@ If starting a new chat, the user can paste this:
 - v138 — humanized walker and native crawler facial/body anatomy
 - v139 — corpse tones, sunken sockets, face/jaw blood, collar/chest gore, crawler wound repositioning
 - v140 — player health regeneration: 10-second delay after every enemy hit, then 5 HP/sec to 100; any new zombie/boss hit restarts the delay
+- v141 — health regeneration delay reduced to 5 seconds and regeneration rate increased to 10 HP/sec; any new zombie/boss hit still restarts the delay
 
