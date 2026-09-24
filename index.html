@@ -1343,9 +1343,15 @@ function rebuildGun(){
        m17ReloadTemplate=m17SourceMag.clone(true);
        m17ReloadTemplate.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
      }
-     for(const propName of ["919 p320 17rnd empty mag_0","9x19_1","919_2","919 p320 17rnd mag_3"]){
-       const prop=m17Root.getObjectByName(propName);if(prop&&prop.parent)prop.parent.remove(prop);
-     }
+     // Hard guarantee: no magazine mesh from the source GLB is allowed to remain on
+     // the idle first-person pistol. Collect first, then remove, so nested nodes cannot
+     // survive because a parent was detached earlier in the loop.
+     const m17LooseProps=[];
+     m17Root.traverse(o=>{
+       const n=(o.name||"").toLowerCase();
+       if(n.includes("mag")||n==="9x19_1"||n==="919_2")m17LooseProps.push(o);
+     });
+     for(const prop of m17LooseProps)if(prop.parent)prop.parent.remove(prop);
      // Preserve the complete assembled M17 hierarchy; only the four loose display props above are removed.
      m17Root.rotation.set(0,Math.PI/2,0);
      // Normalize only the assembled pistol, after applying its correct axis rotation.
@@ -1367,6 +1373,8 @@ function rebuildGun(){
        m17ReloadMag.userData.reloadOnly=true;
        m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
        m17ReloadMag.visible=false;playerReloadPart=m17ReloadMag;
+       document.documentElement.dataset.m17IdleMagazine="hidden";
+       document.documentElement.dataset.m17SourceMagNodes=String(m17LooseProps.length);
      }else playerReloadPart=null;
    }else{
      // Procedural fallback while the external M17 is loading or if it fails.
