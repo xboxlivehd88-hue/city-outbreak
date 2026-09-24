@@ -1,3 +1,100 @@
+# CITY OUTBREAK — CURRENT HANDOFF (v180)
+
+Last updated: 2026-09-24
+
+## READ THIS FIRST
+This section supersedes older build/version information later in this file.
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Live site: https://xboxlivehd88-hue.github.io/city-outbreak/
+- Current confirmed-working build: **v180**
+- v180 gameplay commit: `34a9cabbb3c8f2fa04f1b5ff6d34af6fbd224771`
+- Current root `index.html` content/blob SHA after v180: `345c6c7250d897ad2c7e89188e3b58c4ae394f47`
+- User explicitly confirmed v180 START OUTBREAK works.
+- Next gameplay build should normally be **v181**.
+
+## Immediate next task
+The user wants the uploaded **2018 Subaru WRX STI** tried again as the sedan visual.
+
+Asset already in repo:
+- `assets/2018_subaru_wrx_sti.glb`
+
+IMPORTANT: v177's STI runtime integration caused the START OUTBREAK regression. v179's partial fix was still broken. v180 completely removed STI runtime integration and restored the procedural sedan path; user confirmed startup works.
+
+When reintroducing STI:
+1. Fetch newest `main:index.html` first.
+2. Do NOT recreate the v177 async callback that references `parkedCars` from the loader.
+3. Keep existing sedan collision metadata/oriented footprints; GLB is visual only.
+4. Load the STI once and clone it; no per-car network loads.
+5. Preserve performance: no STI shadows/lights, shared geometry/materials where possible.
+6. Prefer an integration whose async loader cannot mutate undeclared/not-yet-initialized startup state.
+7. Validate JS syntax, `git diff --check`, and exact assertions.
+8. MUST run a real browser/headless Chrome smoke test that clicks START OUTBREAK before accepting/pushing the gameplay change.
+9. Only after startup passes should the STI build be considered successful.
+10. Then push to main and provide cache-busted v181 link.
+
+## Recent critical history
+- v171: M4 + M17 are starter-unlocked, unlimited ammo, intentionally reduced base damage; upgrades still increase damage. M17 store unlock and M4/M17 ammo purchases removed.
+- v172: M17 no longer detaches its magazine for reload.
+- v173: targeted loose M17 presentation props.
+- v174: incorrect M17 X rotation made pistol lie down.
+- v175: corrected M17 orientation/centering with Y rotation; user said visual placement was perfect except two gold circular cuff/arm ends.
+- v176: over-aggressive M17 root-child whitelist accidentally removed the pistol.
+- v177: STI sedan visual integration added, but later proved to cause startup trouble.
+- v178: removed the bad M17 whitelist, restored complete assembled M17 hierarchy, and sank pistol cuff endpoints into gloves.
+- v179: attempted STI startup-order repair; user reported START OUTBREAK still did not work.
+- v180: removed STI runtime integration entirely and restored known-stable procedural sedan startup. User confirmed: "its fixed now".
+
+## M17 current rules
+Asset: `assets/low-poly_sig_sauer_m17.glb`
+Preserve v175 transform unless user asks otherwise:
+- Y rotation `Math.PI/2`
+- normalize longest dimension to ~0.53
+- centered by bounding box
+- positioned around `y=-.30, z=-1.02`
+Only the known loose display props should be removed:
+- `919 p320 17rnd empty mag_0`
+- `9x19_1`
+- `919_2`
+- `919 p320 17rnd mag_3`
+Do NOT restore the v176 root whitelist.
+
+## M4 current rules
+Asset: `assets/classic_m4.glb.glb` (double extension is intentional).
+Internal key remains `rifle`; player-facing name is M4 Carbine.
+M4/M17 are starter weapons with unlimited ammo.
+M4 ADS has the close-eye-relief overlay system from v167; do not casually rebuild it.
+
+## Road/start screen
+Road texture working asset:
+- `assets/textures/roads/road_albedo.jpg.jpg`
+User approved the v158 road result.
+High-res start artwork:
+- `assets/city-outbreak-start-v153.jpg.jpg`
+Do not change either unless requested.
+
+## Mandatory workflow
+User wants the assistant to do GitHub work end-to-end, not give manual Git instructions.
+For every gameplay change:
+- fetch newest main/index.html;
+- patch only that source;
+- preserve unrelated systems;
+- validate JS syntax;
+- run `git diff --check`;
+- use feature assertions;
+- for startup/map/asset-loader changes, run a real headless browser START OUTBREAK smoke test;
+- push directly to main;
+- remove temporary patch/workflow files;
+- update handoff docs when state materially changes;
+- confirm final Pages deployment when tooling permits;
+- return cache-busted live link;
+- increment gameplay version.
+
+## Architecture discussion
+User asked whether to split the giant `index.html`. Recommended future structure is GitHub Pages still hosting the game, but code gradually extracted into `js/game.js`, `player.js`, `weapons.js`, `zombies.js`, `vehicles.js`, `map.js`, `ui.js`, etc. Do this incrementally from a known-good build, never as a giant rewrite. Supabase is NOT for this code split; Supabase is for future persistent backend data such as accounts, cloud saves, leaderboards, telemetry. No Supabase project has been created; user previously chose to hold off.
+
+---
 ## CURRENT BUILD — v153 (2026-09-24)
 - Added approved CITY OUTBREAK cinematic start-screen artwork at `assets/city-outbreak-start-v153.jpg`.
 - Start screen uses the artwork full-screen with `background-size: cover`.
