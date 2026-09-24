@@ -492,3 +492,11 @@ Current essentials:
 - Moved the rifle farther forward in ADS (z -1.16 → -2.03) so the rear optic/receiver no longer fills the center of the screen and the sight picture has usable eye relief.
 - No firing, damage, recoil, ammo, reload, model scale, or other weapon behavior changed.
 - Gameplay commit: `64bb7903051ffd9145fb3e5278e3c289c70cb077`.
+
+
+## v162 — M4 ADS presentation rework
+- Reworked imported M4 ADS from screenshot feedback rather than only pushing the whole gun farther away.
+- Rifle ADS now uses z -1.62, y .050, FOV 52, and only 4% ADS scale reduction.
+- Procedural first-person arms fade out only during M4 ADS so they no longer form the giant V around the sight; arms remain visible at hip-fire and during reload.
+- No firing, damage, ammo, recoil, reload timing, or other weapon mechanics changed.
+- Gameplay commit: `ad5b172a8796c6e0c99520fc67212b82759c2936`.
