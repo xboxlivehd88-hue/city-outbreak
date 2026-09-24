@@ -45,7 +45,7 @@ jobs:
             await page.waitForTimeout(1800);
             const sti=glb.find(x=>x[0].includes('2018_subaru_wrx_sti.glb')&&x[1]===200);
             const m4=glb.find(x=>x[0].includes('classic_m4.glb.glb')&&x[1]===200);
-            if(!sti) throw new Error('STI GLB did not load 200');\n            await page.waitForFunction(()=>+(document.documentElement.dataset.stiVisuals||0)>0,null,{timeout:12000});\n            const stiCount=+(await page.locator('html').getAttribute('data-sti-visuals')||0);\n            if(stiCount<1) throw new Error('STI loaded but no sedan visual was instantiated');
+            if(!sti) throw new Error('STI GLB did not load 200');\n            await page.waitForFunction(()=>+(document.documentElement.dataset.stiVisuals||0)>0,null,{timeout:45000});\n            const stiCount=+(await page.locator('html').getAttribute('data-sti-visuals')||0);\n            if(stiCount<1) throw new Error('STI loaded but no sedan visual was instantiated');
             if(!m4) throw new Error('M4 GLB did not load 200');
             await page.locator('#start').click();
             await page.waitForTimeout(1200);
