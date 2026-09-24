@@ -517,3 +517,11 @@ Current essentials:
 - Existing ADS-only arm fade and buttstock hiding remain.
 - No firing, damage, ammo, recoil, reload timing, or other weapon mechanics changed.
 - Gameplay commit: `610b34a5eb801141a94f637793e32377f72aeb95`.
+
+
+## v165 — M4 through-optic ADS
+- User supplied a real through-scope reference and v164 screenshot: physical M4 optic alignment is now good, but the GLB lens is opaque/dark and cannot provide a usable through-glass sight picture by itself.
+- Reused the existing lightweight AWM scope-overlay system for M4 ADS, with an M4-specific circular black optic housing and simple cross reticle.
+- Once M4 ADS is fully engaged, the physical first-person rifle is hidden behind the scope view so the opaque model lens/receiver no longer blocks the target. Hip-fire, ADS transition, firing/reload mechanics remain intact.
+- M4 ADS FOV changed 55 → 44 for a modest magnified optic view; AWM scope behavior is unchanged.
+- Gameplay commit: `0aced9b602bceec92ad62c72af2d9f1da7969ce2`.
