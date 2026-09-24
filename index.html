@@ -212,8 +212,8 @@ function groan(v){
  o.start(t);o.stop(t+.60)
 }
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x89999a);scene.fog=new THREE.FogExp2(0x89999a,.0052);
-const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,1.25));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.42;
-scene.add(new THREE.HemisphereLight(0xcbd9dc,0x596158,1.75));let sun=new THREE.DirectionalLight(0xffe5bd,3.15);sun.position.set(-35,48,-25);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-70;sun.shadow.camera.right=70;sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;scene.add(sun);
+const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,1.10));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.42;
+scene.add(new THREE.HemisphereLight(0xcbd9dc,0x596158,1.75));let sun=new THREE.DirectionalLight(0xffe5bd,3.15);sun.position.set(-35,48,-25);sun.castShadow=true;sun.shadow.mapSize.set(768,768);sun.shadow.camera.left=-62;sun.shadow.camera.right=62;sun.shadow.camera.top=62;sun.shadow.camera.bottom=-62;scene.add(sun);
 const materialCache=new Map(),emissiveMaterialCache=new Map(),zombieMaterialCache=new Map();
 const M=(c,r=.82)=>{const k=c+"|"+r;let m=materialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,roughness:r});materialCache.set(k,m)}return m};
 const EM=(c,e=.95,r=.28)=>{const k=c+"|"+e+"|"+r;let m=emissiveMaterialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:e,roughness:r});emissiveMaterialCache.set(k,m)}return m};
@@ -606,8 +606,9 @@ for(let x=-92;x<96;x+=14){
 // still cast shadows, which preserves the city's depth without the huge draw-call cost.
 scene.traverse(o=>{
  if(!o.isMesh)return;
- if(o.userData.cityMain){o.castShadow=true;o.receiveShadow=false}
- else{o.castShadow=false;o.receiveShadow=false}
+ // Static city shadows were a major GPU cost when looking down dense streets.
+ // Keep the sun/player/zombie lighting, but don't render giant building shadow maps.
+ o.castShadow=false;o.receiveShadow=false
 });
 ground.receiveShadow=true;
 
@@ -864,7 +865,8 @@ function updateZombieRoute(z,dt,huntMode){
  }
 
  if(z.navCheckT>0)return;
- z.navCheckT=huntMode?.32:.58;
+ // Stagger route checks per zombie and run them less often; movement/avoidance still runs every frame.
+ z.navCheckT=(huntMode?.46:.78)+((z.g.id%7)*.035);
 
  const goalMoved=Math.hypot(px-(z.navGoalX??px),pz-(z.navGoalZ??pz))>(huntMode?3.2:4.8);
  const directClear=zombieRouteClear(z.g.position.x,z.g.position.z,px,pz,ZNAV_PAD);
@@ -967,9 +969,9 @@ const FX={
  grenadeFlashMat:new THREE.MeshStandardMaterial({color:0xd29a46,roughness:.58,emissive:0x542b08,emissiveIntensity:.30})
 };
 function capFX(){
- while(parts.length>90){const p=parts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
- while(impacts.length>36){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
- while(casings.length>28){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
+ while(parts.length>64){const p=parts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
+ while(impacts.length>24){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
+ while(casings.length>18){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
 }
 let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:false,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}},grenades=2,nukes=0,nukeInProgress=false,waveTarget=0,waveSpawned=0,currentBoss=null,bossWaveName="",usedBossNames=[],running=false,dying=false,reloading=false,between=false,paused=false,pauseStartedAt=0,pausedAccumulatedMs=0,waveTimer=0,lastCount=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},msgTimer,hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null,sprintEnergy=100,sprintLocked=false,aiming=false,aimBlend=0,awmReadyAt=0,runStartTime=0;
 const PLAYER_HEALTH_REGEN_DELAY=5,PLAYER_HEALTH_REGEN_RATE=10;
@@ -2461,7 +2463,7 @@ function spawnWave(){
 function ui(){healthText.textContent=Math.ceil(Math.max(0,health));healthBar.style.width=Math.max(0,health)+"%";healthBar.style.background=health>60?"#55a45c":health>30?"#c49b43":"#ae3535";ammoEl.textContent=weapon==="pistol"?A().mag+" / ∞":A().mag+" / "+A().reserve;killsEl.textContent="KILLS "+kills;headsEl.textContent="HEADSHOTS "+heads;waveEl.textContent="WAVE "+wave;remainingEl.textContent=(currentBoss&&!currentBoss.dead?"BOSS 1":"ZOMBIES "+waveRemainingCount());cashEl.textContent="CASH $"+cash;shopCash.textContent="CASH $"+cash;weaponNameEl.textContent=wd().name;grenadeEl.textContent="GRENADES "+grenades;nukeEl.textContent="NUKES "+nukes;updateBossUI()}
 function show(s){msg.textContent=s;msg.classList.add("show");clearTimeout(msgTimer);msgTimer=setTimeout(()=>msg.classList.remove("show"),1000)}
 function burst(pos,big=false){
- const count=big?14:4;
+ const count=big?10:3;
  for(let i=0;i<count;i++){
    let q=new THREE.Mesh(big?FX.bloodGeoBig:FX.bloodGeoSmall,i%4===0?FX.boneMat:FX.bloodMat);
    const s=big?.55+rnd()*.8:.45+rnd()*.5;q.scale.setScalar(s);q.position.copy(pos);scene.add(q);
