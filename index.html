@@ -1395,7 +1395,10 @@ function rebuildGun(){
      if(m17ReloadTemplate){
        const m17ReloadMag=m17ReloadTemplate;
        gun.add(m17ReloadMag);
-       m17ReloadMag.position.set(x,-.405,-.745);m17ReloadMag.rotation.set(-.16,0,0);
+       // This clone was taken before the pistol root's +X -> -Z correction, so it
+       // must receive that same Y rotation itself. Without it the real magazine appears
+       // sideways (the tan horizontal piece visible in the v196 screenshots).
+       m17ReloadMag.position.set(x,-.405,-.745);m17ReloadMag.rotation.set(-.16,Math.PI/2,0);
        const mb=new THREE.Box3().setFromObject(m17ReloadMag),ms=new THREE.Vector3();mb.getSize(ms);
        const mh=Math.max(ms.x,ms.y,ms.z)||1;m17ReloadMag.scale.multiplyScalar(.285/mh);
        m17ReloadMag.userData.reloadOnly=true;
@@ -3295,9 +3298,19 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      else if(p<.80){lx=.18;ly=.24;lz=.11;lr=.10}
      else{t=smoothReload01((p-.80)/.20);lx=.18*(1-t);ly=.24*(1-t);lz=.11*(1-t);lr=.10*(1-t)}
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06+lr,0,-.12-rp.arch*.08);
+   }else if(reloading&&reloadWeapon==="pistol"){
+     const p=rp.p;let lx=0,ly=0,lz=0,rz=0,t=0;
+     // Dedicated M17 support-hand choreography: reach the magwell, pull down,
+     // travel to the belt, then visibly bring the fresh magazine back to the gun.
+     if(p<.10){t=smoothReload01(p/.10);lx=.12*t;ly=.05*t;lz=.02*t;rz=-.12*t}
+     else if(p<.34){t=smoothReload01((p-.10)/.24);lx=.12;ly=.05-.40*t;lz=.02+.04*t;rz=-.12}
+     else if(p<.53){t=smoothReload01((p-.34)/.19);lx=.12-.30*t;ly=-.35-.34*t;lz=.06+.18*t;rz=-.12-.12*t}
+     else if(p<.72){t=smoothReload01((p-.53)/.19);lx=-.18+.30*t;ly=-.69+.58*t;lz=.24-.18*t;rz=-.24+.12*t}
+     else if(p<.90){lx=.12;ly=-.11;lz=.06;rz=-.12}
+     else{t=smoothReload01((p-.90)/.10);lx=.12*(1-t);ly=-.11*(1-t);lz=.06*(1-t);rz=-.12*(1-t)}
+     playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.08,0,rz);
    }else{
      const ro=playerHandRig.pose.reload,h=rp.hand,pull=rp.pull||0,pouch=rp.pouch||0;
-     // Follow the old magazine as it is pulled free, then clearly reach away empty before returning with a fresh one.
      playerHandRig.left.position.set(ro[0]*h-.10*pouch,ro[1]*h-.24*pull-.48*pouch,ro[2]*h+.05*pull+.22*pouch);
      playerHandRig.left.rotation.set(.10*h+.11*pouch,0,-.18*h-.09*pouch);
    }
