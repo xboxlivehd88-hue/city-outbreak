@@ -8,11 +8,11 @@ Last updated: 2026-09-24
 - Branch: `main`
 - Source of truth: root `index.html`
 - GitHub Pages: https://xboxlivehd88-hue.github.io/city-outbreak/
-- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=141
-- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=141&debug=1
-- Current `index.html` blob SHA at handoff: `f803711421f264f63241df4c1ea5a8a3b6faf5b9`
-- Current branch HEAD before this handoff-doc commit: `af3f1d55fe5a1227be6c7cec5ed69a120c2669ac`
-- Latest gameplay commit: `880757d6bb057026bbeaeb12d140792b0e1c1ca7` — `Speed up delayed health regeneration v141`
+- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=142
+- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=142&debug=1
+- Current `index.html` blob SHA at handoff: `482625f719ecfe75b6e7efd743fc7721eecd5acf`
+- Current branch HEAD before this handoff-doc commit: `d9d0a458a1eb67e0f682814c18f6d96a4b991a7b`
+- Latest gameplay commit: `d2a11dbb8bbea408f85c9000ee07cab24b37b834` — `Improve boss pursuit pressure and Gore Rush v142`
 - Pages deployment for the current branch completed successfully.
 
 IMPORTANT: the handoff/documentation commit comes after the gameplay commit. Do not treat the handoff commit as a gameplay change.
@@ -32,13 +32,13 @@ For every gameplay change:
 7. Give the user a cache-busted live link.
 8. Increment the cache-bust version by one for a new gameplay release.
 
-The next gameplay release after the current v141 should normally be **v142**.
+The next gameplay release after the current v142 should normally be **v143**.
 
 Do not tell the user GitHub/repo-write is unavailable unless a real GitHub connector call in that session actually fails. The user strongly prefers end-to-end execution.
 
 ## Immediate state / next-chat priority
 
-Current stable gameplay build is **v141**.
+Current stable gameplay build is **v142**.
 
 Latest visual/zombie progression:
 
@@ -50,9 +50,11 @@ Latest visual/zombie progression:
 - v138 added human facial anatomy to walkers and native crawlers: nose, cheeks, ears, jaw/chin, brows, mouth, clavicle/shoulder transitions
 - **v139** adds the undead/gore pass: cooler corpse-like skin, darker/sunken eye sockets, wet dark-red face/jaw blood, collar/chest gore, stronger limb wounds, and properly repositioned crawler face/chest wounds
 - v139 intentionally preserves v136 movement speeds/AI/pathing, v134 hitboxes, v135 ragdolls, crawler conversion identity, drop rate 52%, and the 20-active-zombie performance cap
+- v142 boss anti-kiting behavior: pressure pace is 4.65–6.0 m/s depending on distance; Gore Rush can trigger inside 32m and runs at 7.6 m/s, while player full sprint remains 9 m/s
+
 
 Current live test:
-https://xboxlivehd88-hue.github.io/city-outbreak/?v=141
+https://xboxlivehd88-hue.github.io/city-outbreak/?v=142
 
 If the user reports zombie visual issues next, fetch the newest `main:index.html` first. Do not undo the v136 locomotion correction or v134 converted-crawler hitboxes while tuning appearance.
 
@@ -429,7 +431,7 @@ If starting a new chat, the user can paste this:
 > We are continuing my browser FPS game CITY OUTBREAK. Repo: `xboxlivehd88-hue/city-outbreak`, branch `main`, live site `https://xboxlivehd88-hue.github.io/city-outbreak/`. Read the root `HANDOFF.md` first, then fetch the latest `main:index.html`; never work from a stale copy. Do all GitHub edits/pushes/deploy checks for me. Current gameplay build is v124. Latest gameplay commit is `ec1e9c4472e03676a230a2a00df5140c62e32f41` (`Smooth magazine drop and fresh reload sequence`). Current work is first-person reload polish. We added visible hands, removable magazines, discarded-mag physics, a deliberate empty-hand pouch reach, fresh-mag pickup, and reinsertion. I have not yet confirmed v124 visually. First have me test `https://xboxlivehd88-hue.github.io/city-outbreak/?v=124`. If it still needs work, make old-mag removal/drop, empty-hand reach, fresh-mag pickup and insertion easier to see without changing the gun models/ADS. Preserve all existing zombie AI/pathing, boss behavior, collisions, performance optimizations, $1 test gun prices, and 20-active-zombie cap. After the next gameplay change push to main, verify Pages, and give me `?v=125`.
 
 
-## Recent release history (v125-v139)
+## Recent release history (v125-v142)
 
 - v125 — shotgun base 8 shells + shell-by-shell reload
 - v126 — maintenance/performance pass: nav-cell cache, async sequence guards, resource cleanup, hot-path allocation reductions
@@ -448,4 +450,5 @@ If starting a new chat, the user can paste this:
 - v139 — corpse tones, sunken sockets, face/jaw blood, collar/chest gore, crawler wound repositioning
 - v140 — player health regeneration: 10-second delay after every enemy hit, then 5 HP/sec to 100; any new zombie/boss hit restarts the delay
 - v141 — health regeneration delay reduced to 5 seconds and regeneration rate increased to 10 HP/sec; any new zombie/boss hit still restarts the delay
+- v142 — boss anti-kiting pass: far-distance pressure pace, Gore Rush trigger range increased to 32m, charge speed set to 7.6 m/s below the player's 9 m/s full sprint, distance-scaled rush duration, and faster boss locomotion playback while closing
 
