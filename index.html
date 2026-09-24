@@ -1335,7 +1335,15 @@ function rebuildGun(){
      const m17Root=m17ModelTemplate.clone(true);m17Root.name="ExternalM17SIG";
      // The source GLB is authored with the pistol's barrel along +X (not Z).
      // Remove its loose presentation props first, then rotate +X -> game forward (-Z).
-     for(const propName of ["919 p320 17rnd empty mag_0","9x19_1","919_2"]){
+     // All four named nodes are loose presentation props in this GLB. Remove them
+     // from the displayed pistol, including the loaded magazine that was hanging below it.
+     const m17SourceMag=m17Root.getObjectByName("919 p320 17rnd mag_3");
+     let m17ReloadTemplate=null;
+     if(m17SourceMag){
+       m17ReloadTemplate=m17SourceMag.clone(true);
+       m17ReloadTemplate.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+     }
+     for(const propName of ["919 p320 17rnd empty mag_0","9x19_1","919_2","919 p320 17rnd mag_3"]){
        const prop=m17Root.getObjectByName(propName);if(prop&&prop.parent)prop.parent.remove(prop);
      }
      // Preserve the complete assembled M17 hierarchy; only the four loose display props above are removed.
@@ -1347,18 +1355,16 @@ function rebuildGun(){
      m17Root.position.set(x-center.x,-.30-center.y,-1.02-center.z);
      m17Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
      gun.add(m17Root);
-     // Use the actual detailed loaded magazine supplied by the M17 GLB as the
-     // reload magazine. Re-parent it into gun space, then seat that real model at
-     // the proven magwell transform so the shared reload system can pull/drop/insert it.
-     const m17ReloadMag=m17Root.getObjectByName("919 p320 17rnd mag_3");
-     if(m17ReloadMag){
-       // Reuse the real GLB magazine only for the reload sequence. The source node is
-       // a loose display prop, so hiding it at idle prevents the hanging magazine.
-       m17Root.updateMatrixWorld(true);gun.updateMatrixWorld(true);gun.attach(m17ReloadMag);
+     // The visible pistol stays clean. A hidden clone of the real GLB magazine is
+     // the reload actor: reveal at reload start, pull/drop it, then clone it from the
+     // pouch and insert the replacement. It is never part of the idle pistol hierarchy.
+     if(m17ReloadTemplate){
+       const m17ReloadMag=m17ReloadTemplate;
+       gun.add(m17ReloadMag);
        m17ReloadMag.position.set(x,-.405,-.745);m17ReloadMag.rotation.set(-.16,0,0);
        const mb=new THREE.Box3().setFromObject(m17ReloadMag),ms=new THREE.Vector3();mb.getSize(ms);
        const mh=Math.max(ms.x,ms.y,ms.z)||1;m17ReloadMag.scale.multiplyScalar(.285/mh);
-       m17ReloadMag.userData.externalWeaponAsset=true;m17ReloadMag.userData.reloadOnly=true;
+       m17ReloadMag.userData.reloadOnly=true;
        m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
        m17ReloadMag.visible=false;playerReloadPart=m17ReloadMag;
      }else playerReloadPart=null;
