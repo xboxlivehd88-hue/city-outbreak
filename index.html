@@ -1642,6 +1642,9 @@ function rigOutfitColor(kind,seedish=0){
  const colors=[0x4a5549,0x5a5145,0x33495a,0x665e54,0x4b403f,0x3d474c];
  return colors[Math.abs(seedish)%colors.length];
 }
+// Shared geometry: only two inexpensive rigid detail meshes per standing rig.
+const ZRIG_NECK_DETAIL_GEO=new THREE.CylinderGeometry(.070,.086,.22,10,1,false);
+const ZRIG_UPPER_DETAIL_GEO=new THREE.SphereGeometry(.24,10,7);
 function rigTransient(z,name,hold=.34){
  if(!z.rigActions||!z.rigActions[name])return;
  const a=z.rigActions[name],base=z.rigBase;
@@ -1660,6 +1663,7 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
  rig.position.set(0,0,0);
  rig.scale.setScalar(1.02);
  const eye=rigEyeColor(kind), outfit=rigOutfitColor(kind,variant),ownedRigMaterials=[];
+ let rigSkinMat=null,rigShirtMat=null;
  rig.traverse(o=>{
    if(!o.isMesh)return;
    o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;o.userData.visualOnly=true;
@@ -1675,9 +1679,9 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
      n.depthWrite=true;
      n.depthTest=true;
      const nm=(m.name||"").toLowerCase();
-     if(nm.includes("shirt")){n.color.setHex(outfit)}
+     if(nm.includes("shirt")){n.color.setHex(outfit);if(!rigShirtMat)rigShirtMat=n}
      if(nm.includes("skin")){
-       const skin=[0x858474,0x78766b,0x91866e,0x727a70][variant%4];n.color.setHex(skin);
+       const skin=[0x858474,0x78766b,0x91866e,0x727a70][variant%4];n.color.setHex(skin);if(!rigSkinMat)rigSkinMat=n;
      }
      if(nm.includes("pants")){n.color.setHex([0x292c30,0x38332f,0x2d363a][variant%3])}
      if(nm.includes("wound")){n.color.setHex(kind==="radiated"?0x398a45:kind==="acidic"?0x9f1717:0x841c1a)}
@@ -1690,6 +1694,27 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
    const finalMats=Array.isArray(o.material)?o.material:[o.material];
    for(const fm of finalMats){fm.side=THREE.DoubleSide;fm.transparent=false;fm.opacity=1;fm.depthWrite=true;fm.depthTest=true;fm.needsUpdate=true;}
  });
+ // v132 walker geometry/readability pass. The original rig left too much daylight
+ // between the skull and torso. Pull the head down, bulk the major joints slightly,
+ // then add a real neck bridge and a rounded clavicle/chest mass.
+ const neckBone=rig.getObjectByName("Neck"),headBone=rig.getObjectByName("Head"),
+       chestBone=rig.getObjectByName("Chest"),spineBone=rig.getObjectByName("Spine");
+ if(headBone){headBone.position.y-=.055;headBone.scale.set(1.05,1.02,1.05)}
+ if(neckBone)neckBone.scale.set(1.07,1,1.07);
+ if(chestBone)chestBone.scale.set(1.08,1,1.06);
+ if(spineBone)spineBone.scale.set(1.05,1,1.04);
+ for(const nm of ["L_UpperArm","R_UpperArm"]){const b=rig.getObjectByName(nm);if(b)b.scale.set(1.06,1,1.06)}
+ for(const nm of ["L_UpperLeg","R_UpperLeg"]){const b=rig.getObjectByName(nm);if(b)b.scale.set(1.05,1,1.05)}
+ if(neckBone&&rigSkinMat){
+   const bridge=new THREE.Mesh(ZRIG_NECK_DETAIL_GEO,rigSkinMat);
+   bridge.name="WalkerNeckBridge";bridge.position.set(0,.085,-.018);bridge.rotation.x=-.08;
+   bridge.userData.visualOnly=true;bridge.raycast=()=>{};neckBone.add(bridge);
+ }
+ if(chestBone&&rigShirtMat){
+   const upper=new THREE.Mesh(ZRIG_UPPER_DETAIL_GEO,rigShirtMat);
+   upper.name="WalkerUpperTorsoDetail";upper.scale.set(1.22,.40,.66);upper.position.set(0,.075,-.018);
+   upper.userData.visualOnly=true;upper.raycast=()=>{};chestBone.add(upper);
+ }
  g.add(rig);
  const mixer=new THREE.AnimationMixer(rig), actions={};
  for(const clip of zombieRigAsset.animations)actions[clip.name]=mixer.clipAction(clip);
@@ -1780,9 +1805,9 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  }
 
  // Head: six broad planes, narrower jaw, cheek planes. Much less "box head".
- let neck=new THREE.Mesh(new THREE.CylinderGeometry(.056,.066,.125,6),skin);neck.position.set(0,1.68,-.035);neck.rotation.x=-.08;g.add(neck);
- let head=new THREE.Mesh(new THREE.CylinderGeometry(.142,.122,.29,6,1,false),skin);
- head.position.set(0,1.88,-.070);head.scale.set(.96,1.0,.82);head.rotation.y=Math.PI/6;head.rotation.x=-.05;head.userData.isHead=true;g.add(head);
+ let neck=new THREE.Mesh(new THREE.CylinderGeometry(.060,.072,.16,8),skin);neck.position.set(0,1.70,-.035);neck.rotation.x=-.08;g.add(neck);
+ let head=new THREE.Mesh(new THREE.CylinderGeometry(.142,.122,.29,8,1,false),skin);
+ head.position.set(0,1.83,-.070);head.scale.set(.96,1.0,.82);head.rotation.y=Math.PI/6;head.rotation.x=-.05;head.userData.isHead=true;g.add(head);
  let forehead=box(.17,.075,.035,skin,0,.075,-.102,head);forehead.rotation.x=-.03;
  let jaw=taperedPrism(.132,.108,.082,.102,.087,skin,0,-.135,-.025,head);jaw.rotation.x=.045;
  let cheekL=box(.068,.09,.035,skin,-.092,-.015,-.092,head);cheekL.rotation.z=-.10;
@@ -2020,11 +2045,11 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
 function medkit(x,z){let g=new THREE.Group();box(1,.38,.72,M(0xe7e4da),0,.35,0,g);box(.18,.05,.5,M(0xa52c2c),0,.56,0,g);box(.5,.05,.18,M(0xa52c2c),0,.56,0,g);g.position.set(x,0,z);scene.add(g);kits.push({g,used:false})}medkit(-10,8);medkit(16,56);medkit(-17,91);
 
 // -------------------- ZOMBIE DROPS --------------------
-// Each zombie has a 32% chance to leave one physical pickup.
+// Each zombie has a 52% chance to leave one physical pickup.
 // Drop type weights: ammo 50%, money 30%, health 20%.
 // Maximums requested: ammo 20 rounds, money $25, health 100.
 // Health 100 is intentionally the rarest single drop tier.
-const DROP_CHANCE=.32, DROP_LIFETIME=15, DROP_PICKUP_RADIUS=1.45, MAX_ACTIVE_DROPS=32;
+const DROP_CHANCE=.52, DROP_LIFETIME=15, DROP_PICKUP_RADIUS=1.45, MAX_ACTIVE_DROPS=32, DROP_BASE_Y=.16;
 const dropGeo={
  ammo:new THREE.BoxGeometry(.56,.28,.38),
  money:new THREE.BoxGeometry(.50,.16,.32),
@@ -2095,9 +2120,9 @@ function spawnZombieDrop(pos){
  const label=makeDropLabel(labelText,labelColor);label.position.set(0,1.03,0);g.add(label);
 
  // scatter slightly from corpse so multiple drops/corpses don't overlap perfectly
- g.position.set(pos.x+(rnd()-.5)*.65,.04,pos.z+(rnd()-.5)*.65);
+ g.position.set(pos.x+(rnd()-.5)*.65,DROP_BASE_Y,pos.z+(rnd()-.5)*.65);
  g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});scene.add(g);
- drops.push({g,type,amount,weapon:ammoWeapon,life:DROP_LIFETIME,phase:rnd()*Math.PI*2,baseY:.04});
+ drops.push({g,type,amount,weapon:ammoWeapon,life:DROP_LIFETIME,phase:rnd()*Math.PI*2,baseY:DROP_BASE_Y});
 }
 function spawnFixedDrop(pos,type,amount,ammoWeapon=null,ox=0,oz=0){
  if(drops.length>=MAX_ACTIVE_DROPS){const old=drops.shift();if(old&&old.g.parent)scene.remove(old.g)}
@@ -2113,8 +2138,8 @@ function spawnFixedDrop(pos,type,amount,ammoWeapon=null,ox=0,oz=0){
    labelText="HEALTH +"+amount;labelColor=0xff7777;box(.12,.035,.30,M(0xb52d2d,.72),0,.44,0,g);box(.32,.035,.10,M(0xb52d2d,.72),0,.44,0,g);
  }
  const label=makeDropLabel(labelText,labelColor);label.position.set(0,1.03,0);g.add(label);
- g.position.set(pos.x+ox,.04,pos.z+oz);g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});scene.add(g);
- drops.push({g,type,amount,weapon:ammoWeapon,life:DROP_LIFETIME,phase:rnd()*Math.PI*2,baseY:.04});
+ g.position.set(pos.x+ox,DROP_BASE_Y,pos.z+oz);g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});scene.add(g);
+ drops.push({g,type,amount,weapon:ammoWeapon,life:DROP_LIFETIME,phase:rnd()*Math.PI*2,baseY:DROP_BASE_Y});
 }
 function spawnBossRewardCache(pos){
  const ammoPool=Object.keys(unlocked).filter(w=>unlocked[w]&&w!=="grenadeLauncher");
@@ -2146,7 +2171,7 @@ function updateDrops(dt){
  for(let i=drops.length-1;i>=0;i--){
    const d=drops[i];d.life-=dt;d.phase+=dt*2.1;
    d.g.rotation.y+=dt*.85;
-   d.g.position.y=d.baseY+.05+Math.sin(d.phase)*.055;
+   d.g.position.y=d.baseY+.12+Math.sin(d.phase)*.07;
    const dist=Math.hypot(px-d.g.position.x,pz-d.g.position.z);
    if(dist<DROP_PICKUP_RADIUS&&collectDrop(d)){
      scene.remove(d.g);drops.splice(i,1);continue;
@@ -2262,7 +2287,7 @@ function addLimbStump(z,pos,leg=false){
 function launchDetachedLimb(z,limb,side,leg=false){
  if(!limb||!limb.parent)return false;
  const local=limb.position.clone();
- limb.traverse(o=>{if(o.isMesh){o.visible=true;o.castShadow=false;o.receiveShadow=false}});
+ limb.traverse(o=>{if(o.isMesh){o.visible=true;o.castShadow=false;o.receiveShadow=false;o.userData.detached=true;o.userData.zombie=null;o.raycast=()=>{}}});
  z.g.updateMatrixWorld(true);limb.updateMatrixWorld(true);
  scene.attach(limb);
  const push=(side==="left"?-1:1);
@@ -2281,8 +2306,58 @@ function detachArm(z,side){
  if(!launchDetachedLimb(z,arm,side,false))return;
  z[key]=true;
  hideRigLimb(z,side==="left"?"L_UpperArm":"R_UpperArm");
+ if(z.hitMeshes)z.hitMeshes=z.hitMeshes.filter(o=>o.userData.part!==(side==="left"?"leftArm":"rightArm"));
  if(side==="left")z.armL=new THREE.Group();else z.armR=new THREE.Group();
  noise(.12,.22,350);show(side==="left"?"LEFT ARM OFF":"RIGHT ARM OFF");
+}
+function replaceZombieGeo(z,mesh,geo){
+ if(!mesh)return;
+ const old=mesh.geometry;
+ if(z.ownedGeometries&&old){const i=z.ownedGeometries.indexOf(old);if(i>=0)z.ownedGeometries.splice(i,1)}
+ try{old?.dispose()}catch(_){}
+ mesh.geometry=geo;
+ if(z.ownedGeometries)z.ownedGeometries.push(geo);
+}
+function convertLeglessToCrawler(z){
+ if(!z||z.dead||z.kind==="boss"||z.kind==="crawler"||z.hp<=0||!z.leftLegDetached||!z.rightLegDetached)return;
+ // Drop the standing skinned visual and reveal the procedural body that was already
+ // kept underneath as the accurate hitbox. This avoids spawning a second zombie.
+ if(z.rigVisual){
+   const rig=z.rigVisual;
+   if(z.mixer){z.mixer.stopAllAction();try{z.mixer.uncacheRoot(rig)}catch(_){}}
+   if(rig.parent)rig.parent.remove(rig);
+   if(z.rigMaterials){for(const m of z.rigMaterials){try{m.dispose()}catch(_){}}z.rigMaterials.length=0}
+   z.rigVisual=null;z.mixer=null;z.rigActions=null;z.rigBase=null;z.rigTransient=null;z.rigTransientT=0;
+ }
+ z.g.traverse(o=>{if(o.isMesh&&!o.userData.detached)o.visible=true});
+ z.kind="crawler";z.nightmareType="crawler";z.role="charger";z.lurch=.90;z.strideScale=1;
+ const d=diff(wave);z.speed=d.speed*.82;z.damage=Math.round(d.damage*.95);z.attack=d.attack;
+ z.legDamage=0;z.limp=0;z.knockdown=null;z.ragdoll=null;z.falling=false;z.stagger=Math.max(z.stagger,.18);
+ z.g.rotation.x=-.10;z.g.rotation.z=0;z.g.position.y=z.groundY||0;
+
+ replaceZombieGeo(z,z.torso,new THREE.CylinderGeometry(.205,.160,.49,12,2,false));
+ z.torso.scale.set(1.08,1,.78);z.torso.position.set(0,.80,-.10);z.torso.rotation.x=-.24;
+ replaceZombieGeo(z,z.pelvis,new THREE.CylinderGeometry(.165,.145,.23,10,2,false));
+ z.pelvis.scale.set(1,1,.82);z.pelvis.position.set(0,.48,.03);z.pelvis.rotation.x=-.18;
+ replaceZombieGeo(z,z.head,new THREE.SphereGeometry(.155,12,9));
+ z.head.position.set(0,1.25,-.24);z.head.scale.set(.94,1.08,.84);z.head.rotation.set(-.18,0,0);
+ replaceZombieGeo(z,z.neck,new THREE.CylinderGeometry(.060,.072,.13,10));
+ z.neck.position.set(0,1.07,-.18);z.neck.rotation.x=-.42;
+
+ if(z.jacket)z.jacket.visible=false;
+ if(z.shoulderL){z.shoulderL.position.set(-.25,.99,-.12)}
+ if(z.shoulderR){z.shoulderR.position.set(.25,.99,-.12)}
+ if(z.armL&&z.armL.parent){z.armL.position.y=.98;z.armL.position.z=-.12;z.armL.rotation.x=.86;z.armL.rotation.z=-.18}
+ if(z.armR&&z.armR.parent){z.armR.position.y=.98;z.armR.position.z=-.12;z.armR.rotation.x=.86;z.armR.rotation.z=.18}
+ if(z.elbowL)z.elbowL.rotation.x=.48;if(z.elbowR)z.elbowR.rotation.x=.48;
+
+ const back=new THREE.Mesh(new THREE.SphereGeometry(.255,12,8),z.torso.material);
+ back.name="LeglessCrawlerBack";back.scale.set(1.05,.72,.72);back.position.set(0,.95,-.08);back.rotation.x=-.18;
+ back.userData.zombie=z;back.userData.part="torso";z.g.add(back);
+ if(z.ownedGeometries)z.ownedGeometries.push(back.geometry);
+ if(z.hitMeshes)z.hitMeshes.push(back);
+ z.navForceRepath=true;z.navCheckT=0;z.think=0;
+ show("CRIPPLED — CRAWLER");
 }
 function detachLeg(z,side){
  const key=side==="left"?"leftLegDetached":"rightLegDetached";
@@ -2291,9 +2366,11 @@ function detachLeg(z,side){
  if(!launchDetachedLimb(z,leg,side,true))return;
  z[key]=true;
  hideRigLimb(z,side==="left"?"L_UpperLeg":"R_UpperLeg");
+ if(z.hitMeshes)z.hitMeshes=z.hitMeshes.filter(o=>o.userData.part!==(side==="left"?"leftLeg":"rightLeg"));
  if(side==="left")z.legL=new THREE.Group();else z.legR=new THREE.Group();
  z.legDamage=3;
  noise(.15,.25,280);show(side==="left"?"LEFT LEG OFF":"RIGHT LEG OFF");
+ if(z.leftLegDetached&&z.rightLegDetached&&z.hp>0)convertLeglessToCrawler(z);
 }
 function limbDamage(z,part,amount){
  if(part==="leftArm"&&!z.leftArmDetached){z.leftArmHP-=amount;if(z.leftArmHP<=0)detachArm(z,"left")}
