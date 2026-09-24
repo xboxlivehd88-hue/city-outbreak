@@ -2765,8 +2765,8 @@ function showDeathScreen(){
 }
 function bite(z){if(z.cool>0)return;z.cool=z.attack;z.attackAnim=.62;z.attackSide=Math.random()>.5?1:-1;rigTransient(z,"Attack",.48);let armPenalty=((!z.armL.parent?1:0)+(!z.armR.parent?1:0))*.2,dealt=z.damage*(1-armPenalty);health=Math.max(0,health-dealt);resetHealthRegenDelay();biteS();damage.classList.add("show");setTimeout(()=>damage.classList.remove("show"),140);ui();if(health<=0){showDeathScreen()}else{const shownDamage=Math.round(dealt*10)/10;show("-"+shownDamage+" HEALTH")}}
 function reload(w=weapon){
- const a=ammoState[w],cap=maxMag(w);
- if(paused||reloading||!a||a.mag===cap||a.reserve<=0||dying)return false;
+ const a=ammoState[w],cap=maxMag(w),infiniteReserve=w==="pistol";
+ if(paused||reloading||!a||a.mag===cap||(!infiniteReserve&&a.reserve<=0)||dying)return false;
  const seq=++reloadSequence;
  setAim(false);
  if(w==="shotgun"){
@@ -2792,14 +2792,14 @@ function reload(w=weapon){
  reloading=true;reloadStartedAt=gameTimeNow();reloadDurationMs=duration;reloadWeapon=w;beginReloadMagazineFX();reloadS();show("RELOADING");
  gameTimeout(()=>{
    if(seq!==reloadSequence||!reloading||reloadWeapon!==w)return;
-   const n=Math.min(cap-a.mag,a.reserve);
-   a.mag+=n;a.reserve-=n;finishReloadMagazineFX();reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";ui()
+   const n=infiniteReserve?(cap-a.mag):Math.min(cap-a.mag,a.reserve);
+   a.mag+=n;if(!infiniteReserve)a.reserve-=n;finishReloadMagazineFX();reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";ui()
  },duration);
  return true
 }
 function autoReloadIfEmpty(w=weapon){
  const a=ammoState[w];
- if(a&&a.mag<=0&&a.reserve>0&&!reloading&&!dying)reload(w)
+ if(a&&a.mag<=0&&(w==="pistol"||a.reserve>0)&&!reloading&&!dying)reload(w)
 }
 const ray=new THREE.Raycaster(),rayAim=new THREE.Vector2(),rayTargets=[];
 function fire(){
@@ -2808,7 +2808,7 @@ function fire(){
  const infiniteStarterAmmo=weapon==="pistol";
  if(A().mag<=0){
   tone(180,.05,"square",.08);
-  if(A().reserve>0){autoReloadIfEmpty(weapon)}else show("EMPTY");
+  if(weapon==="pistol"||A().reserve>0){autoReloadIfEmpty(weapon)}else show("EMPTY");
   return
  }
  A().mag--;if(weapon==="awm")awmReadyAt=gameTimeNow()+1150;weaponSound();if(weapon!=="grenadeLauncher")casing();recoil=Math.min(.3,recoil+wd().recoil);muzzle.intensity=10;setTimeout(()=>muzzle.intensity=0,42);ui();
