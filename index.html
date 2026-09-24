@@ -121,7 +121,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 <div id="shopHeader"><h2>WAVE SHOP</h2><div id="shopCash">CASH $0</div></div>
 <div id="shopGrid">
   <section class="shopSection"><h3>Ammo</h3><div class="shopItems">
-    
+    <button data-buy="rifleAmmo">M4 Carbine +36<br>$120</button>
     <button data-buy="smgAmmo">MP5 +60<br>$110</button>
     <button data-buy="shotgunAmmo">Shotgun +18<br>$140</button>
     
@@ -643,9 +643,23 @@ function batchStaticCity(){
 }
 
 let stiModelTemplate=null;
+const pendingStiSedans=[];
+function installStiVisual(g){
+ if(!stiModelTemplate||!g||g.userData.stiVisual)return false;
+ while(g.children.length)g.remove(g.children[g.children.length-1]);
+ const sti=stiModelTemplate.clone(true);
+ const b0=new THREE.Box3().setFromObject(sti),sz=new THREE.Vector3();b0.getSize(sz);
+ const horizontal=Math.max(sz.x,sz.z)||1;sti.scale.setScalar(4.90/horizontal);
+ const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
+ sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
+ sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ g.add(sti);g.userData.stiVisual=true;return true;
+}
 new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
  stiModelTemplate=gltf.scene;
  stiModelTemplate.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ for(const sedan of pendingStiSedans)installStiVisual(sedan);
+ pendingStiSedans.length=0;
 },undefined,err=>console.warn("WRX STI GLB load failed; procedural sedan fallback remains",err));
 
 function car(x,z,rot=0,type=0){
@@ -678,15 +692,9 @@ function car(x,z,rot=0,type=0){
  if(!isSUV&&!isWagon&&!isPickup&&!isHatch){
    const SL=4.90,SW=1.85,SH=1.45,SR=.34;
    if(stiModelTemplate){
-     const sti=stiModelTemplate.clone(true);
-     const b0=new THREE.Box3().setFromObject(sti),sz=new THREE.Vector3();b0.getSize(sz);
-     const horizontal=Math.max(sz.x,sz.z)||1;sti.scale.setScalar(SL/horizontal);
-     const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
-     sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
-     sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
-     g.add(sti);g.position.set(x,0,z);g.rotation.y=rot;
+     g.position.set(x,0,z);g.rotation.y=rot;
      g.userData.carHalfW=SW*.48;g.userData.carHalfL=SL*.49;g.userData.carType=0;
-     scene.add(g);return g;
+     installStiVisual(g);scene.add(g);return g;
    }
    const frontZ=-1.415,rearZ=1.415;
    const sedanGlass=M(0x17272e,.40);
@@ -807,6 +815,7 @@ function car(x,z,rot=0,type=0){
    g.position.set(x,0,z);g.rotation.y=rot;
    g.userData.carHalfW=SW*.48;g.userData.carHalfL=SL*.49;g.userData.carType=0;
    g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+   pendingStiSedans.push(g);
    scene.add(g);
    return g;
  }
@@ -1229,7 +1238,7 @@ function gameTimeout(fn,ms){
 }
 
 const weaponDefs={
- rifle:{name:"M4 CARBINE",rate:105,hold:190,spread:.004,pellets:1,body:.72,recoil:.105,baseMag:12},
+ rifle:{name:"M4 CARBINE",rate:105,hold:190,spread:.004,pellets:1,body:1.05,recoil:.105,baseMag:12},
  smg:{name:"MP5",rate:72,hold:150,spread:.012,pellets:1,body:.75,recoil:.065,baseMag:30},
  shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.055,pellets:7,body:.72,recoil:.22,baseMag:8},
  pistol:{name:"M17 SIG",rate:240,hold:9999,spread:.007,pellets:1,body:.82,recoil:.09,baseMag:15},
@@ -2686,7 +2695,7 @@ function spawnWave(){
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
 }
-function ui(){healthText.textContent=Math.ceil(Math.max(0,health));healthBar.style.width=Math.max(0,health)+"%";healthBar.style.background=health>60?"#55a45c":health>30?"#c49b43":"#ae3535";ammoEl.textContent=(weapon==="rifle"||weapon==="pistol")?"∞ AMMO":A().mag+" / "+A().reserve;killsEl.textContent="KILLS "+kills;headsEl.textContent="HEADSHOTS "+heads;waveEl.textContent="WAVE "+wave;remainingEl.textContent=(currentBoss&&!currentBoss.dead?"BOSS 1":"ZOMBIES "+waveRemainingCount());cashEl.textContent="CASH $"+cash;shopCash.textContent="CASH $"+cash;weaponNameEl.textContent=wd().name;grenadeEl.textContent="GRENADES "+grenades;nukeEl.textContent="NUKES "+nukes;updateBossUI()}
+function ui(){healthText.textContent=Math.ceil(Math.max(0,health));healthBar.style.width=Math.max(0,health)+"%";healthBar.style.background=health>60?"#55a45c":health>30?"#c49b43":"#ae3535";ammoEl.textContent=weapon==="pistol"?"∞ AMMO":A().mag+" / "+A().reserve;killsEl.textContent="KILLS "+kills;headsEl.textContent="HEADSHOTS "+heads;waveEl.textContent="WAVE "+wave;remainingEl.textContent=(currentBoss&&!currentBoss.dead?"BOSS 1":"ZOMBIES "+waveRemainingCount());cashEl.textContent="CASH $"+cash;shopCash.textContent="CASH $"+cash;weaponNameEl.textContent=wd().name;grenadeEl.textContent="GRENADES "+grenades;nukeEl.textContent="NUKES "+nukes;updateBossUI()}
 function show(s){msg.textContent=s;msg.classList.add("show");clearTimeout(msgTimer);msgTimer=setTimeout(()=>msg.classList.remove("show"),1000)}
 function burst(pos,big=false){
  const count=big?14:4;
@@ -2996,7 +3005,7 @@ function showDeathScreen(){
  document.body.style.cursor="default";
 }
 function bite(z){if(z.cool>0)return;z.cool=z.attack;z.attackAnim=.62;z.attackSide=Math.random()>.5?1:-1;rigTransient(z,"Attack",.48);let armPenalty=((!z.armL.parent?1:0)+(!z.armR.parent?1:0))*.2,dealt=z.damage*(1-armPenalty);health=Math.max(0,health-dealt);resetHealthRegenDelay();biteS();damage.classList.add("show");setTimeout(()=>damage.classList.remove("show"),140);ui();if(health<=0){showDeathScreen()}else{const shownDamage=Math.round(dealt*10)/10;show("-"+shownDamage+" HEALTH")}}
-function reload(w=weapon){if(w==='rifle'||w==='pistol'){show('UNLIMITED AMMO');return false}
+function reload(w=weapon){if(w==='pistol'){show('UNLIMITED AMMO');return false}
  const a=ammoState[w],cap=maxMag(w);
  if(paused||reloading||!a||a.mag===cap||a.reserve<=0||dying)return false;
  const seq=++reloadSequence;
@@ -3037,7 +3046,7 @@ const ray=new THREE.Raycaster(),rayAim=new THREE.Vector2(),rayTargets=[];
 function fire(){
  if(!running||paused||reloading||dying||between)return;
  if(weapon==="awm"&&gameTimeNow()<awmReadyAt){show("CYCLING BOLT");return}
- const infiniteStarterAmmo=weapon==="rifle"||weapon==="pistol";
+ const infiniteStarterAmmo=weapon==="pistol";
  if(!infiniteStarterAmmo&&A().mag<=0){
   tone(180,.05,"square",.08);
   if(A().reserve>0){autoReloadIfEmpty(weapon)}else show("EMPTY");
