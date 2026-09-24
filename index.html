@@ -642,6 +642,12 @@ function batchStaticCity(){
  console.log("CityOutbreak city batching",{batches,mergedObjects,materials:buckets.size});
 }
 
+let stiModelTemplate=null;
+new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
+ stiModelTemplate=gltf.scene;
+ stiModelTemplate.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+},undefined,err=>console.warn("WRX STI GLB load failed; procedural sedan fallback remains",err));
+
 function car(x,z,rot=0,type=0){
  // v106: v105 sedan geometry retained; loft face winding and solid tinted glass fixed.
  // 0 sedan, 1 crossover, 2 wagon, 3 pickup, 4 compact hatch.
@@ -671,6 +677,17 @@ function car(x,z,rot=0,type=0){
  // ~1.45m tall, ~2.83m wheelbase. The other four car classes remain on v102.
  if(!isSUV&&!isWagon&&!isPickup&&!isHatch){
    const SL=4.90,SW=1.85,SH=1.45,SR=.34;
+   if(stiModelTemplate){
+     const sti=stiModelTemplate.clone(true);
+     const b0=new THREE.Box3().setFromObject(sti),sz=new THREE.Vector3();b0.getSize(sz);
+     const horizontal=Math.max(sz.x,sz.z)||1;sti.scale.setScalar(SL/horizontal);
+     const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
+     sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
+     sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+     g.add(sti);g.position.set(x,0,z);g.rotation.y=rot;
+     g.userData.carHalfW=SW*.48;g.userData.carHalfL=SL*.49;g.userData.carType=0;
+     scene.add(g);return g;
+   }
    const frontZ=-1.415,rearZ=1.415;
    const sedanGlass=M(0x17272e,.40);
    sedanGlass.side=THREE.DoubleSide;
