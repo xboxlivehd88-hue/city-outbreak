@@ -1,0 +1,44 @@
+name: CITY OUTBREAK v143 special zombie progression
+on: [push]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Verify expected source
+        shell: bash
+        run: |
+          test "$(git hash-object index.html)" = "482625f719ecfe75b6e7efd743fc7721eecd5acf"
+      - name: Apply v143 patch
+        run: python3 .github/city-outbreak-v143-special-progression.py
+      - name: Validate JavaScript and progression
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path("index.html").read_text(encoding="utf-8")
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,flags=re.S|re.I)
+          inline=max(scripts,key=len)
+          Path("/tmp/city-outbreak-v143.js").write_text(inline,encoding="utf-8")
+          assert 'if(w===2)return roll<.18?"sprinter":"shambler";' in inline
+          assert 'if(roll<.24+sprinterChance)return "sprinter";' in inline
+          assert 'kind=forcedKind||rolledZombieKind(wave,roll)' in inline
+          PY
+          node --check /tmp/city-outbreak-v143.js
+          git diff --check
+      - name: Commit v143
+        shell: bash
+        run: |
+          git config user.name "CITY OUTBREAK Builder"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Smooth early special zombie progression v143"
+          git push origin HEAD:main
