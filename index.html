@@ -1130,7 +1130,7 @@ function updateGrenadeLauncherReloadFX(rp){
 function tossOldReloadMagazine(){
  if(!detachableMagazineReload()||reloadOldMagDropped||!playerReloadPart.parent)return;
  const oldMag=playerReloadPart.clone(true);oldMag.name="DiscardedMagazine";oldMag.visible=true;
- oldMag.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ oldMag.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
  oldMag.position.copy(playerReloadPart.position);oldMag.quaternion.copy(playerReloadPart.quaternion);oldMag.scale.copy(playerReloadPart.scale);
  gun.add(oldMag);gun.updateMatrixWorld(true);scene.attach(oldMag);
  // Keep the discarded mag in the player's view for a moment instead of firing it off-screen.
@@ -1141,7 +1141,7 @@ function tossOldReloadMagazine(){
 function spawnFreshReloadMagazine(){
  if(!detachableMagazineReload()||reloadFreshMag||reloadMagInserted||!playerHandRig)return;
  const fresh=playerReloadPart.clone(true);fresh.name="FreshReloadMagazine";fresh.visible=true;
- fresh.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
  playerHandRig.left.add(fresh);
  const hp=playerHandRig.pose.left;
  // It appears only once the empty hand has reached the pouch area, then rides back up in that hand.
@@ -1400,7 +1400,7 @@ function rebuildGun(){
        // sideways (the tan horizontal piece visible in the v196 screenshots).
        m17ReloadMag.position.set(x,-.405,-.745);m17ReloadMag.rotation.set(-.16,Math.PI/2,0);
        const mb=new THREE.Box3().setFromObject(m17ReloadMag),ms=new THREE.Vector3();mb.getSize(ms);
-       const mh=Math.max(ms.x,ms.y,ms.z)||1;m17ReloadMag.scale.multiplyScalar(.285/mh);
+       const mh=Math.max(ms.x,ms.y,ms.z)||1;m17ReloadMag.scale.setScalar(.40/mh);
        m17ReloadMag.userData.reloadOnly=true;
        m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
        m17ReloadMag.visible=false;playerReloadPart=m17ReloadMag;
