@@ -441,7 +441,7 @@ const asphaltAvenue=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96
 new THREE.TextureLoader().load("assets/textures/roads/road_albedo.jpg.jpg",tx=>{
  tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
  const avenueTex=tx.clone();avenueTex.needsUpdate=true;avenueTex.repeat.set(3,30);
- const crossTex=tx.clone();crossTex.needsUpdate=true;crossTex.center.set(.5,.5);crossTex.rotation=Math.PI/2;crossTex.repeat.set(3,28);
+ const crossTex=tx.clone();crossTex.needsUpdate=true;crossTex.repeat.set(28,3);
  asphaltAvenue.map=avenueTex;asphaltAvenue.needsUpdate=true;
  asphaltCross.map=crossTex;asphaltCross.needsUpdate=true;
 });
