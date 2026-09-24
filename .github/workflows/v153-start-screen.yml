@@ -33,10 +33,15 @@ jobs:
           PY
           node --check /tmp/city-outbreak-module.mjs
           git diff --check
+      - name: Create approved start-screen image
+        run: |
+          mkdir -p assets
+          base64 -d .github/city-outbreak-start-v153.b64 > assets/city-outbreak-start-v153.jpg
+          test -s assets/city-outbreak-start-v153.jpg
       - name: Commit v153
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
+          git add index.html assets/city-outbreak-start-v153.jpg
           git commit -m "Add cinematic start screen and controls popup v153"
           git push origin HEAD:main
