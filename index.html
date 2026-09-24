@@ -109,7 +109,6 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
     <button data-buy="awmAmmo">AWM +10<br>$300</button>
   </div></section>
   <section class="shopSection"><h3>Upgrades</h3><div class="shopItems">
-    <button data-buy="heal">Heal +40<br>$150</button>
     <button data-buy="mag">Magazine +4<br>$250</button>
     <button data-buy="damage">Damage Upgrade<br>$350</button>
     <button data-buy="reload">Faster Reload<br>$300</button>
@@ -2876,7 +2875,6 @@ function buy(type){
  if(type==="grenadeLauncherAmmo"){price=225;if(launcherAmmoTotal()>=10){show("GRENADE LAUNCHER AMMO FULL");ok=true}else if(cash>=price){const n=addGrenadeLauncherAmmo(3);cash-=price;show("+"+n+" GRENADE LAUNCHER ROUNDS");ok=true}}
  if(type==="m240Ammo"){price=275;if(cash>=price){cash-=price;ammoState.m240.reserve+=100;show("+100 M240 AMMO");ok=true}}
  if(type==="awmAmmo"){price=300;if(cash>=price){cash-=price;ammoState.awm.reserve+=10;show("+10 AWM ROUNDS");ok=true}}
- if(type==="heal"){price=150;if(cash>=price){cash-=price;health=Math.min(100,health+40);show("+40 HEALTH");ok=true}}
  if(type==="mag"){price=250;if(cash>=price){cash-=price;magSize+=4;show("MAGAZINE UPGRADED");ok=true}}
  if(type==="damage"){price=350;if(cash>=price){cash-=price;damageLevel++;show("DAMAGE LEVEL "+damageLevel);ok=true}}
  if(type==="reload"){price=300;if(cash>=price){cash-=price;reloadLevel++;show("FASTER RELOAD");ok=true}}
