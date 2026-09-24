@@ -1,6 +1,6 @@
 # CITY OUTBREAK — CURRENT CHAT / DEVELOPER HANDOFF
 
-Last updated: 2026-09-22
+Last updated: 2026-09-24
 
 ## Project / deployment
 
@@ -8,11 +8,11 @@ Last updated: 2026-09-22
 - Branch: `main`
 - Source of truth: root `index.html`
 - GitHub Pages: https://xboxlivehd88-hue.github.io/city-outbreak/
-- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=124
-- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=124&debug=1
-- Current `index.html` blob SHA at handoff: `c3d78c97c9903b97308b48cadec78c5b8ea10306`
-- Current branch HEAD before this handoff-doc commit: `4308ec4197577536ed0a2353909eec2b448bcdc1`
-- Latest gameplay commit: `ec1e9c4472e03676a230a2a00df5140c62e32f41` — `Smooth magazine drop and fresh reload sequence`
+- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=132
+- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=132&debug=1
+- Current `index.html` blob SHA at handoff: `cee06d57a9d89d59200b7a7bad8100592d33f45c`
+- Current branch HEAD before this handoff-doc commit: `7c6b2699c2ca579d5400f0ffd79901dfb7d8557e`
+- Latest gameplay commit: `08389875e386e0f0a634e3dc36d27f60f84f3a04` — `Improve walkers legless crawlers and drops v132`
 - Pages deployment for the current branch completed successfully.
 
 IMPORTANT: the handoff/documentation commit comes after the gameplay commit. Do not treat the handoff commit as a gameplay change.
@@ -32,44 +32,32 @@ For every gameplay change:
 7. Give the user a cache-busted live link.
 8. Increment the cache-bust version by one for a new gameplay release.
 
-The next gameplay release after the current v124 should normally be **v125**.
+The next gameplay release after the current v132 should normally be **v133**.
 
 Do not tell the user GitHub/repo-write is unavailable unless a real GitHub connector call in that session actually fails. The user strongly prefers end-to-end execution.
 
 ## Immediate state / next-chat priority
 
-The active work is **first-person weapon holding + reload immersion**.
+Current stable gameplay build is **v132**.
 
-The user most recently said the reload direction is good, but previously complained that they could not clearly see:
+Latest user-requested changes in v132:
 
-- the hand actually remove/drop the old magazine
-- a visible empty-hand moment while reaching for a fresh magazine
-- the fresh magazine being brought back and inserted smoothly
+- standing walker visual pass: fuller rig proportions, added neck bridge / upper-torso mass, and lower head position so the head reads as physically attached
+- both legs destroyed: surviving non-boss standing zombies convert in-place to the existing crawler style instead of simply remaining a fallen walker
+- detached limbs no longer intercept bullets
+- normal zombie drop chance increased by an absolute **+0.20** from **32% to 52%**
+- pickups float visibly higher above the ground
+- v131 final-five walker hunt/run animation is preserved
+- v130 performance cleanup is preserved
+- MP5 geometry/ADS work from v128-v129 is preserved
+- grenade-launcher break-action reload from v127 is preserved
 
-A v124 smoothing pass has already been pushed, but the user has **not yet tested/confirmed it in chat** because the conversation ended immediately after the handoff request.
+Current live test:
+https://xboxlivehd88-hue.github.io/city-outbreak/?v=132
 
-### v124 reload smoothing intent
+If the user reports a visual problem with walkers, crawler conversion, or pickups, fetch the newest `main:index.html` before changing anything and isolate the v132 logic first.
 
-The new sequence is designed as readable beats:
-
-1. support hand reaches the old magazine
-2. real magazine remains visible while being pulled down/out of the magwell
-3. at roughly 32% of reload progress the old magazine is released
-4. discarded magazine remains in view longer and falls/spins instead of being launched instantly off-screen
-5. there is an intentional **empty-hand gap** while the support hand moves toward the pouch area
-6. fresh magazine does **not** appear until the hand is down near the pouch (about 56%)
-7. hand visibly carries the fresh magazine upward
-8. fresh mag lines up with the magwell around 67%
-9. mag seats around 84%
-10. hand returns to the support grip
-
-The next chat should first ask the user to test **v124** if they have not already done so:
-
-https://xboxlivehd88-hue.github.io/city-outbreak/?v=124
-
-If the user still says the motion is unclear, improve timing/visibility without redesigning the guns.
-
-### Current reload-system code to inspect
+## Current reload-system code to inspect
 
 Relevant globals near the gun setup:
 
@@ -440,3 +428,15 @@ When the user says something feels wrong, first inspect the exact current code b
 If starting a new chat, the user can paste this:
 
 > We are continuing my browser FPS game CITY OUTBREAK. Repo: `xboxlivehd88-hue/city-outbreak`, branch `main`, live site `https://xboxlivehd88-hue.github.io/city-outbreak/`. Read the root `HANDOFF.md` first, then fetch the latest `main:index.html`; never work from a stale copy. Do all GitHub edits/pushes/deploy checks for me. Current gameplay build is v124. Latest gameplay commit is `ec1e9c4472e03676a230a2a00df5140c62e32f41` (`Smooth magazine drop and fresh reload sequence`). Current work is first-person reload polish. We added visible hands, removable magazines, discarded-mag physics, a deliberate empty-hand pouch reach, fresh-mag pickup, and reinsertion. I have not yet confirmed v124 visually. First have me test `https://xboxlivehd88-hue.github.io/city-outbreak/?v=124`. If it still needs work, make old-mag removal/drop, empty-hand reach, fresh-mag pickup and insertion easier to see without changing the gun models/ADS. Preserve all existing zombie AI/pathing, boss behavior, collisions, performance optimizations, $1 test gun prices, and 20-active-zombie cap. After the next gameplay change push to main, verify Pages, and give me `?v=125`.
+
+
+## Recent release history (v125-v132)
+
+- v125 — shotgun base 8 shells + shell-by-shell reload
+- v126 — maintenance/performance pass: nav-cell cache, async sequence guards, resource cleanup, hot-path allocation reductions
+- v127 — grenade-launcher break-action reload with visible round insertion
+- v128 — SMG renamed MP5 and first MP5-style geometry pass
+- v129 — denser MP5 geometry, corrected sights, improved shouldered ADS
+- v130 — performance cleanup: removed per-zombie PointLights, cached hit meshes, reduced allocations/shadow work
+- v131 — normal walkers cross-fade to Sprint animation during final-five hunt mode without changing movement speed
+- v132 — walker geometry/head connection, double-leg-loss crawler conversion, drop chance 32%→52%, higher floating drops
