@@ -1304,7 +1304,7 @@ function rebuildGun(){
      const m17Root=m17ModelTemplate.clone(true);m17Root.name="ExternalM17SIG";
      // The source GLB is authored with the pistol's barrel along +X (not Z).
      // Remove its loose presentation props first, then rotate +X -> game forward (-Z).
-     for(const propName of ["919 p320 17rnd empty mag_0","9x19_1","919_2","919 p320 17rnd mag_3"]){
+     for(const propName of ["919 p320 17rnd empty mag_0","9x19_1","919_2"]){
        const prop=m17Root.getObjectByName(propName);if(prop&&prop.parent)prop.parent.remove(prop);
      }
      // Preserve the complete assembled M17 hierarchy; only the four loose display props above are removed.
@@ -1316,15 +1316,15 @@ function rebuildGun(){
      m17Root.position.set(x-center.x,-.30-center.y,-1.02-center.z);
      m17Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
      gun.add(m17Root);
-     // The imported GLB includes loose magazine props, but its assembled magazine is not
-     // a safely detachable named child. Add a matching game-side magazine inside the grip
-     // so the shared drop / throw / fresh-mag / insert reload animation remains visible.
-     const m17Mag=new THREE.Group();m17Mag.name="M17ReloadMagazine";
-     const m17MagBody=bevelBox(.145,.34,.105,metal,0,0,0,m17Mag);m17MagBody.castShadow=false;
-     box(.135,.028,.112,dark,0,.17,0,m17Mag);
-     m17Mag.position.set(x,-.69,-.73);m17Mag.rotation.x=-.02;gun.add(m17Mag);
-     m17Mag.userData.reloadHome=m17Mag.position.clone();m17Mag.userData.reloadHomeQuat=m17Mag.quaternion.clone();
-     playerReloadPart=m17Mag;
+     // Use the GLB's real 17-round magazine mesh for the reload instead of adding a
+     // second procedural magazine below the pistol.
+     const m17Mag=m17Root.getObjectByName("919 p320 17rnd mag_3");
+     if(m17Mag){
+       gun.updateMatrixWorld(true);m17Root.updateMatrixWorld(true);gun.attach(m17Mag);
+       m17Mag.userData.externalWeaponAsset=true;
+       m17Mag.userData.reloadHome=m17Mag.position.clone();m17Mag.userData.reloadHomeQuat=m17Mag.quaternion.clone();
+       playerReloadPart=m17Mag;
+     }else playerReloadPart=null;
    }else{
      // Procedural fallback while the external M17 is loading or if it fails.
      part(.30,.20,.90,M(0x343a3d,.27),-.18,-1.02);part(.27,.20,.64,poly,-.34,-.88);
