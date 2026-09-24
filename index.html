@@ -106,7 +106,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 <div id="game">
 <canvas id="cv" tabindex="0"></canvas>
 <div class="hud"><div id="healthLabel"><span>HEALTH</span><span id="healthText">100</span></div><div class="track"><div id="healthBar"></div></div><div id="sprintHUD"><div id="sprintLabel"><span>SPRINT</span><span id="sprintState">READY</span></div><div id="sprintTrack"><div id="sprintFill"></div></div></div></div>
-<div class="stats"><span id="ammo">12 / 72</span><br><span id="kills">KILLS 0</span><br><span id="heads">HEADSHOTS 0</span><br><span id="wave">WAVE 1</span><br><span id="remaining">ZOMBIES 6</span><br><span id="cash">CASH $0</span><br><span id="weaponName">RIFLE</span><br><span id="grenadeCount">GRENADES 2</span><br><span id="nukeCount">NUKES 0</span></div><button id="pauseBtn" type="button">PAUSE [P]</button><div id="bossHUD"><div id="bossName"></div><div id="bossSub">BOSS THREAT</div><div id="bossTrack"><div id="bossFill"></div></div></div>
+<div class="stats"><span id="ammo">12 / 72</span><br><span id="kills">KILLS 0</span><br><span id="heads">HEADSHOTS 0</span><br><span id="wave">WAVE 1</span><br><span id="remaining">ZOMBIES 6</span><br><span id="cash">CASH $0</span><br><span id="weaponName">M4 CARBINE</span><br><span id="grenadeCount">GRENADES 2</span><br><span id="nukeCount">NUKES 0</span></div><button id="pauseBtn" type="button">PAUSE [P]</button><div id="bossHUD"><div id="bossName"></div><div id="bossSub">BOSS THREAT</div><div id="bossTrack"><div id="bossFill"></div></div></div>
 <div id="crosshair"></div><div id="scopeOverlay"><div id="scopeReticle"></div></div><div id="hitmarker">×</div><div id="damage"></div><div id="nukeFlash"></div><div id="nukeShock"></div>
 <div id="announce"><b id="big"></b><span id="small"></span></div>
 <div id="pauseOverlay"><div id="pausePanel"><h2>PAUSED</h2><p>The outbreak is frozen exactly where you left it.<br>Press P or choose Resume when you are ready.</p><button id="resumeGame" type="button">RESUME GAME</button></div></div>
@@ -115,7 +115,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 <div id="shopHeader"><h2>WAVE SHOP</h2><div id="shopCash">CASH $0</div></div>
 <div id="shopGrid">
   <section class="shopSection"><h3>Ammo</h3><div class="shopItems">
-    <button data-buy="rifleAmmo">Rifle +36<br>$120</button>
+    <button data-buy="rifleAmmo">M4 Carbine +36<br>$120</button>
     <button data-buy="smgAmmo">MP5 +60<br>$110</button>
     <button data-buy="shotgunAmmo">Shotgun +18<br>$140</button>
     <button data-buy="pistolAmmo">Pistol +48<br>$90</button>
@@ -1171,7 +1171,7 @@ function gameTimeout(fn,ms){
 }
 
 const weaponDefs={
- rifle:{name:"RIFLE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12},
+ rifle:{name:"M4 CARBINE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12},
  smg:{name:"MP5",rate:72,hold:150,spread:.012,pellets:1,body:.75,recoil:.065,baseMag:30},
  shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.055,pellets:7,body:.72,recoil:.22,baseMag:8},
  pistol:{name:"PISTOL",rate:240,hold:9999,spread:.007,pellets:1,body:1.15,recoil:.09,baseMag:15},
@@ -2973,7 +2973,7 @@ function buy(type){
  if(needUnlock[type]&&!unlocked[needUnlock[type]]){show("UNLOCK "+weaponDefs[needUnlock[type]].name+" FIRST");return}
  let price=0,ok=false;
 
- if(type==="rifleAmmo"){price=120;if(cash>=price){cash-=price;ammoState.rifle.reserve+=36;show("+36 RIFLE AMMO");ok=true}}
+ if(type==="rifleAmmo"){price=120;if(cash>=price){cash-=price;ammoState.rifle.reserve+=36;show("+36 M4 CARBINE AMMO");ok=true}}
  if(type==="smgAmmo"){price=110;if(cash>=price){cash-=price;ammoState.smg.reserve+=60;show("+60 MP5 AMMO");ok=true}}
  if(type==="shotgunAmmo"){price=140;if(cash>=price){cash-=price;ammoState.shotgun.reserve+=18;show("+18 SHOTGUN SHELLS");ok=true}}
  if(type==="pistolAmmo"){price=90;if(cash>=price){cash-=price;ammoState.pistol.reserve+=48;show("+48 PISTOL AMMO");ok=true}}
