@@ -1154,32 +1154,28 @@ function updateReloadMagazineFX(rp){
  if(!reloading||!detachableMagazineReload())return;
  const home=playerReloadPart.userData.reloadHome,targetQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
  if(reloadWeapon==="pistol"){
-   // M17: use the isolated real GLB magazine as the actor. Keep the beats deliberately
-   // readable: seated -> hand pulls free -> old mag drops -> hand to belt -> new mag
-   // rides up in the hand -> straight insertion -> animation actor disappears.
+   // M17 speed reload: the old magazine drops freely while the support hand is
+   // already reaching for the replacement. This keeps the two actions visually separate.
    if(!reloadOldMagDropped&&home){
-     const pull=p=>smoothReload01(Math.max(0,Math.min(1,p)));
-     const t=pull((rp.p-.10)/.22);
-     playerReloadPart.visible=true;playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
-     playerReloadPart.position.y-=.42*t;playerReloadPart.position.z+=.035*t;
-     if(rp.p>=.34)tossOldReloadMagazine();
+     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
+     playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
+     if(rp.p>=.12)tossOldReloadMagazine();
    }
-   if(rp.p>=.53&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
-   if(reloadFreshMag&&!reloadFreshAttached&&rp.p>=.53){
-     // Keep the fresh magazine parented to the moving support hand long enough to
-     // visibly come from the player's body instead of popping into the magwell.
-     reloadFreshMag.position.set(.025,-.115,.035);
+   // Start retrieving the fresh magazine while the old one is still visibly falling.
+   if(rp.p>=.30&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
+   if(reloadFreshMag&&!reloadFreshAttached){
+     reloadFreshMag.position.set(.02,-.12,.035);
      reloadFreshMag.quaternion.copy(targetQ);
    }
-   if(rp.p>=.72&&reloadFreshMag&&!reloadFreshAttached){
+   if(rp.p>=.64&&reloadFreshMag&&!reloadFreshAttached){
      playerHandRig.left.updateMatrixWorld(true);gun.attach(reloadFreshMag);
      reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
    }
    if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
-     const t=smoothReload01((rp.p-.72)/.18);
+     const t=smoothReload01((rp.p-.64)/.23);
      reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,home,t);
      reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
-     if(rp.p>=.90){
+     if(rp.p>=.89){
        if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
        reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
        playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadMagInserted=true;
@@ -3310,12 +3306,12 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06+lr,0,-.12-rp.arch*.08);
    }else if(reloading&&reloadWeapon==="pistol"){
      const p=rp.p;let lx=0,ly=0,lz=0,rz=0,t=0;
-     // Dedicated M17 support-hand choreography: reach the magwell, pull down,
-     // travel to the belt, then visibly bring the fresh magazine back to the gun.
-     if(p<.10){t=smoothReload01(p/.10);lx=.12*t;ly=.05*t;lz=.02*t;rz=-.12*t}
-     else if(p<.34){t=smoothReload01((p-.10)/.24);lx=.12;ly=.05-.40*t;lz=.02+.04*t;rz=-.12}
-     else if(p<.53){t=smoothReload01((p-.34)/.19);lx=.12-.30*t;ly=-.35-.34*t;lz=.06+.18*t;rz=-.12-.12*t}
-     else if(p<.72){t=smoothReload01((p-.53)/.19);lx=-.18+.30*t;ly=-.69+.58*t;lz=.24-.18*t;rz=-.24+.12*t}
+     // Old mag is released by the firing hand. At the same moment the support hand
+     // dives to the belt, grabs the replacement, then brings it straight to the magwell.
+     if(p<.12){lx=0;ly=0;lz=0}
+     else if(p<.36){t=smoothReload01((p-.12)/.24);lx=-.24*t;ly=-.72*t;lz=.25*t;rz=-.24*t}
+     else if(p<.48){lx=-.24;ly=-.72;lz=.25;rz=-.24}
+     else if(p<.72){t=smoothReload01((p-.48)/.24);lx=-.24+.36*t;ly=-.72+.61*t;lz=.25-.19*t;rz=-.24+.12*t}
      else if(p<.90){lx=.12;ly=-.11;lz=.06;rz=-.12}
      else{t=smoothReload01((p-.90)/.10);lx=.12*(1-t);ly=-.11*(1-t);lz=.06*(1-t);rz=-.12*(1-t)}
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.08,0,rz);
