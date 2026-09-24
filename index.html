@@ -3579,7 +3579,7 @@ resolveZombiePlayerContact(z,ox,oz);
    }
  }
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
-let perfTick=0,perfFrames=0,perfTime=0,perfMaxMs=0,perfHud=null;const DEBUG_PERF=new URLSearchParams(location.search).has("debug");
+let perfTick=0,perfFrames=0,perfTime=0,perfMaxMs=0,perfHud=null;const DEBUG_PERF=true; // always-on performance HUD for live stutter diagnosis
 if(DEBUG_PERF){
  perfHud=document.createElement("div");
  perfHud.style.cssText="position:fixed;left:14px;top:14px;z-index:99998;background:#050708dd;color:#dfe7ea;border:1px solid #ffffff25;border-radius:9px;padding:8px 10px;font:12px/1.45 monospace;pointer-events:none;white-space:pre";
