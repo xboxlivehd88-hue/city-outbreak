@@ -1,3 +1,11 @@
+## CURRENT BUILD — v153 (2026-09-24)
+- Added approved CITY OUTBREAK cinematic start-screen artwork at `assets/city-outbreak-start-v153.jpg`.
+- Start screen uses the artwork full-screen with `background-size: cover`.
+- The real START OUTBREAK hit area is aligned over the artwork's START OUTBREAK button.
+- The artwork's CONTROLS area opens a clean popup containing the keyboard/mouse controls, removing the old controls clutter from the start screen.
+- Gameplay systems were otherwise preserved from v152.
+- Current gameplay index blob after v153 menu alignment: `a6b3c2dbf6bbb25f5b42ebed387e1fdeae4823f9`.
+
 # CITY OUTBREAK — NEXT CHAT HANDOFF
 
 Last updated: 2026-09-24
