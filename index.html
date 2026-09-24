@@ -648,19 +648,19 @@ function installStiVisual(g){
  if(!stiModelTemplate||!g||g.userData.stiVisual)return false;
  while(g.children.length)g.remove(g.children[g.children.length-1]);
  const sti=stiModelTemplate.clone(true);
+ g.add(sti);g.userData.stiVisual=true;document.documentElement.dataset.stiVisuals=String((+document.documentElement.dataset.stiVisuals||0)+1);return true;
+}
+new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
+ const sti=gltf.scene;
+ sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
  const b0=new THREE.Box3().setFromObject(sti),sz=new THREE.Vector3();b0.getSize(sz);
  const horizontal=Math.max(sz.x,sz.z)||1;sti.scale.setScalar(4.90/horizontal);
  const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
  sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
- sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
- g.add(sti);g.userData.stiVisual=true;document.documentElement.dataset.stiVisuals=String((+document.documentElement.dataset.stiVisuals||0)+1);return true;
-}
-new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
- stiModelTemplate=gltf.scene;
- stiModelTemplate.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ stiModelTemplate=sti;
  for(const sedan of pendingStiSedans)installStiVisual(sedan);
  pendingStiSedans.length=0;
-},undefined,err=>console.warn("WRX STI GLB load failed; procedural sedan fallback remains",err));
+},undefined,err=>{document.documentElement.dataset.stiLoadError=String(err&&err.message||err);console.warn("WRX STI GLB load failed; procedural sedan fallback remains",err)});
 
 function car(x,z,rot=0,type=0){
  // v106: v105 sedan geometry retained; loft face winding and solid tinted glass fixed.
