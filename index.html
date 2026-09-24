@@ -679,9 +679,8 @@ function car(x,z,rot=0){
 }
 const parkedCars=[];
 [
- [-8,-55,0],[8,-38,Math.PI],[-8,-18,0],[8,2,Math.PI],
- [-8,58,0],[8,78,Math.PI],[-8,103,0],[8,124,Math.PI],
- [-34,25,Math.PI/2],[-51,35,-Math.PI/2],[32,35,Math.PI/2],[52,25,-Math.PI/2]
+ // v190 performance pass: keep only three STI props for now. More varied cars can be added later.
+ [-8,-55,0],[8,78,Math.PI],[32,35,Math.PI/2]
 ].forEach(c=>parkedCars.push(car(...c)));
 
 function carPointCollision(c,x,z,pad=.35){
