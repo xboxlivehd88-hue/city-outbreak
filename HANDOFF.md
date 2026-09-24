@@ -8,11 +8,11 @@ Last updated: 2026-09-24
 - Branch: `main`
 - Source of truth: root `index.html`
 - GitHub Pages: https://xboxlivehd88-hue.github.io/city-outbreak/
-- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=149
-- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=149&debug=1
-- Current `index.html` blob SHA at handoff: `ed6e2bd666ca010c1da1eaf0b3d76ab594e06855`
-- Current branch HEAD before this handoff-doc commit: `26d43f5138ef26dd7ff2fbb14cb972eee4e1d0cc`
-- Latest gameplay commit: `ff368d76c40a15853661206c99428965b90c9619` — `Improve crawler gore and low-profile silhouette v149`
+- Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=150
+- Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=150&debug=1
+- Current `index.html` blob SHA at handoff: `723c6f00d29fbb8984f7eaf1d430d0fcf4661448`
+- Current branch HEAD before this handoff-doc commit: `05464fe35c7843432cd99a70e88034a824f64a80`
+- Latest gameplay commit: `de1db31380044eebe6fbf99d5a360c42d88e457f` — `Make explosions knock zombies down with limb reaction v150`
 - Pages deployment for the current branch completed successfully.
 
 IMPORTANT: the handoff/documentation commit comes after the gameplay commit. Do not treat the handoff commit as a gameplay change.
@@ -32,13 +32,13 @@ For every gameplay change:
 7. Give the user a cache-busted live link.
 8. Increment the cache-bust version by one for a new gameplay release.
 
-The next gameplay release after the current v149 should normally be **v150**.
+The next gameplay release after the current v150 should normally be **v151**.
 
 Do not tell the user GitHub/repo-write is unavailable unless a real GitHub connector call in that session actually fails. The user strongly prefers end-to-end execution.
 
 ## Immediate state / next-chat priority
 
-Current stable gameplay build is **v149**.
+Current stable gameplay build is **v150**.
 
 Latest visual/zombie progression:
 
@@ -54,7 +54,7 @@ Latest visual/zombie progression:
 
 
 Current live test:
-https://xboxlivehd88-hue.github.io/city-outbreak/?v=149
+https://xboxlivehd88-hue.github.io/city-outbreak/?v=150
 
 If the user reports zombie visual issues next, fetch the newest `main:index.html` first. Do not undo the v136 locomotion correction or v134 converted-crawler hitboxes while tuning appearance.
 
@@ -431,7 +431,7 @@ If starting a new chat, the user can paste this:
 > We are continuing my browser FPS game CITY OUTBREAK. Repo: `xboxlivehd88-hue/city-outbreak`, branch `main`, live site `https://xboxlivehd88-hue.github.io/city-outbreak/`. Read the root `HANDOFF.md` first, then fetch the latest `main:index.html`; never work from a stale copy. Do all GitHub edits/pushes/deploy checks for me. Current gameplay build is v124. Latest gameplay commit is `ec1e9c4472e03676a230a2a00df5140c62e32f41` (`Smooth magazine drop and fresh reload sequence`). Current work is first-person reload polish. We added visible hands, removable magazines, discarded-mag physics, a deliberate empty-hand pouch reach, fresh-mag pickup, and reinsertion. I have not yet confirmed v124 visually. First have me test `https://xboxlivehd88-hue.github.io/city-outbreak/?v=124`. If it still needs work, make old-mag removal/drop, empty-hand reach, fresh-mag pickup and insertion easier to see without changing the gun models/ADS. Preserve all existing zombie AI/pathing, boss behavior, collisions, performance optimizations, $1 test gun prices, and 20-active-zombie cap. After the next gameplay change push to main, verify Pages, and give me `?v=125`.
 
 
-## Recent release history (v125-v149)
+## Recent release history (v125-v150)
 
 - v125 — shotgun base 8 shells + shell-by-shell reload
 - v126 — maintenance/performance pass: nav-cell cache, async sequence guards, resource cleanup, hot-path allocation reductions
@@ -458,5 +458,6 @@ If starting a new chat, the user can paste this:
 - v147 — Shambler is now the master standing-zombie visual profile; Sprinter, Radiated, Infected, Acidic and Boss clone the same shared rig/geometry and inherit the Shambler proportions, with lightweight profile overrides reserved for future visual differences; native crawler remains the temporary procedural exception
 - v148 — removed all physical health pickups from zombie drops and the boss reward cache; normal drops remain 52% overall and now split 62.5% ammo / 37.5% cash; passive health regeneration and the three fixed map medkits remain unchanged
 - v149 — crawler baseline visual pass: replaced the round blood-colored mouth sphere with a flat dark cavity plus shared stringy blood/drool geometry, lowered and flattened the torso/head/shoulder/leg pose, added shared chest/lower-drag blood and opposite-forearm gore, and excluded shared crawler gore geometry from per-zombie disposal; gameplay stats/hitboxes/pathing unchanged
+- v150 — explosive knockdown fix: surviving non-boss blast victims now rotate nearly horizontal onto the pavement, stay down longer and recover; grenade/launcher explosions no longer fire a conflicting standing stagger; attached arms and legs get a short damped blast-whip impulse before settling into the downed pose; repeat blasts extend the knockdown and retrigger limb reaction; bosses still flinch only
 50 Heal +40 button from the wave shop and deleted its unused purchase branch; passive regeneration, health drops, medkits and boss reward health remain unchanged
 
