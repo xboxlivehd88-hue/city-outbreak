@@ -1,5 +1,7 @@
 # CITY OUTBREAK — CURRENT CHAT / DEVELOPER HANDOFF
 
+> **NEXT CHAT: READ `NEXT_CHAT_HANDOFF.md` FIRST.** It is the authoritative current-state handoff through v152. This file remains useful as historical detail, but any older contradictory text here should defer to `NEXT_CHAT_HANDOFF.md`.
+
 Last updated: 2026-09-24
 
 ## Project / deployment
@@ -11,7 +13,7 @@ Last updated: 2026-09-24
 - Current gameplay build to test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=152
 - Debug build: https://xboxlivehd88-hue.github.io/city-outbreak/?v=152&debug=1
 - Current `index.html` blob SHA at handoff: `67314c2d8f647d50281b9ca7711c7c1bfaeaaee7`
-- Current branch HEAD before this handoff-doc commit: `c7dfcb785ad5456340d3e85370446fe472a0bf02`
+- Current branch HEAD before this handoff-doc commit: `0620d755876198a2f06367ffd82ebf16e9c31feb`
 - Latest gameplay commit: `9a5add8533ff30f87bfc9f30fba6f79de31196d8` — `Restore startup and use safer zombie nav clearance v152`
 - Pages deployment for the current branch completed successfully.
 
@@ -426,10 +428,14 @@ When the user says something feels wrong, first inspect the exact current code b
 
 ## Next-chat copy/paste summary
 
-If starting a new chat, the user can paste this:
+Use the authoritative copy/paste prompt in root `NEXT_CHAT_HANDOFF.md`, section **18. Copy/paste prompt for the next chat**.
 
-> We are continuing my browser FPS game CITY OUTBREAK. Repo: `xboxlivehd88-hue/city-outbreak`, branch `main`, live site `https://xboxlivehd88-hue.github.io/city-outbreak/`. Read the root `HANDOFF.md` first, then fetch the latest `main:index.html`; never work from a stale copy. Do all GitHub edits/pushes/deploy checks for me. Current gameplay build is v124. Latest gameplay commit is `ec1e9c4472e03676a230a2a00df5140c62e32f41` (`Smooth magazine drop and fresh reload sequence`). Current work is first-person reload polish. We added visible hands, removable magazines, discarded-mag physics, a deliberate empty-hand pouch reach, fresh-mag pickup, and reinsertion. I have not yet confirmed v124 visually. First have me test `https://xboxlivehd88-hue.github.io/city-outbreak/?v=124`. If it still needs work, make old-mag removal/drop, empty-hand reach, fresh-mag pickup and insertion easier to see without changing the gun models/ADS. Preserve all existing zombie AI/pathing, boss behavior, collisions, performance optimizations, $1 test gun prices, and 20-active-zombie cap. After the next gameplay change push to main, verify Pages, and give me `?v=125`.
-
+Current essentials:
+- build: **v152**
+- test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=152
+- latest gameplay commit: `9a5add8533ff30f87bfc9f30fba6f79de31196d8`
+- next gameplay build: **v153**
+- read `NEXT_CHAT_HANDOFF.md` first, then fetch the newest `main:index.html`
 
 ## Recent release history (v125-v152)
 
@@ -453,7 +459,7 @@ If starting a new chat, the user can paste this:
 - v142 — boss anti-kiting pass: far-distance pressure pace, Gore Rush trigger range increased to 32m, charge speed set to 7.6 m/s below the player's 9 m/s full sprint, distance-scaled rush duration, and faster boss locomotion playback while closing
 - v143 — early special-zombie progression smoothed: wave 2 starts at 18% specials, then ramps through 24%, 30%, 35%, 38% and gradually back toward ~42% by waves 8–9
 - v144 — zombie bite popup now reports actual post-arm-loss damage; each missing arm still reduces bite damage by 20%, and the displayed value now matches the amount actually removed from player health
-- v145 — removed the redundant - v144 — zombie bite popup now reports actual post-arm-loss damage; each missing arm still reduces bite damage by 20%, and the displayed value now matches the amount actually removed from player health
+- v145 — removed the redundant wave-shop heal purchase; passive regeneration and fixed map medkits remain
 - v146 — true pause/resume system: P key, Escape/pointer-lock loss and on-screen pause control freeze the gameplay update loop; pause overlay releases the mouse; reload and nuke countdowns use a pause-aware game clock; AWM bolt and run-time clocks no longer advance while paused; resume recaptures aim and continues from the same state
 - v147 — Shambler is now the master standing-zombie visual profile; Sprinter, Radiated, Infected, Acidic and Boss clone the same shared rig/geometry and inherit the Shambler proportions, with lightweight profile overrides reserved for future visual differences; native crawler remains the temporary procedural exception
 - v148 — removed all physical health pickups from zombie drops and the boss reward cache; normal drops remain 52% overall and now split 62.5% ammo / 37.5% cash; passive health regeneration and the three fixed map medkits remain unchanged
@@ -461,5 +467,4 @@ If starting a new chat, the user can paste this:
 - v150 — explosive knockdown fix: surviving non-boss blast victims now rotate nearly horizontal onto the pavement, stay down longer and recover; grenade/launcher explosions no longer fire a conflicting standing stagger; attached arms and legs get a short damped blast-whip impulse before settling into the downed pose; repeat blasts extend the knockdown and retrigger limb reaction; bosses still flinch only
 - v151 — building-gap/pathing cleanup: building colliders are tagged by street row, adjacent same-row gaps under 2.70 m are automatically closed with visible low-cost service infill plus matching collision, while real alleys/streets/larger passages stay open; zombie stuck-side flip cooldown increased to 1.15s and local avoid hold to .55s so A* can take over instead of rapid left/right oscillation
 - v152 — startup regression repair: removed v151 startup-time physical gap-seal geometry/collider generation, kept the slower anti-oscillation stuck behavior, increased A* clearance from .56 to .72 and route-clear sampling from 1.05m to .85m so narrow squeeze gaps are treated more conservatively; validated with a real headless Chrome smoke test that clicked START OUTBREAK and successfully entered gameplay before commit
-50 Heal +40 button from the wave shop and deleted its unused purchase branch; passive regeneration, health drops, medkits and boss reward health remain unchanged
 
