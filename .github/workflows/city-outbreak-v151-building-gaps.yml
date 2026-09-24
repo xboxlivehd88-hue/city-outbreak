@@ -1,0 +1,52 @@
+name: CITY OUTBREAK v151 building gap pathing
+on: [push]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Verify expected source
+        shell: bash
+        run: |
+          test "$(git hash-object index.html)" = "723c6f00d29fbb8984f7eaf1d430d0fcf4661448"
+      - name: Apply v151 patch
+        run: python3 .github/city-outbreak-v151-building-gaps.py
+      - name: Validate JavaScript and nav cleanup
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path("index.html").read_text(encoding="utf-8")
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,flags=re.S|re.I)
+          inline=max(scripts,key=len)
+          Path("/tmp/city-outbreak-v151.js").write_text(inline,encoding="utf-8")
+          assert 'const MIN_RELIABLE_BUILDING_GAP=2.70;' in inline
+          assert 'function sealNarrowBuildingGaps(){' in inline
+          assert 'sealNarrowBuildingGaps();' in inline
+          assert '"front:"+side' in inline
+          assert '"mid:"+side' in inline
+          assert '"back:"+side' in inline
+          assert '"cross:south"' in inline and '"cross:north"' in inline
+          assert 'q.userData.cityGapSeal=true' in inline
+          assert 'navFlipCooldown=1.15' in inline
+          assert 'z.avoidT=.55' in inline
+          assert 'const ZNAV_CELL=2.0,ZNAV_PAD=.56,ZNAV_MAX_NODES=1300;' in inline
+          PY
+          node --check /tmp/city-outbreak-v151.js
+          git diff --check
+      - name: Commit v151
+        shell: bash
+        run: |
+          git config user.name "CITY OUTBREAK Builder"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Close narrow building gaps and stabilize zombie routing v151"
+          git push origin HEAD:main
