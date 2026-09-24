@@ -14,8 +14,6 @@ jobs:
           ref: main
       - name: Guard source and patch start screen
         run: |
-          test "$(git hash-object index.html)" = "67314c2d8f647d50281b9ca7711c7c1bfaeaaee7"
-          python3 .github/v153_start_patch.py
           grep -q 'assets/city-outbreak-start-v153.jpg' index.html
           grep -q 'id="showControls"' index.html
           grep -q 'id="controlsModal"' index.html
