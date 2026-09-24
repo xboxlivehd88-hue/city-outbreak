@@ -1,3 +1,46 @@
+# URGENT USER CORRECTION — READ BEFORE ANY DEVELOPMENT
+
+Last updated: 2026-09-24
+
+This correction supersedes contradictory statements below.
+
+## Current confirmed state
+- **v180 START OUTBREAK works.**
+- **The STI does NOT show up in v180.** This is expected from the code because v180 deliberately removed the STI runtime integration to restore startup.
+- The uploaded STI asset remains in the repo at `assets/2018_subaru_wrx_sti.glb`.
+- The next chat's first requested gameplay task is still to integrate that STI safely as the sedan visual without breaking START OUTBREAK.
+
+## IMPORTANT M4 CORRECTION
+The user has now explicitly said:
+> "the m4 is acting with unlimited ammo and less damage that i didnt ask for"
+
+Therefore the previous handoff statement saying M4 unlimited ammo + reduced damage was desired is WRONG and must not be treated as user intent.
+
+Next chat must:
+1. Fetch newest `main:index.html`.
+2. Inspect the M4/`rifle` values and the changes introduced around v171.
+3. Restore the M4 to its intended pre-v171 ammo/reload/damage behavior, using repository history/current code evidence rather than guessing values.
+4. Do not assume the M17 should be changed at the same time unless the user asks; the complaint specifically names the M4.
+5. Preserve the imported M4 GLB and approved ADS work.
+6. Test firing, ammo decrement, reload, damage behavior, START OUTBREAK, and general startup before pushing.
+
+## STI task
+Reintroduce `assets/2018_subaru_wrx_sti.glb` as visual-only replacement for type-0/procedural sedans:
+- preserve existing oriented collision footprint;
+- load model once and clone/reuse;
+- no per-car network load;
+- no expensive shadows/lights;
+- do not reference `parkedCars` from an async loader before initialization;
+- do not reproduce v177/v179 startup regression;
+- run a real browser smoke test that clicks START OUTBREAK before declaring success;
+- visually verify the STI actually appears, not merely that the GLB loads.
+
+## Versioning
+Current confirmed gameplay baseline remains **v180**, gameplay commit `34a9cabbb3c8f2fa04f1b5ff6d34af6fbd224771`.
+Documentation commits after it are not gameplay changes.
+Next gameplay release should normally be **v181**, but fetch current main and verify before editing.
+
+---
 # CITY OUTBREAK — CURRENT HANDOFF (v180)
 
 Last updated: 2026-09-24
