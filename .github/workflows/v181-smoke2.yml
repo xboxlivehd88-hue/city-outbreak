@@ -2,7 +2,7 @@ name: v181 smoke 2 final
 on:
   push:
     paths:
-      - '.github/workflows/v181-smoke2.yml'
+      - '.github/workflows/v181-smoke2.yml'\n      - 'index.html'
 jobs:
   smoke:
     runs-on: ubuntu-latest
