@@ -438,6 +438,13 @@ function pushOutsideBuilding(x,z,r=.45){
 // Ground plane + cleaner city street / sidewalk treatment.
 let ground=new THREE.Mesh(new THREE.PlaneGeometry(280,300),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
 const asphalt=M(0x242628,.96), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
+const roadTexture=new THREE.TextureLoader().load("assets/textures/roads/road_albedo.jpg.jpg",tx=>{
+ tx.colorSpace=THREE.SRGBColorSpace;
+ tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
+ tx.repeat.set(4,24);
+ tx.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+ asphalt.map=tx;asphalt.color.set(0xffffff);asphalt.needsUpdate=true;
+});
 box(24,.10,244,asphalt,0,.05,30);           // avenue
 box(224,.10,24,asphalt,0,.06,30);           // cross street
 
