@@ -21,7 +21,7 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 #crosshair:before,#crosshair:after{content:"";position:absolute;background:white;box-shadow:0 0 3px #000}
 #crosshair:before{width:26px;height:2px;top:12px}
 #crosshair:after{width:2px;height:26px;left:12px}
-#scopeOverlay{position:absolute;inset:0;display:none;pointer-events:none;z-index:3;background:radial-gradient(circle at center,transparent 0 28vh,rgba(0,0,0,.93) 28.6vh 100%)}
+#scopeOverlay{position:fixed;inset:0;display:none;pointer-events:none;z-index:50;background:radial-gradient(circle at center,transparent 0 28vh,rgba(0,0,0,.93) 28.6vh 100%)}
 #scopeOverlay.show{display:block}
 #scopeOverlay.m4Scope{background:radial-gradient(circle at center,transparent 0 28vh,rgba(0,0,0,.88) 28.5vh 100%)}
 #scopeOverlay.m4Scope:before{border:12px solid #080909;box-shadow:0 0 18px #000}
@@ -3421,7 +3421,10 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  }
  updateReloadMagazineFX(rp);
  updateGrenadeLauncherReloadFX(rp);
- gun.visible=!((weapon==="awm"||weapon==="rifle")&&aimBlend>.88);for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
+ const fullScopeAim=aiming&&(weapon==="awm"||weapon==="rifle");
+ scopeOverlay.classList.toggle("show",fullScopeAim);
+ scopeOverlay.classList.toggle("m4Scope",aiming&&weapon==="rifle");
+ gun.visible=!fullScopeAim;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
