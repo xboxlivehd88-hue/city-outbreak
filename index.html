@@ -2310,6 +2310,33 @@ function detachArm(z,side){
  if(side==="left")z.armL=new THREE.Group();else z.armR=new THREE.Group();
  noise(.12,.22,350);show(side==="left"?"LEFT ARM OFF":"RIGHT ARM OFF");
 }
+function buildLeglessCrawlerHitboxes(z){
+ if(!z||z.crawlerHitboxes)return;
+ // Retire the standing procedural hitboxes. They remain as hidden support geometry,
+ // but must no longer be raycast targets once the visual body drops to the street.
+ if(z.hitMeshes)for(const o of z.hitMeshes){if(o)o.raycast=()=>{}}
+
+ const mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false});
+ const hitboxes=[];
+ const add=(geo,x,y,zz,part,isHead=false)=>{
+   const q=new THREE.Mesh(geo,mat);
+   q.position.set(x,y,zz);q.name="LeglessCrawler_"+part;
+   q.castShadow=false;q.receiveShadow=false;
+   q.userData.zombie=z;q.userData.part=part;if(isHead)q.userData.isHead=true;
+   z.g.add(q);hitboxes.push(q);
+   if(z.ownedGeometries)z.ownedGeometries.push(geo);
+   return q;
+ };
+ // The preserved rig is pitched forward about 41 degrees. These volumes sit over
+ // the low chest, skull and weight-bearing arms seen by the player.
+ add(new THREE.BoxGeometry(.62,.50,.86),0,.53,-.70,"torso");
+ add(new THREE.SphereGeometry(.215,9,7),0,.64,-1.17,"head",true);
+ if(!z.leftArmDetached)add(new THREE.BoxGeometry(.20,.28,.62),-.31,.36,-.58,"leftArm");
+ if(!z.rightArmDetached)add(new THREE.BoxGeometry(.20,.28,.62),.31,.36,-.58,"rightArm");
+ if(z.ownedMaterials)z.ownedMaterials.push(mat);
+ z.crawlerHitboxes=hitboxes;
+ z.hitMeshes=hitboxes;
+}
 function poseLeglessCrawlerRig(z,walk=0,walk2=0,attack=0){
  if(!z||!z.leglessCrawler||!z.rigVisual)return;
  const rig=z.rigVisual;
@@ -2346,6 +2373,7 @@ function convertLeglessToCrawler(z){
  z.rigBase=null;z.rigTransient=null;z.rigTransientT=0;
  hideRigLimb(z,"L_UpperLeg");hideRigLimb(z,"R_UpperLeg");
  poseLeglessCrawlerRig(z,0,0,0);
+ buildLeglessCrawlerHitboxes(z);
 
  z.navForceRepath=true;z.navCheckT=0;z.think=0;
  show("CRIPPLED — CRAWLER");
@@ -2960,8 +2988,10 @@ for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q
        const chestY=z.g.position.y+1.43*(z.g.scale.y||1),dy=g.q.position.y-chestY;
        if(dx*dx+dz*dz<.92*.92&&Math.abs(dy)<1.12){impact=true;break}
      }else{
-       const dy=g.q.position.y-(z.g.position.y+1);
-       if(dx*dx+dy*dy+dz*dz<.49){impact=true;break}
+       const crawler=z.kind==="crawler";
+       const dy=g.q.position.y-(z.g.position.y+(crawler?.55:1));
+       const rr=crawler?.78:.70;
+       if(dx*dx+dy*dy+dz*dz<rr*rr){impact=true;break}
      }
    }}
    if(impact||g.fuse<=0){explodeLauncherRound(g);thrown.splice(i,1);continue}
