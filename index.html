@@ -653,7 +653,7 @@ function installStiVisual(g){
  const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
  sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
  sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
- g.add(sti);g.userData.stiVisual=true;return true;
+ g.add(sti);g.userData.stiVisual=true;document.documentElement.dataset.stiVisuals=String((+document.documentElement.dataset.stiVisuals||0)+1);return true;
 }
 new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
  stiModelTemplate=gltf.scene;
