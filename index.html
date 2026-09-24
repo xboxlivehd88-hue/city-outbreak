@@ -124,7 +124,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
     <button data-buy="rifleAmmo">M4 Carbine +36<br>$120</button>
     <button data-buy="smgAmmo">MP5 +60<br>$110</button>
     <button data-buy="shotgunAmmo">Shotgun +18<br>$140</button>
-    <button data-buy="pistolAmmo">Pistol +48<br>$90</button>
+    <button data-buy="pistolAmmo">M17 SIG +48<br>$90</button>
     <button data-buy="dmrAmmo">DMR +24<br>$160</button>
     <button data-buy="grenadeLauncherAmmo">Launcher +3<br>$225</button>
     <button data-buy="m240Ammo">M240 +100<br>$275</button>
@@ -136,7 +136,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
     <button data-buy="reload">Faster Reload<br>$300</button>
   </div></section>
   <section class="shopSection"><h3>Weapons</h3><div class="shopItems">
-    <button data-buy="pistol">Unlock Pistol<br>$1 TEST</button>
+    <button data-buy="pistol">Unlock M17 SIG<br>$1 TEST</button>
     <button data-buy="smg">Unlock MP5<br>$1 TEST</button>
     <button data-buy="shotgun">Unlock Shotgun<br>$1 TEST</button>
     <button data-buy="dmr">Unlock DMR<br>$1 TEST</button>
@@ -1199,7 +1199,7 @@ const weaponDefs={
  rifle:{name:"M4 CARBINE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12},
  smg:{name:"MP5",rate:72,hold:150,spread:.012,pellets:1,body:.75,recoil:.065,baseMag:30},
  shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.055,pellets:7,body:.72,recoil:.22,baseMag:8},
- pistol:{name:"PISTOL",rate:240,hold:9999,spread:.007,pellets:1,body:1.15,recoil:.09,baseMag:15},
+ pistol:{name:"M17 SIG",rate:240,hold:9999,spread:.007,pellets:1,body:1.15,recoil:.09,baseMag:15},
  dmr:{name:"DMR",rate:330,hold:9999,spread:.0025,pellets:1,body:2.15,recoil:.16,baseMag:10},
  grenadeLauncher:{name:"GRENADE LAUNCHER",rate:900,hold:9999,spread:0,pellets:1,body:0,recoil:.28,baseMag:6},
  m240:{name:"M240 LMG",rate:78,hold:130,spread:.010,pellets:1,body:1.20,recoil:.09,baseMag:100},
@@ -3028,7 +3028,7 @@ function buy(type){
  if(type==="rifleAmmo"){price=120;if(cash>=price){cash-=price;ammoState.rifle.reserve+=36;show("+36 M4 CARBINE AMMO");ok=true}}
  if(type==="smgAmmo"){price=110;if(cash>=price){cash-=price;ammoState.smg.reserve+=60;show("+60 MP5 AMMO");ok=true}}
  if(type==="shotgunAmmo"){price=140;if(cash>=price){cash-=price;ammoState.shotgun.reserve+=18;show("+18 SHOTGUN SHELLS");ok=true}}
- if(type==="pistolAmmo"){price=90;if(cash>=price){cash-=price;ammoState.pistol.reserve+=48;show("+48 PISTOL AMMO");ok=true}}
+ if(type==="pistolAmmo"){price=90;if(cash>=price){cash-=price;ammoState.pistol.reserve+=48;show("+48 M17 SIG AMMO");ok=true}}
  if(type==="dmrAmmo"){price=160;if(cash>=price){cash-=price;ammoState.dmr.reserve+=24;show("+24 DMR AMMO");ok=true}}
  if(type==="grenadeLauncherAmmo"){price=225;if(launcherAmmoTotal()>=10){show("GRENADE LAUNCHER AMMO FULL");ok=true}else if(cash>=price){const n=addGrenadeLauncherAmmo(3);cash-=price;show("+"+n+" GRENADE LAUNCHER ROUNDS");ok=true}}
  if(type==="m240Ammo"){price=275;if(cash>=price){cash-=price;ammoState.m240.reserve+=100;show("+100 M240 AMMO");ok=true}}
@@ -3039,7 +3039,7 @@ function buy(type){
  if(type==="smg"){price=1;if(unlocked.smg){show("MP5 ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.smg=true;show("MP5 UNLOCKED");ok=true}}
  if(type==="grenade"){price=175;if(cash>=price){cash-=price;grenades++;show("+1 GRENADE");ok=true}}
  if(type==="nuke"){price=100;if(cash>=price){cash-=price;nukes++;show("TACTICAL NUKE ACQUIRED");ok=true}}
- if(type==="pistol"){price=1;if(unlocked.pistol){show("PISTOL ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.pistol=true;show("PISTOL UNLOCKED");ok=true}}
+ if(type==="pistol"){price=1;if(unlocked.pistol){show("M17 SIG ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.pistol=true;show("M17 SIG UNLOCKED");ok=true}}
  if(type==="dmr"){price=1;if(unlocked.dmr){show("DMR ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.dmr=true;show("DMR UNLOCKED");ok=true}}
  if(type==="grenadeLauncher"){price=1;if(unlocked.grenadeLauncher){show("GRENADE LAUNCHER ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.grenadeLauncher=true;ammoState.grenadeLauncher.mag=6;ammoState.grenadeLauncher.reserve=0;show("GRENADE LAUNCHER UNLOCKED — 6 ROUND MAGAZINE");ok=true}}
  if(type==="m240"){price=1;if(unlocked.m240){show("M240 ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.m240=true;ammoState.m240.mag=100;ammoState.m240.reserve=200;show("M240 LMG UNLOCKED");ok=true}}
