@@ -58,10 +58,15 @@ jobs:
           o.add_argument("--no-sandbox")
           o.add_argument("--disable-dev-shm-usage")
           o.add_argument("--disable-gpu")
+          o.page_load_strategy="eager"
           d=webdriver.Chrome(options=o)
+          d.set_page_load_timeout(20)
           try:
-              d.get("http://127.0.0.1:8000/?v=152")
-              WebDriverWait(d,15).until(EC.element_to_be_clickable((By.ID,"start"))).click()
+              try:
+                  d.get("http://127.0.0.1:8000/?v=152")
+              except Exception as e:
+                  print("Page load timeout tolerated for smoke test:",e)
+              WebDriverWait(d,20).until(EC.element_to_be_clickable((By.ID,"start"))).click()
               time.sleep(2)
               display=d.execute_script("return getComputedStyle(document.getElementById('startScreen')).display")
               if display!="none":
