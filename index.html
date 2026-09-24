@@ -1190,9 +1190,9 @@ new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
      }
    }
  });
- // Sedans are created before this async asset normally finishes loading.
- // Swap their procedural visuals in place without touching collision anchors.
- for(const c of parkedCars||[])if(c.userData.carType===0)applyStiVisual(c);
+ // City cars may or may not exist yet when this async load completes.
+ // Avoid touching parkedCars here because its const declaration occurs later in startup.
+ // car() applies the STI immediately whenever the template is already available.
 },undefined,err=>console.warn("WRX STI GLB load failed; keeping procedural sedans",err));
 
 function applyStiVisual(g){
