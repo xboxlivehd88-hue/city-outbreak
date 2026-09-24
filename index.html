@@ -643,7 +643,6 @@ function batchStaticCity(){
 }
 
 function car(x,z,rot=0,type=0){
- // v177: type 0 keeps the existing collision footprint but uses the uploaded STI visual when loaded.
  // v106: v105 sedan geometry retained; loft face winding and solid tinted glass fixed.
  // 0 sedan, 1 crossover, 2 wagon, 3 pickup, 4 compact hatch.
  const g=new THREE.Group(),body=[0x40566a,0x7b2d2d,0x5c625f,0x3c4347,0x81765d][type%5];
@@ -792,7 +791,6 @@ function car(x,z,rot=0,type=0){
    g.userData.carHalfW=SW*.48;g.userData.carHalfL=SL*.49;g.userData.carType=0;
    g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    scene.add(g);
-   if(stiModelTemplate)applyStiVisual(g);
    return g;
  }
  let bodyProfile,windowProfile=null;
@@ -1175,41 +1173,6 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
  });
  if(weapon==="pistol")rebuildGun();
 },undefined,err=>console.warn("M17 GLB load failed; using procedural fallback",err));
-// v177: uploaded 2018 Subaru WRX STI replaces only sedan visuals.
-// Collision remains the existing cheap oriented footprint for performance/pathing.
-let stiModelTemplate=null;
-new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
- stiModelTemplate=gltf.scene;
- stiModelTemplate.traverse(o=>{
-   o.userData.externalCarAsset=true;
-   if(o.isMesh){
-     o.castShadow=false;o.receiveShadow=false;
-     const mats=Array.isArray(o.material)?o.material:[o.material];
-     for(const mat of mats)if(mat)for(const key of ["map","normalMap","roughnessMap","metalnessMap"]){
-       const tx=mat[key];if(tx){tx.anisotropy=Math.min(2,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
-     }
-   }
- });
- // City cars may or may not exist yet when this async load completes.
- // Avoid touching parkedCars here because its const declaration occurs later in startup.
- // car() applies the STI immediately whenever the template is already available.
-},undefined,err=>console.warn("WRX STI GLB load failed; keeping procedural sedans",err));
-
-function applyStiVisual(g){
- if(!stiModelTemplate||!g||g.userData.stiVisual)return;
- // Remove only the procedural sedan render meshes; preserve the Group itself,
- // its world transform, collision metadata and references used by zombie/player AI.
- while(g.children.length)g.remove(g.children[g.children.length-1]);
- const sti=stiModelTemplate.clone(true);sti.name="External2018WRXSTI";
- // Normalize the model to the existing sedan footprint (~4.9m long).
- const b0=new THREE.Box3().setFromObject(sti),sz=new THREE.Vector3();b0.getSize(sz);
- const horizontal=Math.max(sz.x,sz.z)||1;sti.scale.setScalar(4.90/horizontal);
- // Center horizontally and put the lowest point on the road.
- const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
- sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
- sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
- g.add(sti);g.userData.stiVisual=true;
-}
 let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
