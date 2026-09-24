@@ -358,9 +358,9 @@ function addFireEscape(x,y,z,h,side,p=scene){
    box(.08,1.0,.08,M(0x2a2c2e,.65),x+side*.06,yy-.45,z+.55,p);
  }
 }
-function addBuilding(w,h,d,x,z,base,variant){
+function addBuilding(w,h,d,x,z,base,variant,navRow=""){
  const style=variant%8,mat=facadeMaterial(base,variant),q=box(w,h,d,mat,x,h/2,z);q.userData.cityMain=true;
- buildingColliders.push({x,z,hx:w/2,hz:d/2});
+ buildingColliders.push({x,z,hx:w/2,hz:d/2,navRow});
  const roof=M(style===1?0x2f3940:style===3?0x5e4d42:style===5?0x626867:0x505556,.94);
  box(w*.96,.18,d*.96,roof,x,h+.09,z);
 
@@ -538,7 +538,7 @@ for(let side of [-1,1]){
     let h1=lowRise?7+rh*8:18+rh*30;
     let d1=lowRise?9+rd*4:11+rd*6;
     let x1=avenueBuildingX(side,FRONT_BUILD_EDGE,w1,rx*1.35);
-    addBuilding(w1,h1,d1,x1,z,base,buildingId++);
+    addBuilding(w1,h1,d1,x1,z,base,buildingId++,"front:"+side);
   }
 }
 
@@ -553,7 +553,7 @@ for(let side of [-1,1]){
     let h=lowRise?8+rh*9:20+rh*36;
     let d=lowRise?9+rd*4:10+rd*6;
     let x=avenueBuildingX(side,MID_BUILD_EDGE,w,rx*3.5);
-    addBuilding(w,h,d,x,z+(rz-.5)*3.5,base,buildingId++);
+    addBuilding(w,h,d,x,z+(rz-.5)*3.5,base,buildingId++,"mid:"+side);
   }
 }
 
@@ -564,7 +564,7 @@ for(let side of [-1,1]){
     let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
     const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),rz=rnd();
     let w=11+rw*7,h=28+rh*42,d=11+rd*7,x=avenueBuildingX(side,BACK_BUILD_EDGE,w,rx*7);
-    addBuilding(w,h,d,x,z+(rz-.5)*4,base,buildingId++);
+    addBuilding(w,h,d,x,z+(rz-.5)*4,base,buildingId++,"back:"+side);
   }
 }
 
@@ -576,8 +576,54 @@ for(let x=-92;x<96;x+=14){
   let w=lowRise?8+rw*4:10+rw*6;
   let h=lowRise?6.5+rh*7:14+rh*18;
   let d=lowRise?8+rd*4:10+rd*5;
-  addBuilding(w,h,d,x,crossBuildingZ(false,d,.8+rz1*1.6),base,buildingId++);
-  addBuilding(w,h,d,x,crossBuildingZ(true,d,.8+rz2*1.6),base,buildingId++);
+  addBuilding(w,h,d,x,crossBuildingZ(false,d,.8+rz1*1.6),base,buildingId++,"cross:south");
+  addBuilding(w,h,d,x,crossBuildingZ(true,d,.8+rz2*1.6),base,buildingId++,"cross:north");
+}
+
+// v151: neighboring buildings in the same street row can leave tiny procedural
+// seams that look passable but are unreliable once zombie body clearance and the
+// 2 m nav grid are applied. Close only those accidental sub-2.7 m seams with a
+// visible service infill and matching collider. Real alleys between rows, the
+// avenue, cross street, sidewalks and larger passages remain untouched.
+const MIN_RELIABLE_BUILDING_GAP=2.70;
+const serviceGapMat=M(0x474b4b,.95);
+function sealNarrowBuildingGaps(){
+ const rows=new Map();
+ for(const b of buildingColliders){
+   if(!b.navRow)continue;
+   if(!rows.has(b.navRow))rows.set(b.navRow,[]);
+   rows.get(b.navRow).push(b);
+ }
+ let sealed=0;
+ for(const [rowKey,row] of rows){
+   const alongX=rowKey.startsWith("cross:");
+   row.sort((a,b)=>alongX?a.x-b.x:a.z-b.z);
+   for(let i=0;i<row.length-1;i++){
+     const a=row[i],b=row[i+1];
+     if(alongX){
+       const aEdge=a.x+a.hx,bEdge=b.x-b.hx,gap=bEdge-aEdge;
+       const lo=Math.max(a.z-a.hz,b.z-b.hz),hi=Math.min(a.z+a.hz,b.z+b.hz),overlap=hi-lo;
+       if(gap>0&&gap<MIN_RELIABLE_BUILDING_GAP&&overlap>1.25){
+         const w=gap+.12,d=Math.max(1.25,overlap),x=(aEdge+bEdge)*.5,z=(lo+hi)*.5;
+         const q=box(w,2.45,d,serviceGapMat,x,1.225,z);q.userData.cityGapSeal=true;
+         buildingColliders.push({x,z,hx:w*.5,hz:d*.5,navSeal:true});
+         sealed++;
+       }
+     }else{
+       const aEdge=a.z+a.hz,bEdge=b.z-b.hz,gap=bEdge-aEdge;
+       const lo=Math.max(a.x-a.hx,b.x-b.hx),hi=Math.min(a.x+a.hx,b.x+b.hx),overlap=hi-lo;
+       if(gap>0&&gap<MIN_RELIABLE_BUILDING_GAP&&overlap>1.25){
+         const w=Math.max(1.25,overlap),d=gap+.12,x=(lo+hi)*.5,z=(aEdge+bEdge)*.5;
+         const q=box(w,2.45,d,serviceGapMat,x,1.225,z);q.userData.cityGapSeal=true;
+         buildingColliders.push({x,z,hx:w*.5,hz:d*.5,navSeal:true});
+         sealed++;
+       }
+     }
+   }
+ }
+ console.log("CityOutbreak narrow building gaps sealed",{sealed,minGap:MIN_RELIABLE_BUILDING_GAP});
+}
+sealNarrowBuildingGaps();
 }
 
 
@@ -3629,9 +3675,11 @@ resolveZombiePlayerContact(z,ox,oz);
    z.navPath=null;z.navIndex=0;
    if(z.navFlipCooldown<=0){
      z.avoidSide*=-1;
-     z.navFlipCooldown=.45;
+     // Give the new A* route time to take over instead of flipping left/right
+     // every few tenths of a second at the same obstacle.
+     z.navFlipCooldown=1.15;
    }
-   z.avoidT=.20;
+   z.avoidT=.55;
    z.stuckT=0;
    z.think=0;
  }if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else{
