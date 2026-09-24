@@ -485,3 +485,10 @@ Current essentials:
 - The GLB's `Magazine_m4_0` is detached into gun-local space so the existing detachable-mag reload animation can operate on the model's real magazine.
 - GLB shared geometry is excluded from procedural viewmodel disposal to keep the cached template reusable.
 - Gameplay commit: `16c354d53e65a34c9d3843fe19f67e5e84cca44b`.
+
+
+## v161 — M4 ADS eye relief
+- Corrected M4 Carbine ADS after reviewing the in-game screenshot from v160.
+- Moved the rifle farther forward in ADS (z -1.16 → -2.03) so the rear optic/receiver no longer fills the center of the screen and the sight picture has usable eye relief.
+- No firing, damage, recoil, ammo, reload, model scale, or other weapon behavior changed.
+- Gameplay commit: `64bb7903051ffd9145fb3e5278e3c289c70cb077`.
