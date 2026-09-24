@@ -65,20 +65,27 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 #shop p{font-size:12px;color:#c4c9cc;margin:8px 0 0}
 #shop .readyBtn{width:100%;margin:0;font-weight:900;font-size:15px;background:#e8e8e8;color:#111;padding:11px}
 @media(max-width:680px){#shopGrid{grid-template-columns:1fr}.shopItems{grid-template-columns:1fr 1fr}}
-@media(max-width:440px){.shopItems{grid-template-columns:1fr}#shop{padding:14px;width:95vw}}#startScreen{position:absolute;inset:0;background:linear-gradient(180deg,#0d0f10f2,#15191cf2);display:flex;align-items:center;justify-content:center;text-align:center;z-index:5;padding:24px;box-sizing:border-box}
-#startPanel{width:min(620px,92vw);background:#090b0dcc;border:1px solid #ffffff1f;border-radius:18px;padding:28px 30px 26px;box-shadow:0 20px 70px #000a;backdrop-filter:blur(5px)}
-#startPanel h1{font-size:44px;letter-spacing:4px;margin:0 0 6px}
-#startPanel .tagline{margin:0 0 20px;color:#bfc6ca;font-size:14px;letter-spacing:.5px}
-#controlsCard{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;text-align:left;background:#ffffff08;border:1px solid #ffffff12;border-radius:12px;padding:14px 16px;margin:0 auto 18px}
-.controlRow{display:flex;align-items:center;justify-content:space-between;gap:14px;color:#d8dde0;font-size:13px;padding:5px 0}
+@media(max-width:440px){.shopItems{grid-template-columns:1fr}#shop{padding:14px;width:95vw}}#startScreen{position:absolute;inset:0;background:#080909 url("assets/city-outbreak-start-v153.jpg") center center/cover no-repeat;display:block;z-index:5;box-sizing:border-box;overflow:hidden}
+#startScreen:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.12),transparent 45%,rgba(0,0,0,.08));pointer-events:none}
+#startPanel{position:absolute;left:50%;bottom:8.5%;transform:translateX(-50%);z-index:2;width:min(560px,90vw);text-align:center}
+#startPanel h1,#startPanel .tagline{display:none}
+#startActions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+#startScreen button{font-size:16px;font-weight:900;letter-spacing:1.4px;padding:13px 24px;border-radius:8px;cursor:pointer;margin:0;box-shadow:0 8px 28px #000a}
+#start{background:#dfe5e2e8;color:#111;border:1px solid #fff9;min-width:210px}
+#restart{display:none}
+#showControls{background:#0b1013d9;color:#e8edef;border:1px solid #ffffff55;min-width:132px}
+#controlsModal{position:absolute;inset:0;z-index:4;display:none;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:#020405c7;backdrop-filter:blur(4px)}
+#controlsModal.show{display:flex}
+#controlsPanel{width:min(560px,92vw);max-height:82vh;overflow:auto;background:#0a0d0ff2;border:1px solid #ffffff30;border-radius:16px;padding:20px 22px;box-shadow:0 20px 70px #000c}
+#controlsHeader{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #ffffff20}
+#controlsHeader h2{margin:0;font-size:23px;letter-spacing:2px}
+#closeControls{min-width:auto!important;padding:8px 11px!important;background:#252b2f!important;color:#fff!important;border:1px solid #ffffff28!important;box-shadow:none!important}
+#controlsCard{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;text-align:left}
+.controlRow{display:flex;align-items:center;justify-content:space-between;gap:14px;color:#d8dde0;font-size:13px;padding:6px 0;border-bottom:1px solid #ffffff0b}
 .key{display:inline-block;min-width:58px;text-align:center;padding:5px 8px;border-radius:7px;background:#1c2226;border:1px solid #ffffff24;color:#fff;font-weight:900;font-size:12px;box-shadow:inset 0 -2px 0 #0007}
-#startActions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
-#startScreen button{font-size:16px;font-weight:900;padding:11px 20px;border:0;border-radius:9px;cursor:pointer;margin:0}
-#start{background:#e8e8e8;color:#111}
-#restart{background:#2b3034;color:#eee;border:1px solid #ffffff20}
 button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointer;margin:6px}
 .small{font-size:13px;color:#ddd;line-height:1.5}
-@media(max-width:560px){#controlsCard{grid-template-columns:1fr}#startPanel h1{font-size:34px}#startPanel{padding:22px 18px}}
+@media(max-width:560px){#controlsCard{grid-template-columns:1fr}#startPanel{bottom:5.5%}#startActions{gap:8px}#startScreen button{font-size:13px;padding:11px 16px}#start{min-width:180px}}
 #bossHUD{position:absolute;left:50%;top:14px;transform:translateX(-50%);width:min(590px,74vw);display:none;pointer-events:none;z-index:6;text-align:center}
 #bossHUD.show{display:block}
 #bossName{font:900 23px/1 Arial,sans-serif;letter-spacing:1.8px;color:#ffe0e0;text-shadow:0 2px 8px #000}
@@ -138,8 +145,10 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 </div>
 <div id="shopFooter"><button id="readyNext" class="readyBtn">READY — START NEXT WAVE</button><p id="shopNote">Take your time. The next wave will not start until you press Ready.</p></div>
 </div><div id="startScreen"><div id="startPanel">
-<h1>CITY OUTBREAK</h1>
-<p class="tagline">Survive the outbreak. Gear up between waves. Boss fight every 10 rounds.</p>
+<div id="startActions"><button id="start">START OUTBREAK</button><button id="showControls" type="button">CONTROLS</button><button id="restart">RESTART</button></div>
+</div>
+<div id="controlsModal" aria-hidden="true"><div id="controlsPanel" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
+<div id="controlsHeader"><h2 id="controlsTitle">CONTROLS</h2><button id="closeControls" type="button" aria-label="Close controls">CLOSE</button></div>
 <div id="controlsCard">
 <div class="controlRow"><span>Move</span><span class="key">W A S D</span></div>
 <div class="controlRow"><span>Aim / Look</span><span class="key">MOUSE</span></div>
@@ -151,9 +160,7 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 <div class="controlRow"><span>Weapons</span><span class="key">1 — 8</span></div>
 <div class="controlRow"><span>Grenade</span><span class="key">G</span></div>
 <div class="controlRow"><span>Tactical Nuke</span><span class="key">N</span></div>
-</div>
-<div id="startActions"><button id="start">START OUTBREAK</button><button id="restart">RESTART</button></div>
-</div></div>
+</div></div></div></div>
 </div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <script type="module">
@@ -3687,6 +3694,9 @@ function resize(){ren.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidt
 function frame(t){let dt=Math.min(.04,(t-last)/1000);last=t;if(!paused)update(dt);ren.render(scene,cam);requestAnimationFrame(frame)}requestAnimationFrame(frame);
 function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:false,shotgun:false,pistol:false,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:15,reserve:60},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();document.querySelector("#start").onclick=reset;document.querySelector("#restart").onclick=reset;document.querySelector("#deathRestart").onclick=reset;
+const controlsModal=document.querySelector("#controlsModal"),showControlsBtn=document.querySelector("#showControls"),closeControlsBtn=document.querySelector("#closeControls");
+function setStartControls(open){controlsModal.classList.toggle("show",open);controlsModal.setAttribute("aria-hidden",open?"false":"true");if(open)closeControlsBtn.focus();else showControlsBtn.focus()}
+showControlsBtn.onclick=()=>setStartControls(true);closeControlsBtn.onclick=()=>setStartControls(false);controlsModal.addEventListener("click",e=>{if(e.target===controlsModal)setStartControls(false)});
 addEventListener("keydown",e=>{let k=e.key.toLowerCase();if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused){if(["w","a","s","d","r","g","n","1","2","3","4","5","6","7","8","shift"].includes(k))e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(k==="7")setWeapon("m240");if(k==="8")setWeapon("awm");if(["w","a","s","d","r","g","n","1","2","3","4","5","6","7","8","shift"].includes(k))e.preventDefault()});
 addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});addEventListener("blur",()=>{clearKeys();stopAuto();setAim(false);if(running&&!dying&&!between&&!paused)setGamePaused(true)});document.addEventListener("visibilitychange",()=>{if(document.hidden){clearKeys();stopAuto();setAim(false);if(running&&!dying&&!between&&!paused)setGamePaused(true)}});
 document.addEventListener("pointerlockchange",()=>{
