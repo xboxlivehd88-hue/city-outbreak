@@ -1200,7 +1200,7 @@ const weaponDefs={
  awm:{name:"AWM ULTIMATE",rate:1150,hold:9999,spread:.00055,pellets:1,body:8.0,recoil:.30,baseMag:5}
 };
 const ADS={
- rifle:{x:-.36,y:.005,z:-2.03,fov:58,rx:0},
+ rifle:{x:-.36,y:.050,z:-1.62,fov:52,rx:0},
  smg:{x:-.36,y:.033,z:-.40,fov:55,rx:-.01},
  shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
@@ -3368,7 +3368,7 @@ for(const c of parkedCars){
 }
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
 resolvePlayerZombieContact(oldx,oldz);
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:.16);const rp=reloadPoseProgress();
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
@@ -3378,6 +3378,11 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(playerHandRig){
+   // The imported M4 is much more realistic than the old block rifle. In ADS,
+   // fade the procedural arms out so they do not form the giant V around the optic.
+   // They remain fully visible at hip-fire and during reload.
+   const rifleAdsArmScale=(weapon==="rifle"&&!reloading)?Math.max(.001,1-aimBlend*1.35):1;
+   playerHandRig.left.scale.setScalar(rifleAdsArmScale);playerHandRig.right.scale.setScalar(rifleAdsArmScale);
    if(reloading&&reloadWeapon==="grenadeLauncher"){
      const p=rp.p;let lx=0,ly=0,lz=0,lr=0,t=0;
      // Hand works the latch, drops to the pouch, carries the grenade to the open breech, then returns to the fore-end.
