@@ -1553,27 +1553,20 @@ function rebuildGun(){
  }else if(weapon==='pistol'){
    if(m17ModelTemplate){
      const m17Root=m17ModelTemplate.clone(true);m17Root.name="ExternalM17SIG";
-     // Normalize arbitrary authoring units to a ~0.53-unit first-person pistol length.
+     // The source GLB is authored with the pistol's barrel along +X (not Z).
+     // Remove its loose presentation props first, then rotate +X -> game forward (-Z).
+     for(const propName of ["919 p320 17rnd empty mag_0","9x19_1","919_2","919 p320 17rnd mag_3"]){
+       const prop=m17Root.getObjectByName(propName);if(prop&&prop.parent)prop.parent.remove(prop);
+     }
+     m17Root.rotation.set(0,Math.PI/2,0);
+     // Normalize only the assembled pistol, after applying its correct axis rotation.
      const bounds=new THREE.Box3().setFromObject(m17Root),size=new THREE.Vector3();bounds.getSize(size);
      const longest=Math.max(size.x,size.y,size.z)||1;m17Root.scale.setScalar(.53/longest);
-     // The supplied weapon is centered into the established pistol viewmodel slot.
      const scaledBounds=new THREE.Box3().setFromObject(m17Root),center=new THREE.Vector3();scaledBounds.getCenter(center);
      m17Root.position.set(x-center.x,-.30-center.y,-1.02-center.z);
-     m17Root.rotation.y=Math.PI;
-     // Rotate the imported M17 forward 90 degrees in the first-person view.
-     m17Root.rotation.x=-Math.PI/2;
-     // This Sketchfab GLB includes presentation props (two loose magazines and
-     // loose 9mm rounds) alongside the actual pistol. They are intentionally
-     // separated in the source asset, which is why they appeared floating under
-     // the gun in v170-v172. Hide those props and keep only the assembled M17.
-     for(const propName of ["919 p320 17rnd empty mag_0","9x19_1","919_2","919 p320 17rnd mag_3"]){
-       const prop=m17Root.getObjectByName(propName);if(prop)prop.visible=false;
-     }
      m17Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
      gun.add(m17Root);
-     // M4/M17 now use unlimited starter ammo, so the imported M17 must stay intact.
-     // Do not detach any node named "magazine": on this GLB that broke the model hierarchy
-     // and left the magazine and several small pieces floating below the pistol.
+     // M4/M17 use unlimited starter ammo, so the imported M17 stays intact.
      playerReloadPart=null;
    }else{
      // Procedural fallback while the external M17 is loading or if it fails.
