@@ -15,27 +15,17 @@ jobs:
       - name: Static validation
         run: |
           git diff --check HEAD^ HEAD
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text()
-          checks={
-            'M4 exact pre-v171 damage':'rifle:{name:"M4 CARBINE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12}' in s,
-            'M4 finite ammo':'const infiniteStarterAmmo=weapon==="pistol";' in s and 'if(!infiniteStarterAmmo)A().mag--' in s,
-            'M4 reload enabled':"function reload(w=weapon){if(w==='pistol')" in s,
-            'M4 ammo shop':'data-buy="rifleAmmo"' in s,
-            'M4 GLB':'assets/classic_m4.glb.glb' in s,
-            'STI GLB':'assets/2018_subaru_wrx_sti.glb' in s,
-            'STI pending queue':'const pendingStiSedans=[];' in s,
-            'STI install':'g.userData.stiVisual=true' in s,
-            'Zombie cap':'MAX_ACTIVE_ZOMBIES=20' in s,
-          }
-          print(checks)
-          assert all(checks.values())
-          a=s.rfind('<script type="module">')
-          a=s.find('>',a)+1
-          b=s.find('</script>',a)
-          Path('/tmp/game.mjs').write_text(s[a:b])
-          PY
+          grep -Fq 'rifle:{name:"M4 CARBINE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12}' index.html
+          grep -Fq 'const infiniteStarterAmmo=weapon==="pistol";' index.html
+          grep -Fq 'if(!infiniteStarterAmmo)A().mag--' index.html
+          grep -Fq "function reload(w=weapon){if(w==='pistol')" index.html
+          grep -Fq 'data-buy="rifleAmmo"' index.html
+          grep -Fq 'assets/classic_m4.glb.glb' index.html
+          grep -Fq 'assets/2018_subaru_wrx_sti.glb' index.html
+          grep -Fq 'const pendingStiSedans=[];' index.html
+          grep -Fq 'g.userData.stiVisual=true' index.html
+          grep -Fq 'MAX_ACTIVE_ZOMBIES=20' index.html
+          python3 -c "from pathlib import Path; s=Path('index.html').read_text(); a=s.rfind('<script type=\\\"module\\\">'); a=s.find('>',a)+1; b=s.find('</script>',a); Path('/tmp/game.mjs').write_text(s[a:b])"
           node --check /tmp/game.mjs
       - name: Install Playwright
         run: |
