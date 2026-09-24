@@ -1316,8 +1316,8 @@ function addPlayerHands(){
  const right=new THREE.Group(),left=new THREE.Group();right.name='RightPlayerArm';left.name='LeftPlayerArm';gun.add(right,left);
  const rs=new THREE.Vector3(.80,-1.12,.08),ls=new THREE.Vector3(-.35,-1.08,.06),rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
  const rm=new THREE.Vector3().lerpVectors(rs,rh,.58),lm=new THREE.Vector3().lerpVectors(ls,lh,.58);
- fpsArmSegment(rs,rm,.105,sleeve,right);fpsArmSegment(rm,rh,.086,cuff,right);fpsHand(right,rh,'right',glove);
- fpsArmSegment(ls,lm,.105,sleeve,left);fpsArmSegment(lm,lh,.086,cuff,left);fpsHand(left,lh,'left',glove);
+ fpsArmSegment(rs,rm,.105,sleeve,right);fpsArmSegment(rm,weapon==='pistol'?rh.clone().lerp(rm,.14):rh,.086,cuff,right);fpsHand(right,rh,'right',glove);
+ fpsArmSegment(ls,lm,.105,sleeve,left);fpsArmSegment(lm,weapon==='pistol'?lh.clone().lerp(lm,.14):lh,.086,cuff,left);fpsHand(left,lh,'left',glove);
  playerHandRig={right,left,pose};
 }
 function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
@@ -1595,14 +1595,7 @@ function rebuildGun(){
      for(const propName of ["919 p320 17rnd empty mag_0","9x19_1","919_2","919 p320 17rnd mag_3"]){
        const prop=m17Root.getObjectByName(propName);if(prop&&prop.parent)prop.parent.remove(prop);
      }
-     // The source asset also carries two small brass display-round pieces that can
-     // survive under generic Object_* names. Keep only the actual assembled pistol
-     // branches from the GLTF scene root.
-     const sceneRoot=m17Root.getObjectByName("GLTF_SceneRootNode");
-     if(sceneRoot){
-       const keep=/^(m17fs barrel 4\.7in_4|m17fs slide_5|m17fs frame_6|m17fs slide release_7|m17fs trigga_8|m17fs safety_9)$/i;
-       for(const child of [...sceneRoot.children])if(!keep.test(child.name||""))sceneRoot.remove(child);
-     }
+     // Preserve the complete assembled M17 hierarchy; only the four loose display props above are removed.
      m17Root.rotation.set(0,Math.PI/2,0);
      // Normalize only the assembled pistol, after applying its correct axis rotation.
      const bounds=new THREE.Box3().setFromObject(m17Root),size=new THREE.Vector3();bounds.getSize(size);
