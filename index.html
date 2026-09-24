@@ -1153,21 +1153,49 @@ function spawnFreshReloadMagazine(){
 function updateReloadMagazineFX(rp){
  if(!reloading||!detachableMagazineReload())return;
  const home=playerReloadPart.userData.reloadHome,targetQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
-
- // The real mag stays visible while the support hand pulls it downward out of the magwell.
+ if(reloadWeapon==="pistol"){
+   // M17: use the isolated real GLB magazine as the actor. Keep the beats deliberately
+   // readable: seated -> hand pulls free -> old mag drops -> hand to belt -> new mag
+   // rides up in the hand -> straight insertion -> animation actor disappears.
+   if(!reloadOldMagDropped&&home){
+     const pull=p=>smoothReload01(Math.max(0,Math.min(1,p)));
+     const t=pull((rp.p-.10)/.22);
+     playerReloadPart.visible=true;playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
+     playerReloadPart.position.y-=.42*t;playerReloadPart.position.z+=.035*t;
+     if(rp.p>=.34)tossOldReloadMagazine();
+   }
+   if(rp.p>=.53&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
+   if(reloadFreshMag&&!reloadFreshAttached&&rp.p>=.53){
+     // Keep the fresh magazine parented to the moving support hand long enough to
+     // visibly come from the player's body instead of popping into the magwell.
+     reloadFreshMag.position.set(.025,-.115,.035);
+     reloadFreshMag.quaternion.copy(targetQ);
+   }
+   if(rp.p>=.72&&reloadFreshMag&&!reloadFreshAttached){
+     playerHandRig.left.updateMatrixWorld(true);gun.attach(reloadFreshMag);
+     reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
+   }
+   if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
+     const t=smoothReload01((rp.p-.72)/.18);
+     reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,home,t);
+     reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
+     if(rp.p>=.90){
+       if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
+       reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
+       playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.visible=false;reloadMagInserted=true;
+     }
+   }
+   return;
+ }
+ // Shared detachable-magazine animation for the other weapons.
  if(!reloadOldMagDropped&&home){
    const pull=rp.pull||0;
    playerReloadPart.visible=true;playerReloadPart.position.copy(home);
    playerReloadPart.position.y-=.25*pull;playerReloadPart.position.z+=.045*pull;
-   playerReloadPart.quaternion.copy(targetQ);
-   playerReloadPart.rotation.x+=.07*pull;
+   playerReloadPart.quaternion.copy(targetQ);playerReloadPart.rotation.x+=.07*pull;
    if(rp.p>=.32)tossOldReloadMagazine();
  }
-
- // Intentional empty-hand gap. The replacement mag does not exist until the hand reaches the pouch.
  if(rp.p>=.56&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
-
- // Let the hand visibly carry the new mag upward before it leaves the hand and lines up with the magwell.
  if(rp.p>=.67&&reloadFreshMag&&!reloadFreshAttached){
    playerHandRig.left.updateMatrixWorld(true);gun.attach(reloadFreshMag);
    reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
@@ -2810,7 +2838,7 @@ function reload(w=weapon){
    };
    reloading=true;reloadWeapon=w;beginReloadMagazineFX();show("RELOADING");loadShell();return true
  }
- const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
+ const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
  reloading=true;reloadStartedAt=gameTimeNow();reloadDurationMs=duration;reloadWeapon=w;beginReloadMagazineFX();reloadS();show("RELOADING");
  gameTimeout(()=>{
    if(seq!==reloadSequence||!reloading||reloadWeapon!==w)return;
