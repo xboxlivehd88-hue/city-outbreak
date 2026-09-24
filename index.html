@@ -1134,7 +1134,8 @@ function tossOldReloadMagazine(){
  oldMag.position.copy(playerReloadPart.position);oldMag.quaternion.copy(playerReloadPart.quaternion);oldMag.scale.copy(playerReloadPart.scale);
  gun.add(oldMag);gun.updateMatrixWorld(true);scene.attach(oldMag);
  // Keep the discarded mag in the player's view for a moment instead of firing it off-screen.
- const throwV=new THREE.Vector3(-.22,-.42,-.08).applyQuaternion(cam.quaternion);
+ // Drop mostly straight down in camera space so it stays under the pistol on screen.
+ const throwV=new THREE.Vector3(-.04,-.26,-.02).applyQuaternion(cam.quaternion);
  parts.push({q:oldMag,v:throwV,life:2.15,reloadMag:true,spin:new THREE.Vector3(4.2,3.1,5.0)});
  playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadOldMagDropped=true;
 }
@@ -1166,7 +1167,8 @@ function updateReloadMagazineFX(rp){
    if(reloadFreshMag&&!reloadFreshAttached){
      // Hold the replacement by its bottom/base plate so the long body of the
      // magazine projects clearly above the support hand instead of being buried in it.
-     reloadFreshMag.position.set(.02,.075,.025);
+     // Offset above the hand so the fingers appear to hold the base plate.
+     reloadFreshMag.position.set(0,.24,-.015);
      reloadFreshMag.quaternion.copy(targetQ);
    }
    if(rp.p>=.64&&reloadFreshMag&&!reloadFreshAttached){
@@ -1396,12 +1398,15 @@ function rebuildGun(){
        // animation actor. Keep the real pistol model, but use simple visible geometry
        // for the moving magazine so the reload always reads clearly.
        const m17ReloadMag=new THREE.Group();m17ReloadMag.name="M17ReloadMagazineCarrier";
-       const magBody=new THREE.Mesh(new THREE.BoxGeometry(.115,.34,.075),M(0x202326,.78));
-       const magBase=new THREE.Mesh(new THREE.BoxGeometry(.14,.035,.095),M(0x111315,.88));
-       magBase.position.y=-.185;
+       // Oversized debug-readable magazine: keep it unmistakable in first person.
+       // Once placement is confirmed we can reduce it to exact scale.
+       const magBody=new THREE.Mesh(new THREE.BoxGeometry(.16,.48,.11),M(0x202326,.92));
+       const magBase=new THREE.Mesh(new THREE.BoxGeometry(.20,.045,.14),M(0x111315,.98));
+       magBase.position.y=-.255;
        m17ReloadMag.add(magBody,magBase);
        m17ReloadMag.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
-       m17ReloadMag.position.set(x,-.54,-.80);m17ReloadMag.rotation.set(-.12,0,0);
+       // Seat the animation actor directly under the visible grip.
+       m17ReloadMag.position.set(x,-.70,-.73);m17ReloadMag.rotation.set(-.10,0,0);
        m17ReloadMag.userData.externalWeaponAsset=true;m17ReloadMag.userData.reloadOnly=true;
        m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
        gun.add(m17ReloadMag);
