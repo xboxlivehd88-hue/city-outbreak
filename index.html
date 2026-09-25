@@ -3092,6 +3092,7 @@ function readyNextWave(){
    const now=performance.now();
    shopPausedAccumulatedMs+=Math.max(0,now-shopPauseStartedAt);
    shopPauseStartedAt=0;shopLowPower=false;last=now;lastShopRenderAt=0;
+   clearKeys();
    if(ac&&audioOn)ac.resume().catch(()=>{});
  }
  between=false;pauseBtn.classList.add("show");
@@ -3918,9 +3919,9 @@ function frame(t){
  let dt=Math.min(.04,(t-last)/1000);last=t;
  if(shopLowPower){
    // Shop UI is DOM-based, so the 3D world can stay frozen. Redraw at only 4 FPS
-   // to keep the canvas healthy while avoiding full-rate GPU work.
+   // and throttle the frame callback itself so CPU + GPU both get a real break.
    if(t-lastShopRenderAt>=250){lastShopRenderAt=t;ren.render(scene,cam)}
-   requestAnimationFrame(frame);return;
+   setTimeout(()=>requestAnimationFrame(frame),250);return;
  }
  if(!paused)update(dt);
  ren.render(scene,cam);
