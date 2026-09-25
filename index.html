@@ -2989,10 +2989,9 @@ function fire(){
  for(const z of zombies){if(z.dead)continue;if(z.hitMeshes)rayTargets.push(...z.hitMeshes)}
  for(let pellet=0;pellet<wd().pellets;pellet++){
    const adsSpread=aiming?(weapon==="awm"?.08:.38):1;
-   // M17 ADS uses a slightly lower firing ray than camera center so the actual
-   // impact follows the approved iron-sight picture instead of landing high.
-   // This changes only the pistol ray; the approved M17 model/ADS pose is untouched.
-   const pistolAdsZero=(aiming&&weapon==="pistol")?-.14:0;
+   // M17 ADS now fires through true screen center so the actual bullet path
+   // lines up with the centered iron-sight picture. Hip fire and other guns are unchanged.
+   const pistolAdsZero=0;
    // MP5 iron-sight zero: current impacts are just above/right of the sight picture.
    // Shift only the SMG ADS ray slightly left/down; hip fire and other weapons are untouched.
    const smgAdsZeroX=(aiming&&weapon==="smg")?-.018:0;
