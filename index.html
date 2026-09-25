@@ -3323,9 +3323,9 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    const a=aimBlend;
    // Hip: move the complete gun farther forward so the stock is smaller/tucked away.
    const hipYaw=THREE.MathUtils.degToRad(12);
-   // ADS: pivot the gun a few degrees around the FRONT of the weapon. This moves the
-   // butt to the right while keeping the barrel/front sight essentially fixed.
-   const adsYaw=THREE.MathUtils.degToRad(3);
+   // ADS: keep only 25% of the previous rightward butt pivot. This moves the butt
+   // back left about 75% while keeping the barrel/front sight essentially fixed.
+   const adsYaw=THREE.MathUtils.degToRad(.75);
    const pivotZ=-.50,mp5Scale=1.55;
    const adsPivotX=mp5Scale*(0-Math.sin(adsYaw)*pivotZ);
    const adsPivotZ=mp5Scale*(pivotZ-Math.cos(adsYaw)*pivotZ);
