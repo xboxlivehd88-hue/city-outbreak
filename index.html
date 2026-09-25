@@ -952,6 +952,23 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
  });
  if(weapon==="pistol")rebuildGun();
 },undefined,err=>console.warn("M17 GLB load failed; using procedural fallback",err));
+// Supplied animated MP5 GLB. Use it as the SMG viewmodel while preserving existing MP5 gameplay.
+let mp5ModelTemplate=null,mp5Animations=[];
+new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
+ mp5ModelTemplate=gltf.scene;
+ mp5Animations=gltf.animations||[];
+ mp5ModelTemplate.traverse(o=>{
+   o.userData.externalWeaponAsset=true;
+   if(o.isMesh){
+     o.castShadow=false;o.receiveShadow=false;
+     const mats=Array.isArray(o.material)?o.material:[o.material];
+     for(const mat of mats)if(mat)for(const key of ["map","normalMap","roughnessMap","metalnessMap"]){
+       const tx=mat[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
+     }
+   }
+ });
+ if(weapon==="smg")rebuildGun();
+},undefined,err=>console.warn("MP5 GLB load failed; using procedural fallback",err));
 let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
@@ -1287,84 +1304,33 @@ function rebuildGun(){
      box(.015,.115,.34,M(0x080909,.18),x+.19,-.27,-1.12,gun);box(.24,.045,.07,dark,x,-.16,-.57,gun);
    }
  }else if(weapon==='smg'){
-   // Higher-detail MP5 A3-style first-person model. The stock extends behind the camera instead
-   // of putting a giant butt plate in front of the player's face.
-   const mp5Gunmetal=M(0x171a1b,.24),mp5Black=M(0x0d0f10,.58),mp5Poly=M(0x1b1e1f,.76);
-
-   // Stamped tubular receiver, rear cap and front trunnion.
-   cyl(.148,1.02,mp5Gunmetal,x,-.235,-1.08);
-   cyl(.154,.13,dark,x,-.235,-.545);
-   cyl(.157,.13,dark,x,-.235,-1.585);
-   box(.315,.055,.82,mp5Black,x,-.355,-1.08,gun);
-   box(.028,.10,.64,dark,x-.145,-.205,-1.08,gun);
-   box(.028,.10,.64,dark,x+.145,-.205,-1.08,gun);
-
-   // Cocking tube and the raised bridge joining it to the receiver.
-   cyl(.050,.86,steel,x,-.095,-1.36);
-   box(.18,.075,.26,mp5Gunmetal,x,-.145,-1.57,gun);
-
-   // Polymer trigger housing, magwell and pistol grip.
-   part(.405,.31,.66,mp5Poly,-.405,-1.02);
-   part(.35,.34,.29,mp5Poly,-.455,-1.30);
-   grip(-.65,-.78,-.18,mp5Poly);
-   box(.30,.055,.18,dark,x,-.515,-1.31,gun);
-   // Selector axle and short selector lever on the visible side.
-   cyl(.035,.035,dark,x+.205,-.40,-.91,gun,"x");
-   let mp5Selector=box(.025,.035,.16,dark,x+.225,-.38,-.84,gun);mp5Selector.rotation.x=-.55;
-   for(const pxp of [-.145,.145]){let pin=new THREE.Mesh(new THREE.CylinderGeometry(.020,.020,.025,8),steel);pin.rotation.z=Math.PI/2;pin.position.set(x+pxp,-.39,-1.16);gun.add(pin)}
-
-   // Slim MP5 handguard with a tapered lower profile and stamped side ribs.
-   let mp5Fore=part(.405,.275,.58,mp5Poly,-.305,-1.82);mp5Fore.rotation.x=.018;
-   part(.35,.13,.52,mp5Black,-.405,-1.82);
-   for(const sx of [-.165,.165])for(let zz=-1.60;zz>-2.03;zz-=.11)box(.020,.075,.060,dark,x+sx,-.29,zz,gun);
-   box(.32,.055,.08,dark,x,-.17,-2.07,gun);
-
-   // Short barrel and recognizable three-lug muzzle.
-   cyl(.046,.43,steel,x,-.235,-2.225);
-   cyl(.066,.16,dark,x,-.235,-2.445);
-   for(const a of [-1,0,1]){
-     const lug=new THREE.Mesh(new THREE.BoxGeometry(.034,.052,.075),steel);
-     lug.position.set(x+a*.048,-.235+(a===0?.052:0),-2.405);gun.add(lug)
+   if(mp5ModelTemplate){
+     // Replace the procedural MP5 with the supplied animated GLB. Normalize the model
+     // into the established first-person weapon space; gameplay values remain unchanged.
+     const mp5Root=SkeletonUtils.clone(mp5ModelTemplate);mp5Root.name="ExternalAnimatedMP5";
+     // Start with the common GLB forward-axis conversion. Fine positioning/ADS comes
+     // after the user can inspect the real model in-game.
+     mp5Root.rotation.y=Math.PI;
+     const bounds=new THREE.Box3().setFromObject(mp5Root),size=new THREE.Vector3();bounds.getSize(size);
+     const longest=Math.max(size.x,size.y,size.z)||1;mp5Root.scale.setScalar(2.45/longest);
+     const scaledBounds=new THREE.Box3().setFromObject(mp5Root),center=new THREE.Vector3();scaledBounds.getCenter(center);
+     mp5Root.position.set(x-center.x,-.30-center.y,-1.45-center.z);
+     mp5Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+     gun.add(mp5Root);
+   }else{
+     // Safe fallback while the external MP5 loads.
+     const mp5Gunmetal=M(0x171a1b,.24),mp5Black=M(0x0d0f10,.58),mp5Poly=M(0x1b1e1f,.76);
+     cyl(.148,1.02,mp5Gunmetal,x,-.235,-1.08);cyl(.154,.13,dark,x,-.235,-.545);cyl(.157,.13,dark,x,-.235,-1.585);
+     box(.315,.055,.82,mp5Black,x,-.355,-1.08,gun);part(.405,.31,.66,mp5Poly,-.405,-1.02);grip(-.65,-.78,-.18,mp5Poly);
+     let mp5Fore=part(.405,.275,.58,mp5Poly,-.305,-1.82);mp5Fore.rotation.x=.018;
+     cyl(.046,.43,steel,x,-.235,-2.225);cyl(.066,.16,dark,x,-.235,-2.445);
+     const mp5Mag=new THREE.Group();mp5Mag.name="MP5Magazine";mp5Mag.position.set(x,-.61,-1.27);gun.add(mp5Mag);
+     box(.19,.72,.18,metal,0,-.30,0,mp5Mag);
+     mp5Mag.userData.reloadHome=mp5Mag.position.clone();mp5Mag.userData.reloadHomeQuat=mp5Mag.quaternion.clone();playerReloadPart=mp5Mag;
+     box(.18,.075,.13,dark,x,-.115,-.735,gun);let mp5Rear=new THREE.Mesh(new THREE.TorusGeometry(.050,.013,8,22),mp5Black);mp5Rear.position.set(x,-.030,-.735);gun.add(mp5Rear);
+     box(.20,.075,.10,dark,x,-.145,-2.075,gun);let mp5Hood=new THREE.Mesh(new THREE.TorusGeometry(.088,.017,8,24),mp5Black);mp5Hood.position.set(x,-.030,-2.075);gun.add(mp5Hood);
    }
-
-   // Five-section curved 30-round magazine. It remains one reloadable group so the existing
-   // magazine drop/fresh-mag sequence works exactly as before.
-   const mp5Mag=new THREE.Group();mp5Mag.name="MP5Magazine";mp5Mag.position.set(x,-.61,-1.27);gun.add(mp5Mag);
-   const magSegs=[
-     [0,-.02,0,.195,.18,.235,-.02],
-     [0,-.185,-.012,.193,.18,.232,-.07],
-     [0,-.345,-.045,.188,.18,.228,-.13],
-     [0,-.495,-.095,.180,.17,.220,-.20],
-     [0,-.625,-.160,.168,.15,.210,-.27]
-   ];
-   for(const s of magSegs){let m=bevelBox(s[3],s[4],s[5],metal,s[0],s[1],s[2],mp5Mag);m.rotation.x=s[6]}
-   for(const mx of [-.064,.064])box(.016,.68,.018,dark,mx,-.28,.118,mp5Mag);
-   box(.17,.040,.215,dark,0,-.705,-.205,mp5Mag);
-   mp5Mag.userData.reloadHome=mp5Mag.position.clone();mp5Mag.userData.reloadHomeQuat=mp5Mag.quaternion.clone();playerReloadPart=mp5Mag;
-
-   // A3 retractable stock rails. The actual butt pad sits behind the eye/camera where a
-   // shouldered stock belongs, so it no longer blocks the screen in hip fire or ADS.
-   for(const sx of [-.155,.155])cyl(.023,.92,steel,x+sx,-.295,.03);
-   box(.37,.22,.10,rubber,x,-.31,.49,gun);
-   box(.34,.065,.13,dark,x,-.445,.48,gun);
-   box(.36,.20,.10,dark,x,-.30,-.49,gun);
-
-   // Properly aligned MP5 iron sights: both apertures now share the same vertical sight line.
-   // The rear diopter is smaller; the front hood is larger and farther forward.
-   box(.18,.075,.13,dark,x,-.115,-.735,gun);
-   let mp5Rear=new THREE.Mesh(new THREE.TorusGeometry(.050,.013,8,22),mp5Black);mp5Rear.position.set(x,-.030,-.735);gun.add(mp5Rear);
-   box(.045,.085,.050,dark,x-.075,-.075,-.735,gun);box(.045,.085,.050,dark,x+.075,-.075,-.735,gun);
-
-   box(.20,.075,.10,dark,x,-.145,-2.075,gun);
-   let mp5Hood=new THREE.Mesh(new THREE.TorusGeometry(.088,.017,8,24),mp5Black);mp5Hood.position.set(x,-.030,-2.075);gun.add(mp5Hood);
-   box(.024,.092,.035,dark,x,-.082,-2.075,gun);
-
-   // Ejection-port recess, cocking slot and left charging handle.
-   box(.018,.100,.30,M(0x060707,.18),x+.151,-.235,-1.05,gun);
-   box(.022,.065,.33,dark,x-.151,-.105,-1.45,gun);
-   cyl(.024,.17,dark,x-.16,-.105,-1.63,gun,"x");
-   let mp5Knob=new THREE.Mesh(new THREE.SphereGeometry(.044,10,7),dark);mp5Knob.position.set(x-.245,-.105,-1.63);gun.add(mp5Knob);
- }else if(weapon==='shotgun'){
+  }else if(weapon==='shotgun'){
    // Pump shotgun with twin tubes, ribbed fore-end, receiver and shoulder stock.
    stock(-.42,wood);part(.37,.30,.86,metal,-.30,-1.10);grip(-.61,-.72,-.30,wood);
    cyl(.058,1.72,steel,x,-.235,-2.42);cyl(.052,1.38,dark,x,-.37,-2.26);muzzleBrake(-3.26,.075);
