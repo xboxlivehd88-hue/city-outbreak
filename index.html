@@ -1182,9 +1182,42 @@ function spawnFreshReloadMagazine(){
  if(reloadWeapon==="smg"&&mp5ViewRoot)fresh.scale.multiplyScalar(mp5ViewRoot.scale.x);
  reloadFreshMag=fresh;reloadFreshAttached=false;
 }
+function updateMP5ReloadMagazineFX(rp,home,targetQ){
+ // Keep the current MP5-only magazine removal and hand-carried insertion.
+ if(!reloadOldMagDropped&&home){
+   const pull=rp.pull||0;
+   playerReloadPart.visible=true;playerReloadPart.position.copy(home);
+   playerReloadPart.position.y-=.25*pull;playerReloadPart.position.z+=.045*pull;
+   playerReloadPart.quaternion.copy(targetQ);playerReloadPart.rotation.x+=.07*pull;
+   if(rp.p>=.32)tossOldReloadMagazine();
+ }
+ if(rp.p>=.56&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
+ if(reloadFreshMag&&!reloadMagInserted&&rp.p>=.67){
+   gun.updateMatrixWorld(true);
+   playerHandRig.left.updateMatrixWorld(true);
+   playerReloadPart.updateMatrixWorld(true);
+   const freshWorld=new THREE.Vector3(),homeWorld=new THREE.Vector3();
+   reloadFreshMag.getWorldPosition(freshWorld);
+   playerReloadPart.getWorldPosition(homeWorld);
+   const freshGun=gun.worldToLocal(freshWorld.clone()),homeGun=gun.worldToLocal(homeWorld.clone());
+   const carryT=smoothReload01((rp.p-.67)/.17);
+   playerHandRig.left.position.add(homeGun.sub(freshGun).multiplyScalar(carryT));
+   playerHandRig.left.updateMatrixWorld(true);
+ }
+ if(rp.p>=.84&&reloadFreshMag&&!reloadMagInserted){
+   if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
+   reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
+   playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
+   playerReloadPart.visible=!playerReloadPart.userData.reloadOnly;reloadMagInserted=true;
+ }
+}
 function updateReloadMagazineFX(rp){
  if(!reloading||!detachableMagazineReload())return;
  const home=playerReloadPart.userData.reloadHome,targetQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
+ if(reloadWeapon==="smg"){
+   updateMP5ReloadMagazineFX(rp,home,targetQ);
+   return;
+ }
  if(reloadWeapon==="pistol"){
    // M17 speed reload: the old magazine drops freely while the support hand is
    // already reaching for the replacement. This keeps the two actions visually separate.
@@ -1233,35 +1266,10 @@ function updateReloadMagazineFX(rp){
    if(rp.p>=.32)tossOldReloadMagazine();
  }
  if(rp.p>=.56&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
-
- // MP5: keep the replacement magazine physically in the support hand through the
- // entire insertion. Move the hand/magazine pair to the real magwell instead of
- // detaching the magazine and letting it slide/roll into the gun on its own.
- if(reloadWeapon==="smg"){
-   if(reloadFreshMag&&!reloadMagInserted&&rp.p>=.67){
-     gun.updateMatrixWorld(true);
-     playerHandRig.left.updateMatrixWorld(true);
-     playerReloadPart.updateMatrixWorld(true);
-     const freshWorld=new THREE.Vector3(),homeWorld=new THREE.Vector3();
-     reloadFreshMag.getWorldPosition(freshWorld);
-     playerReloadPart.getWorldPosition(homeWorld);
-     const freshGun=gun.worldToLocal(freshWorld.clone()),homeGun=gun.worldToLocal(homeWorld.clone());
-     const carryT=smoothReload01((rp.p-.67)/.17);
-     playerHandRig.left.position.add(homeGun.sub(freshGun).multiplyScalar(carryT));
-     playerHandRig.left.updateMatrixWorld(true);
-   }
-   if(rp.p>=.84&&reloadFreshMag&&!reloadMagInserted){
-     if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
-     reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
-     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
-     playerReloadPart.visible=!playerReloadPart.userData.reloadOnly;reloadMagInserted=true;
-   }
-   return;
- }
-
  if(rp.p>=.67&&reloadFreshMag&&!reloadFreshAttached){
    playerHandRig.left.updateMatrixWorld(true);
-   gun.updateMatrixWorld(true);gun.attach(reloadFreshMag);
+   const insertParent=(reloadWeapon==="smg"&&playerReloadPart.parent)?playerReloadPart.parent:gun;
+   insertParent.updateMatrixWorld(true);insertParent.attach(reloadFreshMag);
    reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
  }
  if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
