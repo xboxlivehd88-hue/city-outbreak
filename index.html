@@ -3314,9 +3314,10 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
- gun.position.z=ac2.z*aimBlend+recoil*.42+rp.arch*.09;
- gun.position.y=ac2.y*aimBlend-recoil*.08-rp.arch*(weapon==="m240"?.12:.18);
- gun.rotation.x=(ac2.rx||0)*aimBlend+recoil*2.05+reloadTilt;
+ const wholeGunRecoil=weapon==="smg"?0:recoil;
+ gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+rp.arch*.09;
+ gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08-rp.arch*(weapon==="m240"?.12:.18);
+ gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt;
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(weapon==="smg"&&mp5ViewRoot){
@@ -3329,10 +3330,23 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    const pivotZ=-.50,mp5Scale=1.55;
    const adsPivotX=mp5Scale*(0-Math.sin(adsYaw)*pivotZ);
    const adsPivotZ=mp5Scale*(pivotZ-Math.cos(adsYaw)*pivotZ);
-   mp5ViewRoot.rotation.y=THREE.MathUtils.lerp(hipYaw,adsYaw,a);
+   const yawNow=THREE.MathUtils.lerp(hipYaw,adsYaw,a);
+   mp5ViewRoot.rotation.y=yawNow;
    mp5ViewRoot.position.x=THREE.MathUtils.lerp(.44,.36+adsPivotX,a);
    mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.66,-.40,a);
    mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.95,-1.55+adsPivotZ,a);
+
+   // MP5 recoil pivots around the rear of the receiver/stock instead of kicking the
+   // entire player weapon rig. The rear stays nearly planted while the barrel rises.
+   const kick=recoil*1.65;
+   mp5ViewRoot.rotation.x=kick;
+   const recoilPivotY=.08,recoilPivotZ=.45;
+   const kc=Math.cos(kick),ks=Math.sin(kick);
+   const recoilDY=recoilPivotY-(recoilPivotY*kc-recoilPivotZ*ks);
+   const recoilDZ=recoilPivotZ-(recoilPivotY*ks+recoilPivotZ*kc);
+   mp5ViewRoot.position.x+=Math.sin(yawNow)*recoilDZ;
+   mp5ViewRoot.position.y+=recoilDY;
+   mp5ViewRoot.position.z+=Math.cos(yawNow)*recoilDZ;
  }
  if(playerHandRig){
    // The imported M4 is much more realistic than the old block rifle. In ADS,
