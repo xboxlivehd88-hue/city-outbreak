@@ -953,7 +953,7 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
  if(weapon==="pistol")rebuildGun();
 },undefined,err=>console.warn("M17 GLB load failed; using procedural fallback",err));
 // Supplied animated MP5 GLB. Use it as the SMG viewmodel while preserving existing MP5 gameplay.
-let mp5ModelTemplate=null,mp5Animations=[];
+let mp5ModelTemplate=null,mp5Animations=[],mp5ViewRoot=null;
 new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
  mp5ModelTemplate=gltf.scene;
  mp5Animations=gltf.animations||[];
@@ -1245,7 +1245,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;mp5ViewRoot=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -1328,7 +1328,11 @@ function rebuildGun(){
        geo.applyMatrix4(xf.matrixWorld);
        geo.applyMatrix4(mp5Pitch);
        geo.applyMatrix4(mp5FaceForward);
-       const mesh=new THREE.Mesh(geo,src.material);
+       // Use a guaranteed-visible material while the imported geometry/pose is being
+       // dialed in. This removes the source rig/material setup as a visibility variable.
+       const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
+         color:0x2b2f31,roughness:.48,metalness:.58,side:THREE.DoubleSide
+       }));
        mesh.name=meshName+"_MP5View";
        mesh.userData.externalWeaponAsset=true;
        mesh.castShadow=false;mesh.receiveShadow=false;
@@ -1340,11 +1344,14 @@ function rebuildGun(){
      gunBounds.getSize(size);gunBounds.getCenter(center);
      mp5Geo.position.copy(center).multiplyScalar(-1);
      const longest=Math.max(size.x,size.y,size.z)||1;
-     mp5Root.scale.setScalar(2.20/longest);
-     // Initial hip placement: whole gun visible, slightly right and low like the other primaries.
-     mp5Root.position.set(.22,-.38,-1.55);
+     mp5Root.scale.setScalar(1.75/longest);
+     // Hip-fire deliberately shows the MP5 from a slight side angle. Straight down the
+     // model's long axis it collapses into the thin black strip seen in the screenshots.
+     mp5Root.position.set(.30,-.55,-1.70);
+     mp5Root.rotation.y=THREE.MathUtils.degToRad(28);
      gun.add(mp5Root);
-     document.documentElement.dataset.mp5Viewmodel="source-transform-rebuild";
+     mp5ViewRoot=mp5Root;
+     document.documentElement.dataset.mp5Viewmodel="visible-hip-angle";
    }else{
      // Safe fallback while the external MP5 loads.
      const mp5Gunmetal=M(0x171a1b,.24),mp5Black=M(0x0d0f10,.58),mp5Poly=M(0x1b1e1f,.76);
@@ -3310,6 +3317,15 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.x=(ac2.rx||0)*aimBlend+recoil*2.05+reloadTilt;
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
+ if(weapon==="smg"&&mp5ViewRoot){
+   // Hip fire: show the side/profile of the real MP5. ADS: rotate back onto the bore
+   // axis and lift/center it so the sights can be tuned normally.
+   const a=aimBlend;
+   mp5ViewRoot.rotation.y=THREE.MathUtils.degToRad(28)*(1-a);
+   mp5ViewRoot.position.x=THREE.MathUtils.lerp(.30,.36,a);
+   mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.55,-.03,a);
+   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.70,-1.35,a);
+ }
  if(playerHandRig){
    // The imported M4 is much more realistic than the old block rifle. In ADS,
    // fade the procedural arms out so they do not form the giant V around the optic.
