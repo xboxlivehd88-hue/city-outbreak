@@ -990,11 +990,14 @@ function capFX(){
  while(casings.length>18){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
 }
 let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}},grenades=2,nukes=0,nukeInProgress=false,waveTarget=0,waveSpawned=0,currentBoss=null,bossWaveName="",usedBossNames=[],running=false,dying=false,reloading=false,between=false,paused=false,pauseStartedAt=0,pausedAccumulatedMs=0,waveTimer=0,lastCount=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},msgTimer,hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null,sprintEnergy=100,sprintLocked=false,aiming=false,aimBlend=0,awmReadyAt=0,runStartTime=0;
+let shopLowPower=false,shopPauseStartedAt=0,shopPausedAccumulatedMs=0,lastShopRenderAt=0;
 const PLAYER_HEALTH_REGEN_DELAY=5,PLAYER_HEALTH_REGEN_RATE=10;
 let healthRegenCooldown=0,healthRegenShown=100;
 function gameTimeNow(){
  const now=performance.now();
- return now-pausedAccumulatedMs-(paused?now-pauseStartedAt:0);
+ const manualPause=paused?now-pauseStartedAt:0;
+ const shopPause=shopLowPower?now-shopPauseStartedAt:0;
+ return now-pausedAccumulatedMs-shopPausedAccumulatedMs-manualPause-shopPause;
 }
 function gameTimeout(fn,ms){
  const deadline=gameTimeNow()+ms;
@@ -3023,6 +3026,13 @@ function triggerUp(){stopAuto()}
 
 function openShop(){
  if(document.pointerLockElement===cv)document.exitPointerLock?.();
+ if(!shopLowPower){
+   shopLowPower=true;
+   shopPauseStartedAt=performance.now();
+   lastShopRenderAt=0;
+   clearKeys();stopAuto();setAim(false);
+   if(ac&&ac.state==="running")ac.suspend().catch(()=>{});
+ }
  shop.classList.add("show");
  document.body.style.cursor="default";
  shop.style.cursor="default";
@@ -3078,6 +3088,12 @@ function readyNextWave(){
  if(!between||dying)return;
  shop.classList.remove("show");
  document.body.style.cursor="";
+ if(shopLowPower){
+   const now=performance.now();
+   shopPausedAccumulatedMs+=Math.max(0,now-shopPauseStartedAt);
+   shopPauseStartedAt=0;shopLowPower=false;last=now;lastShopRenderAt=0;
+   if(ac&&audioOn)ac.resume().catch(()=>{});
+ }
  between=false;pauseBtn.classList.add("show");
  clearRoundCorpses();
  if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}
@@ -3898,8 +3914,20 @@ function perfGuard(dt){
  }
 }
 function resize(){ren.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",resize);resize();
-function frame(t){let dt=Math.min(.04,(t-last)/1000);last=t;if(!paused)update(dt);ren.render(scene,cam);requestAnimationFrame(frame)}requestAnimationFrame(frame);
-function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function frame(t){
+ let dt=Math.min(.04,(t-last)/1000);last=t;
+ if(shopLowPower){
+   // Shop UI is DOM-based, so the 3D world can stay frozen. Redraw at only 4 FPS
+   // to keep the canvas healthy while avoiding full-rate GPU work.
+   if(t-lastShopRenderAt>=250){lastShopRenderAt=t;ren.render(scene,cam)}
+   requestAnimationFrame(frame);return;
+ }
+ if(!paused)update(dt);
+ ren.render(scene,cam);
+ requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame);
+function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];bossHUD.classList.remove("show");sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready.";rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";death.classList.remove("show");announce.classList.remove("show");shop.classList.remove("show");startScreen.style.display="none";document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();document.querySelector("#start").onclick=reset;document.querySelector("#restart").onclick=reset;document.querySelector("#deathRestart").onclick=reset;
 const controlsModal=document.querySelector("#controlsModal"),showControlsBtn=document.querySelector("#showControls"),closeControlsBtn=document.querySelector("#closeControls");
 function setStartControls(open){controlsModal.classList.toggle("show",open);controlsModal.setAttribute("aria-hidden",open?"false":"true");if(open)closeControlsBtn.focus();else showControlsBtn.focus()}
