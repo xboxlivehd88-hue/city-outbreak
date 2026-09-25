@@ -1086,18 +1086,25 @@ function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 const DETACHABLE_RELOAD_WEAPONS=new Set(["rifle","smg","pistol","dmr","m240","awm"]);
 function detachableMagazineReload(w=reloadWeapon||weapon){return DETACHABLE_RELOAD_WEAPONS.has(w)&&!!playerReloadPart}
 function reloadPoseProgress(){
- if(!reloading||reloadDurationMs<=0)return{p:0,arch:0,hand:0,pull:0,pouch:0};
+ if(!reloading||reloadDurationMs<=0)return{p:0,arch:0,hand:0,pull:0,pouch:0,grab:0};
  const p=Math.max(0,Math.min(1,(gameTimeNow()-reloadStartedAt)/reloadDurationMs));
  const arch=Math.sin(Math.PI*p);
+ if(reloadWeapon==="rifle"){
+   // M4 rollback: restore the earlier magazine-swap hand timing from before
+   // the later pull-to-pouch reload pass.
+   const hand=p<.25?smoothReload01(p/.25):p<.76?1:smoothReload01((1-p)/.24);
+   const grab=p<.28?0:p<.43?smoothReload01((p-.28)/.15):p<.50?1:p<.64?smoothReload01((.64-p)/.14):0;
+   return{p,arch,hand,pull:0,pouch:0,grab};
+ }
  if(!detachableMagazineReload()){
    const hand=p<.25?smoothReload01(p/.25):p<.76?1:smoothReload01((1-p)/.24);
-   return{p,arch,hand,pull:0,pouch:0};
+   return{p,arch,hand,pull:0,pouch:0,grab:0};
  }
  // Clear readable beats: reach mag -> pull it free -> empty hand to pouch -> fresh mag back up -> seat it.
  const hand=p<.16?smoothReload01(p/.16):p<.86?1:smoothReload01((1-p)/.14);
  const pull=p<.16?0:p<.32?smoothReload01((p-.16)/.16):1;
  const pouch=p<.30?0:p<.48?smoothReload01((p-.30)/.18):p<.56?1:p<.76?smoothReload01((.76-p)/.20):0;
- return{p,arch,hand,pull,pouch};
+ return{p,arch,hand,pull,pouch,grab:0};
 }
 function clearReloadMagazineFX(showReal=true){
  if(reloadFreshMag&&reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
@@ -1163,10 +1170,11 @@ function tossOldReloadMagazine(){
    oldMag.position.copy(playerReloadPart.position);oldMag.quaternion.copy(playerReloadPart.quaternion);oldMag.scale.copy(playerReloadPart.scale);
    gun.updateMatrixWorld(true);oldMag.updateMatrixWorld(true);scene.attach(oldMag);
  }
- // Keep the discarded mag in the player's view for a moment instead of firing it off-screen.
- // Drop mostly straight down in camera space so it stays under the pistol on screen.
- const throwV=new THREE.Vector3(-.04,-.26,-.02).applyQuaternion(cam.quaternion);
- parts.push({q:oldMag,v:throwV,life:2.15,reloadMag:true,spin:new THREE.Vector3(4.2,3.1,5.0)});
+ // M4 rollback keeps its earlier, faster discarded-mag toss. Other weapons retain
+ // their current drop path.
+ const oldM4Reload=reloadWeapon==="rifle";
+ const throwV=(oldM4Reload?new THREE.Vector3(-1.65,-1.15,.55):new THREE.Vector3(-.04,-.26,-.02)).applyQuaternion(cam.quaternion);
+ parts.push({q:oldMag,v:throwV,life:oldM4Reload?1.20:2.15,reloadMag:true,spin:oldM4Reload?new THREE.Vector3(7.5,5.2,8.8):new THREE.Vector3(4.2,3.1,5.0)});
  playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadOldMagDropped=true;
 }
 function spawnFreshReloadMagazine(){
@@ -1211,9 +1219,40 @@ function updateMP5ReloadMagazineFX(rp,home,targetQ){
    playerReloadPart.visible=!playerReloadPart.userData.reloadOnly;reloadMagInserted=true;
  }
 }
+function updateM4ReloadMagazineFX(rp,home,targetQ){
+ // Exact earlier M4 magazine-swap generation: drop sooner, grab the replacement
+ // sooner, then seat it on the older .54 -> .76 insertion timing.
+ if(rp.p>=.22&&!reloadOldMagDropped)tossOldReloadMagazine();
+ if(rp.p>=.38&&!reloadFreshMag&&!reloadMagInserted){
+   spawnFreshReloadMagazine();
+   if(reloadFreshMag){
+     const hp=playerHandRig.pose.left;
+     reloadFreshMag.position.set(hp[0]+.015,hp[1]-.13,hp[2]+.055);
+     reloadFreshMag.quaternion.copy(targetQ);reloadFreshMag.rotation.z+=.10;
+   }
+ }
+ if(rp.p>=.54&&reloadFreshMag&&!reloadFreshAttached){
+   playerHandRig.left.updateMatrixWorld(true);gun.attach(reloadFreshMag);
+   reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
+ }
+ if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
+   const t=smoothReload01((rp.p-.54)/.22);
+   reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,home,t);
+   reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
+   if(rp.p>=.76){
+     if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
+     reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
+     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.visible=true;reloadMagInserted=true;
+   }
+ }
+}
 function updateReloadMagazineFX(rp){
  if(!reloading||!detachableMagazineReload())return;
  const home=playerReloadPart.userData.reloadHome,targetQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
+ if(reloadWeapon==="rifle"){
+   updateM4ReloadMagazineFX(rp,home,targetQ);
+   return;
+ }
  if(reloadWeapon==="smg"){
    updateMP5ReloadMagazineFX(rp,home,targetQ);
    return;
@@ -2930,7 +2969,7 @@ function reload(w=weapon){
    };
    reloading=true;reloadWeapon=w;beginReloadMagazineFX();show("RELOADING");loadShell();return true
  }
- const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
+ const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):w==="rifle"?Math.max(420,950-reloadLevel*120):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
  reloading=true;reloadStartedAt=gameTimeNow();reloadDurationMs=duration;reloadWeapon=w;beginReloadMagazineFX();reloadS();show("RELOADING");
  gameTimeout(()=>{
    if(seq!==reloadSequence||!reloading||reloadWeapon!==w)return;
@@ -3440,6 +3479,10 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      else if(p<.90){lx=.12;ly=-.20;lz=.06;rz=-.12}
      else{t=smoothReload01((p-.90)/.10);lx=.12*(1-t);ly=-.11*(1-t);lz=.06*(1-t);rz=-.12*(1-t)}
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.08,0,rz);
+   }else if(reloading&&reloadWeapon==="rifle"){
+     const ro=playerHandRig.pose.reload,h=rp.hand,g=rp.grab||0;
+     playerHandRig.left.position.set(ro[0]*h-.08*g,ro[1]*h-.30*g,ro[2]*h+.20*g);
+     playerHandRig.left.rotation.set(.10*h+.12*g,0,-.18*h-.10*g);
    }else{
      const ro=playerHandRig.pose.reload,h=rp.hand,pull=rp.pull||0,pouch=rp.pouch||0;
      playerHandRig.left.position.set(ro[0]*h-.10*pouch,ro[1]*h-.24*pull-.48*pouch,ro[2]*h+.05*pull+.22*pouch);
