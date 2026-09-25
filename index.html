@@ -1315,16 +1315,17 @@ function rebuildGun(){
        o.userData.externalWeaponAsset=true;
        if(o.isMesh){
          o.castShadow=false;o.receiveShadow=false;
-         const n=(o.name||"").toLowerCase();
-         if(n.includes("dmc5_nero")||n.includes("barearm"))o.visible=false;
+         // Actual GLB runtime node: Object_124 is the arm mesh.
+         if(o.name==="Object_124")o.visible=false;
        }
      });
      mp5Root.updateMatrixWorld(true);
      const gunBounds=new THREE.Box3(),tmpBounds=new THREE.Box3();
      mp5Root.traverse(o=>{
        if(!o.isMesh||!o.visible)return;
-       const n=(o.name||"").toLowerCase();
-       if(n.includes("mp5")){tmpBounds.setFromObject(o);gunBounds.union(tmpBounds)}
+       if(o.name==="Object_126"||o.name==="Object_128"||o.name==="Object_130"){
+         tmpBounds.setFromObject(o);gunBounds.union(tmpBounds)
+       }
      });
      const size=new THREE.Vector3();gunBounds.getSize(size);
      const longest=Math.max(size.x,size.y,size.z)||1;mp5Root.scale.setScalar(2.15/longest);
@@ -1332,8 +1333,9 @@ function rebuildGun(){
      gunBounds.makeEmpty();
      mp5Root.traverse(o=>{
        if(!o.isMesh||!o.visible)return;
-       const n=(o.name||"").toLowerCase();
-       if(n.includes("mp5")){tmpBounds.setFromObject(o);gunBounds.union(tmpBounds)}
+       if(o.name==="Object_126"||o.name==="Object_128"||o.name==="Object_130"){
+         tmpBounds.setFromObject(o);gunBounds.union(tmpBounds)
+       }
      });
      const center=new THREE.Vector3();gunBounds.getCenter(center);
      // Center the actual MP5 geometry directly in front of the camera for the first
