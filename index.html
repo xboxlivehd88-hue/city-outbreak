@@ -1056,6 +1056,9 @@ function addPlayerHands(){
  const pose=HAND_POSES[weapon]||HAND_POSES.rifle;
  const sleeve=M(0x27302d,.88),cuff=M(0x171b1b,.90),glove=M(0x111414,.82);
  const right=new THREE.Group(),left=new THREE.Group();right.name='RightPlayerArm';left.name='LeftPlayerArm';gun.add(right,left);
+ // The pistol support hand was visually swallowing the reload magazine. Scale only
+ // the M17 left-hand/arm geometry down while preserving the approved animation path.
+ if(weapon==='pistol')left.scale.setScalar(.72);
  const rs=new THREE.Vector3(.80,-1.12,.08),ls=new THREE.Vector3(-.35,-1.08,.06),rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
  const rm=new THREE.Vector3().lerpVectors(rs,rh,.58),lm=new THREE.Vector3().lerpVectors(ls,lh,.58);
  fpsArmSegment(rs,rm,.105,sleeve,right);fpsArmSegment(rm,weapon==='pistol'?rh.clone().lerp(rm,.14):rh,.086,cuff,right);fpsHand(right,rh,'right',glove);
