@@ -2977,6 +2977,7 @@ function fire(){
          sy=aimY+pistolAdsZero+smgAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
    let hit=ray.intersectObjects(rayTargets,false)[0];
+   if(!hit)hit=pointBlankWeaponHit();
    if(hit&&hit.distance<80){
      let z=hit.object.userData.zombie;if(!z)continue;
      let hs=hit.object.userData.isHead===true,part=hit.object.userData.part||"body";
@@ -3079,6 +3080,22 @@ function fireGrenadeLauncherRound(){
  const band=new THREE.Mesh(new THREE.TorusGeometry(.105,.018,7,12),M(0xc79a45,.38));band.rotation.x=Math.PI/2;q.add(band);
  const start=new THREE.Vector3();cam.getWorldPosition(start);
  const dir=new THREE.Vector3();cam.getWorldDirection(dir);
+ // A close zombie can occupy the normal .85 m projectile spawn point. Detect that
+ // muzzle-space contact first so the round impacts the zombie instead of appearing
+ // on the far side of it.
+ const fx=-Math.sin(yaw),fz=-Math.cos(yaw),spec=weaponContactSpec("grenadeLauncher");
+ let closeImpact=null,closeAlong=Infinity;
+ for(const z of zombies){
+   if(!z||z.dead)continue;
+   const dx=z.g.position.x-px,dz=z.g.position.z-pz,along=dx*fx+dz*fz;
+   if(along<.05||along>1.20)continue;
+   const lateral=Math.abs(dx*fz-dz*fx),pad=z.kind==="boss"?.52:z.kind==="crawler"?.16:.30;
+   if(lateral<=spec.width+pad&&along<closeAlong){closeImpact=z;closeAlong=along}
+ }
+ if(closeImpact){
+   q.position.copy(start).addScaledVector(dir,Math.max(.18,Math.min(.70,closeAlong-.18)));q.position.y-=.08;
+   scene.add(q);explodeLauncherRound({q,v:new THREE.Vector3(),fuse:0,launcher:true});return;
+ }
  q.position.copy(start).addScaledVector(dir,.85);q.position.y-=.08;
  const vel=dir.multiplyScalar(25);vel.y+=1.1;scene.add(q);
  thrown.push({q,v:vel,fuse:3.0,launcher:true});
@@ -3318,6 +3335,63 @@ function setGamePaused(next){
 pauseBtn.addEventListener("click",()=>setGamePaused(true));
 resumeGameBtn.addEventListener("click",()=>setGamePaused(false));
 
+// First-person weapon contact. The guns/hands are camera-space viewmodels, so
+// they cannot physically collide with world meshes on their own. Treat a zombie
+// crowding the muzzle as contact and push the complete weapon/hand rig back/up.
+// This preserves zombie attack range instead of turning the gun into an invisible wall.
+const WEAPON_CONTACT={
+ rifle:{reach:2.20,width:.74,retract:.88,tilt:.46},
+ smg:{reach:1.72,width:.70,retract:.68,tilt:.40},
+ shotgun:{reach:2.24,width:.76,retract:.92,tilt:.48},
+ pistol:{reach:1.22,width:.62,retract:.46,tilt:.30},
+ dmr:{reach:2.38,width:.76,retract:.96,tilt:.50},
+ grenadeLauncher:{reach:1.98,width:.74,retract:.82,tilt:.45},
+ m240:{reach:2.38,width:.80,retract:.98,tilt:.50},
+ awm:{reach:2.52,width:.76,retract:1.02,tilt:.52}
+};
+function weaponContactSpec(w=weapon){return WEAPON_CONTACT[w]||WEAPON_CONTACT.rifle}
+function weaponZombieContactAmount(){
+ if(!running||dying||between)return 0;
+ const spec=weaponContactSpec(),fx=-Math.sin(yaw),fz=-Math.cos(yaw);
+ let strongest=0;
+ for(const z of zombies){
+   if(!z||z.dead||z.knockdown)continue;
+   const dx=z.g.position.x-px,dz=z.g.position.z-pz;
+   const along=dx*fx+dz*fz;
+   if(along<=.05)continue;
+   const lateral=Math.abs(dx*fz-dz*fx);
+   const bossPad=z.kind==="boss"?.42:z.kind==="crawler"?.10:.22;
+   const reach=spec.reach+bossPad;
+   if(along>reach+.30||lateral>spec.width+bossPad)continue;
+   const dist=Math.hypot(dx,dz);
+   if(dist>=reach)continue;
+   const fullAt=z.kind==="boss"?.92:.68;
+   const amt=Math.max(0,Math.min(1,(reach-dist)/Math.max(.25,reach-fullAt)));
+   if(amt>strongest)strongest=amt;
+ }
+ return strongest;
+}
+// If the camera has been crowded into a zombie mesh, normal front-face raycasting
+// can miss because the ray starts inside the target. Retry from just behind the
+// camera, but only while a zombie is actually inside the weapon-contact zone.
+function pointBlankWeaponHit(){
+ if(weaponZombieContactAmount()<=.02)return null;
+ const spec=weaponContactSpec(),savedOrigin=ray.ray.origin.clone(),dir=ray.ray.direction.clone();
+ ray.ray.origin.addScaledVector(dir,-(spec.reach+.65));
+ const hits=ray.intersectObjects(rayTargets,false);
+ ray.ray.origin.copy(savedOrigin);
+ const fx=-Math.sin(yaw),fz=-Math.cos(yaw);
+ for(const hit of hits){
+   const z=hit.object?.userData?.zombie;
+   if(!z||z.dead)continue;
+   const dx=z.g.position.x-px,dz=z.g.position.z-pz,dist=Math.hypot(dx,dz);
+   const along=dx*fx+dz*fz,lateral=Math.abs(dx*fz-dz*fx);
+   const bossPad=z.kind==="boss"?.42:z.kind==="crawler"?.10:.22;
+   if(along>-.10&&dist<=spec.reach+bossPad+.55&&lateral<=spec.width+bossPad+.18)return hit;
+ }
+ return null;
+}
+
 // Soft living-body collision: prevents the player and upright zombies from
 // ghosting through one another without turning enemies into rigid walls.
 function zombieContactRadius(z){return z.kind==="boss"?1.05:z.kind==="crawler"?.58:.72}
@@ -3379,6 +3453,12 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt;
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
+ // Do not alter any locked reload choreography. Outside reload, a zombie crowding
+ // the muzzle pushes the complete gun + both hands toward the player and raises
+ // the muzzle, so viewmodel geometry no longer passes through the zombie.
+ const weaponContact=reloading?0:weaponZombieContactAmount(),contactSpec=weaponContactSpec();
+ gun.position.z+=weaponContact*contactSpec.retract;
+ gun.rotation.x+=weaponContact*contactSpec.tilt;
  if(weapon==="rifle"&&m4ViewRoot){
    // Hip-fire only: move the M4 a touch farther from the camera so the rear of
    // the rifle does not dominate the screen. Preserve the approved ADS/reload position.
