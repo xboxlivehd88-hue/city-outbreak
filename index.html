@@ -1356,7 +1356,7 @@ function rebuildGun(){
        // at idle and use this exact model piece for drop / fresh-mag / insertion.
        if(meshName==="Object_128"){
          mesh.name="MP5Magazine";
-         mesh.position.y+=.055;
+         mesh.position.y+=.15;
          mesh.userData.reloadHome=mesh.position.clone();
          mesh.userData.reloadHomeQuat=mesh.quaternion.clone();
          mp5Magazine=mesh;
