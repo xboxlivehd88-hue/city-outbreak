@@ -1308,6 +1308,8 @@ function rebuildGun(){
      // Replace the procedural MP5 with the supplied animated GLB. Normalize the model
      // into the established first-person weapon space; gameplay values remain unchanged.
      const mp5Root=SkeletonUtils.clone(mp5ModelTemplate);mp5Root.name="ExternalAnimatedMP5";
+     // The supplied MP5 is authored lengthwise on +Y. Rotate that axis into game forward (-Z).
+     mp5Root.rotation.set(-Math.PI/2,0,0);
      // This asset is a complete first-person rig (camera + arm + MP5), not a plain
      // weapon prop. Hide the supplied arm and normalize from the MP5 meshes only;
      // including the arm/camera in the bounds was why the gun itself ended up off-screen.
