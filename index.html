@@ -2035,6 +2035,11 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  let neck=new THREE.Mesh(new THREE.CylinderGeometry(.060,.072,.16,8),skin);neck.position.set(0,1.70,-.035);neck.rotation.x=-.08;g.add(neck);
  let head=new THREE.Mesh(new THREE.CylinderGeometry(.142,.122,.29,8,1,false),skin);
  head.position.set(0,1.83,-.070);head.scale.set(.96,1.0,.82);head.rotation.y=Math.PI/6;head.rotation.x=-.05;head.userData.isHead=true;g.add(head);
+ // Invisible headshot volume covers the full visible skull/face instead of only
+ // the narrow low-poly head mesh. It remains attached to the head animation.
+ const headHitbox=new THREE.Mesh(new THREE.SphereGeometry(.185,10,8),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false}));
+ headHitbox.position.set(0,.005,-.005);headHitbox.scale.set(1.0,1.08,.92);
+ headHitbox.userData.isHead=true;headHitbox.userData.part="head";headHitbox.castShadow=false;headHitbox.receiveShadow=false;head.add(headHitbox);
  let forehead=box(.17,.075,.035,skin,0,.075,-.102,head);forehead.rotation.x=-.03;
  let jaw=taperedPrism(.132,.108,.082,.102,.087,skin,0,-.135,-.025,head);jaw.rotation.x=.045;
  let cheekL=box(.068,.09,.035,skin,-.092,-.015,-.092,head);cheekL.rotation.z=-.10;
@@ -2895,7 +2900,11 @@ function fire(){
  let didHit=false,headHit=false;rayTargets.length=0;
  for(const z of zombies){if(z.dead)continue;if(z.hitMeshes)rayTargets.push(...z.hitMeshes)}
  for(let pellet=0;pellet<wd().pellets;pellet++){
-   const adsSpread=aiming?(weapon==="awm"?.08:.38):1,sx=aimX+(Math.random()-.5)*wd().spread*adsSpread,sy=aimY+(Math.random()-.5)*wd().spread*adsSpread;
+   const adsSpread=aiming?(weapon==="awm"?.08:.38):1;
+   // The M17 irons visually sit a touch above the camera center in ADS. Correct
+   // the shot ray downward so the impact follows the sight picture.
+   const pistolAdsZero=(aiming&&weapon==="pistol")?-.0065:0;
+   const sx=aimX+(Math.random()-.5)*wd().spread*adsSpread,sy=aimY+pistolAdsZero+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
    let hit=ray.intersectObjects(rayTargets,false)[0];
    if(hit&&hit.distance<80){
