@@ -1347,8 +1347,10 @@ function rebuildGun(){
      // The baked gun is now ~1 unit long with a normal MP5 profile. At hip fire,
      // cant it sideways so the receiver/magazine are clearly visible.
      mp5Root.scale.setScalar(1.55);
-     mp5Root.position.set(.36,-.40,-1.55);
-     mp5Root.rotation.y=THREE.MathUtils.degToRad(28);
+     // Hip-fire starts lower and slightly less side-on so the grip sits down into
+     // the player's hands instead of floating above them.
+     mp5Root.position.set(.32,-.70,-1.55);
+     mp5Root.rotation.y=THREE.MathUtils.degToRad(20);
      gun.add(mp5Root);
      mp5ViewRoot=mp5Root;
      document.documentElement.dataset.mp5Viewmodel="clean-baked-mp5";
@@ -3318,11 +3320,13 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(weapon==="smg"&&mp5ViewRoot){
-   // Keep the hip-fire profile readable; smoothly straighten only the yaw for ADS.
-   // The imported MP5 includes a full stock behind the receiver, so ADS pulls the
-   // weapon BACK toward the camera (positive gun Z) until the stock passes behind
-   // the eye and the real rear/front sights are what remain in view.
-   mp5ViewRoot.rotation.y=THREE.MathUtils.degToRad(28)*(1-aimBlend);
+   // Preserve the now-good ADS pose exactly. Only the hip pose is changed: lower it
+   // into the hands and reduce the side angle, then blend back to the approved ADS root.
+   const a=aimBlend;
+   mp5ViewRoot.rotation.y=THREE.MathUtils.degToRad(20)*(1-a);
+   mp5ViewRoot.position.x=THREE.MathUtils.lerp(.32,.36,a);
+   mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.70,-.40,a);
+   mp5ViewRoot.position.z=-1.55;
  }
  if(playerHandRig){
    // The imported M4 is much more realistic than the old block rifle. In ADS,
