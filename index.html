@@ -1305,31 +1305,54 @@ function rebuildGun(){
    }
  }else if(weapon==='smg'){
    if(mp5ModelTemplate){
-     // The supplied GLB's MP5 meshes are skinned to a first-person rig whose bind
-     // transforms distort the gun when transplanted into CITY OUTBREAK. Build a clean
-     // static viewmodel from the three original MP5 mesh geometries instead. Their raw
-     // vertex coordinates already form the correct MP5 shape and point down -Z.
-     const mp5Root=new THREE.Group();mp5Root.name="ExternalAnimatedMP5";
-     const mp5Geo=new THREE.Group();mp5Geo.name="ExternalAnimatedMP5Geometry";mp5Root.add(mp5Geo);
-     for(const nodeName of ["Object_126","Object_128","Object_130"]){
-       const src=mp5ModelTemplate.getObjectByName(nodeName);
-       if(!src||!src.geometry)continue;
-       const mesh=new THREE.Mesh(src.geometry,src.material);
-       mesh.name=nodeName+"_Static";
-       mesh.userData.externalWeaponAsset=true;
-       mesh.castShadow=false;mesh.receiveShadow=false;
-       mp5Geo.add(mesh);
+     // Use the supplied MP5 exactly through its original skeleton. The previous static
+     // geometry extraction threw away the skin/bind pose and made the gun look like a
+     // tall black strip. No extra axis rotation is applied here: the GLB already carries
+     // its own Sketchfab/FBX root conversion.
+     const mp5Root=SkeletonUtils.clone(mp5ModelTemplate);mp5Root.name="ExternalAnimatedMP5";
+
+     // Put the rig in the authored ready/held pose before measuring it.
+     const takeClip=THREE.AnimationClip.findByName(mp5Animations,"Armature|Take")||
+                    mp5Animations.find(a=>(a.name||"").toLowerCase().includes("take"));
+     if(takeClip){
+       const mixer=new THREE.AnimationMixer(mp5Root);
+       const action=mixer.clipAction(takeClip);action.play();
+       mixer.setTime(Math.max(0,takeClip.duration-.001));
+       mixer.update(0);
      }
-     mp5Geo.updateMatrixWorld(true);
-     const gunBounds=new THREE.Box3().setFromObject(mp5Geo),size=new THREE.Vector3(),center=new THREE.Vector3();
-     gunBounds.getSize(size);gunBounds.getCenter(center);
-     // Center inside the scaled root so the huge source coordinates cannot throw the
-     // weapon off-screen. The raw model's longest axis is Z, matching game forward.
-     mp5Geo.position.copy(center).multiplyScalar(-1);
+
+     // Keep CITY OUTBREAK's existing player arms; hide only the arm mesh packaged
+     // inside the downloaded asset. Leave the MP5 skinned meshes intact.
+     mp5Root.traverse(o=>{
+       o.userData.externalWeaponAsset=true;
+       if(o.isMesh){
+         o.castShadow=false;o.receiveShadow=false;
+         if(o.name==="Object_124")o.visible=false;
+       }
+     });
+
+     // Measure the three actual MP5 skinned meshes in their posed state. Using precise
+     // bounds is important here because this model has unusual bind-space coordinates.
+     mp5Root.updateMatrixWorld(true);
+     const gunBounds=new THREE.Box3(),tmpBounds=new THREE.Box3();
+     for(const nodeName of ["Object_126","Object_128","Object_130"]){
+       const part=mp5Root.getObjectByName(nodeName);
+       if(part){tmpBounds.setFromObject(part,true);gunBounds.union(tmpBounds)}
+     }
+     const size=new THREE.Vector3();gunBounds.getSize(size);
      const longest=Math.max(size.x,size.y,size.z)||1;
      mp5Root.scale.setScalar(2.20/longest);
-     mp5Root.position.set(.22,-.38,-1.55);
+     mp5Root.updateMatrixWorld(true);
+
+     gunBounds.makeEmpty();
+     for(const nodeName of ["Object_126","Object_128","Object_130"]){
+       const part=mp5Root.getObjectByName(nodeName);
+       if(part){tmpBounds.setFromObject(part,true);gunBounds.union(tmpBounds)}
+     }
+     const center=new THREE.Vector3();gunBounds.getCenter(center);
+     mp5Root.position.add(new THREE.Vector3(.24-center.x,-.34-center.y,-1.62-center.z));
      gun.add(mp5Root);
+     document.documentElement.dataset.mp5Viewmodel="skinned-ready-pose";
    }else{
      // Safe fallback while the external MP5 loads.
      const mp5Gunmetal=M(0x171a1b,.24),mp5Black=M(0x0d0f10,.58),mp5Poly=M(0x1b1e1f,.76);
