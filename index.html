@@ -2550,6 +2550,10 @@ function burst(pos,big=false){
 
 function hitMark(head=false){
   hitmarker.textContent=head?"✕":"×";
+  // The hit marker must appear at the actual M17 ADS ray, not fixed screen center.
+  // NDC Y -0.075 maps to 53.75% from the top of the viewport.
+  hitmarker.style.left="50%";
+  hitmarker.style.top=(aiming&&weapon==="pistol")?"53.75%":"50%";
   hitmarker.classList.toggle("head",head);
   hitmarker.classList.add("show");
   clearTimeout(hitTimer);
