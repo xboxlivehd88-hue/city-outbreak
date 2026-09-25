@@ -2551,9 +2551,9 @@ function burst(pos,big=false){
 function hitMark(head=false){
   hitmarker.textContent=head?"✕":"×";
   // The hit marker must appear at the actual M17 ADS ray, not fixed screen center.
-  // NDC Y -0.075 maps to 53.75% from the top of the viewport.
+  // NDC Y -0.14 maps to 57% from the top of the viewport.
   hitmarker.style.left="50%";
-  hitmarker.style.top=(aiming&&weapon==="pistol")?"53.75%":"50%";
+  hitmarker.style.top=(aiming&&weapon==="pistol")?"57%":"50%";
   hitmarker.classList.toggle("head",head);
   hitmarker.classList.add("show");
   clearTimeout(hitTimer);
@@ -2911,7 +2911,7 @@ function fire(){
    // M17 ADS uses a slightly lower firing ray than camera center so the actual
    // impact follows the approved iron-sight picture instead of landing high.
    // This changes only the pistol ray; the approved M17 model/ADS pose is untouched.
-   const pistolAdsZero=(aiming&&weapon==="pistol")?-.075:0;
+   const pistolAdsZero=(aiming&&weapon==="pistol")?-.14:0;
    const sx=aimX+(Math.random()-.5)*wd().spread*adsSpread,sy=aimY+pistolAdsZero+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
    let hit=ray.intersectObjects(rayTargets,false)[0];
