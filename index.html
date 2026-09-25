@@ -2338,7 +2338,10 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    const goreGlow=new THREE.PointLight(0x8f1010,.7,4.5,2);goreGlow.position.set(0,1.55,.15);g.add(goreGlow);
  }
 
- head.userData.part="head";torso.userData.part="torso";pelvis.userData.part="torso";
+ // Everything visibly attached to the skull (face, jaw, ears, wounds, eyes, hair)
+ // counts as head. The neck is a sibling of head, so it remains outside the headshot volume.
+ head.traverse(o=>{if(o.isMesh){o.userData.part="head";o.userData.isHead=true}});
+ torso.userData.part="torso";pelvis.userData.part="torso";
  armL.traverse(o=>{if(o.isMesh)o.userData.part="leftArm"});armR.traverse(o=>{if(o.isMesh)o.userData.part="rightArm"});
  legL.traverse(o=>{if(o.isMesh)o.userData.part="leftLeg"});legR.traverse(o=>{if(o.isMesh)o.userData.part="rightLeg"});
  const hitMeshes=[];
