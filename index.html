@@ -1349,8 +1349,8 @@ function rebuildGun(){
      mp5Root.scale.setScalar(1.55);
      // Hip-fire starts lower and slightly less side-on so the grip sits down into
      // the player's hands instead of floating above them.
-     mp5Root.position.set(.48,-.62,-1.54);
-     mp5Root.rotation.y=THREE.MathUtils.degToRad(14);
+     mp5Root.position.set(.44,-.66,-1.95);
+     mp5Root.rotation.y=THREE.MathUtils.degToRad(12);
      gun.add(mp5Root);
      mp5ViewRoot=mp5Root;
      document.documentElement.dataset.mp5Viewmodel="clean-baked-mp5";
@@ -3320,13 +3320,19 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(weapon==="smg"&&mp5ViewRoot){
-   // Hip: lower-right profile. ADS: center the actual gun while the gun-level Z
-   // translation pulls the stock behind the camera, leaving the iron sights visible.
    const a=aimBlend;
-   mp5ViewRoot.rotation.y=THREE.MathUtils.degToRad(14)*(1-a);
-   mp5ViewRoot.position.x=THREE.MathUtils.lerp(.48,.36,a);
-   mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.62,-.40,a);
-   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.54,-1.55,a);
+   // Hip: move the complete gun farther forward so the stock is smaller/tucked away.
+   const hipYaw=THREE.MathUtils.degToRad(12);
+   // ADS: pivot the gun a few degrees around the FRONT of the weapon. This moves the
+   // butt to the right while keeping the barrel/front sight essentially fixed.
+   const adsYaw=THREE.MathUtils.degToRad(3);
+   const pivotZ=-.50,mp5Scale=1.55;
+   const adsPivotX=mp5Scale*(0-Math.sin(adsYaw)*pivotZ);
+   const adsPivotZ=mp5Scale*(pivotZ-Math.cos(adsYaw)*pivotZ);
+   mp5ViewRoot.rotation.y=THREE.MathUtils.lerp(hipYaw,adsYaw,a);
+   mp5ViewRoot.position.x=THREE.MathUtils.lerp(.44,.36+adsPivotX,a);
+   mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.66,-.40,a);
+   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.95,-1.55+adsPivotZ,a);
  }
  if(playerHandRig){
    // The imported M4 is much more realistic than the old block rifle. In ADS,
