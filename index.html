@@ -3325,7 +3325,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    const hipYaw=THREE.MathUtils.degToRad(12);
    // ADS: keep only 25% of the previous rightward butt pivot. This moves the butt
    // back left about 75% while keeping the barrel/front sight essentially fixed.
-   const adsYaw=THREE.MathUtils.degToRad(.75);
+   const adsYaw=THREE.MathUtils.degToRad(1.05);
    const pivotZ=-.50,mp5Scale=1.55;
    const adsPivotX=mp5Scale*(0-Math.sin(adsYaw)*pivotZ);
    const adsPivotZ=mp5Scale*(pivotZ-Math.cos(adsYaw)*pivotZ);
