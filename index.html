@@ -1019,7 +1019,7 @@ const weaponDefs={
 };
 const ADS={
  rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0},
- smg:{x:-.36,y:-.065,z:.86,fov:55,rx:-.01},
+ smg:{x:-.36,y:-.050,z:1.28,fov:55,rx:-.01},
  shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
  dmr:{x:-.36,y:.010,z:-1.00,fov:48,rx:0},
@@ -1051,7 +1051,7 @@ function bevelBox(w,hh,d,mat,x,y,z,parent=gun){
 }
 const HAND_POSES={
  rifle:{left:[.18,-.45,-1.72],right:[.36,-.62,-.74],reload:[.10,-.16,.50]},
- smg:{left:[.18,-.44,-1.64],right:[.36,-.61,-.80],reload:[.10,-.18,.31]},
+ smg:{left:[.14,-.50,-1.92],right:[.36,-.66,-1.12],reload:[.10,-.18,.31]},
  shotgun:{left:[.17,-.43,-1.83],right:[.36,-.61,-.72],reload:[.08,-.14,.63]},
  pistol:{left:[.31,-.38,-.84],right:[.40,-.36,-.82],reload:[.14,-.13,.07]},
  dmr:{left:[.17,-.46,-2.00],right:[.36,-.63,-.80],reload:[.10,-.16,.66]},
@@ -1349,8 +1349,8 @@ function rebuildGun(){
      mp5Root.scale.setScalar(1.55);
      // Hip-fire starts lower and slightly less side-on so the grip sits down into
      // the player's hands instead of floating above them.
-     mp5Root.position.set(.31,-.76,-1.58);
-     mp5Root.rotation.y=THREE.MathUtils.degToRad(17);
+     mp5Root.position.set(.48,-.62,-1.54);
+     mp5Root.rotation.y=THREE.MathUtils.degToRad(14);
      gun.add(mp5Root);
      mp5ViewRoot=mp5Root;
      document.documentElement.dataset.mp5Viewmodel="clean-baked-mp5";
@@ -3320,20 +3320,22 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(weapon==="smg"&&mp5ViewRoot){
-   // Hip is close: settle it a touch lower with slightly less side angle.
-   // ADS keeps the same fore/aft distance but lifts the real iron sights into screen center.
+   // Hip: lower-right profile. ADS: center the actual gun while the gun-level Z
+   // translation pulls the stock behind the camera, leaving the iron sights visible.
    const a=aimBlend;
-   mp5ViewRoot.rotation.y=THREE.MathUtils.degToRad(17)*(1-a);
-   mp5ViewRoot.position.x=THREE.MathUtils.lerp(.31,.36,a);
-   mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.76,-.30,a);
-   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.58,-1.55,a);
+   mp5ViewRoot.rotation.y=THREE.MathUtils.degToRad(14)*(1-a);
+   mp5ViewRoot.position.x=THREE.MathUtils.lerp(.48,.36,a);
+   mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.62,-.40,a);
+   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.54,-1.55,a);
  }
  if(playerHandRig){
    // The imported M4 is much more realistic than the old block rifle. In ADS,
    // fade the procedural arms out so they do not form the giant V around the optic.
    // They remain fully visible at hip-fire and during reload.
    const rifleAdsArmScale=(weapon==="rifle"&&!reloading)?Math.max(.001,1-aimBlend*1.35):1;
-   playerHandRig.left.scale.setScalar(rifleAdsArmScale);playerHandRig.right.scale.setScalar(rifleAdsArmScale);
+   const smgAdsArmScale=(weapon==="smg"&&!reloading)?Math.max(.001,1-aimBlend*1.35):1;
+   const adsArmScale=weapon==="smg"?smgAdsArmScale:rifleAdsArmScale;
+   playerHandRig.left.scale.setScalar(adsArmScale);playerHandRig.right.scale.setScalar(adsArmScale);
    // Imported M4 ADS: the GLB root already sits 1.66 units forward of the camera.
    // ADS therefore moves the gun BACK toward the eye with a positive Z offset.
    // Earlier negative ADS Z values pushed the entire rifle farther away and exposed
