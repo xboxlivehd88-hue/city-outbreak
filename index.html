@@ -1314,7 +1314,7 @@ function rebuildGun(){
      const bounds=new THREE.Box3().setFromObject(mp5Root),size=new THREE.Vector3();bounds.getSize(size);
      const longest=Math.max(size.x,size.y,size.z)||1;mp5Root.scale.setScalar(2.45/longest);
      const scaledBounds=new THREE.Box3().setFromObject(mp5Root),center=new THREE.Vector3();scaledBounds.getCenter(center);
-     mp5Root.position.set(x-center.x,-.30-center.y,-1.45-center.z);
+     mp5Root.position.set(-.10-center.x,.32-center.y,-1.45-center.z);
      mp5Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
      gun.add(mp5Root);
    }else{
