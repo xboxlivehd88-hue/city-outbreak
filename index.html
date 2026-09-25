@@ -917,8 +917,7 @@ function batchLoadedStiCars(){
  document.documentElement.dataset.stiBatched="1";
 }
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
-// v160: external M4 Carbine visual. Keep the procedural rifle as a safe fallback
-// until the GLB finishes loading, then rebuild only the current rifle viewmodel.
+// External M4 Carbine visual. The GLB is the sole M4 viewmodel; rebuild when loaded.
 let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null;
 new GLTFLoader().load("assets/classic_m4.glb.glb",gltf=>{
  m4ModelTemplate=gltf.scene;
@@ -935,8 +934,8 @@ new GLTFLoader().load("assets/classic_m4.glb.glb",gltf=>{
    }
  });
  if(weapon==="rifle")rebuildGun();
-},undefined,err=>console.warn("M4 GLB load failed; using procedural fallback",err));
-// v170: supplied SIG Sauer M17 GLB. Keep the old procedural pistol as a safe fallback.
+},undefined,err=>console.warn("M4 GLB load failed; M4 viewmodel unavailable",err));
+// Supplied SIG Sauer M17 GLB. The GLB is the sole visible M17 viewmodel.
 let m17ModelTemplate=null;
 new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
  m17ModelTemplate=gltf.scene;
@@ -951,7 +950,7 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
    }
  });
  if(weapon==="pistol")rebuildGun();
-},undefined,err=>console.warn("M17 GLB load failed; using procedural fallback",err));
+},undefined,err=>console.warn("M17 GLB load failed; M17 viewmodel unavailable",err));
 // Supplied animated MP5 GLB. Use it as the SMG viewmodel while preserving existing MP5 gameplay.
 let mp5ModelTemplate=null,mp5Animations=[],mp5ViewRoot=null;
 new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
@@ -968,7 +967,7 @@ new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
    }
  });
  if(weapon==="smg")rebuildGun();
-},undefined,err=>console.warn("MP5 GLB load failed; using procedural fallback",err));
+},undefined,err=>console.warn("MP5 GLB load failed; MP5 viewmodel unavailable",err));
 let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
@@ -1364,14 +1363,6 @@ function rebuildGun(){
        m4Mag.userData.reloadHome=m4Mag.position.clone();m4Mag.userData.reloadHomeQuat=m4Mag.quaternion.clone();
        playerReloadPart=m4Mag;
      }
-   }else{
-     // Safe fallback shown only while the external GLB is still loading or if it fails.
-     stock(-.34);part(.36,.30,1.02,metal,-.30,-1.05);part(.32,.28,.78,poly,-.28,-1.78);
-     grip(-.62,-.75,-.28);magazine(-.62,-1.18,.23,.54,.34,.13);
-     cyl(.062,1.18,steel,x,-.235,-2.70);muzzleBrake(-3.28,.10);rail(-1.46,1.35,-.095);
-     for(let zz=-1.52;zz>-2.14;zz-=.16){for(const sx of [-.155,.155])box(.025,.08,.09,dark,x+sx,-.27,zz,gun)}
-     box(.15,.08,.34,dark,x,-.055,-1.22,gun);rearIron(-.69,-.010,.90);frontIron(-2.66,-.010,.86);
-     box(.015,.115,.34,M(0x080909,.18),x+.19,-.27,-1.12,gun);box(.24,.045,.07,dark,x,-.16,-.57,gun);
    }
  }else if(weapon==='smg'){
    if(mp5ModelTemplate){
@@ -1435,18 +1426,6 @@ function rebuildGun(){
      gun.add(mp5Root);
      mp5ViewRoot=mp5Root;
      document.documentElement.dataset.mp5Viewmodel="clean-baked-mp5";
-   }else{
-     // Safe fallback while the external MP5 loads.
-     const mp5Gunmetal=M(0x171a1b,.24),mp5Black=M(0x0d0f10,.58),mp5Poly=M(0x1b1e1f,.76);
-     cyl(.148,1.02,mp5Gunmetal,x,-.235,-1.08);cyl(.154,.13,dark,x,-.235,-.545);cyl(.157,.13,dark,x,-.235,-1.585);
-     box(.315,.055,.82,mp5Black,x,-.355,-1.08,gun);part(.405,.31,.66,mp5Poly,-.405,-1.02);grip(-.65,-.78,-.18,mp5Poly);
-     let mp5Fore=part(.405,.275,.58,mp5Poly,-.305,-1.82);mp5Fore.rotation.x=.018;
-     cyl(.046,.43,steel,x,-.235,-2.225);cyl(.066,.16,dark,x,-.235,-2.445);
-     const mp5Mag=new THREE.Group();mp5Mag.name="MP5Magazine";mp5Mag.position.set(x,-.61,-1.27);gun.add(mp5Mag);
-     box(.19,.72,.18,metal,0,-.30,0,mp5Mag);
-     mp5Mag.userData.reloadHome=mp5Mag.position.clone();mp5Mag.userData.reloadHomeQuat=mp5Mag.quaternion.clone();playerReloadPart=mp5Mag;
-     box(.18,.075,.13,dark,x,-.115,-.735,gun);let mp5Rear=new THREE.Mesh(new THREE.TorusGeometry(.050,.013,8,22),mp5Black);mp5Rear.position.set(x,-.030,-.735);gun.add(mp5Rear);
-     box(.20,.075,.10,dark,x,-.145,-2.075,gun);let mp5Hood=new THREE.Mesh(new THREE.TorusGeometry(.088,.017,8,24),mp5Black);mp5Hood.position.set(x,-.030,-2.075);gun.add(mp5Hood);
    }
   }else if(weapon==='shotgun'){
    // Pump shotgun with twin tubes, ribbed fore-end, receiver and shoulder stock.
@@ -1512,16 +1491,6 @@ function rebuildGun(){
        document.documentElement.dataset.m17IdleMagazine="hidden";
        document.documentElement.dataset.m17SourceMagNodes=String(m17LooseProps.length);
      }else playerReloadPart=null;
-   }else{
-     // Procedural fallback while the external M17 is loading or if it fails.
-     part(.30,.20,.90,M(0x343a3d,.27),-.18,-1.02);part(.27,.20,.64,poly,-.34,-.88);
-     let pg=grip(-.61,-.72,-.18,rubber);pg.scale.x=.92;pg.scale.z=.86;
-     magazine(-.69,-.73,.12,.32,.14,-.02);
-     cyl(.043,.55,steel,x,-.205,-1.38);box(.17,.025,.30,dark,x,-.58,-.72,gun);
-     box(.12,.018,.22,M(0x111315,.18),x+.08,-.075,-.98,gun);
-     for(let zz=-.72;zz>-.91;zz-=.045)box(.315,.035,.018,dark,x,-.17,zz,gun);
-     box(.07,.055,.05,dark,x,-.06,-.62,gun);box(.045,.075,.04,M(0xd8d8c7,.35),x,-.055,-1.48,gun);
-     const guard=new THREE.Mesh(new THREE.TorusGeometry(.105,.025,8,16,Math.PI*1.15),poly);guard.rotation.z=Math.PI;guard.position.set(x,-.46,-.98);gun.add(guard);
    }
  }else if(weapon==='dmr'){
    // Long-range marksman rifle with extended handguard, scope and heavier barrel.
@@ -1584,11 +1553,15 @@ function rebuildGun(){
    let chamberRing=new THREE.Mesh(new THREE.TorusGeometry(.132,.022,8,16),metal);chamberRing.rotation.x=Math.PI/2;chamberRing.position.set(0,.07,-.015);launcherBreakRig.add(chamberRing);
    launcherChamberRound=makeLauncherReloadRound(launcherBreakRig);launcherChamberRound.position.set(0,.07,-.10);launcherChamberRound.visible=false;
  }
- // Shared trigger/controls and small metallic fasteners.
- if(weapon!=='pistol'){
-   const guard=new THREE.Mesh(new THREE.TorusGeometry(.11,.025,8,16,Math.PI),dark);guard.rotation.z=Math.PI;guard.position.set(x,-.48,weapon==='shotgun'?-1.02:-.94);gun.add(guard);
+ // Shared procedural trigger/receiver details belong only to the remaining
+ // procedural weapons. The M4, MP5 and M17 GLBs already contain their own hardware.
+ const externalViewmodel=weapon==='rifle'||weapon==='smg'||weapon==='pistol';
+ if(!externalViewmodel){
+   if(weapon!=='pistol'){
+     const guard=new THREE.Mesh(new THREE.TorusGeometry(.11,.025,8,16,Math.PI),dark);guard.rotation.z=Math.PI;guard.position.set(x,-.48,weapon==='shotgun'?-1.02:-.94);gun.add(guard);
+   }
+   for(const dx of [-.12,.12]){let pin=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.025,8),brass);pin.rotation.z=Math.PI/2;pin.position.set(x+dx,-.29,-1.0);gun.add(pin)}
  }
- for(const dx of [-.12,.12]){let pin=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.025,8),brass);pin.rotation.z=Math.PI/2;pin.position.set(x+dx,-.29,weapon==='pistol'?-.88:-1.0);gun.add(pin)}
  const muzzleZ=weapon==='shotgun'?-3.38:weapon==='smg'?-2.36:weapon==='pistol'?-1.56:weapon==='dmr'?-4.13:weapon==='m240'?-4.34:weapon==='awm'?-4.84:weapon==='grenadeLauncher'?-3.12:-3.40;
  muzzle=new THREE.PointLight(0xffb35a,0,4);muzzle.position.set(x,-.23,muzzleZ);gun.add(muzzle);
  addPlayerHands();
