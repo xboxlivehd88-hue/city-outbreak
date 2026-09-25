@@ -1176,9 +1176,21 @@ function spawnFreshReloadMagazine(){
  playerHandRig.left.add(fresh);
  // Local coordinates here are relative to the hand itself. Do not add the hand's
  // gun-space pose a second time; that was placing the fresh magazine far away.
- fresh.position.set(0,.24,-.015);
  const homeQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
- fresh.quaternion.copy(homeQ);fresh.rotation.z+=.08;
+ if(reloadWeapon==="rifle"){
+   // The M4 magazine home quaternion is gun-local. Convert that orientation into
+   // left-hand local space so the fresh magazine is already aligned with the real
+   // magwell while the player is carrying it, instead of rotating sideways later.
+   fresh.position.set(.02,.10,-.015);
+   gun.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
+   const gunWorldQ=new THREE.Quaternion(),handWorldQ=new THREE.Quaternion();
+   gun.getWorldQuaternion(gunWorldQ);playerHandRig.left.getWorldQuaternion(handWorldQ);
+   const magWorldQ=gunWorldQ.clone().multiply(homeQ);
+   fresh.quaternion.copy(handWorldQ.clone().invert().multiply(magWorldQ));
+ }else{
+   fresh.position.set(0,.24,-.015);
+   fresh.quaternion.copy(homeQ);fresh.rotation.z+=.08;
+ }
  if(reloadWeapon==="smg"&&mp5ViewRoot)fresh.scale.multiplyScalar(mp5ViewRoot.scale.x);
  reloadFreshMag=fresh;reloadFreshAttached=false;
 }
@@ -1273,9 +1285,25 @@ function updateReloadMagazineFX(rp){
    reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
  }
  if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
-   const t=smoothReload01((rp.p-.67)/.17);
-   reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,home,t);
-   reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
+   if(reloadWeapon==="rifle"){
+     // M4 insertion path: first line the magazine up directly below the real
+     // magwell, then push it straight upward. This prevents the old diagonal path
+     // from cutting through the side of the receiver.
+     const align=home.clone();align.y-=.30;align.z+=.025;
+     if(rp.p<.76){
+       const t=smoothReload01((rp.p-.67)/.09);
+       reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,align,t);
+       reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
+     }else{
+       const t=smoothReload01((rp.p-.76)/.08);
+       reloadFreshMag.position.lerpVectors(align,home,t);
+       reloadFreshMag.quaternion.copy(targetQ);
+     }
+   }else{
+     const t=smoothReload01((rp.p-.67)/.17);
+     reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,home,t);
+     reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
+   }
    if(rp.p>=.84){
      if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
      reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
