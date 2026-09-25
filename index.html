@@ -1051,7 +1051,7 @@ function bevelBox(w,hh,d,mat,x,y,z,parent=gun){
 }
 const HAND_POSES={
  rifle:{left:[.18,-.45,-1.72],right:[.36,-.62,-.74],reload:[.10,-.16,.50]},
- smg:{left:[.12,-.56,-1.72],right:[.42,-.70,-1.18],reload:[.10,-.18,.31]},
+ smg:{left:[.22,-.54,-1.72],right:[.50,-.68,-1.18],reload:[.10,-.18,.31]},
  shotgun:{left:[.17,-.43,-1.83],right:[.36,-.61,-.72],reload:[.08,-.14,.63]},
  pistol:{left:[.31,-.38,-.84],right:[.40,-.36,-.82],reload:[.14,-.13,.07]},
  dmr:{left:[.17,-.46,-2.00],right:[.36,-.63,-.80],reload:[.10,-.16,.66]},
@@ -1151,12 +1151,18 @@ function tossOldReloadMagazine(){
  if(!detachableMagazineReload()||reloadOldMagDropped||!playerReloadPart.parent)return;
  const oldMag=playerReloadPart.clone(true);oldMag.name="DiscardedMagazine";oldMag.visible=true;
  oldMag.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
- // First parent it to the gun, copy the local magwell transform, THEN update its
- // world matrix before scene.attach(). Previously attach() ran with a stale matrix,
- // which could throw the dropped magazine somewhere outside the camera view.
- gun.add(oldMag);
- oldMag.position.copy(playerReloadPart.position);oldMag.quaternion.copy(playerReloadPart.quaternion);oldMag.scale.copy(playerReloadPart.scale);
- gun.updateMatrixWorld(true);oldMag.updateMatrixWorld(true);scene.attach(oldMag);
+ // MP5 magazine lives inside the imported MP5 hierarchy. Preserve its exact
+ // world transform when cloning it out for the drop. Other weapons keep the proven path.
+ if(reloadWeapon==="smg"){
+   playerReloadPart.updateMatrixWorld(true);
+   const magWorld=playerReloadPart.matrixWorld.clone();
+   scene.add(oldMag);
+   magWorld.decompose(oldMag.position,oldMag.quaternion,oldMag.scale);
+ }else{
+   gun.add(oldMag);
+   oldMag.position.copy(playerReloadPart.position);oldMag.quaternion.copy(playerReloadPart.quaternion);oldMag.scale.copy(playerReloadPart.scale);
+   gun.updateMatrixWorld(true);oldMag.updateMatrixWorld(true);scene.attach(oldMag);
+ }
  // Keep the discarded mag in the player's view for a moment instead of firing it off-screen.
  // Drop mostly straight down in camera space so it stays under the pistol on screen.
  const throwV=new THREE.Vector3(-.04,-.26,-.02).applyQuaternion(cam.quaternion);
@@ -1173,6 +1179,7 @@ function spawnFreshReloadMagazine(){
  fresh.position.set(0,.24,-.015);
  const homeQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
  fresh.quaternion.copy(homeQ);fresh.rotation.z+=.08;
+ if(reloadWeapon==="smg"&&mp5ViewRoot)fresh.scale.multiplyScalar(mp5ViewRoot.scale.x);
  reloadFreshMag=fresh;reloadFreshAttached=false;
 }
 function updateReloadMagazineFX(rp){
@@ -1227,7 +1234,9 @@ function updateReloadMagazineFX(rp){
  }
  if(rp.p>=.56&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
  if(rp.p>=.67&&reloadFreshMag&&!reloadFreshAttached){
-   playerHandRig.left.updateMatrixWorld(true);gun.attach(reloadFreshMag);
+   playerHandRig.left.updateMatrixWorld(true);
+   const insertParent=(reloadWeapon==="smg"&&playerReloadPart.parent)?playerReloadPart.parent:gun;
+   insertParent.updateMatrixWorld(true);insertParent.attach(reloadFreshMag);
    reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
  }
  if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
@@ -1330,6 +1339,7 @@ function rebuildGun(){
          0,0,0,1
        ]]
      ];
+     let mp5Magazine=null;
      for(const [meshName,mv] of mp5Bake){
        const src=mp5ModelTemplate.getObjectByName(meshName);
        if(!src||!src.geometry)continue;
@@ -1342,15 +1352,25 @@ function rebuildGun(){
        mesh.name=meshName+"_CleanMP5";
        mesh.userData.externalWeaponAsset=true;
        mesh.castShadow=false;mesh.receiveShadow=false;
+       // Object_128 is the curved MP5 magazine. Seat it firmly into the magwell
+       // at idle and use this exact model piece for drop / fresh-mag / insertion.
+       if(meshName==="Object_128"){
+         mesh.name="MP5Magazine";
+         mesh.position.y+=.055;
+         mesh.userData.reloadHome=mesh.position.clone();
+         mesh.userData.reloadHomeQuat=mesh.quaternion.clone();
+         mp5Magazine=mesh;
+       }
        mp5Geo.add(mesh);
      }
+     if(mp5Magazine)playerReloadPart=mp5Magazine;
      // The baked gun is now ~1 unit long with a normal MP5 profile. At hip fire,
      // cant it sideways so the receiver/magazine are clearly visible.
      mp5Root.scale.setScalar(1.55);
      // Hip-fire starts lower and slightly less side-on so the grip sits down into
      // the player's hands instead of floating above them.
-     mp5Root.position.set(.52,-.78,-1.70);
-     mp5Root.rotation.y=THREE.MathUtils.degToRad(7);
+     mp5Root.position.set(.61,-.72,-1.70);
+     mp5Root.rotation.y=0;
      gun.add(mp5Root);
      mp5ViewRoot=mp5Root;
      document.documentElement.dataset.mp5Viewmodel="clean-baked-mp5";
@@ -3328,17 +3348,17 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  if(weapon==="smg"&&mp5ViewRoot){
    const a=aimBlend;
    // Hip: move the complete gun farther forward so the stock is smaller/tucked away.
-   const hipYaw=THREE.MathUtils.degToRad(7);
-   // Keep the current ADS butt/barrel relationship, but make hip fire a separate,
-   // much more natural lower-right shouldered pose.
+   const hipYaw=0;
+   // Hip is now a straighter shouldered pose: the muzzle stays near the same
+   // screen location while the stock moves farther right instead of floating mid-screen.
    const adsYaw=THREE.MathUtils.degToRad(1.05);
    const pivotZ=-.50,mp5Scale=1.55;
    const adsPivotX=mp5Scale*(0-Math.sin(adsYaw)*pivotZ);
    const adsPivotZ=mp5Scale*(pivotZ-Math.cos(adsYaw)*pivotZ);
    const yawNow=THREE.MathUtils.lerp(hipYaw,adsYaw,a);
    mp5ViewRoot.rotation.y=yawNow;
-   mp5ViewRoot.position.x=THREE.MathUtils.lerp(.52,.36+adsPivotX,a);
-   mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.78,-.40,a);
+   mp5ViewRoot.position.x=THREE.MathUtils.lerp(.61,.36+adsPivotX,a);
+   mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.72,-.40,a);
    mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.70,-1.55+adsPivotZ,a);
 
    // MP5 recoil pivots around the rear of the receiver/stock instead of kicking the
