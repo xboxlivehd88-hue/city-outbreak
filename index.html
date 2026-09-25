@@ -2907,7 +2907,7 @@ function fire(){
    // M17 ADS uses a slightly lower firing ray than camera center so the actual
    // impact follows the approved iron-sight picture instead of landing high.
    // This changes only the pistol ray; the approved M17 model/ADS pose is untouched.
-   const pistolAdsZero=(aiming&&weapon==="pistol")?-.014:0;
+   const pistolAdsZero=(aiming&&weapon==="pistol")?-.026:0;
    const sx=aimX+(Math.random()-.5)*wd().spread*adsSpread,sy=aimY+pistolAdsZero+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
    let hit=ray.intersectObjects(rayTargets,false)[0];
