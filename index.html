@@ -1369,7 +1369,7 @@ function rebuildGun(){
      // Hip-fire uses a slightly larger/closer presentation. ADS blends back to
      // the existing approved 1.55 scale so the sight picture is not disturbed.
      mp5Root.scale.setScalar(2.25);
-     mp5Root.position.set(.30,-.70,-1.30);
+     mp5Root.position.set(.30,-.70,-1.12);
      mp5Root.rotation.y=0;
      gun.add(mp5Root);
      mp5ViewRoot=mp5Root;
@@ -3360,7 +3360,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    mp5ViewRoot.scale.setScalar(THREE.MathUtils.lerp(2.25,1.55,a));
    mp5ViewRoot.position.x=THREE.MathUtils.lerp(.30,.36+adsPivotX,a);
    mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.70,-.40,a);
-   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.30,-1.55+adsPivotZ,a);
+   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.12,-1.55+adsPivotZ,a);
 
    // MP5 recoil pivots around the rear of the receiver/stock instead of kicking the
    // entire player weapon rig. The rear stays nearly planted while the barrel rises.
