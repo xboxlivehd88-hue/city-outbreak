@@ -1305,44 +1305,30 @@ function rebuildGun(){
    }
  }else if(weapon==='smg'){
    if(mp5ModelTemplate){
-     // Replace the procedural MP5 with the supplied animated GLB. Normalize the model
-     // into the established first-person weapon space; gameplay values remain unchanged.
-     const mp5Root=SkeletonUtils.clone(mp5ModelTemplate);mp5Root.name="ExternalAnimatedMP5";
-     // The supplied MP5 is authored lengthwise on +Y. Rotate that axis into game forward (-Z).
-     mp5Root.rotation.set(-Math.PI/2,0,0);
-     // This asset is a complete first-person rig (camera + arm + MP5), not a plain
-     // weapon prop. Hide the supplied arm and normalize from the MP5 meshes only;
-     // including the arm/camera in the bounds was why the gun itself ended up off-screen.
-     mp5Root.traverse(o=>{
-       o.userData.externalWeaponAsset=true;
-       if(o.isMesh){
-         o.castShadow=false;o.receiveShadow=false;
-         // Actual GLB runtime node: Object_124 is the arm mesh.
-         if(o.name==="Object_124")o.visible=false;
-       }
-     });
-     mp5Root.updateMatrixWorld(true);
-     const gunBounds=new THREE.Box3(),tmpBounds=new THREE.Box3();
-     mp5Root.traverse(o=>{
-       if(!o.isMesh||!o.visible)return;
-       if(o.name==="Object_126"||o.name==="Object_128"||o.name==="Object_130"){
-         tmpBounds.setFromObject(o);gunBounds.union(tmpBounds)
-       }
-     });
-     const size=new THREE.Vector3();gunBounds.getSize(size);
-     const longest=Math.max(size.x,size.y,size.z)||1;mp5Root.scale.setScalar(2.15/longest);
-     mp5Root.updateMatrixWorld(true);
-     gunBounds.makeEmpty();
-     mp5Root.traverse(o=>{
-       if(!o.isMesh||!o.visible)return;
-       if(o.name==="Object_126"||o.name==="Object_128"||o.name==="Object_130"){
-         tmpBounds.setFromObject(o);gunBounds.union(tmpBounds)
-       }
-     });
-     const center=new THREE.Vector3();gunBounds.getCenter(center);
-     // Center the actual MP5 geometry directly in front of the camera for the first
-     // verification pass. ADS/hand placement can be tuned after the whole gun is visible.
-     mp5Root.position.add(new THREE.Vector3(-center.x,-.18-center.y,-1.55-center.z));
+     // The supplied GLB's MP5 meshes are skinned to a first-person rig whose bind
+     // transforms distort the gun when transplanted into CITY OUTBREAK. Build a clean
+     // static viewmodel from the three original MP5 mesh geometries instead. Their raw
+     // vertex coordinates already form the correct MP5 shape and point down -Z.
+     const mp5Root=new THREE.Group();mp5Root.name="ExternalAnimatedMP5";
+     const mp5Geo=new THREE.Group();mp5Geo.name="ExternalAnimatedMP5Geometry";mp5Root.add(mp5Geo);
+     for(const nodeName of ["Object_126","Object_128","Object_130"]){
+       const src=mp5ModelTemplate.getObjectByName(nodeName);
+       if(!src||!src.geometry)continue;
+       const mesh=new THREE.Mesh(src.geometry,src.material);
+       mesh.name=nodeName+"_Static";
+       mesh.userData.externalWeaponAsset=true;
+       mesh.castShadow=false;mesh.receiveShadow=false;
+       mp5Geo.add(mesh);
+     }
+     mp5Geo.updateMatrixWorld(true);
+     const gunBounds=new THREE.Box3().setFromObject(mp5Geo),size=new THREE.Vector3(),center=new THREE.Vector3();
+     gunBounds.getSize(size);gunBounds.getCenter(center);
+     // Center inside the scaled root so the huge source coordinates cannot throw the
+     // weapon off-screen. The raw model's longest axis is Z, matching game forward.
+     mp5Geo.position.copy(center).multiplyScalar(-1);
+     const longest=Math.max(size.x,size.y,size.z)||1;
+     mp5Root.scale.setScalar(2.20/longest);
+     mp5Root.position.set(.22,-.38,-1.55);
      gun.add(mp5Root);
    }else{
      // Safe fallback while the external MP5 loads.
