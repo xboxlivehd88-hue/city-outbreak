@@ -1305,53 +1305,53 @@ function rebuildGun(){
    }
  }else if(weapon==='smg'){
    if(mp5ModelTemplate){
-     // The downloaded MP5 uses three skinned mesh nodes whose raw vertices are stored in
-     // FBX export space. The matching MP5_1_Low.* transform nodes contain the real object
-     // transforms. Rebuild the gun from those geometry + transform pairs so the weapon
-     // keeps its proper MP5 shape without dragging in the broken first-person arm rig.
-     mp5ModelTemplate.updateMatrixWorld(true);
+     // The source MP5 stores its three gun meshes in huge FBX/skinning coordinates.
+     // Bake the exact corrective transforms into those meshes so they become a normal,
+     // compact MP5 centered around the origin before we place it in first person.
      const mp5Root=new THREE.Group();mp5Root.name="ExternalAnimatedMP5";
      const mp5Geo=new THREE.Group();mp5Geo.name="ExternalAnimatedMP5Geometry";mp5Root.add(mp5Geo);
-     const mp5Pairs=[
-       ["Object_126","MP5_1_Low.010"],
-       ["Object_128","MP5_1_Low.011"],
-       ["Object_130","MP5_1_Low.013"]
+     const mp5Bake=[
+       ["Object_126",[
+        -0.000034095201,0,0,-0.014564577587,
+         0,-0.000034092519,-0.000000427460,-2.279781086399,
+         0,-0.000000427460, 0.000034092519, 0.535103813563,
+         0,0,0,1
+       ]],
+       ["Object_128",[
+        -0.000034095202,0,0,-0.014564581393,
+         0,-0.000034092518,-0.000000427459,-2.277218296286,
+         0,-0.000000427460, 0.000034092519, 0.533305785922,
+         0,0,0,1
+       ]],
+       ["Object_130",[
+        -0.000034095201,0,0,-0.014847277160,
+         0.000000000002,-0.000034092521,-0.000000427460,-2.275620921018,
+         0.000000000001,-0.000000427466, 0.000034092519, 0.537253060443,
+         0,0,0,1
+       ]]
      ];
-     const mp5Pitch=new THREE.Matrix4().makeRotationX(-Math.PI/2);
-     const mp5FaceForward=new THREE.Matrix4().makeRotationY(Math.PI);
-     for(const [meshName,transformName] of mp5Pairs){
+     for(const [meshName,mv] of mp5Bake){
        const src=mp5ModelTemplate.getObjectByName(meshName);
-       const xf=mp5ModelTemplate.getObjectByName(transformName);
-       if(!src||!src.geometry||!xf)continue;
+       if(!src||!src.geometry)continue;
        const geo=src.geometry.clone();
-       // Source object transform first, then convert the model's long axis to game -Z.
-       geo.applyMatrix4(xf.matrixWorld);
-       geo.applyMatrix4(mp5Pitch);
-       geo.applyMatrix4(mp5FaceForward);
-       // Use a guaranteed-visible material while the imported geometry/pose is being
-       // dialed in. This removes the source rig/material setup as a visibility variable.
+       geo.applyMatrix4(new THREE.Matrix4().set(...mv));
+       geo.computeVertexNormals();geo.computeBoundingBox();geo.computeBoundingSphere();
        const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
-         color:0x2b2f31,roughness:.48,metalness:.58,side:THREE.DoubleSide
+         color:0x303538,roughness:.46,metalness:.52,side:THREE.DoubleSide
        }));
-       mesh.name=meshName+"_MP5View";
+       mesh.name=meshName+"_CleanMP5";
        mesh.userData.externalWeaponAsset=true;
        mesh.castShadow=false;mesh.receiveShadow=false;
        mp5Geo.add(mesh);
      }
-
-     mp5Geo.updateMatrixWorld(true);
-     const gunBounds=new THREE.Box3().setFromObject(mp5Geo),size=new THREE.Vector3(),center=new THREE.Vector3();
-     gunBounds.getSize(size);gunBounds.getCenter(center);
-     mp5Geo.position.copy(center).multiplyScalar(-1);
-     const longest=Math.max(size.x,size.y,size.z)||1;
-     mp5Root.scale.setScalar(1.75/longest);
-     // Hip-fire deliberately shows the MP5 from a slight side angle. Straight down the
-     // model's long axis it collapses into the thin black strip seen in the screenshots.
-     mp5Root.position.set(.30,-.55,-1.70);
+     // The baked gun is now ~1 unit long with a normal MP5 profile. At hip fire,
+     // cant it sideways so the receiver/magazine are clearly visible.
+     mp5Root.scale.setScalar(1.55);
+     mp5Root.position.set(.36,-.40,-1.55);
      mp5Root.rotation.y=THREE.MathUtils.degToRad(28);
      gun.add(mp5Root);
      mp5ViewRoot=mp5Root;
-     document.documentElement.dataset.mp5Viewmodel="visible-hip-angle";
+     document.documentElement.dataset.mp5Viewmodel="clean-baked-mp5";
    }else{
      // Safe fallback while the external MP5 loads.
      const mp5Gunmetal=M(0x171a1b,.24),mp5Black=M(0x0d0f10,.58),mp5Poly=M(0x1b1e1f,.76);
@@ -3318,13 +3318,9 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(weapon==="smg"&&mp5ViewRoot){
-   // Hip fire: show the side/profile of the real MP5. ADS: rotate back onto the bore
-   // axis and lift/center it so the sights can be tuned normally.
-   const a=aimBlend;
-   mp5ViewRoot.rotation.y=THREE.MathUtils.degToRad(28)*(1-a);
-   mp5ViewRoot.position.x=THREE.MathUtils.lerp(.30,.36,a);
-   mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.55,-.03,a);
-   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.70,-1.35,a);
+   // Keep the hip-fire profile readable; smoothly straighten only the yaw for ADS.
+   // Existing gun-level ADS translation then centers the internal x=.36 position.
+   mp5ViewRoot.rotation.y=THREE.MathUtils.degToRad(28)*(1-aimBlend);
  }
  if(playerHandRig){
    // The imported M4 is much more realistic than the old block rifle. In ADS,
