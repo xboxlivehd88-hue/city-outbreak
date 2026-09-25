@@ -1366,10 +1366,10 @@ function rebuildGun(){
      if(mp5Magazine)playerReloadPart=mp5Magazine;
      // The baked gun is now ~1 unit long with a normal MP5 profile. At hip fire,
      // cant it sideways so the receiver/magazine are clearly visible.
-     mp5Root.scale.setScalar(1.55);
-     // Hip-fire starts lower and slightly less side-on so the grip sits down into
-     // the player's hands instead of floating above them.
-     mp5Root.position.set(.61,-.72,-1.70);
+     // Hip-fire uses a slightly larger/closer presentation. ADS blends back to
+     // the existing approved 1.55 scale so the sight picture is not disturbed.
+     mp5Root.scale.setScalar(1.68);
+     mp5Root.position.set(.61,-.72,-1.54);
      mp5Root.rotation.y=0;
      gun.add(mp5Root);
      mp5ViewRoot=mp5Root;
@@ -3357,9 +3357,10 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    const adsPivotZ=mp5Scale*(pivotZ-Math.cos(adsYaw)*pivotZ);
    const yawNow=THREE.MathUtils.lerp(hipYaw,adsYaw,a);
    mp5ViewRoot.rotation.y=yawNow;
+   mp5ViewRoot.scale.setScalar(THREE.MathUtils.lerp(1.68,1.55,a));
    mp5ViewRoot.position.x=THREE.MathUtils.lerp(.61,.36+adsPivotX,a);
    mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.72,-.40,a);
-   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.70,-1.55+adsPivotZ,a);
+   mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.54,-1.55+adsPivotZ,a);
 
    // MP5 recoil pivots around the rear of the receiver/stock instead of kicking the
    // entire player weapon rig. The rear stays nearly planted while the barrel rises.
