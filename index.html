@@ -1019,7 +1019,7 @@ const weaponDefs={
 };
 const ADS={
  rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0},
- smg:{x:-.36,y:.033,z:-.40,fov:55,rx:-.01},
+ smg:{x:-.36,y:-.065,z:.86,fov:55,rx:-.01},
  shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
  dmr:{x:-.36,y:.010,z:-1.00,fov:48,rx:0},
@@ -3319,7 +3319,9 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(weapon==="smg"&&mp5ViewRoot){
    // Keep the hip-fire profile readable; smoothly straighten only the yaw for ADS.
-   // Existing gun-level ADS translation then centers the internal x=.36 position.
+   // The imported MP5 includes a full stock behind the receiver, so ADS pulls the
+   // weapon BACK toward the camera (positive gun Z) until the stock passes behind
+   // the eye and the real rear/front sights are what remain in view.
    mp5ViewRoot.rotation.y=THREE.MathUtils.degToRad(28)*(1-aimBlend);
  }
  if(playerHandRig){
