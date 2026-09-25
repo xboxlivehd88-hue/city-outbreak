@@ -919,7 +919,7 @@ function batchLoadedStiCars(){
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 // v160: external M4 Carbine visual. Keep the procedural rifle as a safe fallback
 // until the GLB finishes loading, then rebuild only the current rifle viewmodel.
-let m4ModelTemplate=null,m4AdsOccluders=[];
+let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null;
 new GLTFLoader().load("assets/classic_m4.glb.glb",gltf=>{
  m4ModelTemplate=gltf.scene;
  m4ModelTemplate.traverse(o=>{
@@ -1315,7 +1315,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;mp5ViewRoot=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;mp5ViewRoot=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -1344,7 +1344,7 @@ function rebuildGun(){
      // established first-person weapon space and turn its muzzle down -Z like every
      // existing CITY OUTBREAK gun, without touching rifle gameplay values.
      const m4Root=m4ModelTemplate.clone(true);m4Root.name="ExternalM4Carbine";
-     m4Root.scale.setScalar(5.15);m4Root.rotation.y=Math.PI;m4Root.position.set(x,-.25,-1.66);
+     m4Root.scale.setScalar(5.15);m4Root.rotation.y=Math.PI;m4Root.position.set(x,-.25,-1.66);m4ViewRoot=m4Root;
      m4AdsOccluders=[];
      m4Root.traverse(o=>{
        o.userData.externalWeaponAsset=true;
@@ -3406,6 +3406,11 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt;
  gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
+ if(weapon==="rifle"&&m4ViewRoot){
+   // Hip-fire only: move the M4 a touch farther from the camera so the rear of
+   // the rifle does not dominate the screen. Preserve the approved ADS/reload position.
+   m4ViewRoot.position.z=reloading?-1.66:THREE.MathUtils.lerp(-1.78,-1.66,aimBlend);
+ }
  if(weapon==="smg"&&mp5ViewRoot){
    const a=aimBlend;
    // Hip: move the complete gun farther forward so the stock is smaller/tucked away.
