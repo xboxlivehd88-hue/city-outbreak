@@ -64,7 +64,7 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 #shop p{font-size:12px;color:#c4c9cc;margin:8px 0 0}
 #shop .readyBtn{width:100%;margin:0;font-weight:900;font-size:15px;background:#e8e8e8;color:#111;padding:11px}
 @media(max-width:680px){#shopGrid{grid-template-columns:1fr}.shopItems{grid-template-columns:1fr 1fr}}
-@media(max-width:440px){.shopItems{grid-template-columns:1fr}#shop{padding:14px;width:95vw}}#startScreen{position:absolute;inset:0;background:#080909 url("assets/city-outbreak-start-v153.jpg.jpg") center top/cover no-repeat;display:block;z-index:5;box-sizing:border-box;overflow:hidden}
+@media(max-width:440px){.shopItems{grid-template-columns:1fr}#shop{padding:14px;width:95vw}}#startScreen{position:absolute;inset:0;background:#080909 url("../assets/city-outbreak-start-v153.jpg.jpg") center top/cover no-repeat;display:block;z-index:5;box-sizing:border-box;overflow:hidden}
 #startScreen:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.12),transparent 45%,rgba(0,0,0,.08));pointer-events:none}
 #startPanel{position:absolute;inset:0;z-index:2;text-align:center;pointer-events:none}
 #startPanel h1,#startPanel .tagline{display:none}
