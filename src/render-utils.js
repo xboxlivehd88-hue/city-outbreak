@@ -12,3 +12,12 @@ export function setupRendererResize({renderer,camera,target=window}){
  resize();
  return resize;
 }
+
+
+export function setupWebGLContextLossHandler(canvas,onContextLost){
+ canvas.addEventListener("webglcontextlost",event=>{
+  event.preventDefault();
+  console.error("CITY OUTBREAK: WebGL context lost");
+  onContextLost?.();
+ });
+}

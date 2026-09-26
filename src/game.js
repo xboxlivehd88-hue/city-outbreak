@@ -5,7 +5,7 @@ import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
 import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons} from "./ui-helpers.js?v=266";
-import {setupRendererResize} from "./render-utils.js?v=265";
+import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -3772,7 +3772,7 @@ const perfGuard=createPerformanceGuard({
  enabled:true,
  consoleLogging:false
 }); // HUD stays visible; console spam stays off unless explicitly needed
-cv.addEventListener("webglcontextlost",e=>{e.preventDefault();console.error("CITY OUTBREAK: WebGL context lost");show("GRAPHICS RESET — REFRESH IF NEEDED")});
+setupWebGLContextLossHandler(cv,()=>show("GRAPHICS RESET — REFRESH IF NEEDED"));
 setupRendererResize({renderer:ren,camera:cam});
 function frame(t){
  let dt=Math.min(.04,(t-last)/1000);last=t;
