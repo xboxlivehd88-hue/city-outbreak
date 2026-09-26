@@ -40,3 +40,14 @@ export function setupControlsModal({
   if(event.target===modal)setOpen(false);
  });
 }
+
+
+export function setupResetButtons(resetHandler,{
+ startButton=document.querySelector("#start"),
+ restartButton=document.querySelector("#restart"),
+ deathRestartButton=document.querySelector("#deathRestart")
+}={}){
+ if(startButton)startButton.onclick=resetHandler;
+ if(restartButton)restartButton.onclick=resetHandler;
+ if(deathRestartButton)deathRestartButton.onclick=resetHandler;
+}
