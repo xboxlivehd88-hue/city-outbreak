@@ -2,43 +2,188 @@
 
 Last updated: 2026-09-26
 
-Repository: xboxlivehd88-hue/city-outbreak  
-Branch: main  
-Live game: https://xboxlivehd88-hue.github.io/city-outbreak/  
-Active runtime entry: `index.html`
+Repository: xboxlivehd88-hue/city-outbreak
+Branch: main
+Live game: https://xboxlivehd88-hue.github.io/city-outbreak/
 
-Live modular files:
-- `src/game.css`
-- `src/game.js`
-- `src/audio.js`
-- `src/zombie-rig-data.js`
+# READ THIS FIRST
 
-## CURRENT BASELINES
+The user expects the assistant to work directly in GitHub, make targeted commits to main, verify them, and return a fresh cache-busted GitHub Pages link. Do not give the user Git instructions when the GitHub connector can do the work.
 
-- Last user-approved gameplay checkpoint: **v257**
-- Approved gameplay commit: `138e961c2597cb5ff6099798314d1f40308388c4`
-- Last user-approved gameplay checkpoint remains **v257**
-- Modularization checkpoint commit: `d17c08eb0d86d86cc4feb984a739383a0ecb9c4f`
-- Current `index.html` is now a small shell that loads the live files from `src/`
+Screenshots and the user's live testing are ground truth. Do not declare a visual/gameplay change approved until the user tests it.
 
-The cleanup commits after v257 are intended to preserve gameplay feel. They address timer polling, reset state, shop input isolation, wave-transition movement, muzzle-flash ownership, dead state, and performance-console noise.
+# CURRENT CONFIRMED CHECKPOINTS
 
-## WORKFLOW — IMPORTANT
+## Last fully approved pre-modular gameplay baseline
 
-1. Fetch current `main:index.html` before every edit.
-2. Make the smallest targeted change possible.
-3. Commit directly to `main`.
-4. Re-fetch and verify the changed lines.
-5. Return a fresh cache-busted GitHub Pages test link.
-6. User screenshots/live testing are ground truth.
-7. Do not give Git instructions when the connector can do the work directly.
-8. Do not claim a visual/gameplay fix is approved until the user tests it.
+- Build: v257
+- Commit: 138e961c2597cb5ff6099798314d1f40308388c4
+- This is the safest reference point for comparing gameplay behavior.
 
-## LOCKED WEAPON RULE
+## Cleanup checkpoint
+
+- Build: v258
+- Cleanup gameplay commit: 9a8122c04668bee68ba61c977e5f6653824f6ecf
+- Cleanup was intended to preserve gameplay feel.
+
+## Current modular working checkpoint
+
+- Build/cache generation: v260
+- Current modular checkpoint commit: 29c3b445c75952dd264f8f844333c88db0b51c40
+- Current Pages entry loads:
+  - ./src/game.css?v=260
+  - ./src/game.js?v=260
+- The user reported the modular build was back in a good state after the start-screen and audio regressions were fixed.
+
+If a future modular extraction causes a regression, compare against v260 first, and against v257 for gameplay behavior.
+
+# CURRENT LIVE FILE STRUCTURE
+
+## Live
+
+- index.html
+  - HTML/UI shell
+  - Three.js import map
+  - loads src/game.css?v=260
+  - loads src/game.js?v=260
+
+- src/game.css
+  - live CSS
+  - start-screen background path must remain:
+    ../assets/city-outbreak-start-v153.jpg.jpg
+  - IMPORTANT: because CSS now lives inside src/, using assets/... without ../ breaks the start screen.
+
+- src/game.js
+  - main live runtime
+  - most gameplay code is still here
+  - audio is currently INLINE here again
+  - imports exact zombie rig data from ./zombie-rig-data.js
+
+- src/zombie-rig-data.js
+  - exact live zombie rig data previously embedded in game.js
+  - currently imported by game.js
+  - do not replace it with assets/zombie-rig.gltf; that asset was checked and is NOT the exact same live data.
+
+## Present but NOT live
+
+- src/audio.js
+  - created during the first audio extraction attempt
+  - currently NOT imported by the live game
+  - that extraction caused sound to disappear
+  - proven inline audio was restored to src/game.js
+  - do not assume this module is production-ready
+
+- src/config.js
+- src/main.js
+- src/weapons.js
+- src/zombies.js
+
+Those four are older scaffolding and contain stale values. They are NOT authoritative and must not be wired into the live game without rebuilding them from current live code.
+
+- build/game.part*
+  - old fragments
+  - not live
+
+# MODULARIZATION HISTORY — IMPORTANT
+
+The user chose to proceed with item #2: split the giant index.html into real files.
+
+## What worked
+
+1. CSS was extracted verbatim into src/game.css.
+2. JavaScript was extracted verbatim into src/game.js.
+3. index.html became a small shell.
+4. The exact live zombie rig constant was moved into src/zombie-rig-data.js.
+
+## What broke and was fixed
+
+### Start screen disappeared
+
+Cause:
+- CSS moved into src/, but the background still used assets/...
+- Relative paths in CSS resolve from the CSS file, not from index.html.
+
+Fix:
+- commit b24c82723fbf87554e1a79b4ac8e26b3041ae186
+- current path is ../assets/city-outbreak-start-v153.jpg.jpg
+
+### Sound disappeared
+
+Cause:
+- first audio-module extraction changed runtime behavior.
+
+Fix:
+- commit 38a114d35ec8c59a307ca4b25e6a4576688547ff
+- proven audio implementation was restored inline inside src/game.js
+
+### Browser cache
+
+Fix:
+- commit 29c3b445c75952dd264f8f844333c88db0b51c40
+- index now cache-busts live CSS/JS with ?v=260
+
+Do not repeat these regressions.
+
+# NEXT CHAT — FIRST ACTIONS
+
+1. Fetch current main:index.html.
+2. Fetch current src/game.js.
+3. Fetch current src/game.css.
+4. Read this handoff.
+5. Do NOT use old src/weapons.js, src/zombies.js, src/config.js, or src/main.js as source of truth.
+6. Before further modular work, preserve v260 exactly.
+7. Continue modularization ONE self-contained system at a time.
+8. After each extraction:
+   - commit to main
+   - cache-bust the changed runtime file if needed
+   - give user a live test link
+   - wait for user test before extracting the next major system.
+
+## Recommended next modular target
+
+Prefer a low-risk system such as:
+- UI helpers / DOM-only functions
+- performance HUD
+- simple constants copied from current live code
+- non-weapon/non-zombie utilities
+
+Avoid extracting audio again immediately.
+
+Do NOT make weapons or zombie AI the next modular target. Those systems have had extensive tuning and are high-risk.
+
+# REQUIRED REGRESSION TEST AFTER EVERY MODULAR EXTRACTION
+
+At minimum verify with the user:
+
+1. Start screen appears correctly.
+2. Start button works.
+3. Controls modal works.
+4. Game starts normally.
+5. Sound works:
+   - gunshot
+   - footsteps
+   - zombie sounds
+   - reload sounds
+6. M17 ADS sight alignment still matches bullet impact.
+7. M4 is unchanged.
+8. MP5 is unchanged.
+9. Reload animations are unchanged.
+10. Zombies spawn and path toward player.
+11. No zombie ping-pong regression.
+12. Store opens after wave.
+13. Store low-power mode works.
+14. Ready resumes next wave.
+15. Pause/resume works.
+16. Restart starts cleanly.
+17. Performance HUD still runs.
+
+If any one of these breaks after an extraction, fix or revert that extraction before doing another one.
+
+# LOCKED RELOAD RULE — VERY IMPORTANT
 
 The user explicitly said all reload animations are locked unless that specific weapon is explicitly requested.
 
-Do **not** alter reload choreography for:
+Do not alter reload choreography for:
 - M4
 - MP5
 - M17
@@ -48,164 +193,147 @@ Do **not** alter reload choreography for:
 - M240
 - AWM
 
-unless the user specifically asks for that weapon's reload to change.
+# M17 SIG — CURRENT APPROVED STATE
 
-## M17 SIG — CURRENT APPROVED DIRECTION
+Current ADS:
+- pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:.045}
+- bullet ray: true screen center
+- pistolAdsZero=0
+- visual hit marker centered at 50% / 50%
 
-The latest ADS correction that the user reacted positively to before the cleanup pass:
-- ADS config: `pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:.045}`
-- ADS bullet ray: true screen center (`pistolAdsZero=0`)
-- visual hit marker: centered at 50% / 50%
-- reload remains locked
+Also preserve:
 - 16-round magazine
 - effectively unlimited reserve
+- current reduced body-damage behavior
 - no SIG ammo drops
+- reload locked
 
-Do not reintroduce the old `-.14` ADS bullet-ray offset unless the user explicitly reports the current sight picture is wrong again.
+Do not restore the old -.14 ADS firing-ray offset unless the user explicitly asks for another sight correction.
 
-## M4 — CURRENT LOCKED STATE
+# M4 — CURRENT LOCKED STATE
 
-External asset:
-- `assets/classic_m4.glb.glb`
+Asset:
+- assets/classic_m4.glb.glb
 
-Current root:
-- scale `5.15`
-- rotation Y `Math.PI`
-- base position `(x,-.25,-1.66)`
-- hip-only Z moves to about `-1.78`
-- ADS remains at the approved position
+Viewmodel:
+- root scale 5.15
+- rotation Y Math.PI
+- base position about (x,-.25,-1.66)
+- hip-only Z about -1.78
+- ADS: rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0}
 
-ADS:
-- `rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0}`
+M4 reload is user-approved and locked.
 
-M4 reload is user-approved and must not be touched unless explicitly requested.
+# MP5 — CURRENT LOCKED STATE
 
-## MP5 — CURRENT LOCKED STATE
-
-External asset:
-- `assets/animated_mp5.glb`
+Asset:
+- assets/animated_mp5.glb
 
 Visible baked meshes:
-- `Object_126`
-- `Object_128`
-- `Object_130`
+- Object_126
+- Object_128
+- Object_130
 
-Hip root:
-- scale `2.25`
-- position `(.30,-.70,-1.12)`
-- yaw `0`
+Root:
+- scale 2.25
+- position (.30,-.70,-1.12)
+- yaw 0
 
 ADS:
-- `smg:{x:-.36,y:-.050,z:1.28,fov:55,rx:-.01}`
-- ADS yaw about `1.05°`
-- SMG ADS ray corrections:
-  - X `-.018`
-  - Y `-.025`
+- smg:{x:-.36,y:-.050,z:1.28,fov:55,rx:-.01}
+- ADS yaw about 1.05 degrees
+- ray correction X -.018
+- ray correction Y -.025
 
-Custom MP5 recoil uses a rear pivot instead of whole-gun recoil.
+MP5 uses custom recoil rather than generic whole-gun recoil.
+MP5 reload is locked.
 
-MP5 reload is currently locked unless explicitly requested.
+# ZOMBIE PATHING — CURRENT STATE
 
-## ZOMBIE PATHING — CURRENT STATE
-
-Current navigation improvements:
-- A* covers the full playable city instead of the old central-only rectangle.
-- Navigation bounds are approximately:
-  - X: `-148 .. 148`
-  - Z: `-158 .. 164`
-- A* node budget: `2600`
-- new zombies prefer reachable spawn points
-- blocked spawn candidates are route-tested
-- stuck recovery probes a better side instead of blindly flipping left/right
-- last-five rush behavior remains
-- `MAX_ACTIVE_ZOMBIES = 20`
-
-Do not undo the expanded nav bounds or reachable-spawn checks without a specific reason.
-
-## SHOP / PAUSE PERFORMANCE
-
-The between-wave shop now enters low-power mode:
-- gameplay simulation frozen
-- game timers frozen
-- audio suspended
-- 3D canvas renders about 4 FPS
-- frame callback throttled
-- gameplay keys ignored while shopping
-- Ready resumes from the same game-time state
-
-Recent cleanup also makes `gameTimeout()` poll slowly while shop time is frozen.
-
-## RESET / STABILITY CLEANUP
-
-A new run now resets:
-- player velocity
-- previous player position
-- recoil
-- step timer
-- aim offsets
-- stale hit marker/message/damage/nuke UI
-
-Wave completion also clears held movement immediately so the player cannot drift during the shop transition.
-
-## START SCREEN
-
-Start artwork:
-- `assets/city-outbreak-start-v153.jpg.jpg`
-- displayed with `center top / cover`
-- fills the viewport without distortion or black bars
-
-The image itself contains visible Settings and Controls artwork. Only Controls is currently wired to a real modal; Settings is not yet an implemented menu.
-
-## VEHICLES / MAP
-
-- STI parked-car asset is active: `assets/2018_subaru_wrx_sti.glb`
-- parked-car collision uses tighter oriented footprints
-- static city batching is active
-- road texture is `assets/textures/roads/road_albedo.jpg.jpg`
-
-## PERFORMANCE NOTES
-
-- Performance HUD remains visible for live diagnosis.
-- Per-second performance console logging is disabled by default.
-- The heaviest startup assets are the road texture, STI, MP5, and M4 GLBs.
-- Do not perform a large visual/performance refactor during weapon tuning.
-
-## REPOSITORY STRUCTURE
-
-The modular split is now underway.
-
-Current live runtime:
-- `index.html` — HTML/UI shell + import map
-- `src/game.css` — exact extracted live CSS
-- `src/game.js` — main live gameplay runtime
-- `src/audio.js` — extracted live audio system
-- `src/zombie-rig-data.js` — exact live zombie rig data previously embedded in game.js
-
-Important:
-- `src/config.js`, `src/main.js`, `src/weapons.js`, and `src/zombies.js` are older scaffold files and are **not yet active runtime modules**.
-- `build/game.part*` files are also old fragments.
-
-Continue the split one system at a time and test after each extraction. Do not rewrite weapon or zombie systems wholesale.
-
-## SAFE NEXT CLEANUP OPPORTUNITIES
-
-These were identified but intentionally not changed in the current low-risk cleanup pass:
-- split the 589 KB `index.html` incrementally into real runtime modules
-- optimize/compress very large static assets, especially the 4K road texture and heavy GLBs
-- wire the baked Settings button to a real settings menu
-- optionally make the performance HUD toggleable once active performance debugging is no longer needed
-
-## DO NOT REGRESS
-
-Preserve unless specifically requested:
-- current M17 sight alignment
-- M4 / MP5 / M17 viewmodel placement
-- all reload choreography
-- zombie pathing improvements
-- boss behavior and boss chest hitbox
+Preserve:
+- MAX_ACTIVE_ZOMBIES = 20
+- A* navigation covers the full playable city
+- nav X approximately -148 .. 148
+- nav Z approximately -158 .. 164
+- A* node budget 2600
+- reachable-spawn validation
+- blocked spawn candidates can be route-tested
+- stuck zombies choose a more open side instead of blindly flipping
+- last-five rush behavior
+- boss behavior
+- boss chest hitbox
 - crawler/head hitbox behavior
-- STI collision footprint
-- shop low-power mode
-- player sprint/movement feel
-- weapon damage/balance
-- current start-screen presentation
+
+A prior bug caused zombies outside the old nav rectangle to ping-pong instead of routing. Do not shrink navigation back to the old central bounds.
+
+# SHOP / PERFORMANCE
+
+Between-wave shop low-power mode:
+- freezes gameplay simulation
+- freezes game timers
+- suspends audio
+- renders background about 4 FPS
+- throttles frame callback
+- blocks gameplay hotkeys while shopping
+- resumes exact game-time state on Ready
+
+Recent cleanup also:
+- slowed frozen timer polling
+- reset velocity/recoil/aim transient state on restart
+- cleared stale UI effects on reset
+- stopped movement during wave-complete transition
+- fixed muzzle-flash ownership
+- stopped per-second performance console spam while keeping HUD
+
+# START SCREEN
+
+Artwork:
+- assets/city-outbreak-start-v153.jpg.jpg
+
+Live CSS path from src/game.css:
+- ../assets/city-outbreak-start-v153.jpg.jpg
+
+Display:
+- center top / cover
+- no intentional distortion
+- no black bars
+
+The artwork visually contains SETTINGS and CONTROLS.
+- Controls is wired to a real modal.
+- Settings is still artwork only.
+
+# VEHICLES / MAP
+
+Preserve:
+- STI asset assets/2018_subaru_wrx_sti.glb
+- current parked-car collision footprint
+- static city batching
+- road texture assets/textures/roads/road_albedo.jpg.jpg
+
+# ASSET / PERFORMANCE NOTES
+
+Large assets identified for future optimization:
+- road texture about 13.5 MB
+- STI about 13.3 MB
+- MP5 about 12.8 MB
+- M4 about 9 MB
+
+Asset compression is a separate future task. Do not combine it with weapon tuning or a major modular extraction in the same commit.
+
+# USER WORKING STYLE
+
+- User wants the assistant to do repo work directly.
+- Do not give Git instructions.
+- Keep changes small and testable.
+- Provide live test links.
+- Screenshots are authoritative visual feedback.
+- Do not casually refactor approved weapons, reloads, or zombie behavior.
+
+# SAFE HANDOFF SUMMARY
+
+The project is transitioning from one huge inline file to modules.
+
+Current v260 is the modular checkpoint to protect.
+v257 is the gameplay-behavior reference.
+
+Continue the split slowly, one low-risk subsystem at a time, and test every extraction live before moving to the next one.
