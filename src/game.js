@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
-import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
+import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";\nimport {createPerformanceGuard} from "./performance-hud.js?v=261";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -3762,24 +3762,14 @@ resolveZombiePlayerContact(z,ox,oz);
    }
  }
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
-let perfTick=0,perfFrames=0,perfTime=0,perfMaxMs=0,perfHud=null;const DEBUG_PERF=true,DEBUG_PERF_CONSOLE=false; // HUD stays visible; console spam stays off unless explicitly needed
-if(DEBUG_PERF){
- perfHud=document.createElement("div");
- perfHud.style.cssText="position:fixed;left:14px;top:14px;z-index:99998;background:#050708dd;color:#dfe7ea;border:1px solid #ffffff25;border-radius:9px;padding:8px 10px;font:12px/1.45 monospace;pointer-events:none;white-space:pre";
- perfHud.textContent="PERFORMANCE\ncollecting...";
- document.body.appendChild(perfHud)
-}
+const perfGuard=createPerformanceGuard({
+ renderer:ren,
+ livingCount,
+ getFxCounts:()=>({parts:parts.length,impacts:impacts.length,casings:casings.length}),
+ enabled:true,
+ consoleLogging:false
+}); // HUD stays visible; console spam stays off unless explicitly needed
 cv.addEventListener("webglcontextlost",e=>{e.preventDefault();console.error("CITY OUTBREAK: WebGL context lost");show("GRAPHICS RESET — REFRESH IF NEEDED")});
-function perfGuard(dt){
- if(!DEBUG_PERF)return;
- perfTick+=dt;perfTime+=dt;perfFrames++;perfMaxMs=Math.max(perfMaxMs,dt*1000);
- if(perfTick>=1){
-   const fps=Math.round(perfFrames/Math.max(.001,perfTime)),avg=(perfTime/perfFrames*1000).toFixed(1),ri=ren.info.render,liveCount=livingCount();
-   perfHud.textContent="PERFORMANCE\nFPS "+fps+"  AVG "+avg+"ms  MAX "+perfMaxMs.toFixed(1)+"ms\nDRAWS "+ri.calls+"  TRIANGLES "+ri.triangles+"\nZOMBIES "+liveCount+"  FX "+(parts.length+impacts.length+casings.length)+"\nPIXEL RATIO "+ren.getPixelRatio().toFixed(2);
-   if(DEBUG_PERF_CONSOLE)console.log("CityOutbreak perf",{fps,avgMs:avg,maxMs:perfMaxMs.toFixed(1),zombies:liveCount,parts:parts.length,impacts:impacts.length,casings:casings.length,renderer:ri});
-   perfTick=0;perfFrames=0;perfTime=0;perfMaxMs=0;
- }
-}
 function resize(){ren.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",resize);resize();
 function frame(t){
  let dt=Math.min(.04,(t-last)/1000);last=t;
