@@ -24,8 +24,8 @@ https://xboxlivehd88-hue.github.io/city-outbreak/
 
 - `index.html` — live HTML/UI shell
 - `src/game.css` — live game styling
-- `src/game.js` — live main runtime
-- `src/audio.js` — live audio system
+- `src/game.js` — live main runtime; current proven audio remains inline here
+- `src/audio.js` — experimental audio extraction file; NOT currently used by the live game
 - `src/zombie-rig-data.js` — exact live embedded zombie rig data
 - `assets/` — models, textures and start-screen artwork
 - `CITY_OUTBREAK_HANDOFF.md` — authoritative current development handoff
