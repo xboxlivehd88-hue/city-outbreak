@@ -2,7 +2,8 @@ import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
-import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";\nimport {createPerformanceGuard} from "./performance-hud.js?v=261";
+import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
+import {createPerformanceGuard} from "./performance-hud.js?v=262";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
