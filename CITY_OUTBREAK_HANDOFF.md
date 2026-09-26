@@ -5,14 +5,21 @@ Last updated: 2026-09-26
 Repository: xboxlivehd88-hue/city-outbreak  
 Branch: main  
 Live game: https://xboxlivehd88-hue.github.io/city-outbreak/  
-Active runtime source: `index.html`
+Active runtime entry: `index.html`
+
+Live modular files:
+- `src/game.css`
+- `src/game.js`
+- `src/audio.js`
+- `src/zombie-rig-data.js`
 
 ## CURRENT BASELINES
 
 - Last user-approved gameplay checkpoint: **v257**
 - Approved gameplay commit: `138e961c2597cb5ff6099798314d1f40308388c4`
-- Latest main cleanup commit: `9a8122c04668bee68ba61c977e5f6653824f6ecf`
-- Current `index.html` blob after cleanup: `491a45bd88941093b6c655a3960e992e8417f40b`
+- Last user-approved gameplay checkpoint remains **v257**
+- Modularization checkpoint commit: `d17c08eb0d86d86cc4feb984a739383a0ecb9c4f`
+- Current `index.html` is now a small shell that loads the live files from `src/`
 
 The cleanup commits after v257 are intended to preserve gameplay feel. They address timer polling, reset state, shop input isolation, wave-transition movement, muzzle-flash ownership, dead state, and performance-console noise.
 
@@ -165,11 +172,20 @@ The image itself contains visible Settings and Controls artwork. Only Controls i
 
 ## REPOSITORY STRUCTURE
 
-Current runtime is still the root `index.html`.
+The modular split is now underway.
 
-The existing `src/` files and `build/game.part*` files are old scaffolding/fragments and are **not** the live runtime source.
+Current live runtime:
+- `index.html` — HTML/UI shell + import map
+- `src/game.css` — exact extracted live CSS
+- `src/game.js` — main live gameplay runtime
+- `src/audio.js` — extracted live audio system
+- `src/zombie-rig-data.js` — exact live zombie rig data previously embedded in game.js
 
-A future code split is still recommended, but should be incremental from a known-good checkpoint rather than a giant rewrite.
+Important:
+- `src/config.js`, `src/main.js`, `src/weapons.js`, and `src/zombies.js` are older scaffold files and are **not yet active runtime modules**.
+- `build/game.part*` files are also old fragments.
+
+Continue the split one system at a time and test after each extraction. Do not rewrite weapon or zombie systems wholesale.
 
 ## SAFE NEXT CLEANUP OPPORTUNITIES
 
