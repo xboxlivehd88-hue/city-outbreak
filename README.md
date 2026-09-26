@@ -22,15 +22,19 @@ https://xboxlivehd88-hue.github.io/city-outbreak/
 
 ## Active Project Structure
 
-- `index.html` — **current live gameplay source and runtime**
+- `index.html` — live HTML/UI shell
+- `src/game.css` — live game styling
+- `src/game.js` — live main runtime
+- `src/audio.js` — live audio system
+- `src/zombie-rig-data.js` — exact live embedded zombie rig data
 - `assets/` — models, textures and start-screen artwork
 - `CITY_OUTBREAK_HANDOFF.md` — authoritative current development handoff
-- `src/` — old/incomplete modularization scaffolding; **not currently loaded by the live game**
-- `build/game.part*` — old build fragments; **not currently loaded by the live game**
+- `src/config.js`, `src/main.js`, `src/weapons.js`, `src/zombies.js` — older scaffold files; not yet part of the live runtime
+- `build/game.part*` — old build fragments; not currently loaded by the live game
 - `HANDOFF.md` / `NEXT_CHAT_HANDOFF.md` — compatibility pointers to the authoritative handoff
 
 ## Development Rule
 
-Always fetch the newest `main:index.html` and read `CITY_OUTBREAK_HANDOFF.md` before making changes. The game is currently tuned through direct, targeted edits to the live root `index.html`.
+Always read `CITY_OUTBREAK_HANDOFF.md` and fetch the newest live files before making changes. The modular split has begun; do not assume all gameplay code still lives in `index.html`.
 
-A future modular code split is recommended, but it should be done incrementally from a known-good build rather than as a full rewrite.
+Continue modularization incrementally from tested checkpoints rather than as a full rewrite.
