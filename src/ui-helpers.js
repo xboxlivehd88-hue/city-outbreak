@@ -60,3 +60,15 @@ export function setupPauseButtons(setPaused,{
  if(pauseButton)pauseButton.addEventListener("click",()=>setPaused(true));
  if(resumeButton)resumeButton.addEventListener("click",()=>setPaused(false));
 }
+
+
+export function renderBossHud({bossHUD,bossNameEl,bossSubEl,bossFill,boss,wave}){
+ if(boss&&!boss.dead&&boss.g.parent){
+  bossHUD.classList.add("show");
+  bossNameEl.textContent=boss.bossName||"BOSS";
+  bossSubEl.textContent="WAVE "+wave+" BOSS FIGHT";
+  bossFill.style.width=Math.max(0,Math.min(100,boss.hp/boss.maxHP*100))+"%";
+ }else{
+  bossHUD.classList.remove("show");
+ }
+}

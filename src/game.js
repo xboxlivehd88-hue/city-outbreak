@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons} from "./ui-helpers.js?v=268";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud} from "./ui-helpers.js?v=269";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 let zombieRigAsset=null,zombieRigError=null;
 try{
@@ -1475,12 +1475,14 @@ function bossWaveSpec(w){
  return {name:ensureBossWaveName(w),hp:Math.round(184*mult),speed:2.25*mult,attack:.80/mult,damage:Math.round(21*mult),bounty:250+tier*75,specialCd:6.5/mult}
 }
 function updateBossUI(){
- if(currentBoss&&!currentBoss.dead&&currentBoss.g.parent){
-   bossHUD.classList.add("show");
-   bossNameEl.textContent=currentBoss.bossName||"BOSS";
-   bossSubEl.textContent="WAVE "+wave+" BOSS FIGHT";
-   bossFill.style.width=Math.max(0,Math.min(100,currentBoss.hp/currentBoss.maxHP*100))+"%";
- }else bossHUD.classList.remove("show")
+ renderBossHud({
+  bossHUD,
+  bossNameEl,
+  bossSubEl,
+  bossFill,
+  boss:currentBoss,
+  wave
+ });
 }
 function resetHealthRegenDelay(){
  healthRegenCooldown=PLAYER_HEALTH_REGEN_DELAY;
