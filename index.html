@@ -2595,34 +2595,41 @@ function validZombieSpawn(x,z){
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
  return Math.hypot(x-px,z-pz)>11;
 }
-function reachableZombieSpawn(x,z){
+function reachableZombieSpawn(x,z,allowRoute=true){
  if(!validZombieSpawn(x,z))return false;
  if(zombieRouteClear(x,z,px,pz,ZNAV_PAD))return true;
+ if(!allowRoute)return false;
  const route=buildZombieRoute(x,z,px,pz);
  return route!==null&&route.length>0;
 }
-function spawnOneZombie(i){
- let sx=px,sz=pz,ok=false;
- // Random choices first so waves still feel organic, but require a real route.
- for(let tries=0;tries<32&&!ok;tries++){
-   const a=rnd()*Math.PI*2,dist=14+rnd()*18;
-   sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;
-   ok=reachableZombieSpawn(sx,sz);
+function findReachableZombieSpawn(minDist,maxDist){
+ // Cheap pass first: prefer a spawn with direct street/alley access to the player.
+ for(let tries=0;tries<14;tries++){
+   const a=rnd()*Math.PI*2,dist=minDist+rnd()*(maxDist-minDist);
+   const x=px+Math.sin(a)*dist,z=pz+Math.cos(a)*dist;
+   if(reachableZombieSpawn(x,z,false))return{x,z};
  }
- // If random placement lands behind bad geometry, sweep rings around the player
- // until a reachable street/alley point is found instead of accepting a trapped spawn.
- if(!ok){
-   const startA=rnd()*Math.PI*2;
-   for(let ring=16;ring<=32&&!ok;ring+=4){
-     for(let k=0;k<18&&!ok;k++){
-       const a=startA+k*(Math.PI*2/18);
-       sx=px+Math.sin(a)*ring;sz=pz+Math.cos(a)*ring;
-       ok=reachableZombieSpawn(sx,sz);
-     }
+ // Only blocked candidates pay for A*. This keeps wave starts from doing dozens
+ // of expensive path searches while still allowing zombies to emerge around corners.
+ for(let tries=0;tries<10;tries++){
+   const a=rnd()*Math.PI*2,dist=minDist+rnd()*(maxDist-minDist);
+   const x=px+Math.sin(a)*dist,z=pz+Math.cos(a)*dist;
+   if(reachableZombieSpawn(x,z,true))return{x,z};
+ }
+ // Deterministic sweep is the final guarantee against a trapped random spawn.
+ const startA=rnd()*Math.PI*2;
+ for(let ring=minDist+2;ring<=maxDist;ring+=4){
+   for(let k=0;k<16;k++){
+     const a=startA+k*(Math.PI*2/16),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
+     if(reachableZombieSpawn(x,z,true))return{x,z};
    }
  }
- if(!ok)return false;
- makeZombie(sx,sz,i);
+ return null;
+}
+function spawnOneZombie(i){
+ const p=findReachableZombieSpawn(14,32);
+ if(!p)return false;
+ makeZombie(p.x,p.z,i);
  return true;
 }
 function spawnQueuedZombies(){
@@ -2638,14 +2645,15 @@ function spawnWave(){
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   for(let tries=0;tries<48&&!ok;tries++){const a=rnd()*Math.PI*2,dist=18+rnd()*10;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=reachableZombieSpawn(sx,sz)}
+   const bossSpawn=findReachableZombieSpawn(18,30);
+   if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
-     const startA=rnd()*Math.PI*2;
-     for(let ring=18;ring<=34&&!ok;ring+=4)for(let k=0;k<18&&!ok;k++){
-       const a=startA+k*(Math.PI*2/18);sx=px+Math.sin(a)*ring;sz=pz+Math.cos(a)*ring;ok=reachableZombieSpawn(sx,sz);
-     }
+     // Extremely defensive fallback: keep boss-wave behavior intact even if the
+     // route search cannot find a candidate during this frame. The expanded A*
+     // will still take over immediately after spawn.
+     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=18+rnd()*10;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
    }
-   if(!ok){show("BOSS ROUTE SEARCHING — RETRY");return}
+   if(!ok){const a=rnd()*Math.PI*2,dist=22+rnd()*9;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
