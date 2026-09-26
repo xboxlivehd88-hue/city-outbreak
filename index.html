@@ -733,7 +733,8 @@ function moveZombieSmart(z,ox,oz,stepX,stepZ,r=.50){
 // v152: keep city generation untouched and make pathfinding itself conservative.
  // The larger clearance makes A* reject squeeze gaps that are technically open
  // but too narrow for reliable zombie motion, without adding startup-time geometry.
-const ZNAV_CELL=2.0,ZNAV_PAD=.72,ZNAV_MAX_NODES=1300;
+const ZNAV_CELL=2.0,ZNAV_PAD=.72,ZNAV_MAX_NODES=2600,
+      ZNAV_MIN_X=-148,ZNAV_MAX_X=148,ZNAV_MIN_Z=-158,ZNAV_MAX_Z=164;
 const ZNAV_BLOCK_CACHE=new Map();
 function navCellBlocked(ix,iz){
  const key=ix+","+iz;
@@ -792,12 +793,12 @@ function navHeapPop(heap){
 function buildZombieRoute(sx,sz,gx,gz){
  if(zombieRouteClear(sx,sz,gx,gz))return[];
 
- const margin=22,cell=ZNAV_CELL;
+ const margin=34,cell=ZNAV_CELL;
  let minX=Math.floor((Math.min(sx,gx)-margin)/cell),maxX=Math.ceil((Math.max(sx,gx)+margin)/cell);
  let minZ=Math.floor((Math.min(sz,gz)-margin)/cell),maxZ=Math.ceil((Math.max(sz,gz)+margin)/cell);
- // Keep search bounded to the playable city so a bad route cannot explode CPU cost.
- minX=Math.max(-72,minX);maxX=Math.min(72,maxX);
- minZ=Math.max(-76,minZ);maxZ=Math.min(92,maxZ);
+ // Search the full playable city instead of the old central-only rectangle.
+ minX=Math.max(Math.floor(ZNAV_MIN_X/cell),minX);maxX=Math.min(Math.ceil(ZNAV_MAX_X/cell),maxX);
+ minZ=Math.max(Math.floor(ZNAV_MIN_Z/cell),minZ);maxZ=Math.min(Math.ceil(ZNAV_MAX_Z/cell),maxZ);
 
  let s=navNearestOpen(Math.round(sx/cell),Math.round(sz/cell),minX,maxX,minZ,maxZ);
  let g=navNearestOpen(Math.round(gx/cell),Math.round(gz/cell),minX,maxX,minZ,maxZ);
@@ -879,7 +880,13 @@ function updateZombieRoute(z,dt,huntMode){
    z.navForceRepath=false;
    z.navGoalX=px;z.navGoalZ=pz;
    if(route&&route.length){z.navPath=route;z.navIndex=0;z.avoidT=0}
-   else{z.navPath=null;z.navIndex=0}
+   else{
+     z.navPath=null;z.navIndex=0;
+     const dx=px-z.g.position.x,dz=pz-z.g.position.z,dl=Math.hypot(dx,dz)||1;
+     z.avoidSide=chooseZombieAvoidSide(z,dx/dl,dz/dl,.52);
+     z.avoidT=Math.max(z.avoidT||0,.90);
+     z.navCheckT=.24;
+   }
  }
 }
 function zombieRouteWaypoint(z){
@@ -1023,7 +1030,7 @@ const ADS={
  rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0},
  smg:{x:-.36,y:-.050,z:1.28,fov:55,rx:-.01},
  shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
- pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:0},
+ pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:.045},
  dmr:{x:-.36,y:.010,z:-1.00,fov:48,rx:0},
  grenadeLauncher:{x:-.36,y:.040,z:-.45,fov:56,rx:0},
  m240:{x:-.36,y:-.065,z:-1.38,fov:56,rx:0},
@@ -2583,29 +2590,46 @@ function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
 const MAX_ACTIVE_ZOMBIES=20;
 const waveRemainingCount=()=>livingCount()+Math.max(0,waveTarget-waveSpawned);
 function validZombieSpawn(x,z){
+ if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
  if(insideBuilding(x,z,.8))return false;
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
  return Math.hypot(x-px,z-pz)>11;
 }
+function reachableZombieSpawn(x,z){
+ if(!validZombieSpawn(x,z))return false;
+ if(zombieRouteClear(x,z,px,pz,ZNAV_PAD))return true;
+ const route=buildZombieRoute(x,z,px,pz);
+ return route!==null&&route.length>0;
+}
 function spawnOneZombie(i){
  let sx=px,sz=pz,ok=false;
- for(let tries=0;tries<60&&!ok;tries++){
-   let a=rnd()*Math.PI*2,dist=14+rnd()*18;
+ // Random choices first so waves still feel organic, but require a real route.
+ for(let tries=0;tries<32&&!ok;tries++){
+   const a=rnd()*Math.PI*2,dist=14+rnd()*18;
    sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;
-   ok=validZombieSpawn(sx,sz);
+   ok=reachableZombieSpawn(sx,sz);
  }
+ // If random placement lands behind bad geometry, sweep rings around the player
+ // until a reachable street/alley point is found instead of accepting a trapped spawn.
  if(!ok){
-   let a=rnd()*Math.PI*2,dist=20+rnd()*10;
-   sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;
-   let safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
+   const startA=rnd()*Math.PI*2;
+   for(let ring=16;ring<=32&&!ok;ring+=4){
+     for(let k=0;k<18&&!ok;k++){
+       const a=startA+k*(Math.PI*2/18);
+       sx=px+Math.sin(a)*ring;sz=pz+Math.cos(a)*ring;
+       ok=reachableZombieSpawn(sx,sz);
+     }
+   }
  }
+ if(!ok)return false;
  makeZombie(sx,sz,i);
+ return true;
 }
 function spawnQueuedZombies(){
  if(!running||dying||between)return;
  let activeCount=livingCount();
  while(activeCount<MAX_ACTIVE_ZOMBIES&&waveSpawned<waveTarget){
-   spawnOneZombie(waveSpawned);
+   if(!spawnOneZombie(waveSpawned))break;
    waveSpawned++;activeCount++;
  }
 }
@@ -2614,8 +2638,14 @@ function spawnWave(){
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   for(let tries=0;tries<60&&!ok;tries++){let a=rnd()*Math.PI*2,dist=18+rnd()*10;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
-   if(!ok){let a=rnd()*Math.PI*2,dist=22+rnd()*9;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;let safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
+   for(let tries=0;tries<48&&!ok;tries++){const a=rnd()*Math.PI*2,dist=18+rnd()*10;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=reachableZombieSpawn(sx,sz)}
+   if(!ok){
+     const startA=rnd()*Math.PI*2;
+     for(let ring=18;ring<=34&&!ok;ring+=4)for(let k=0;k<18&&!ok;k++){
+       const a=startA+k*(Math.PI*2/18);sx=px+Math.sin(a)*ring;sz=pz+Math.cos(a)*ring;ok=reachableZombieSpawn(sx,sz);
+     }
+   }
+   if(!ok){show("BOSS ROUTE SEARCHING — RETRY");return}
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
@@ -2992,9 +3022,9 @@ function fire(){
  for(const z of zombies){if(z.dead)continue;if(z.hitMeshes)rayTargets.push(...z.hitMeshes)}
  for(let pellet=0;pellet<wd().pellets;pellet++){
    const adsSpread=aiming?(weapon==="awm"?.08:.38):1;
-   // M17 ADS zero restored to the previously tuned iron-sight/headshot alignment.
-   // The visual hit marker stays centered independently.
-   const pistolAdsZero=(aiming&&weapon==="pistol")?-.14:0;
+   // M17 ADS fires through true screen center. The ADS rig itself is pitched
+   // so the aligned front/rear iron sights sit on this same point.
+   const pistolAdsZero=0;
    // MP5 iron-sight zero: current impacts are just above/right of the sight picture.
    // Shift only the SMG ADS ray slightly left/down; hip fire and other weapons are untouched.
    const smgAdsZeroX=(aiming&&weapon==="smg")?-.018:0;
@@ -3862,12 +3892,12 @@ resolveZombiePlayerContact(z,ox,oz);
    z.navCheckT=0;
    z.navPath=null;z.navIndex=0;
    if(z.navFlipCooldown<=0){
-     z.avoidSide*=-1;
-     // Give the new A* route time to take over instead of flipping left/right
-     // every few tenths of a second at the same obstacle.
-     z.navFlipCooldown=1.15;
+     // Do not blindly reverse direction: that caused zombies to ping-pong at
+     // the same wall. Probe both sides and commit to the more open/playerward one.
+     z.avoidSide=chooseZombieAvoidSide(z,nx,nz,.52);
+     z.navFlipCooldown=1.35;
    }
-   z.avoidT=.55;
+   z.avoidT=.85;
    z.stuckT=0;
    z.think=0;
  }if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else{
