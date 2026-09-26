@@ -20,3 +20,23 @@ export function clearTransientMessage(element){
  transientMessageTimers.delete(element);
  element.classList.remove("show");
 }
+
+
+export function setupControlsModal({
+ modal=document.querySelector("#controlsModal"),
+ openButton=document.querySelector("#showControls"),
+ closeButton=document.querySelector("#closeControls")
+}={}){
+ if(!modal||!openButton||!closeButton)return;
+ const setOpen=open=>{
+  modal.classList.toggle("show",open);
+  modal.setAttribute("aria-hidden",open?"false":"true");
+  if(open)closeButton.focus();
+  else openButton.focus();
+ };
+ openButton.onclick=()=>setOpen(true);
+ closeButton.onclick=()=>setOpen(false);
+ modal.addEventListener("click",event=>{
+  if(event.target===modal)setOpen(false);
+ });
+}
