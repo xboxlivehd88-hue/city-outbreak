@@ -51,3 +51,12 @@ export function setupResetButtons(resetHandler,{
  if(restartButton)restartButton.onclick=resetHandler;
  if(deathRestartButton)deathRestartButton.onclick=resetHandler;
 }
+
+
+export function setupPauseButtons(setPaused,{
+ pauseButton=document.querySelector("#pauseBtn"),
+ resumeButton=document.querySelector("#resumeGame")
+}={}){
+ if(pauseButton)pauseButton.addEventListener("click",()=>setPaused(true));
+ if(resumeButton)resumeButton.addEventListener("click",()=>setPaused(false));
+}

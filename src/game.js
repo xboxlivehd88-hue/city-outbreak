@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons} from "./ui-helpers.js?v=266";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons} from "./ui-helpers.js?v=268";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 let zombieRigAsset=null,zombieRigError=null;
 try{
@@ -3241,8 +3241,7 @@ function setGamePaused(next){
  cv.focus();
  if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}
 }
-pauseBtn.addEventListener("click",()=>setGamePaused(true));
-resumeGameBtn.addEventListener("click",()=>setGamePaused(false));
+setupPauseButtons(setGamePaused,{pauseButton:pauseBtn,resumeButton:resumeGameBtn});
 
 // First-person weapon contact. The guns/hands are camera-space viewmodels, so
 // they cannot physically collide with world meshes on their own. Treat a zombie
