@@ -4,12 +4,12 @@
 
 This section supersedes older v260 "current checkpoint" notes below.
 
-- Current approved modular build: **v302**
-- Current approved gameplay/code commit: **1a6b95e0af4c5170dee1dfaaa1618e8b4264613c**
-- GitHub Pages loader: `./src/game.js?v=302`
+- Current approved modular build: **v303**
+- Current approved gameplay/code commit: **8e0c312eab781ba978ebb7f5bf503253e0d5e955**
+- GitHub Pages loader: `./src/game.js?v=303`
 - Last fully approved pre-modular gameplay baseline: **v257**
 - v257 commit: **138e961c2597cb5ff6099798314d1f40308388c4**
-- The user confirmed v302 loads correctly and wants development to continue from here.
+- The user tested v303 and said it works fine. Treat v303 as the current approved recovery point.
 - v301 was comments/documentation only.
 - v302 consolidated already-approved reset UI overlay cleanup into `resetRunUiOverlays()`.
 - v289 is the approved pause behavior; v290/v291 were reverted.
@@ -22,22 +22,25 @@ This section supersedes older v260 "current checkpoint" notes below.
 - `src/format-utils.js`
 - `src/input-utils.js`
 - `src/zombie-rig-data.js`
+- `src/wave-utils.js`
 
 `src/game.js` remains the live gameplay/state runtime. The recently completed v277–v286 work moved safe input/UI/event plumbing only; gameplay decisions remain in `game.js`.
 
-## v301–v302 most recent work
+## v301–v303 most recent work
 
 - **v301** `9410af6c6e999d5451afd5850b8f6ec28e55e0e5` — refreshed stale module header comments. `input-utils.js` now accurately says it owns browser-event/input plumbing; no intended gameplay behavior change.
 - **v302** `1a6b95e0af4c5170dee1dfaaa1618e8b4264613c` — added `resetRunUiOverlays()` in `src/ui-helpers.js` and replaced the cluster of already-approved reset UI cleanup calls with that helper. Start-screen hiding, hit-marker timer clearing, pointer lock, audio init, state reset, wave spawn, and gameplay remain in `game.js`.
-- The user confirmed the current build loads correctly and asked to continue.
+- **v303** `8e0c312eab781ba978ebb7f5bf503253e0d5e955` — extracted only `diff(w)`, `isBossWave(w)`, `bossTier(w)`, and `bossScaleFactor(w)` into `src/wave-utils.js`; formulas and gameplay values were unchanged. The user tested it and said it works fine.
 
 ## Next-step guidance
 
-The easy input-listener and low-risk UI/reset cleanup is substantially complete through v302. Do not keep extracting tiny DOM calls just to modularize more. Preserve v302 and choose a genuinely isolated behavior-neutral subsystem.
+The easy input/UI/reset work and pure wave calculation extraction are complete through v303. Do not keep extracting tiny functions just to modularize more.
 
-Recommended next candidate: extract only the pure/stateless wave calculations `diff(w)`, `isBossWave(w)`, `bossTier(w)`, and `bossScaleFactor(w)` into a small helper module, with an exact code transplant and no formula/value changes. Keep boss-name state, `nextBossName()`, `ensureBossWaveName()`, `bossPressureSpeed()`, `bossWaveSpec()`, boss attacks/spawning, and all sensitive systems in `game.js` for now.
+Repository housekeeping after v303 removes the stale, unused scaffold files `src/config.js`, `src/main.js`, `src/weapons.js`, and `src/zombies.js`; they had no live references. Keep `src/audio.js` present but unused because live audio remains inline in `game.js`.
 
-After any change: atomic commit -> verify exact diff/locked values -> wait for Pages deployment success -> give cache-busted test link -> wait for user approval.
+Next direction: favor actual bug fixing/gameplay/map/content polish, or only a genuinely cohesive behavior-neutral subsystem if more structural work is needed. Keep boss-name state, `nextBossName()`, `ensureBossWaveName()`, `bossPressureSpeed()`, `bossWaveSpec()`, boss attacks/spawning, and all sensitive systems in `game.js` for now.
+
+After any live-runtime change: atomic commit -> verify exact diff/locked values -> wait for Pages deployment success -> give cache-busted test link -> wait for user approval.
 
 Continue to avoid high-risk areas unless deliberately tackling them:
 - audio extraction

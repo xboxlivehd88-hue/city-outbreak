@@ -6,11 +6,11 @@ This section supersedes older "current checkpoint" references below. Keep the ol
 
 ## Current approved live checkpoint
 
-- Build/cache generation: **v302**
-- Approved live modular/gameplay checkpoint commit: **1a6b95e0af4c5170dee1dfaaa1618e8b4264613c**
-- GitHub Pages entry loads: `./src/game.js?v=302`
+- Build/cache generation: **v303**
+- Approved live modular/gameplay checkpoint commit: **8e0c312eab781ba978ebb7f5bf503253e0d5e955**
+- GitHub Pages entry loads: `./src/game.js?v=303`
 - Live game: https://xboxlivehd88-hue.github.io/city-outbreak/
-- The user confirmed the current build loads correctly and approved continuing from **v302**.
+- The user confirmed **v303 works fine** and approved it as the current checkpoint.
 - **v301** commit `9410af6c6e999d5451afd5850b8f6ec28e55e0e5` was a behavior-neutral module-comment/documentation cleanup.
 - **v302** consolidated already-approved reset UI overlay cleanup into `resetRunUiOverlays()`; it did not intentionally change gameplay.
 - **v289 pause behavior remains the approved pause baseline. v290/v291 pointer-lock resume experiments were reverted.**
@@ -22,6 +22,7 @@ This section supersedes older "current checkpoint" references below. Keep the ol
 - `src/game.css` — live CSS. Start-screen path must remain `../assets/city-outbreak-start-v153.jpg.jpg`.
 - `src/game.js` — main live runtime and gameplay state.
 - `src/zombie-rig-data.js` — exact live zombie rig data.
+- `src/wave-utils.js` — pure/stateless wave difficulty calculations: `diff(w)`, `isBossWave(w)`, `bossTier(w)`, and `bossScaleFactor(w)`.
 - `src/performance-hud.js` — live performance HUD helper.
 - `src/ui-helpers.js` — live UI rendering/wiring helpers:
   - transient messages
@@ -47,9 +48,9 @@ This section supersedes older "current checkpoint" references below. Keep the ol
   - mousemove listener wiring
   - mousedown/mouseup/pointer-cancel listener wiring
 
-## v262–v302 approved modularization sequence
+## v262–v303 approved modularization sequence
 
-The user individually tested and approved the incremental modular changes through v302. Key later checkpoints include:
+The user individually tested and approved the incremental modular changes through v303. Key later checkpoints include:
 - v277 input key reset utility
 - v278 runtime error overlay rendering
 - v279–v285 input/listener wiring cleanup
@@ -69,21 +70,22 @@ The user individually tested and approved the incremental modular changes throug
 - v300 start-screen reset hide
 - v301 module header/comment refresh only — no intended runtime behavior change
 - v302 consolidated the already-approved reset overlay helpers behind `resetRunUiOverlays()`
+- v303 extracted only the four pure wave/difficulty calculations into `src/wave-utils.js` with formulas unchanged; the user tested it and said it works fine.
 
 The input callbacks still keep gameplay decisions in `game.js`; helper modules primarily own registration/DOM plumbing. Do not move gameplay math or weapon behavior merely for decomposition.
 
-## Next development recommendation after v302
+## Next development recommendation after v303
 
-The low-risk input/UI/reset cleanup is now substantially complete. Do **not** keep extracting tiny DOM calls merely to increase the module count.
+The low-risk UI/input/reset work and the obvious pure wave calculation extraction are complete through v303. Do **not** force more modularization just to create modules.
 
-Recommended next step:
-1. Fetch current `main` and re-read both handoff files.
-2. Preserve v302 as the recovery checkpoint.
-3. Inspect for the next genuinely isolated, behavior-neutral subsystem.
-4. A plausible next candidate is a small **pure wave/difficulty helper module** containing only stateless calculations such as `diff(w)`, `isBossWave(w)`, `bossTier(w)`, and `bossScaleFactor(w)`.
-5. If taking that route, transplant those functions exactly and do not change constants, formulas, call order, wave counts, HP, speed, damage, attack timing, strafe, or surge values.
-6. Do **not** include `nextBossName()`, `ensureBossWaveName()`, boss name history, `bossPressureSpeed()`, `bossWaveSpec()`, boss attacks, or boss spawning in the first step; those are stateful/sensitive and should stay in `game.js`.
-7. Make one atomic commit, verify exact diff and locked values, wait for GitHub Pages success, give a cache-busted test URL, and wait for user approval before continuing.
+Repository housekeeping after v303 removes the old unused scaffold files `src/config.js`, `src/main.js`, `src/weapons.js`, and `src/zombies.js`. They had no live references. Keep `src/audio.js` present but unused because the live/proven audio remains inline in `src/game.js`.
+
+Recommended direction now:
+1. Preserve v303 as the approved gameplay recovery point.
+2. Prefer actual bug fixing, gameplay polish, map/content work, or a clearly cohesive subsystem over further tiny extractions.
+3. If doing more structural work, require a genuinely isolated subsystem and keep it behavior-neutral.
+4. Continue avoiding audio, reloads, weapon ADS/firing rays, zombie pathing, boss combat behavior, store timing, and frame-loop timing unless the user deliberately chooses one of those areas.
+5. Continue one atomic change at a time, verify locked values, wait for Pages success when live runtime changes, then let the user test.
 
 Sensitive/locked areas:
 - inline audio
