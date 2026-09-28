@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats} from "./ui-helpers.js?v=272";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement} from "./ui-helpers.js?v=274";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 let zombieRigAsset=null,zombieRigError=null;
@@ -2967,12 +2967,13 @@ function clearRoundCorpses(){
 function beginBreak(){
  if(between||dying)return;
  between=true;pauseBtn.classList.remove("show");stopAuto();clearKeys();setAim(false);
- big.textContent="WAVE "+wave+" COMPLETE";
- if(isBossWave(wave+1)){ensureBossWaveName(wave+1);small.textContent="SHOP OPEN — NEXT ROUND IS A BOSS FIGHT";if(shopNote)shopNote.textContent="WARNING: NEXT ROUND IS A BOSS FIGHT — "+bossWaveName+"."}else{small.textContent="SHOP OPEN — PRESS READY WHEN YOU ARE SET";if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready."}
- announce.classList.add("show");
+ const breakTitle="WAVE "+wave+" COMPLETE";
+ let breakSubtitle="";
+ if(isBossWave(wave+1)){ensureBossWaveName(wave+1);breakSubtitle="SHOP OPEN — NEXT ROUND IS A BOSS FIGHT";if(shopNote)shopNote.textContent="WARNING: NEXT ROUND IS A BOSS FIGHT — "+bossWaveName+"."}else{breakSubtitle="SHOP OPEN — PRESS READY WHEN YOU ARE SET";if(shopNote)shopNote.textContent="Take your time. The next wave will not start until you press Ready."}
+ showAnnouncement({container:announce,titleEl:big,subtitleEl:small,title:breakTitle,subtitle:breakSubtitle});
  tone(392,.18,"square",.12);tone(523,.2,"square",.14,.18);
  const breakRun=runSequence;
- setTimeout(()=>{if(breakRun!==runSequence||!between||dying)return;announce.classList.remove("show");openShop()},850);
+ setTimeout(()=>{if(breakRun!==runSequence||!between||dying)return;hideAnnouncement(announce);openShop()},850);
 }
 function readyNextWave(){
  if(!between||dying)return;
@@ -2989,11 +2990,12 @@ function readyNextWave(){
  clearRoundCorpses();
  if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}
  wave++;ammoState.rifle.reserve+=18+wave*2;
- if(isBossWave(wave)){ensureBossWaveName(wave);big.textContent="WAVE "+wave+" — BOSS FIGHT";small.textContent=bossWaveName+" IS COMING"}else{big.textContent="WAVE "+wave;small.textContent=diff(wave).count+" ZOMBIES INCOMING"}
- announce.classList.add("show");
+ let waveTitle="",waveSubtitle="";
+ if(isBossWave(wave)){ensureBossWaveName(wave);waveTitle="WAVE "+wave+" — BOSS FIGHT";waveSubtitle=bossWaveName+" IS COMING"}else{waveTitle="WAVE "+wave;waveSubtitle=diff(wave).count+" ZOMBIES INCOMING"}
+ showAnnouncement({container:announce,titleEl:big,subtitleEl:small,title:waveTitle,subtitle:waveSubtitle});
  tone(440,.08,"square",.13);tone(660,.1,"square",.14,.1);tone(880,.16,"square",.15,.22);
  spawnWave();ui();cv.focus();
- setTimeout(()=>announce.classList.remove("show"),750);
+ setTimeout(()=>hideAnnouncement(announce),750);
 }
 document.querySelector("#readyNext").addEventListener("click",readyNextWave);
 
@@ -3209,14 +3211,12 @@ function detonateNuke(){
  if(nukes<=0){show("NO TACTICAL NUKES");return}
  nukes--;nukeInProgress=true;ui();stopAuto();
  const nukeRun=runSequence;
- big.textContent="TACTICAL NUKE";
- small.textContent="INBOUND";
- announce.classList.add("show");
+ showAnnouncement({container:announce,titleEl:big,subtitleEl:small,title:"TACTICAL NUKE",subtitle:"INBOUND"});
  tone(880,.11,"square",.12);tone(660,.11,"square",.12,.18);tone(440,.18,"square",.14,.36);
  gameTimeout(()=>{
    if(nukeRun!==runSequence)return;
    if(!running||dying){nukeInProgress=false;return}
-   announce.classList.remove("show");
+   hideAnnouncement(announce);
    nukeFlash.classList.remove("boom");nukeShock.classList.remove("boom");
    void nukeFlash.offsetWidth;void nukeShock.offsetWidth;
    nukeFlash.classList.add("boom");nukeShock.classList.add("boom");

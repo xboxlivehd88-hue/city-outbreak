@@ -126,3 +126,14 @@ export function renderDeathStats({kills,time,wave,rounds},{
  if(waveEl)waveEl.textContent=wave;
  if(roundsEl)roundsEl.textContent=rounds;
 }
+
+
+export function showAnnouncement({container,titleEl,subtitleEl,title,subtitle}){
+ titleEl.textContent=title;
+ subtitleEl.textContent=subtitle;
+ container.classList.add("show");
+}
+
+export function hideAnnouncement(container){
+ container.classList.remove("show");
+}
