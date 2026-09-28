@@ -74,6 +74,11 @@ export function renderBossHud({bossHUD,bossNameEl,bossSubEl,bossFill,boss,wave})
 }
 
 
+export function hideBossHud(bossHUD){
+ if(bossHUD)bossHUD.classList.remove("show");
+}
+
+
 export function renderSprintHud({
  sprintFill,
  sprintState,
