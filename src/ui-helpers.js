@@ -194,6 +194,12 @@ export function clearHitMarker(element){
 }
 
 
+export function clearNukeOverlays(flashElement,shockElement){
+ if(flashElement)flashElement.classList.remove("boom");
+ if(shockElement)shockElement.classList.remove("boom");
+}
+
+
 export function renderShopNote(element,text){
  if(!element)return;
  element.textContent=text;
