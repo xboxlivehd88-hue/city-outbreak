@@ -52,3 +52,11 @@ export function setupKeyDown(handler,{
  if(typeof handler!=="function")return;
  windowTarget.addEventListener("keydown",handler);
 }
+
+
+export function setupMouseMove(handler,{
+ documentTarget=document
+}={}){
+ if(typeof handler!=="function")return;
+ documentTarget.addEventListener("mousemove",handler);
+}
