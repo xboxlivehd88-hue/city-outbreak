@@ -738,12 +738,17 @@ batchStaticCity();
 // batched visuals/colliders after the uploaded GLB has loaded successfully.
 let apocalypticCityRoot=null;
 const APOCALYPTIC_CITY_SCALE=.135;
-const APOCALYPTIC_CITY_OFFSET={x:-84.231,y:3.220,z:71.699};
+const APOCALYPTIC_CITY_TARGET={x:0,z:30};
 new GLTFLoader().load("assets/apocalyptic_city.glb",gltf=>{
  const city=gltf.scene;
  city.name="ApocalypticCity";
  city.scale.setScalar(APOCALYPTIC_CITY_SCALE);
- city.position.set(APOCALYPTIC_CITY_OFFSET.x,APOCALYPTIC_CITY_OFFSET.y,APOCALYPTIC_CITY_OFFSET.z);
+ city.position.set(0,0,0);
+ city.updateMatrixWorld(true);
+
+ // The GLB contains a huge distant/background mesh that extends far below the playable city.
+ // Anchor placement to the largest broad, thin mesh instead; that is the street/ground surface.
+ let cityGroundBounds=null,cityGroundArea=0;
  city.traverse(o=>{
   o.userData.externalCityAsset=true;
   if(o.isMesh){
@@ -752,8 +757,21 @@ new GLTFLoader().load("assets/apocalyptic_city.glb",gltf=>{
    for(const mat of mats)if(mat)for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
     const tx=mat[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
    }
+   const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
+   const area=s.x*s.z;
+   if(s.x>80&&s.z>80&&s.y<8&&area>cityGroundArea){
+    cityGroundArea=area;cityGroundBounds=b.clone();
+   }
   }
  });
+ if(!cityGroundBounds)throw new Error("Could not identify playable city ground mesh");
+ const groundCenter=new THREE.Vector3();cityGroundBounds.getCenter(groundCenter);
+ city.position.set(
+  APOCALYPTIC_CITY_TARGET.x-groundCenter.x,
+  -cityGroundBounds.max.y,
+  APOCALYPTIC_CITY_TARGET.z-groundCenter.z
+ );
+ city.updateMatrixWorld(true);
  scene.add(city);
  apocalypticCityRoot=city;
 
@@ -771,7 +789,8 @@ new GLTFLoader().load("assets/apocalyptic_city.glb",gltf=>{
  document.documentElement.dataset.apocalypticCityLoaded="1";
  console.log("CITY OUTBREAK: apocalyptic city test loaded",{
   scale:APOCALYPTIC_CITY_SCALE,
-  position:APOCALYPTIC_CITY_OFFSET,
+  target:APOCALYPTIC_CITY_TARGET,
+  groundBounds:cityGroundBounds,
   removedOldCityBatches:oldCityBatches.length
  });
 },undefined,err=>{
