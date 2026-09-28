@@ -60,3 +60,15 @@ export function setupMouseMove(handler,{
  if(typeof handler!=="function")return;
  documentTarget.addEventListener("mousemove",handler);
 }
+
+
+export function setupMouseActions({
+ onMouseDown,
+ onMouseUp,
+ onPointerCancel,
+ documentTarget=document
+}){
+ if(typeof onMouseDown==="function")documentTarget.addEventListener("mousedown",onMouseDown);
+ if(typeof onMouseUp==="function")documentTarget.addEventListener("mouseup",onMouseUp);
+ if(typeof onPointerCancel==="function")documentTarget.addEventListener("pointercancel",onPointerCancel);
+}

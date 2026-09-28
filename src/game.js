@@ -7,7 +7,7 @@ import {createPerformanceGuard} from "./performance-hud.js?v=262";
 import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay} from "./ui-helpers.js?v=278";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
-import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove} from "./input-utils.js?v=284";
+import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -3838,7 +3838,7 @@ const onPointerLockChanged=()=>{
 setupPointerLockChange(onPointerLockChanged);
 const onMouseMove=e=>{if(!paused&&document.pointerLockElement===cv){const adsLook=aiming?(weapon==="awm"?.34:.72):1;yaw-=e.movementX*lookSensitivity*adsLook;pitch-=e.movementY*lookSensitivity*.9*adsLook;pitch=Math.max(-1.05,Math.min(1.05,pitch));aimX=0;aimY=0;}};
 setupMouseMove(onMouseMove);
-document.addEventListener("mousedown",e=>{
+const onMouseDown=e=>{
  if(paused)return;
  if(e.button===2){
    if(document.pointerLockElement===cv)setAim(true);
@@ -3851,12 +3851,13 @@ document.addEventListener("mousedown",e=>{
    }
    triggerDown();e.preventDefault();return;
  }
-});
-document.addEventListener("mouseup",e=>{
+};
+const onMouseUp=e=>{
  if(e.button===0)triggerUp();
  if(e.button===2)setAim(false);
-});
-document.addEventListener("pointercancel",()=>{triggerUp();setAim(false)});
+};
+const onPointerCancel=()=>{triggerUp();setAim(false)};
+setupMouseActions({onMouseDown,onMouseUp,onPointerCancel});
 setupGameContextMenuGuard({canvas:cv});
 updateSprintUI();ui();
 
