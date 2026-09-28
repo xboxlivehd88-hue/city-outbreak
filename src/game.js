@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,renderShopNote,renderPauseUi} from "./ui-helpers.js?v=291";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,renderShopNote,renderPauseUi} from "./ui-helpers.js?v=289";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
@@ -3242,15 +3242,6 @@ function detonateNuke(){
 }
 
 function clearKeys(){clearKeyState(keys)}
-function requestGamePointerLock(){
- cv.focus();
- if(document.pointerLockElement!==cv){
-  try{
-   const lockRequest=cv.requestPointerLock?.();
-   if(lockRequest&&typeof lockRequest.catch==="function")lockRequest.catch(()=>{});
-  }catch(_){}
- }
-}
 function setGamePaused(next){
  if(next){
    if(paused||!running||dying||between)return;
@@ -3267,10 +3258,11 @@ function setGamePaused(next){
  pausedAccumulatedMs+=pausedFor;pauseStartedAt=0;paused=false;last=now;
  renderPauseUi({pauseOverlay,pauseButton:pauseBtn,paused:false,showPauseButton:running&&!dying&&!between});
  document.body.style.cursor="";
- requestGamePointerLock();
  if(ac&&audioOn)ac.resume().catch(()=>{});
+ cv.focus();
+ if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}
 }
-setupPauseButtons(setGamePaused,{pauseButton:pauseBtn,resumeButton:resumeGameBtn,prepareResume:requestGamePointerLock});
+setupPauseButtons(setGamePaused,{pauseButton:pauseBtn,resumeButton:resumeGameBtn});
 
 // First-person weapon contact. The guns/hands are camera-space viewmodels, so
 // they cannot physically collide with world meshes on their own. Treat a zombie
