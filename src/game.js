@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons} from "./ui-helpers.js?v=276";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay} from "./ui-helpers.js?v=278";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState} from "./input-utils.js?v=277";
@@ -3858,10 +3858,7 @@ updateSprintUI();ui();
 let runtimeErrorShown=false;
 addEventListener("error",e=>{
  if(runtimeErrorShown)return;runtimeErrorShown=true;
- const d=document.createElement("div");
- d.style.cssText="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(120,0,0,.92);color:white;padding:10px 12px;font:13px monospace;max-width:70vw;border:1px solid #fff";
- d.textContent="GAME ERROR: "+(e.message||"unknown error");
- document.body.appendChild(d);
+ showRuntimeErrorOverlay(e.message||"unknown error");
  console.error("City Outbreak runtime error",e.error||e.message);
 });
 

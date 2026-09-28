@@ -152,3 +152,13 @@ export function setupShopBuyButtons(shopElement,buyHandler){
   button.addEventListener("click",()=>buyHandler(button.dataset.buy));
  });
 }
+
+
+export function showRuntimeErrorOverlay(message,{
+ root=document.body
+}={}){
+ const errorBox=document.createElement("div");
+ errorBox.style.cssText="position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(120,0,0,.92);color:white;padding:10px 12px;font:13px monospace;max-width:70vw;border:1px solid #fff";
+ errorBox.textContent="GAME ERROR: "+message;
+ root.appendChild(errorBox);
+}
