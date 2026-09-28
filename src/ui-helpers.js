@@ -162,3 +162,11 @@ export function showRuntimeErrorOverlay(message,{
  errorBox.textContent="GAME ERROR: "+message;
  root.appendChild(errorBox);
 }
+
+
+export function setupRuntimeErrorListener(handler,{
+ windowTarget=window
+}={}){
+ if(typeof handler!=="function")return;
+ windowTarget.addEventListener("error",handler);
+}

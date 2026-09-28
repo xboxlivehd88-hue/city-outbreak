@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay} from "./ui-helpers.js?v=278";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener} from "./ui-helpers.js?v=286";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
@@ -3862,9 +3862,10 @@ setupGameContextMenuGuard({canvas:cv});
 updateSprintUI();ui();
 
 let runtimeErrorShown=false;
-addEventListener("error",e=>{
+const onRuntimeError=e=>{
  if(runtimeErrorShown)return;runtimeErrorShown=true;
  showRuntimeErrorOverlay(e.message||"unknown error");
  console.error("City Outbreak runtime error",e.error||e.message);
-});
+};
+setupRuntimeErrorListener(onRuntimeError);
 
