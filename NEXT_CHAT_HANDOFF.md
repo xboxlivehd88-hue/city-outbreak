@@ -4,11 +4,14 @@
 
 This section supersedes older v260 "current checkpoint" notes below.
 
-- Current approved modular build: **v300**
-- Current approved commit: **cf82f7214878f78662d6176cd3295c4009abceba**
+- Current approved modular build: **v302**
+- Current approved gameplay/code commit: **1a6b95e0af4c5170dee1dfaaa1618e8b4264613c**
+- GitHub Pages loader: `./src/game.js?v=302`
 - Last fully approved pre-modular gameplay baseline: **v257**
 - v257 commit: **138e961c2597cb5ff6099798314d1f40308388c4**
-- The user has approved the modular cleanup through v300.
+- The user confirmed v302 loads correctly and wants development to continue from here.
+- v301 was comments/documentation only.
+- v302 consolidated already-approved reset UI overlay cleanup into `resetRunUiOverlays()`.
 - v289 is the approved pause behavior; v290/v291 were reverted.
 
 ## Live helper modules now in use
@@ -22,9 +25,19 @@ This section supersedes older v260 "current checkpoint" notes below.
 
 `src/game.js` remains the live gameplay/state runtime. The recently completed v277–v286 work moved safe input/UI/event plumbing only; gameplay decisions remain in `game.js`.
 
+## v301–v302 most recent work
+
+- **v301** `9410af6c6e999d5451afd5850b8f6ec28e55e0e5` — refreshed stale module header comments. `input-utils.js` now accurately says it owns browser-event/input plumbing; no intended gameplay behavior change.
+- **v302** `1a6b95e0af4c5170dee1dfaaa1618e8b4264613c` — added `resetRunUiOverlays()` in `src/ui-helpers.js` and replaced the cluster of already-approved reset UI cleanup calls with that helper. Start-screen hiding, hit-marker timer clearing, pointer lock, audio init, state reset, wave spawn, and gameplay remain in `game.js`.
+- The user confirmed the current build loads correctly and asked to continue.
+
 ## Next-step guidance
 
-The easy input-listener and low-risk UI/reset cleanup is substantially complete through v300. Before extracting larger systems, inspect current `main` and choose another genuinely isolated seam. Do not force modularization for its own sake. Treat scope/ADS UI and pause-state UI as sensitive because they are closely coupled to approved gameplay behavior.
+The easy input-listener and low-risk UI/reset cleanup is substantially complete through v302. Do not keep extracting tiny DOM calls just to modularize more. Preserve v302 and choose a genuinely isolated behavior-neutral subsystem.
+
+Recommended next candidate: extract only the pure/stateless wave calculations `diff(w)`, `isBossWave(w)`, `bossTier(w)`, and `bossScaleFactor(w)` into a small helper module, with an exact code transplant and no formula/value changes. Keep boss-name state, `nextBossName()`, `ensureBossWaveName()`, `bossPressureSpeed()`, `bossWaveSpec()`, boss attacks/spawning, and all sensitive systems in `game.js` for now.
+
+After any change: atomic commit -> verify exact diff/locked values -> wait for Pages deployment success -> give cache-busted test link -> wait for user approval.
 
 Continue to avoid high-risk areas unless deliberately tackling them:
 - audio extraction

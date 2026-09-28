@@ -6,12 +6,14 @@ This section supersedes older "current checkpoint" references below. Keep the ol
 
 ## Current approved live checkpoint
 
-- Build/cache generation: **v300**
-- Approved live modular checkpoint commit: **cf82f7214878f78662d6176cd3295c4009abceba**
-- GitHub Pages entry loads: `./src/game.js?v=300`
+- Build/cache generation: **v302**
+- Approved live modular/gameplay checkpoint commit: **1a6b95e0af4c5170dee1dfaaa1618e8b4264613c**
+- GitHub Pages entry loads: `./src/game.js?v=302`
 - Live game: https://xboxlivehd88-hue.github.io/city-outbreak/
-- The user approved the modular cleanup through **v300**.
-- v289 pause behavior is the approved pause baseline. The v290/v291 pointer-lock experiments were reverted.
+- The user confirmed the current build loads correctly and approved continuing from **v302**.
+- **v301** commit `9410af6c6e999d5451afd5850b8f6ec28e55e0e5` was a behavior-neutral module-comment/documentation cleanup.
+- **v302** consolidated already-approved reset UI overlay cleanup into `resetRunUiOverlays()`; it did not intentionally change gameplay.
+- **v289 pause behavior remains the approved pause baseline. v290/v291 pointer-lock resume experiments were reverted.**
 - Last fully approved pre-modular gameplay baseline remains **v257**, commit **138e961c2597cb5ff6099798314d1f40308388c4**.
 
 ## Current live modular structure
@@ -45,17 +47,17 @@ This section supersedes older "current checkpoint" references below. Keep the ol
   - mousemove listener wiring
   - mousedown/mouseup/pointer-cancel listener wiring
 
-## v262–v300 approved modularization sequence
+## v262–v302 approved modularization sequence
 
-The user individually tested and approved the incremental modular changes through v300. Key later checkpoints include:
+The user individually tested and approved the incremental modular changes through v302. Key later checkpoints include:
 - v277 input key reset utility
 - v278 runtime error overlay rendering
 - v279–v285 input/listener wiring cleanup
 - v286 runtime error listener wiring
 - v287 damage-overlay flash rendering
 - v288 shop-note rendering
-- v289 pause UI rendering — approved pause baseline
-- v290/v291 pointer-lock resume experiments — reverted
+- v289 pause UI rendering — **approved pause baseline**
+- v290/v291 pointer-lock resume experiments — **reverted**
 - v292 death-screen visibility
 - v293 boss HUD hide rendering
 - v294 announcement reset cleanup
@@ -65,8 +67,34 @@ The user individually tested and approved the incremental modular changes throug
 - v298 hit-marker reset cleanup
 - v299 nuke-overlay reset cleanup
 - v300 start-screen reset hide
+- v301 module header/comment refresh only — no intended runtime behavior change
+- v302 consolidated the already-approved reset overlay helpers behind `resetRunUiOverlays()`
 
 The input callbacks still keep gameplay decisions in `game.js`; helper modules primarily own registration/DOM plumbing. Do not move gameplay math or weapon behavior merely for decomposition.
+
+## Next development recommendation after v302
+
+The low-risk input/UI/reset cleanup is now substantially complete. Do **not** keep extracting tiny DOM calls merely to increase the module count.
+
+Recommended next step:
+1. Fetch current `main` and re-read both handoff files.
+2. Preserve v302 as the recovery checkpoint.
+3. Inspect for the next genuinely isolated, behavior-neutral subsystem.
+4. A plausible next candidate is a small **pure wave/difficulty helper module** containing only stateless calculations such as `diff(w)`, `isBossWave(w)`, `bossTier(w)`, and `bossScaleFactor(w)`.
+5. If taking that route, transplant those functions exactly and do not change constants, formulas, call order, wave counts, HP, speed, damage, attack timing, strafe, or surge values.
+6. Do **not** include `nextBossName()`, `ensureBossWaveName()`, boss name history, `bossPressureSpeed()`, `bossWaveSpec()`, boss attacks, or boss spawning in the first step; those are stateful/sensitive and should stay in `game.js`.
+7. Make one atomic commit, verify exact diff and locked values, wait for GitHub Pages success, give a cache-busted test URL, and wait for user approval before continuing.
+
+Sensitive/locked areas:
+- inline audio
+- all reload animations
+- M17/M4/MP5 ADS, hit alignment, firing rays, transforms, and recoil
+- zombie AI/pathing/spawn reachability
+- boss movement/attacks/chest hitbox
+- store low-power timing and game-time freeze
+- frame loop/core timing
+- v289 pause behavior
+- start screen/startup/audio/death/restart behavior
 
 ## Critical locked behavior
 
