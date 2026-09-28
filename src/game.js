@@ -7,6 +7,7 @@ import {createPerformanceGuard} from "./performance-hud.js?v=262";
 import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons} from "./ui-helpers.js?v=276";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
+import {clearKeyState} from "./input-utils.js?v=277";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -3240,7 +3241,7 @@ function detonateNuke(){
  },850)
 }
 
-function clearKeys(){for(let k in keys)keys[k]=false}
+function clearKeys(){clearKeyState(keys)}
 function setGamePaused(next){
  if(next){
    if(paused||!running||dying||between)return;
