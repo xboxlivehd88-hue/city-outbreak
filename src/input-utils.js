@@ -36,3 +36,11 @@ export function setupPointerLockChange(handler,{
  if(typeof handler!=="function")return;
  documentTarget.addEventListener("pointerlockchange",handler);
 }
+
+
+export function setupKeyUp(handler,{
+ windowTarget=window
+}={}){
+ if(typeof handler!=="function")return;
+ windowTarget.addEventListener("keyup",handler);
+}
