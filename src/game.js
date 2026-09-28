@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
-import {USDLoader} from "https://cdn.jsdelivr.net/npm/three@0.183.0/examples/jsm/loaders/USDLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -689,13 +688,13 @@ function zombieRouteWaypoint(z){
 // collision anchors after their meshes are merged into the city batches.
 batchStaticCity();
 
-// v312: load the original Postwar USDZ directly; converted GLB is no longer used at runtime.
+// v313: load the full Blender-imported GLB generated from the original Postwar USDZ.
 // v303 remains the protected recovery point. Only replace old city visuals after this GLB loads.
 let postwarCityRoot=null;
-const POSTWAR_CITY_SCALE=17.5;
+const POSTWAR_CITY_SCALE=1.0;
 const POSTWAR_CITY_TARGET={x:0,z:30};
 const postwarStatus=document.createElement("div");
-postwarStatus.textContent="POSTWAR USDZ: LOADING";
+postwarStatus.textContent="POSTWAR BLENDER: LOADING";
 Object.assign(postwarStatus.style,{
  position:"fixed",right:"12px",bottom:"12px",zIndex:"99999",
  padding:"8px 10px",background:"rgba(0,0,0,.82)",color:"#fff",
@@ -704,7 +703,7 @@ Object.assign(postwarStatus.style,{
 });
 document.body.append(postwarStatus);
 
-// v312 test isolation: remove the approved procedural city before loading the original Postwar USDZ.
+// v313 test isolation: remove the approved procedural city before loading the Blender-imported Postwar scene.
 // v303 remains the rollback point, so this test can fail visibly without showing the old map.
 const postwarRemovedOldCityBatches=[];
 scene.traverse(o=>{if(o.name==="CityBatch")postwarRemovedOldCityBatches.push(o)});
@@ -718,7 +717,7 @@ ZNAV_BLOCK_CACHE.clear();
 document.documentElement.dataset.postwarOldCityRemoved=String(postwarRemovedOldCityBatches.length);
 
 function installPostwarCity(city){
- city.name="PostwarCityUSDZ";
+ city.name="PostwarCityBlenderUSD";
  city.scale.setScalar(POSTWAR_CITY_SCALE);
  city.position.set(0,0,0);
  city.updateMatrixWorld(true);
@@ -729,7 +728,9 @@ function installPostwarCity(city){
   if(!o.isMesh||!o.geometry)return;
   const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
   const area=s.x*s.z,lname=String(o.name||"").toLowerCase();
-  const roadNamed=lname.includes("route")||lname.includes("road");
+  const mats=Array.isArray(o.material)?o.material:[o.material];
+  const materialRoad=mats.some(m=>{const n=String(m&&m.name||"").toLowerCase();return n.includes("route")||n.includes("road")});
+  const roadNamed=lname.includes("route")||lname.includes("road")||materialRoad;
   const flat=s.y<Math.max(.5,Math.min(s.x,s.z)*.12);
   const score=(roadNamed?1e9:0)+(flat?area:-1);
   if(score>bestRoadScore){bestRoadScore=score;roadMesh=o}
@@ -759,7 +760,7 @@ function installPostwarCity(city){
  postwarCityRoot=city;
 
  document.documentElement.dataset.postwarCityLoaded="1";
- console.log("CITY OUTBREAK: original Postwar USDZ loaded",{
+ console.log("CITY OUTBREAK: Blender-imported Postwar scene loaded",{
   scale:POSTWAR_CITY_SCALE,
   target:POSTWAR_CITY_TARGET,
   roadBounds,
@@ -767,26 +768,29 @@ function installPostwarCity(city){
  });
  const worldBounds=new THREE.Box3().setFromObject(city),worldSize=new THREE.Vector3();
  worldBounds.getSize(worldSize);
- postwarStatus.textContent="POSTWAR USDZ: LOADED "+worldSize.x.toFixed(0)+" × "+worldSize.z.toFixed(0);
+ let postwarMeshCount=0;city.traverse(o=>{if(o.isMesh)postwarMeshCount++});
+ if(postwarMeshCount<70)throw new Error("Blender Postwar scene loaded only "+postwarMeshCount+" meshes; expected about 79");
+ document.documentElement.dataset.postwarMeshCount=String(postwarMeshCount);
+ postwarStatus.textContent="POSTWAR BLENDER: LOADED "+postwarMeshCount+" MESHES "+worldSize.x.toFixed(0)+" × "+worldSize.z.toFixed(0);
  postwarStatus.style.background="rgba(25,95,40,.90)";
  setTimeout(()=>{if(postwarStatus.parentNode)postwarStatus.remove()},15000);
 }
 
 (async()=>{
  try{
-  const response=await fetch("./assets/Postwar_City_-_Exterior_Scene.usdz?v=312",{cache:"no-store"});
-  if(!response.ok)throw new Error("HTTP "+response.status+" while fetching Postwar USDZ");
+  const response=await fetch("./assets/postwar_city_usdz_blender.glb?v=313",{cache:"no-store"});
+  if(!response.ok)throw new Error("HTTP "+response.status+" while fetching Blender Postwar GLB");
   const bytes=await response.arrayBuffer();
-  if(bytes.byteLength<1000000)throw new Error("Postwar USDZ response was unexpectedly small ("+bytes.byteLength+" bytes)");
-  const city=new USDLoader().parse(bytes);
-  if(!city||!city.isObject3D)throw new Error("USD loader did not return a scene");
-  installPostwarCity(city);
+  if(bytes.byteLength<1000000)throw new Error("Blender Postwar GLB response was unexpectedly small ("+bytes.byteLength+" bytes)");
+  const gltf=await new Promise((resolve,reject)=>new GLTFLoader().parse(bytes,"",resolve,reject));
+  if(!gltf||!gltf.scene)throw new Error("GLTF loader did not return the Postwar scene");
+  installPostwarCity(gltf.scene);
  }catch(err){
   const detail=String(err&&err.message||err);
   document.documentElement.dataset.postwarCityLoadError=detail;
-  postwarStatus.textContent="POSTWAR USDZ ERROR: "+detail;
+  postwarStatus.textContent="POSTWAR BLENDER ERROR: "+detail;
   postwarStatus.style.background="rgba(125,25,25,.94)";
-  console.warn("Postwar USDZ load failed; v303 remains the rollback point",err);
+  console.warn("Blender-imported Postwar GLB load failed; v303 remains the rollback point",err);
  }
 })();
 
