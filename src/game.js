@@ -70,6 +70,9 @@ function taperedPrism(topW,bottomW,h,topD,bottomD,m,x,y,z,p=scene){
 // in-browser, so the city keeps working as a single self-contained game build.
 
 const buildingColliders=[],facadeMaterialCache=new Map();
+const USE_EXTERNAL_CITY=true;
+let externalCityBounds=null,streetCityRoot=null;
+const legacyCityBaseline=new Set(scene.children);
 function facadeMaterial(base,variant=0){
  const style=variant%8,cacheKey=base+"|"+style;
  if(facadeMaterialCache.has(cacheKey))return facadeMaterialCache.get(cacheKey);
@@ -257,7 +260,11 @@ function addBuilding(w,h,d,x,z,base,variant){
  return q
 }
 
-function insideBuilding(x,z,r=.45){for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}return false}
+function insideBuilding(x,z,r=.45){
+ if(externalCityBounds&&(x<externalCityBounds.minX+r||x>externalCityBounds.maxX-r||z<externalCityBounds.minZ+r||z>externalCityBounds.maxZ-r))return true;
+ for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}
+ return false
+}
 function slideBuilding(oldx,oldz,newx,newz,r=.45){
  if(!insideBuilding(newx,newz,r))return{x:newx,z:newz};
  if(!insideBuilding(newx,oldz,r))return{x:newx,z:oldz};
@@ -278,13 +285,6 @@ function pushOutsideBuilding(x,z,r=.45){
 // Ground plane + cleaner city street / sidewalk treatment.
 let ground=new THREE.Mesh(new THREE.PlaneGeometry(280,300),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
 const asphaltAvenue=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), asphaltCross=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
-new THREE.TextureLoader().load("assets/textures/roads/road_albedo.jpg.jpg",tx=>{
- tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
- const avenueTex=tx.clone();avenueTex.needsUpdate=true;avenueTex.repeat.set(3,30);
- const crossTex=tx.clone();crossTex.needsUpdate=true;crossTex.repeat.set(28,3);
- asphaltAvenue.map=avenueTex;asphaltAvenue.needsUpdate=true;
- asphaltCross.map=crossTex;asphaltCross.needsUpdate=true;
-});
 box(24,.10,244,asphaltAvenue,0,.05,30);           // avenue
 box(224,.10,24,asphaltCross,0,.06,30);           // cross street
 
@@ -731,7 +731,102 @@ function zombieRouteWaypoint(z){
 // Batch the cars together with the static city so the improved vehicle detail
 // does not bring back the old draw-call problem. parkedCars groups stay as cheap
 // collision anchors after their meshes are merged into the city batches.
-batchStaticCity();
+if(!USE_EXTERNAL_CITY)batchStaticCity();
+
+function removeLegacyCityRuntime(){
+ const remove=[];
+ for(const o of scene.children)if(!legacyCityBaseline.has(o))remove.push(o);
+ for(const o of remove){
+  if(o.parent)o.parent.remove(o);
+  if(o.geometry){try{o.geometry.dispose()}catch(_){}}
+ }
+ buildingColliders.length=0;
+ parkedCars.length=0;
+ ZNAV_BLOCK_CACHE.clear();
+ document.documentElement.dataset.legacyCityRemoved=String(remove.length);
+}
+if(USE_EXTERNAL_CITY)removeLegacyCityRuntime();
+
+const streetCityStatus=document.createElement("div");
+streetCityStatus.textContent="STREET CITY: LOADING";
+Object.assign(streetCityStatus.style,{
+ position:"fixed",left:"50%",top:"12px",transform:"translateX(-50%)",zIndex:"99999",
+ padding:"7px 10px",background:"rgba(0,0,0,.82)",color:"#fff",
+ font:"700 12px/1.2 system-ui,sans-serif",border:"1px solid rgba(255,255,255,.30)",
+ borderRadius:"5px",pointerEvents:"none"
+});
+document.body.append(streetCityStatus);
+
+new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=315",gltf=>{
+ const city=gltf.scene;
+ city.name="StreetCity7";
+ city.scale.setScalar(1);
+ city.position.set(0,0,0);
+ city.updateMatrixWorld(true);
+
+ let groundMesh=null,bestGroundArea=0;
+ city.traverse(o=>{
+  if(!o.isMesh||!o.geometry)return;
+  o.userData.externalCityAsset=true;
+  o.castShadow=false;o.receiveShadow=true;
+  const mats=Array.isArray(o.material)?o.material:[o.material];
+  for(const mat of mats)if(mat){
+   for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
+    const tx=mat[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
+   }
+  }
+  const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
+  const area=s.x*s.z;
+  if(s.y<.8&&area>bestGroundArea){bestGroundArea=area;groundMesh=o}
+ });
+ const rawBounds=new THREE.Box3().setFromObject(city),rawCenter=new THREE.Vector3();
+ rawBounds.getCenter(rawCenter);
+ const gb=groundMesh?new THREE.Box3().setFromObject(groundMesh):rawBounds;
+ city.position.set(-rawCenter.x,-gb.max.y,-15-rawCenter.z);
+ city.updateMatrixWorld(true);
+ scene.add(city);
+ streetCityRoot=city;
+
+ const wb=new THREE.Box3().setFromObject(city),ws=new THREE.Vector3();wb.getSize(ws);
+ externalCityBounds={
+  minX:wb.min.x+.35,maxX:wb.max.x-.35,
+  minZ:wb.min.z+.35,maxZ:wb.max.z-.35
+ };
+
+ buildingColliders.length=0;
+ let colliderCount=0;
+ city.traverse(o=>{
+  if(!o.isMesh||!o.geometry||!o.visible)return;
+  const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3(),c=new THREE.Vector3();
+  b.getSize(s);b.getCenter(c);
+  const touchesPlayerHeight=b.min.y<2.15&&b.max.y>.20;
+  const solidEnough=s.y>1.15&&s.x>.34&&s.z>.34;
+  if(touchesPlayerHeight&&solidEnough){
+   buildingColliders.push({x:c.x,z:c.z,hx:s.x*.5,hz:s.z*.5});
+   colliderCount++;
+  }
+ });
+ ZNAV_BLOCK_CACHE.clear();
+
+ document.documentElement.dataset.streetCityLoaded="1";
+ document.documentElement.dataset.streetCityColliders=String(colliderCount);
+ document.documentElement.dataset.streetCitySize=ws.x.toFixed(1)+"x"+ws.z.toFixed(1);
+ streetCityStatus.textContent="STREET CITY: LOADED "+ws.x.toFixed(0)+" × "+ws.z.toFixed(0)+" / "+colliderCount+" COLLIDERS";
+ streetCityStatus.style.background="rgba(25,95,40,.90)";
+ setTimeout(()=>{if(streetCityStatus.parentNode)streetCityStatus.remove()},12000);
+ console.log("CITY OUTBREAK: Street City replacement loaded",{
+  size:{x:ws.x,y:ws.y,z:ws.z},
+  bounds:externalCityBounds,
+  colliders:colliderCount,
+  groundMesh:groundMesh?.name||null
+ });
+},undefined,err=>{
+ const detail=String(err&&err.message||err);
+ document.documentElement.dataset.streetCityLoadError=detail;
+ streetCityStatus.textContent="STREET CITY ERROR: "+detail;
+ streetCityStatus.style.background="rgba(125,25,25,.94)";
+ console.error("Street City GLB failed to load",err);
+});
 
 function batchLoadedStiCars(){
  const buckets=new Map(),remove=[];
