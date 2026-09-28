@@ -6,6 +6,7 @@ import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
 import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats} from "./ui-helpers.js?v=272";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
+import {formatRunTime} from "./format-utils.js?v=273";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -2809,10 +2810,6 @@ function killZ(z,hs,p,ragForce=1,ragOrigin=null){
  // Dead bodies keep the silhouette but stop expensive shadow work immediately.
  z.g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}}); z.g.rotation.order="YXZ";
  ui()
-}
-function formatRunTime(ms){
- const total=Math.max(0,Math.floor(ms/1000)),h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60;
- return h>0?String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0"):String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
 }
 function showDeathScreen(){
  running=false;dying=true;paused=false;pauseOverlay.classList.remove("show");pauseBtn.classList.remove("show");stopAuto();clearKeys();setAim(false);
