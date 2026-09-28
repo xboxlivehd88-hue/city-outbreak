@@ -170,3 +170,10 @@ export function setupRuntimeErrorListener(handler,{
  if(typeof handler!=="function")return;
  windowTarget.addEventListener("error",handler);
 }
+
+
+export function flashDamageOverlay(element,duration=140){
+ if(!element)return;
+ element.classList.add("show");
+ setTimeout(()=>element.classList.remove("show"),duration);
+}

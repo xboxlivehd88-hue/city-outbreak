@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener} from "./ui-helpers.js?v=286";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay} from "./ui-helpers.js?v=287";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
@@ -1505,7 +1505,7 @@ function bossDamagePlayer(z,amount,label,knock=0){
    const ox=px,oz=pz;let np=slideBuilding(ox,oz,px+dx/d*knock,pz+dz/d*knock,.62);px=np.x;pz=np.z;
  }
  noise(.18,.40,360);tone(58,.20,"sawtooth",.18);
- damage.classList.add("show");setTimeout(()=>damage.classList.remove("show"),180);
+ flashDamageOverlay(damage,180);
  show(label+"  -"+Math.round(amount)+" HEALTH");ui();
  if(health<=0){showDeathScreen()}
 }
@@ -2825,7 +2825,7 @@ function showDeathScreen(){
  if(document.pointerLockElement===cv)document.exitPointerLock?.();
  document.body.style.cursor="default";
 }
-function bite(z){if(z.cool>0)return;z.cool=z.attack;z.attackAnim=.62;z.attackSide=Math.random()>.5?1:-1;rigTransient(z,"Attack",.48);let armPenalty=((!z.armL.parent?1:0)+(!z.armR.parent?1:0))*.2,dealt=z.damage*(1-armPenalty);health=Math.max(0,health-dealt);resetHealthRegenDelay();biteS();damage.classList.add("show");setTimeout(()=>damage.classList.remove("show"),140);ui();if(health<=0){showDeathScreen()}else{const shownDamage=Math.round(dealt*10)/10;show("-"+shownDamage+" HEALTH")}}
+function bite(z){if(z.cool>0)return;z.cool=z.attack;z.attackAnim=.62;z.attackSide=Math.random()>.5?1:-1;rigTransient(z,"Attack",.48);let armPenalty=((!z.armL.parent?1:0)+(!z.armR.parent?1:0))*.2,dealt=z.damage*(1-armPenalty);health=Math.max(0,health-dealt);resetHealthRegenDelay();biteS();flashDamageOverlay(damage,140);ui();if(health<=0){showDeathScreen()}else{const shownDamage=Math.round(dealt*10)/10;show("-"+shownDamage+" HEALTH")}}
 function reload(w=weapon){
  const a=ammoState[w],cap=maxMag(w),infiniteReserve=w==="pistol";
  if(paused||reloading||!a||a.mag===cap||(!infiniteReserve&&a.reserve<=0)||dying)return false;
