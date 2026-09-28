@@ -739,6 +739,27 @@ batchStaticCity();
 let apocalypticCityRoot=null;
 const APOCALYPTIC_CITY_SCALE=.080;
 const APOCALYPTIC_CITY_TARGET={x:0,z:30};
+
+// Keep the city/buildings at their approved v306 scale, but shrink only the GLB's
+// obvious oversized decorative prop groups around their own geometry centers.
+function scaleImportedCityProp(mesh,factor){
+ if(!mesh||!mesh.geometry||factor===1)return;
+ const geo=mesh.geometry.clone();
+ geo.computeBoundingBox();
+ if(!geo.boundingBox)return;
+ const c=new THREE.Vector3();geo.boundingBox.getCenter(c);
+ geo.translate(-c.x,-c.y,-c.z);
+ geo.scale(factor,factor,factor);
+ geo.translate(c.x,c.y,c.z);
+ geo.computeBoundingBox();geo.computeBoundingSphere();
+ mesh.geometry=geo;
+}
+const APOCALYPTIC_PROP_SCALE={
+ Object_8:.45,   // oversized wrecked vehicle group
+ Object_23:.55,  // disconnected/floating architectural prop cluster
+ Object_2:.55,   // oversized foliage/billboard decoration
+ Object_12:.50   // oversized billboard-style vegetation/background decoration
+};
 new GLTFLoader().load("assets/apocalyptic_city.glb",gltf=>{
  const city=gltf.scene;
  city.name="ApocalypticCity";
@@ -752,6 +773,8 @@ new GLTFLoader().load("assets/apocalyptic_city.glb",gltf=>{
  city.traverse(o=>{
   o.userData.externalCityAsset=true;
   if(o.isMesh){
+   const propScale=APOCALYPTIC_PROP_SCALE[o.name];
+   if(propScale)scaleImportedCityProp(o,propScale);
    o.castShadow=false;o.receiveShadow=true;
    const mats=Array.isArray(o.material)?o.material:[o.material];
    for(const mat of mats)if(mat)for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
