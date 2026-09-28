@@ -1,0 +1,31 @@
+name: Inspect Trailer Park GLB
+
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-trailer-park.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect GLB package
+        run: |
+          python3 - <<'PY'
+          import json, struct, os
+          p='assets/trailer_park.glb'
+          with open(p,'rb') as f:
+              header=f.read(12)
+              magic,version,total=struct.unpack('<4sII',header)
+              clen,ctype=struct.unpack('<II',f.read(8))
+              data=f.read(clen).decode('utf-8').rstrip('\x00 ')
+          g=json.loads(data)
+          print('MAGIC',magic,'VERSION',version,'TOTAL',total)
+          print('NODES',len(g.get('nodes',[])),'MESHES',len(g.get('meshes',[])),'MATERIALS',len(g.get('materials',[])),'IMAGES',len(g.get('images',[])),'TEXTURES',len(g.get('textures',[])))
+          print('IMAGE_URIS',json.dumps([x.get('uri') for x in g.get('images',[]) if x.get('uri')],indent=2))
+          print('EMBEDDED_IMAGES',sum(1 for x in g.get('images',[]) if 'bufferView' in x))
+          print('MESH_NAMES',json.dumps([x.get('name') for x in g.get('meshes',[])],indent=2))
+          print('NODE_NAMES',json.dumps([x.get('name') for x in g.get('nodes',[])],indent=2))
+          print('MATERIAL_NAMES',json.dumps([x.get('name') for x in g.get('materials',[])],indent=2))
+          PY
