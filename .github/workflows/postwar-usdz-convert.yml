@@ -103,8 +103,25 @@ jobs:
               "objects": object_rows,
           }
 
+          material_rows = []
+          for mat in materials:
+              row = {"name": mat.name, "images": []}
+              if mat.use_nodes and mat.node_tree:
+                  for node in mat.node_tree.nodes:
+                      if node.type == 'TEX_IMAGE' and getattr(node, "image", None):
+                          img = node.image
+                          row["images"].append({
+                              "name": img.name,
+                              "filepath": bpy.path.abspath(img.filepath),
+                          })
+              material_rows.append(row)
+          report["material_rows"] = material_rows
+
           with open(report_path, "w") as f:
               json.dump(report, f, indent=2)
+
+          print("POSTWAR_MESH_ROWS", json.dumps(object_rows, indent=2))
+          print("POSTWAR_MATERIAL_ROWS", json.dumps(material_rows, indent=2))
 
           bpy.ops.export_scene.gltf(
               filepath=out,
@@ -132,5 +149,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add assets/postwar_city_usdz_blender.glb
-          git commit -m "Generate Postwar City GLB from original USDZ [skip ci]"
-          git push
+          if ! git diff --cached --quiet; then
+            git commit -m "Generate Postwar City GLB from original USDZ [skip ci]"
+            git push
+          else
+            echo "Generated GLB is unchanged"
+          fi
