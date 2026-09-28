@@ -71,6 +71,8 @@ function taperedPrism(topW,bottomW,h,topD,bottomD,m,x,y,z,p=scene){
 
 const buildingColliders=[],facadeMaterialCache=new Map();
 const USE_EXTERNAL_CITY=true;
+const STREET_CITY_SCALE=.90;
+const STREET_CITY_SPAWN={x:0,z:-15};
 let externalCityBounds=null,streetCityRoot=null;
 const legacyCityBaseline=new Set(scene.children);
 function facadeMaterial(base,variant=0){
@@ -757,10 +759,10 @@ Object.assign(streetCityStatus.style,{
 });
 document.body.append(streetCityStatus);
 
-new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=316",gltf=>{
+new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=317",gltf=>{
  const city=gltf.scene;
  city.name="StreetCity7";
- city.scale.setScalar(1);
+ city.scale.setScalar(STREET_CITY_SCALE);
  city.position.set(0,0,0);
  city.updateMatrixWorld(true);
 
@@ -782,7 +784,7 @@ new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=316",gltf=>{
  const rawBounds=new THREE.Box3().setFromObject(city),rawCenter=new THREE.Vector3();
  rawBounds.getCenter(rawCenter);
  const gb=groundMesh?new THREE.Box3().setFromObject(groundMesh):rawBounds;
- city.position.set(-rawCenter.x,-gb.max.y,-15-rawCenter.z);
+ city.position.set(STREET_CITY_SPAWN.x-rawCenter.x,-gb.max.y,STREET_CITY_SPAWN.z-rawCenter.z);
  city.updateMatrixWorld(true);
  scene.add(city);
  streetCityRoot=city;
@@ -803,7 +805,7 @@ new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=316",gltf=>{
  document.documentElement.dataset.streetCityLoaded="1";
  document.documentElement.dataset.streetCityColliders=String(colliderCount);
  document.documentElement.dataset.streetCitySize=ws.x.toFixed(1)+"x"+ws.z.toFixed(1);
- streetCityStatus.textContent="STREET CITY: LOADED "+ws.x.toFixed(0)+" × "+ws.z.toFixed(0)+" / MOVEMENT TEST";
+ streetCityStatus.textContent="STREET CITY: LOADED / SCALE "+STREET_CITY_SCALE.toFixed(2)+" / SPAWN LOCKED";
  streetCityStatus.style.background="rgba(25,95,40,.90)";
  setTimeout(()=>{if(streetCityStatus.parentNode)streetCityStatus.remove()},12000);
  console.log("CITY OUTBREAK: Street City replacement loaded",{
