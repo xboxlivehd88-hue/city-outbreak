@@ -55,7 +55,6 @@ jobs:
               import_shapes=True,
               import_skeletons=True,
               import_blendshapes=True,
-              import_instance_proxies=True,
               import_visible_only=False,
               support_scene_instancing=True,
           )
