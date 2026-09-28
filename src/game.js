@@ -688,13 +688,13 @@ function zombieRouteWaypoint(z){
 // collision anchors after their meshes are merged into the city batches.
 batchStaticCity();
 
-// v313: load the full Blender-imported GLB generated from the original Postwar USDZ.
+// v314: hide the imported gray route floor and explicitly repair original USDZ texture bindings.
 // v303 remains the protected recovery point. Only replace old city visuals after this GLB loads.
 let postwarCityRoot=null;
 const POSTWAR_CITY_SCALE=1.0;
 const POSTWAR_CITY_TARGET={x:0,z:30};
 const postwarStatus=document.createElement("div");
-postwarStatus.textContent="POSTWAR BLENDER: LOADING";
+postwarStatus.textContent="POSTWAR REPAIR: LOADING";
 Object.assign(postwarStatus.style,{
  position:"fixed",right:"12px",bottom:"12px",zIndex:"99999",
  padding:"8px 10px",background:"rgba(0,0,0,.82)",color:"#fff",
@@ -715,6 +715,76 @@ ground.visible=false;
 buildingColliders.length=0;
 ZNAV_BLOCK_CACHE.clear();
 document.documentElement.dataset.postwarOldCityRemoved=String(postwarRemovedOldCityBatches.length);
+
+const POSTWAR_TEXTURE_REPAIRS={
+ wall:{file:"wall_diffuse.jpg"},
+ wall_002:{file:"wall.002_diffuse.jpg"},
+ wall_buidings_001:{file:"wall.buidings.001_diffuse.jpg"},
+ gravas:{file:"gravas_diffuse.jpg"},
+ grass:{file:"grass_diffuse_cutoff199.png",alphaTest:199/255,doubleSide:true},
+ TexturesCom_BuildingsDerelict0001_M:{file:"TexturesCom_BuildingsTallHouse0057_S_diffuse.jpg"},
+ TexturesCom_HighRiseTowers0146_S:{file:"TexturesCom_HighRiseTowers0146_S_diffuse.jpg"},
+ TexturesCom_MetalFences0005_S:{file:"TexturesCom_MetalFences0005_S_diffuse_cutoff84.png",alphaTest:84/255,doubleSide:true},
+ TexturesCom_NaturePlants0005_1_alphamasked_S:{file:"TexturesCom_NaturePlants0005_1_alphamasked_S_diffuse.png",alphaTest:.5,doubleSide:true},
+ TexturesCom_NaturePlants0038_1_alphamasked_S:{file:"TexturesCom_NaturePlants0038_1_alphamasked_S_diffuse_scale4_cutoff252.png",alphaTest:252/255,doubleSide:true},
+ TexturesCom_NaturePlants0052_1_alphamasked_S:{file:"TexturesCom_NaturePlants0052_1_alphamasked_S_diffuse.png",alphaTest:.5,doubleSide:true},
+ TexturesCom_RoadsBarriers0011_4_S_004:{file:"TexturesCom_RoadsBarriers0011_4_S_diffuse.jpg"}
+};
+
+async function repairPostwarMaterials(city){
+ const byName=new Map();
+ city.traverse(o=>{
+  if(!o.isMesh||!o.material)return;
+  for(const mat of (Array.isArray(o.material)?o.material:[o.material])){
+   if(!mat)continue;
+   if(!byName.has(mat.name))byName.set(mat.name,new Set());
+   byName.get(mat.name).add(mat);
+   if(mat.map){
+    mat.map.colorSpace=THREE.SRGBColorSpace;
+    mat.map.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
+    mat.map.needsUpdate=true;
+   }
+  }
+ });
+ const loader=new THREE.TextureLoader(),cache=new Map();
+ const loadTexture=async file=>{
+  if(cache.has(file))return cache.get(file);
+  const tx=await loader.loadAsync("./assets/postwar_textures/"+file+"?v=314");
+  tx.colorSpace=THREE.SRGBColorSpace;
+  tx.flipY=false;
+  tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
+  tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
+  tx.needsUpdate=true;
+  cache.set(file,tx);
+  return tx;
+ };
+ let repaired=0;
+ for(const [name,cfg] of Object.entries(POSTWAR_TEXTURE_REPAIRS)){
+  const mats=byName.get(name);
+  if(!mats||!mats.size)continue;
+  try{
+   const tx=await loadTexture(cfg.file);
+   for(const mat of mats){
+    mat.map=tx;
+    if(mat.color)mat.color.set(0xffffff);
+    mat.roughness=Math.max(.72,Number.isFinite(mat.roughness)?mat.roughness:.9);
+    if(Number.isFinite(mat.metalness))mat.metalness=Math.min(.15,mat.metalness);
+    if(cfg.alphaTest){
+     mat.alphaTest=cfg.alphaTest;
+     mat.transparent=false;
+     mat.depthWrite=true;
+    }
+    if(cfg.doubleSide)mat.side=THREE.DoubleSide;
+    mat.needsUpdate=true;
+    repaired++;
+   }
+  }catch(err){
+   console.warn("Postwar texture repair failed",name,cfg.file,err);
+  }
+ }
+ document.documentElement.dataset.postwarMaterialRepairs=String(repaired);
+ return repaired;
+}
 
 function installPostwarCity(city){
  city.name="PostwarCityBlenderUSD";
@@ -737,7 +807,8 @@ function installPostwarCity(city){
  });
  if(!roadMesh)throw new Error("Could not identify Postwar City road/ground mesh");
 
- const roadBounds=new THREE.Box3().setFromObject(roadMesh),roadCenter=new THREE.Vector3();
+ const confirmedRoute=city.getObjectByName("_2526024_001_0")||roadMesh;
+ const roadBounds=new THREE.Box3().setFromObject(confirmedRoute),roadCenter=new THREE.Vector3();
  roadBounds.getCenter(roadCenter);
  city.position.set(
   POSTWAR_CITY_TARGET.x-roadCenter.x,
@@ -745,6 +816,10 @@ function installPostwarCity(city){
   POSTWAR_CITY_TARGET.z-roadCenter.z
  );
  city.updateMatrixWorld(true);
+
+ // v314: remove only the giant gray route/floor mesh confirmed from the USD source.
+ confirmedRoute.visible=false;
+ document.documentElement.dataset.postwarHiddenFloor=confirmedRoute.name||"route";
 
  city.traverse(o=>{
   o.userData.externalCityAsset=true;
@@ -771,24 +846,25 @@ function installPostwarCity(city){
  let postwarMeshCount=0;city.traverse(o=>{if(o.isMesh)postwarMeshCount++});
  if(postwarMeshCount<70)throw new Error("Blender Postwar scene loaded only "+postwarMeshCount+" meshes; expected about 79");
  document.documentElement.dataset.postwarMeshCount=String(postwarMeshCount);
- postwarStatus.textContent="POSTWAR BLENDER: LOADED "+postwarMeshCount+" MESHES "+worldSize.x.toFixed(0)+" × "+worldSize.z.toFixed(0);
+ postwarStatus.textContent="POSTWAR REPAIR: LOADED "+postwarMeshCount+" MESHES / "+(document.documentElement.dataset.postwarMaterialRepairs||"0")+" MATERIALS";
  postwarStatus.style.background="rgba(25,95,40,.90)";
  setTimeout(()=>{if(postwarStatus.parentNode)postwarStatus.remove()},15000);
 }
 
 (async()=>{
  try{
-  const response=await fetch("./assets/postwar_city_usdz_blender.glb?v=313",{cache:"no-store"});
+  const response=await fetch("./assets/postwar_city_usdz_blender.glb?v=314",{cache:"no-store"});
   if(!response.ok)throw new Error("HTTP "+response.status+" while fetching Blender Postwar GLB");
   const bytes=await response.arrayBuffer();
   if(bytes.byteLength<1000000)throw new Error("Blender Postwar GLB response was unexpectedly small ("+bytes.byteLength+" bytes)");
   const gltf=await new Promise((resolve,reject)=>new GLTFLoader().parse(bytes,"",resolve,reject));
   if(!gltf||!gltf.scene)throw new Error("GLTF loader did not return the Postwar scene");
+  await repairPostwarMaterials(gltf.scene);
   installPostwarCity(gltf.scene);
  }catch(err){
   const detail=String(err&&err.message||err);
   document.documentElement.dataset.postwarCityLoadError=detail;
-  postwarStatus.textContent="POSTWAR BLENDER ERROR: "+detail;
+  postwarStatus.textContent="POSTWAR REPAIR ERROR: "+detail;
   postwarStatus.style.background="rgba(125,25,25,.94)";
   console.warn("Blender-imported Postwar GLB load failed; v303 remains the rollback point",err);
  }
