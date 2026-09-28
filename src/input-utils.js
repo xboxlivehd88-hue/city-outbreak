@@ -44,3 +44,11 @@ export function setupKeyUp(handler,{
  if(typeof handler!=="function")return;
  windowTarget.addEventListener("keyup",handler);
 }
+
+
+export function setupKeyDown(handler,{
+ windowTarget=window
+}={}){
+ if(typeof handler!=="function")return;
+ windowTarget.addEventListener("keydown",handler);
+}
