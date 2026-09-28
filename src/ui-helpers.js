@@ -183,3 +183,15 @@ export function renderShopNote(element,text){
  if(!element)return;
  element.textContent=text;
 }
+
+
+export function renderPauseUi({pauseOverlay,pauseButton,paused,showPauseButton}){
+ if(pauseOverlay){
+  if(paused)pauseOverlay.classList.add("show");
+  else pauseOverlay.classList.remove("show");
+ }
+ if(pauseButton){
+  if(showPauseButton)pauseButton.classList.add("show");
+  else pauseButton.classList.remove("show");
+ }
+}

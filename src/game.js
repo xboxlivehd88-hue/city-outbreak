@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,renderShopNote} from "./ui-helpers.js?v=288";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,renderShopNote,renderPauseUi} from "./ui-helpers.js?v=289";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
@@ -3247,7 +3247,7 @@ function setGamePaused(next){
    if(paused||!running||dying||between)return;
    paused=true;pauseStartedAt=performance.now();
    clearKeys();stopAuto();setAim(false);
-   pauseOverlay.classList.add("show");pauseBtn.classList.remove("show");
+   renderPauseUi({pauseOverlay,pauseButton:pauseBtn,paused:true,showPauseButton:false});
    document.body.style.cursor="default";
    if(document.pointerLockElement===cv)document.exitPointerLock?.();
    if(ac&&ac.state==="running")ac.suspend().catch(()=>{});
@@ -3256,8 +3256,7 @@ function setGamePaused(next){
  if(!paused)return;
  const now=performance.now(),pausedFor=Math.max(0,now-pauseStartedAt);
  pausedAccumulatedMs+=pausedFor;pauseStartedAt=0;paused=false;last=now;
- pauseOverlay.classList.remove("show");
- if(running&&!dying&&!between)pauseBtn.classList.add("show");
+ renderPauseUi({pauseOverlay,pauseButton:pauseBtn,paused:false,showPauseButton:running&&!dying&&!between});
  document.body.style.cursor="";
  if(ac&&audioOn)ac.resume().catch(()=>{});
  cv.focus();
