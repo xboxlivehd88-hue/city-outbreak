@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement} from "./ui-helpers.js?v=274";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton} from "./ui-helpers.js?v=275";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 let zombieRigAsset=null,zombieRigError=null;
@@ -2997,7 +2997,7 @@ function readyNextWave(){
  spawnWave();ui();cv.focus();
  setTimeout(()=>hideAnnouncement(announce),750);
 }
-document.querySelector("#readyNext").addEventListener("click",readyNextWave);
+setupReadyNextButton(readyNextWave);
 
 const thrown=[];
 function launcherAmmoTotal(){const a=ammoState.grenadeLauncher;return a.mag+a.reserve}

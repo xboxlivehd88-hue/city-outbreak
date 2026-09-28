@@ -137,3 +137,10 @@ export function showAnnouncement({container,titleEl,subtitleEl,title,subtitle}){
 export function hideAnnouncement(container){
  container.classList.remove("show");
 }
+
+
+export function setupReadyNextButton(readyHandler,{
+ readyButton=document.querySelector("#readyNext")
+}={}){
+ if(readyButton)readyButton.addEventListener("click",readyHandler);
+}
