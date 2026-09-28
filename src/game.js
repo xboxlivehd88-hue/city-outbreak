@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {USDLoader} from "https://cdn.jsdelivr.net/npm/three@0.183.0/examples/jsm/loaders/USDLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -688,13 +689,13 @@ function zombieRouteWaypoint(z){
 // collision anchors after their meshes are merged into the city batches.
 batchStaticCity();
 
-// v308: first-stage Postwar City visual/scale test.
+// v312: load the original Postwar USDZ directly; converted GLB is no longer used at runtime.
 // v303 remains the protected recovery point. Only replace old city visuals after this GLB loads.
 let postwarCityRoot=null;
 const POSTWAR_CITY_SCALE=17.5;
 const POSTWAR_CITY_TARGET={x:0,z:30};
 const postwarStatus=document.createElement("div");
-postwarStatus.textContent="POSTWAR CITY: LOADING";
+postwarStatus.textContent="POSTWAR USDZ: LOADING";
 Object.assign(postwarStatus.style,{
  position:"fixed",right:"12px",bottom:"12px",zIndex:"99999",
  padding:"8px 10px",background:"rgba(0,0,0,.82)",color:"#fff",
@@ -703,7 +704,7 @@ Object.assign(postwarStatus.style,{
 });
 document.body.append(postwarStatus);
 
-// v310 test isolation: remove the approved procedural city before loading Postwar City.
+// v312 test isolation: remove the approved procedural city before loading the original Postwar USDZ.
 // v303 remains the rollback point, so this test can fail visibly without showing the old map.
 const postwarRemovedOldCityBatches=[];
 scene.traverse(o=>{if(o.name==="CityBatch")postwarRemovedOldCityBatches.push(o)});
@@ -716,26 +717,23 @@ buildingColliders.length=0;
 ZNAV_BLOCK_CACHE.clear();
 document.documentElement.dataset.postwarOldCityRemoved=String(postwarRemovedOldCityBatches.length);
 
-function installPostwarCity(gltf){
- const city=gltf.scene;
- city.name="PostwarCity";
+function installPostwarCity(city){
+ city.name="PostwarCityUSDZ";
  city.scale.setScalar(POSTWAR_CITY_SCALE);
  city.position.set(0,0,0);
  city.updateMatrixWorld(true);
 
- // Prefer the exported source road mesh. Fall back to the broadest thin horizontal mesh.
- let roadMesh=city.getObjectByName("42526024.001"),bestRoadArea=0;
- if(!roadMesh||!roadMesh.isMesh){
-  roadMesh=null;
-  city.traverse(o=>{
-   if(!o.isMesh||!o.geometry)return;
-   const mats=Array.isArray(o.material)?o.material:[o.material];
-   const routeNamed=mats.some(m=>m&&String(m.name||"").toLowerCase().includes("route"));
-   const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
-   const area=s.x*s.z;
-   if(routeNamed||(s.y<1&&area>bestRoadArea)){roadMesh=o;bestRoadArea=area}
-  });
- }
+ // USD prim names/materials can differ from the Blender export, so find the road robustly.
+ let roadMesh=null,bestRoadScore=-Infinity;
+ city.traverse(o=>{
+  if(!o.isMesh||!o.geometry)return;
+  const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
+  const area=s.x*s.z,lname=String(o.name||"").toLowerCase();
+  const roadNamed=lname.includes("route")||lname.includes("road");
+  const flat=s.y<Math.max(.5,Math.min(s.x,s.z)*.12);
+  const score=(roadNamed?1e9:0)+(flat?area:-1);
+  if(score>bestRoadScore){bestRoadScore=score;roadMesh=o}
+ });
  if(!roadMesh)throw new Error("Could not identify Postwar City road/ground mesh");
 
  const roadBounds=new THREE.Box3().setFromObject(roadMesh),roadCenter=new THREE.Vector3();
@@ -761,7 +759,7 @@ function installPostwarCity(gltf){
  postwarCityRoot=city;
 
  document.documentElement.dataset.postwarCityLoaded="1";
- console.log("CITY OUTBREAK: Postwar City visual test loaded",{
+ console.log("CITY OUTBREAK: original Postwar USDZ loaded",{
   scale:POSTWAR_CITY_SCALE,
   target:POSTWAR_CITY_TARGET,
   roadBounds,
@@ -769,27 +767,26 @@ function installPostwarCity(gltf){
  });
  const worldBounds=new THREE.Box3().setFromObject(city),worldSize=new THREE.Vector3();
  worldBounds.getSize(worldSize);
- postwarStatus.textContent="POSTWAR CITY: LOADED "+worldSize.x.toFixed(0)+" × "+worldSize.z.toFixed(0);
+ postwarStatus.textContent="POSTWAR USDZ: LOADED "+worldSize.x.toFixed(0)+" × "+worldSize.z.toFixed(0);
  postwarStatus.style.background="rgba(25,95,40,.90)";
  setTimeout(()=>{if(postwarStatus.parentNode)postwarStatus.remove()},15000);
 }
 
 (async()=>{
  try{
-  const response=await fetch("./assets/postwar_city_game_ready.glb?v=311",{cache:"no-store"});
-  if(!response.ok)throw new Error("HTTP "+response.status+" while fetching Postwar City");
+  const response=await fetch("./assets/Postwar_City_-_Exterior_Scene.usdz?v=312",{cache:"no-store"});
+  if(!response.ok)throw new Error("HTTP "+response.status+" while fetching Postwar USDZ");
   const bytes=await response.arrayBuffer();
-  if(bytes.byteLength<1000000)throw new Error("Postwar City response was unexpectedly small ("+bytes.byteLength+" bytes)");
-  const gltf=await new Promise((resolve,reject)=>{
-   new GLTFLoader().parse(bytes,"",resolve,reject);
-  });
-  installPostwarCity(gltf);
+  if(bytes.byteLength<1000000)throw new Error("Postwar USDZ response was unexpectedly small ("+bytes.byteLength+" bytes)");
+  const city=new USDLoader().parse(bytes);
+  if(!city||!city.isObject3D)throw new Error("USD loader did not return a scene");
+  installPostwarCity(city);
  }catch(err){
   const detail=String(err&&err.message||err);
   document.documentElement.dataset.postwarCityLoadError=detail;
-  postwarStatus.textContent="POSTWAR CITY ERROR: "+detail;
+  postwarStatus.textContent="POSTWAR USDZ ERROR: "+detail;
   postwarStatus.style.background="rgba(125,25,25,.94)";
-  console.warn("Postwar City GLB load failed; keeping approved v303 procedural city",err);
+  console.warn("Postwar USDZ load failed; v303 remains the rollback point",err);
  }
 })();
 
