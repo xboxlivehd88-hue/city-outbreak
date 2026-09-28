@@ -1,5 +1,5 @@
-// CITY OUTBREAK rendering utilities.
-// Keeps browser resize wiring separate from gameplay state.
+// CITY OUTBREAK browser rendering-lifecycle utilities.
+// Owns resize/context-loss wiring only; gameplay state remains in game.js.
 export function setupRendererResize({renderer,camera,target=window}){
  const resize=()=>{
   const width=target.innerWidth;

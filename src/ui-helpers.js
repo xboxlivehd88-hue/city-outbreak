@@ -1,5 +1,5 @@
-// CITY OUTBREAK DOM-only UI helpers.
-// Keeps transient message timing out of the main gameplay runtime.
+// CITY OUTBREAK DOM rendering and UI event-wiring helpers.
+// Owns presentation/plumbing only; gameplay decisions remain in game.js.
 const transientMessageTimers=new WeakMap();
 
 export function showTransientMessage(element,text,duration=1000){

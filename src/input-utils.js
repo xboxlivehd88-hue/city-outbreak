@@ -1,5 +1,5 @@
-// CITY OUTBREAK input-state utilities.
-// Pure helpers only: no DOM listeners or gameplay behavior in this module.
+// CITY OUTBREAK input-state and browser-event wiring utilities.
+// Owns input plumbing only; gameplay decisions remain in game.js.
 export function clearKeyState(keys){
  for(const key in keys)keys[key]=false;
 }

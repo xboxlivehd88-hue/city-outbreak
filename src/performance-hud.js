@@ -1,5 +1,5 @@
 // CITY OUTBREAK performance HUD module.
-// Extracted from the proven v260 runtime without changing gameplay behavior.
+// Measures and displays runtime performance without owning gameplay behavior.
 export function createPerformanceGuard({
  renderer,
  livingCount,
