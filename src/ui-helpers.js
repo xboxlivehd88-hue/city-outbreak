@@ -55,10 +55,14 @@ export function setupResetButtons(resetHandler,{
 
 export function setupPauseButtons(setPaused,{
  pauseButton=document.querySelector("#pauseBtn"),
- resumeButton=document.querySelector("#resumeGame")
+ resumeButton=document.querySelector("#resumeGame"),
+ prepareResume=null
 }={}){
  if(pauseButton)pauseButton.addEventListener("click",()=>setPaused(true));
- if(resumeButton)resumeButton.addEventListener("click",()=>setPaused(false));
+ if(resumeButton){
+  if(typeof prepareResume==="function")resumeButton.addEventListener("mousedown",prepareResume);
+  resumeButton.addEventListener("click",()=>setPaused(false));
+ }
 }
 
 
