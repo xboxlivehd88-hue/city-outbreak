@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud} from "./ui-helpers.js?v=269";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud} from "./ui-helpers.js?v=270";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 let zombieRigAsset=null,zombieRigError=null;
 try{
@@ -3334,10 +3334,18 @@ function resolveZombiePlayerContact(z,oldx,oldz){
 
 let sprintUiPct=-1,sprintUiColor="",sprintUiState="";
 function updateSprintUI(){
- const pct=Math.max(0,Math.min(100,sprintEnergy)),shown=Math.ceil(pct),color=pct>55?"#58b96a":pct>25?"#d5ad45":"#c64646",state=sprintLocked?"RECOVERING":pct>=99?"READY":shown+"%";
- if(shown!==sprintUiPct){sprintUiPct=shown;sprintFill.style.width=shown+"%"}
- if(color!==sprintUiColor){sprintUiColor=color;sprintFill.style.background=color}
- if(state!==sprintUiState){sprintUiState=state;sprintState.textContent=state}
+ const next=renderSprintHud({
+  sprintFill,
+  sprintState,
+  energy:sprintEnergy,
+  locked:sprintLocked,
+  previousPct:sprintUiPct,
+  previousColor:sprintUiColor,
+  previousState:sprintUiState
+ });
+ sprintUiPct=next.pct;
+ sprintUiColor=next.color;
+ sprintUiState=next.state;
 }
 function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
 for(const c of parkedCars){

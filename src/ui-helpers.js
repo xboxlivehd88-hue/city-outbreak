@@ -72,3 +72,23 @@ export function renderBossHud({bossHUD,bossNameEl,bossSubEl,bossFill,boss,wave})
   bossHUD.classList.remove("show");
  }
 }
+
+
+export function renderSprintHud({
+ sprintFill,
+ sprintState,
+ energy,
+ locked,
+ previousPct=-1,
+ previousColor="",
+ previousState=""
+}){
+ const pct=Math.max(0,Math.min(100,energy));
+ const shown=Math.ceil(pct);
+ const color=pct>55?"#58b96a":pct>25?"#d5ad45":"#c64646";
+ const state=locked?"RECOVERING":pct>=99?"READY":shown+"%";
+ if(shown!==previousPct)sprintFill.style.width=shown+"%";
+ if(color!==previousColor)sprintFill.style.background=color;
+ if(state!==previousState)sprintState.textContent=state;
+ return {pct:shown,color,state};
+}
