@@ -738,7 +738,17 @@ batchStaticCity();
 let postwarCityRoot=null;
 const POSTWAR_CITY_SCALE=19.36;
 const POSTWAR_CITY_TARGET={x:0,z:30};
-new GLTFLoader().load("assets/postwar_city_game_ready.glb",gltf=>{
+const postwarStatus=document.createElement("div");
+postwarStatus.textContent="POSTWAR CITY: LOADING";
+Object.assign(postwarStatus.style,{
+ position:"fixed",right:"12px",bottom:"12px",zIndex:"99999",
+ padding:"8px 10px",background:"rgba(0,0,0,.82)",color:"#fff",
+ font:"700 12px/1.2 system-ui,sans-serif",border:"1px solid rgba(255,255,255,.35)",
+ borderRadius:"5px",pointerEvents:"none"
+});
+document.body.append(postwarStatus);
+
+function installPostwarCity(gltf){
  const city=gltf.scene;
  city.name="PostwarCity";
  city.scale.setScalar(POSTWAR_CITY_SCALE);
@@ -799,10 +809,31 @@ new GLTFLoader().load("assets/postwar_city_game_ready.glb",gltf=>{
   roadBounds,
   removedOldCityBatches:oldCityBatches.length
  });
-},undefined,err=>{
- document.documentElement.dataset.postwarCityLoadError=String(err&&err.message||err);
- console.warn("Postwar City GLB load failed; keeping approved v303 procedural city",err);
-});
+ const worldBounds=new THREE.Box3().setFromObject(city),worldSize=new THREE.Vector3();
+ worldBounds.getSize(worldSize);
+ postwarStatus.textContent="POSTWAR CITY: LOADED "+worldSize.x.toFixed(0)+" × "+worldSize.z.toFixed(0);
+ postwarStatus.style.background="rgba(25,95,40,.90)";
+ setTimeout(()=>{if(postwarStatus.parentNode)postwarStatus.remove()},15000);
+}
+
+(async()=>{
+ try{
+  const response=await fetch("./assets/postwar_city_game_ready.glb?v=309",{cache:"no-store"});
+  if(!response.ok)throw new Error("HTTP "+response.status+" while fetching Postwar City");
+  const bytes=await response.arrayBuffer();
+  if(bytes.byteLength<1000000)throw new Error("Postwar City response was unexpectedly small ("+bytes.byteLength+" bytes)");
+  const gltf=await new Promise((resolve,reject)=>{
+   new GLTFLoader().parse(bytes,"",resolve,reject);
+  });
+  installPostwarCity(gltf);
+ }catch(err){
+  const detail=String(err&&err.message||err);
+  document.documentElement.dataset.postwarCityLoadError=detail;
+  postwarStatus.textContent="POSTWAR CITY ERROR: "+detail;
+  postwarStatus.style.background="rgba(125,25,25,.94)";
+  console.warn("Postwar City GLB load failed; keeping approved v303 procedural city",err);
+ }
+})();
 
 function batchLoadedStiCars(){
  const buckets=new Map(),remove=[];
