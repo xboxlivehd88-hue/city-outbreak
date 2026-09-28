@@ -207,3 +207,10 @@ export function renderDeathScreenVisibility(element,visible){
  if(visible)element.classList.add("show");
  else element.classList.remove("show");
 }
+
+
+export function renderShopVisibility(element,visible){
+ if(!element)return;
+ if(visible)element.classList.add("show");
+ else element.classList.remove("show");
+}
