@@ -7,7 +7,7 @@ import {createPerformanceGuard} from "./performance-hud.js?v=262";
 import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay} from "./ui-helpers.js?v=278";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
-import {clearKeyState} from "./input-utils.js?v=277";
+import {clearKeyState,setupGameContextMenuGuard} from "./input-utils.js?v=279";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -3851,8 +3851,7 @@ document.addEventListener("mouseup",e=>{
  if(e.button===2)setAim(false);
 });
 document.addEventListener("pointercancel",()=>{triggerUp();setAim(false)});
-cv.addEventListener("contextmenu",e=>e.preventDefault());
-document.addEventListener("contextmenu",e=>{if(document.pointerLockElement===cv)e.preventDefault()});
+setupGameContextMenuGuard({canvas:cv});
 updateSprintUI();ui();
 
 let runtimeErrorShown=false;
