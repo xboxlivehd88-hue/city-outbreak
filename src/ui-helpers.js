@@ -177,3 +177,9 @@ export function flashDamageOverlay(element,duration=140){
  element.classList.add("show");
  setTimeout(()=>element.classList.remove("show"),duration);
 }
+
+
+export function renderShopNote(element,text){
+ if(!element)return;
+ element.textContent=text;
+}
