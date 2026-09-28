@@ -28,3 +28,11 @@ export function setupFocusSafety({
   if(documentTarget.hidden)onFocusLost();
  });
 }
+
+
+export function setupPointerLockChange(handler,{
+ documentTarget=document
+}={}){
+ if(typeof handler!=="function")return;
+ documentTarget.addEventListener("pointerlockchange",handler);
+}

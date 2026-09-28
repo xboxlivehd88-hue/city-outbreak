@@ -7,7 +7,7 @@ import {createPerformanceGuard} from "./performance-hud.js?v=262";
 import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay} from "./ui-helpers.js?v=278";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
-import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety} from "./input-utils.js?v=280";
+import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange} from "./input-utils.js?v=281";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -3823,7 +3823,7 @@ addEventListener("keydown",e=>{let k=e.key.toLowerCase(),gameKey=["w","a","s","d
 addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});
 const onInputFocusLost=()=>{clearKeys();stopAuto();setAim(false);if(running&&!dying&&!between&&!paused)setGamePaused(true)};
 setupFocusSafety({onFocusLost:onInputFocusLost});
-document.addEventListener("pointerlockchange",()=>{
+const onPointerLockChanged=()=>{
  if(document.pointerLockElement!==cv){
    stopAuto();setAim(false);
    if(between){document.body.style.cursor="default";shop.style.cursor="default"}
@@ -3832,7 +3832,8 @@ document.addEventListener("pointerlockchange",()=>{
    document.body.style.cursor="";
    if(running&&!between&&!dying)show("AIM LOCKED");
  }
-});
+};
+setupPointerLockChange(onPointerLockChanged);
 document.addEventListener("mousemove",e=>{if(!paused&&document.pointerLockElement===cv){const adsLook=aiming?(weapon==="awm"?.34:.72):1;yaw-=e.movementX*lookSensitivity*adsLook;pitch-=e.movementY*lookSensitivity*.9*adsLook;pitch=Math.max(-1.05,Math.min(1.05,pitch));aimX=0;aimY=0;}});
 document.addEventListener("mousedown",e=>{
  if(paused)return;
