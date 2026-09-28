@@ -1,5 +1,43 @@
 # CITY OUTBREAK — NEXT CHAT HANDOFF
 
+# CURRENT NEXT-CHAT STATE — 2026-09-28 — READ THIS FIRST
+
+This section supersedes older v260 "current checkpoint" notes below.
+
+- Current approved modular build: **v286**
+- Current approved commit: **93d02ec315cac96da3b3e677b2647f723d3bdc17**
+- Last fully approved pre-modular gameplay baseline: **v257**
+- v257 commit: **138e961c2597cb5ff6099798314d1f40308388c4**
+- The user tested v286 through **wave 10** and reported it works fine.
+
+## Live helper modules now in use
+
+- `src/performance-hud.js`
+- `src/ui-helpers.js`
+- `src/render-utils.js`
+- `src/format-utils.js`
+- `src/input-utils.js`
+- `src/zombie-rig-data.js`
+
+`src/game.js` remains the live gameplay/state runtime. The recently completed v277–v286 work moved safe input/UI/event plumbing only; gameplay decisions remain in `game.js`.
+
+## Next-step guidance
+
+The easy input-listener cleanup is substantially complete. Before extracting larger systems, inspect current `main` and choose another genuinely isolated seam. Do not force modularization for its own sake.
+
+Continue to avoid high-risk areas unless deliberately tackling them:
+- audio extraction
+- reloads
+- weapon ADS/firing rays
+- zombie AI/pathing
+- store pause/low-power timing
+- frame loop/game timing
+
+Keep the one-change → commit → verify → Pages deploy → user test workflow.
+
+---
+
+
 Read CITY_OUTBREAK_HANDOFF.md first. It is the authoritative full project state.
 
 ## Current working checkpoint

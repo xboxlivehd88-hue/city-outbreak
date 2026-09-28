@@ -1,5 +1,76 @@
 # CITY OUTBREAK — AUTHORITATIVE HANDOFF
 
+# CURRENT STATE UPDATE — 2026-09-28 — READ THIS FIRST
+
+This section supersedes older "current checkpoint" references below. Keep the older sections as project history/reference.
+
+## Current approved live checkpoint
+
+- Build/cache generation: **v286**
+- Approved live modular checkpoint commit: **93d02ec315cac96da3b3e677b2647f723d3bdc17**
+- GitHub Pages entry loads: `./src/game.js?v=286`
+- Live game: https://xboxlivehd88-hue.github.io/city-outbreak/
+- The user tested this build through **wave 10** and reported that it works fine.
+- Last fully approved pre-modular gameplay baseline remains **v257**, commit **138e961c2597cb5ff6099798314d1f40308388c4**.
+
+## Current live modular structure
+
+- `index.html` — HTML/UI shell, import map, game loader.
+- `src/game.css` — live CSS. Start-screen path must remain `../assets/city-outbreak-start-v153.jpg.jpg`.
+- `src/game.js` — main live runtime and gameplay state.
+- `src/zombie-rig-data.js` — exact live zombie rig data.
+- `src/performance-hud.js` — live performance HUD helper.
+- `src/ui-helpers.js` — live UI rendering/wiring helpers:
+  - transient messages
+  - Controls modal
+  - Start/Restart/Death Restart wiring
+  - Pause/Resume wiring
+  - boss HUD
+  - sprint HUD
+  - main HUD
+  - death stats
+  - wave/announcement display
+  - Ready/Next Wave wiring
+  - shop buy-button wiring
+  - runtime error overlay + listener registration
+- `src/render-utils.js` — renderer resize + WebGL context-loss wiring.
+- `src/format-utils.js` — pure run-time formatter.
+- `src/input-utils.js` — live input/event wiring:
+  - key-state clearing
+  - context-menu suppression
+  - blur/tab-visibility safety wiring
+  - pointer-lock change listener wiring
+  - keyup/keydown listener wiring
+  - mousemove listener wiring
+  - mousedown/mouseup/pointer-cancel listener wiring
+
+## v262–v286 approved modularization sequence
+
+The user individually tested and approved the incremental modular changes through v286. Recent checkpoints include:
+- v277 input key reset utility
+- v278 runtime error overlay rendering
+- v279 context-menu guard
+- v280 blur/visibility safety wiring
+- v281 pointer-lock listener wiring
+- v282 keyup listener wiring
+- v283 keydown listener wiring
+- v284 mousemove listener wiring
+- v285 mouse action listener wiring
+- v286 runtime error listener wiring
+
+The input callbacks still keep gameplay decisions in `game.js`; helper modules primarily own registration/DOM plumbing. Do not move gameplay math or weapon behavior merely for decomposition.
+
+## Critical locked behavior
+
+- Audio remains **inline in `src/game.js`**. `src/audio.js` exists but is NOT live; the earlier audio extraction caused no sound.
+- Do not alter approved reloads unless the user requests a specific weapon.
+- Preserve M17 ADS/firing alignment, M4 state, MP5 state, store low-power behavior, boss behavior, and zombie pathing.
+- Preserve `MAX_ACTIVE_ZOMBIES = 20`, full-city A* behavior, and the current 2600 A* node budget.
+- Continue making one small self-contained change at a time, commit to `main`, verify the diff/locked values, wait for GitHub Pages deploy, then give a fresh cache-busted test link.
+
+---
+
+
 Last updated: 2026-09-26
 
 Repository: xboxlivehd88-hue/city-outbreak
