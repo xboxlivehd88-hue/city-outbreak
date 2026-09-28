@@ -70,6 +70,8 @@ function taperedPrism(topW,bottomW,h,topD,bottomD,m,x,y,z,p=scene){
 // in-browser, so the city keeps working as a single self-contained game build.
 
 const buildingColliders=[],facadeMaterialCache=new Map();
+const USE_TRAILER_PARK_MAP=true;
+let externalMapBounds=null,trailerParkRoot=null;
 function facadeMaterial(base,variant=0){
  const style=variant%8,cacheKey=base+"|"+style;
  if(facadeMaterialCache.has(cacheKey))return facadeMaterialCache.get(cacheKey);
@@ -257,7 +259,11 @@ function addBuilding(w,h,d,x,z,base,variant){
  return q
 }
 
-function insideBuilding(x,z,r=.45){for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}return false}
+function insideBuilding(x,z,r=.45){
+ if(externalMapBounds&&(x<externalMapBounds.minX+r||x>externalMapBounds.maxX-r||z<externalMapBounds.minZ+r||z>externalMapBounds.maxZ-r))return true;
+ for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}
+ return false
+}
 function slideBuilding(oldx,oldz,newx,newz,r=.45){
  if(!insideBuilding(newx,newz,r))return{x:newx,z:newz};
  if(!insideBuilding(newx,oldz,r))return{x:newx,z:oldz};
@@ -276,15 +282,9 @@ function pushOutsideBuilding(x,z,r=.45){
 }
 
 // Ground plane + cleaner city street / sidewalk treatment.
+const legacyMapStartChildren=new Set(scene.children);
 let ground=new THREE.Mesh(new THREE.PlaneGeometry(280,300),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
 const asphaltAvenue=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), asphaltCross=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
-new THREE.TextureLoader().load("assets/textures/roads/road_albedo.jpg.jpg",tx=>{
- tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
- const avenueTex=tx.clone();avenueTex.needsUpdate=true;avenueTex.repeat.set(3,30);
- const crossTex=tx.clone();crossTex.needsUpdate=true;crossTex.repeat.set(28,3);
- asphaltAvenue.map=avenueTex;asphaltAvenue.needsUpdate=true;
- asphaltCross.map=crossTex;asphaltCross.needsUpdate=true;
-});
 box(24,.10,244,asphaltAvenue,0,.05,30);           // avenue
 box(224,.10,24,asphaltCross,0,.06,30);           // cross street
 
@@ -731,7 +731,103 @@ function zombieRouteWaypoint(z){
 // Batch the cars together with the static city so the improved vehicle detail
 // does not bring back the old draw-call problem. parkedCars groups stay as cheap
 // collision anchors after their meshes are merged into the city batches.
-batchStaticCity();
+if(!USE_TRAILER_PARK_MAP)batchStaticCity();
+
+function removeLegacyMapWorld(){
+ const remove=[];
+ for(const o of scene.children)if(!legacyMapStartChildren.has(o))remove.push(o);
+ for(const o of remove){
+  if(o.parent)o.parent.remove(o);
+  if(o.geometry){try{o.geometry.dispose()}catch(_){}}
+ }
+ buildingColliders.length=0;
+ parkedCars.length=0;
+ pendingStiSedans.length=0;
+ ZNAV_BLOCK_CACHE.clear();
+ document.documentElement.dataset.legacyMapRemoved=String(remove.length);
+}
+if(USE_TRAILER_PARK_MAP)removeLegacyMapWorld();
+
+const trailerMapStatus=document.createElement("div");
+trailerMapStatus.textContent="TRAILER PARK: LOADING";
+Object.assign(trailerMapStatus.style,{
+ position:"fixed",left:"50%",top:"12px",transform:"translateX(-50%)",zIndex:"99999",
+ padding:"7px 10px",background:"rgba(0,0,0,.82)",color:"#fff",
+ font:"700 12px/1.2 system-ui,sans-serif",border:"1px solid rgba(255,255,255,.30)",
+ borderRadius:"5px",pointerEvents:"none"
+});
+document.body.append(trailerMapStatus);
+
+new GLTFLoader().load("assets/trailer_park.glb?v=320",gltf=>{
+ const map=gltf.scene;
+ map.name="TrailerParkMap";
+ map.scale.setScalar(1);
+ map.position.set(0,0,0);
+ map.updateMatrixWorld(true);
+
+ let terrainBounds=new THREE.Box3(),hasTerrain=false,meshCount=0;
+ map.traverse(o=>{
+  if(!o.isMesh||!o.geometry)return;
+  meshCount++;
+  o.userData.externalMapAsset=true;
+  o.castShadow=false;
+  o.receiveShadow=true;
+  const mats=Array.isArray(o.material)?o.material:[o.material];
+  for(const mat of mats)if(mat){
+   for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
+    const tx=mat[key];
+    if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
+   }
+  }
+  const lname=String(o.name||"").toLowerCase();
+  const terrainNamed=lname.includes("terrain");
+  const terrainMaterial=mats.some(m=>{
+   const n=String(m&&m.name||"").toLowerCase();
+   return n==="soil"||n==="soil_01"||n==="grass"||n.includes("terrain");
+  });
+  if(terrainNamed||terrainMaterial){
+   const b=new THREE.Box3().setFromObject(o);
+   if(!hasTerrain){terrainBounds.copy(b);hasTerrain=true}else terrainBounds.union(b);
+  }
+ });
+
+ scene.add(map);
+ trailerParkRoot=map;
+ map.updateMatrixWorld(true);
+
+ const wb=new THREE.Box3().setFromObject(map),ws=new THREE.Vector3();
+ wb.getSize(ws);
+ const playBounds=hasTerrain?terrainBounds:wb;
+ externalMapBounds={
+  minX:playBounds.min.x+.6,maxX:playBounds.max.x-.6,
+  minZ:playBounds.min.z+.6,maxZ:playBounds.max.z-.6
+ };
+
+ // Do not reuse any invisible v303 city/building collision on the new map.
+ // First pass keeps the actual Trailer Park visuals authoritative and movement free;
+ // map-specific collision/navigation will be built from this asset after visual placement is approved.
+ buildingColliders.length=0;
+ ZNAV_BLOCK_CACHE.clear();
+
+ document.documentElement.dataset.trailerParkLoaded="1";
+ document.documentElement.dataset.trailerParkMeshes=String(meshCount);
+ document.documentElement.dataset.trailerParkSize=ws.x.toFixed(1)+"x"+ws.z.toFixed(1);
+ trailerMapStatus.textContent="TRAILER PARK: LOADED "+meshCount+" MESHES / "+ws.x.toFixed(0)+" × "+ws.z.toFixed(0);
+ trailerMapStatus.style.background="rgba(25,95,40,.90)";
+ setTimeout(()=>{if(trailerMapStatus.parentNode)trailerMapStatus.remove()},12000);
+ console.log("CITY OUTBREAK: Trailer Park map loaded",{
+  meshes:meshCount,
+  size:{x:ws.x,y:ws.y,z:ws.z},
+  bounds:externalMapBounds,
+  terrainDetected:hasTerrain
+ });
+},undefined,err=>{
+ const detail=String(err&&err.message||err);
+ document.documentElement.dataset.trailerParkLoadError=detail;
+ trailerMapStatus.textContent="TRAILER PARK ERROR: "+detail;
+ trailerMapStatus.style.background="rgba(125,25,25,.94)";
+ console.error("Trailer Park GLB failed to load",err);
+});
 
 function batchLoadedStiCars(){
  const buckets=new Map(),remove=[];
