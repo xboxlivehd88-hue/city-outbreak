@@ -277,14 +277,7 @@ function pushOutsideBuilding(x,z,r=.45){
 
 // Ground plane + cleaner city street / sidewalk treatment.
 let ground=new THREE.Mesh(new THREE.PlaneGeometry(280,300),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
-const asphaltAvenue=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), asphaltCross=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
-new THREE.TextureLoader().load("assets/textures/roads/road_albedo.jpg.jpg",tx=>{
- tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
- const avenueTex=tx.clone();avenueTex.needsUpdate=true;avenueTex.repeat.set(3,30);
- const crossTex=tx.clone();crossTex.needsUpdate=true;crossTex.repeat.set(28,3);
- asphaltAvenue.map=avenueTex;asphaltAvenue.needsUpdate=true;
- asphaltCross.map=crossTex;asphaltCross.needsUpdate=true;
-});
+const asphaltAvenue=new THREE.MeshStandardMaterial({color:0x303235,roughness:.96}), asphaltCross=new THREE.MeshStandardMaterial({color:0x303235,roughness:.96}), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
 box(24,.10,244,asphaltAvenue,0,.05,30);           // avenue
 box(224,.10,24,asphaltCross,0,.06,30);           // cross street
 
@@ -477,46 +470,8 @@ function batchStaticCity(){
  console.log("CityOutbreak city batching",{batches,mergedObjects,materials:buckets.size});
 }
 
-let stiModelTemplate=null;
-const pendingStiSedans=[];
-function installStiVisual(g){
- if(!stiModelTemplate||!g||g.userData.stiVisual)return false;
- while(g.children.length)g.remove(g.children[g.children.length-1]);
- // Parked cars are static. Share the STI geometry/materials but do not let twelve
- // separate full model hierarchies add unnecessary transform/update overhead.
- const sti=stiModelTemplate.clone(true);
- sti.traverse(o=>{o.matrixAutoUpdate=false;o.updateMatrix()});
- g.add(sti);g.userData.stiVisual=true;document.documentElement.dataset.stiVisuals=String((+document.documentElement.dataset.stiVisuals||0)+1);return true;
-}
-new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
- const sti=gltf.scene;
- sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
- const b0=new THREE.Box3().setFromObject(sti),sz=new THREE.Vector3();b0.getSize(sz);
- const horizontal=Math.max(sz.x,sz.z)||1;sti.scale.setScalar(4.90/horizontal);
- const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
- sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
- stiModelTemplate=sti;
- for(const sedan of pendingStiSedans)installStiVisual(sedan);
- pendingStiSedans.length=0;
- // Merge all twelve static STI visuals after the model has been installed.
- batchLoadedStiCars();
-},undefined,err=>{document.documentElement.dataset.stiLoadError=String(err&&err.message||err);console.warn("WRX STI GLB load failed; parked-car collision anchors remain",err)});
-
-function car(x,z,rot=0){
- // v182: STI-only parked-car visuals. Keep the proven v181 oriented collision footprint.
- const g=new THREE.Group(),SL=4.90,SW=1.85;
- g.position.set(x,0,z);g.rotation.y=rot;
- g.userData.carHalfW=SW*.48;g.userData.carHalfL=SL*.49;g.userData.carType=0;
- if(stiModelTemplate)installStiVisual(g);
- else pendingStiSedans.push(g);
- scene.add(g);
- return g
-}
+// v311 Postwar map test: no added STI props.
 const parkedCars=[];
-[
- // v190 performance pass: keep only three STI props for now. More varied cars can be added later.
- [-8,-55,0],[8,78,Math.PI],[32,35,Math.PI/2]
-].forEach(c=>parkedCars.push(car(...c)));
 
 function carPointCollision(c,x,z,pad=.35){
  const dx=x-c.position.x,dz=z-c.position.z,a=c.rotation.y,co=Math.cos(a),si=Math.sin(a);
@@ -736,7 +691,7 @@ batchStaticCity();
 // v308: first-stage Postwar City visual/scale test.
 // v303 remains the protected recovery point. Only replace old city visuals after this GLB loads.
 let postwarCityRoot=null;
-const POSTWAR_CITY_SCALE=19.36;
+const POSTWAR_CITY_SCALE=17.5;
 const POSTWAR_CITY_TARGET={x:0,z:30};
 const postwarStatus=document.createElement("div");
 postwarStatus.textContent="POSTWAR CITY: LOADING";
@@ -821,7 +776,7 @@ function installPostwarCity(gltf){
 
 (async()=>{
  try{
-  const response=await fetch("./assets/postwar_city_game_ready.glb?v=310",{cache:"no-store"});
+  const response=await fetch("./assets/postwar_city_game_ready.glb?v=311",{cache:"no-store"});
   if(!response.ok)throw new Error("HTTP "+response.status+" while fetching Postwar City");
   const bytes=await response.arrayBuffer();
   if(bytes.byteLength<1000000)throw new Error("Postwar City response was unexpectedly small ("+bytes.byteLength+" bytes)");
