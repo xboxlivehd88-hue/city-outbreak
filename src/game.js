@@ -8,6 +8,7 @@ import {showTransientMessage,clearTransientMessage,setupControlsModal,setupReset
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
+import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=303";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -1451,11 +1452,11 @@ function weaponSound(){
  if(weapon==="m240"){noise(.095,.62,1650);tone(74,.085,"square",.18);tone(112,.045,"sine",.06);return}
  if(weapon==="awm"){noise(.20,.92,1500);tone(54,.16,"square",.28);tone(92,.11,"sine",.12,.02);return}
  if(weapon==="grenadeLauncher"){noise(.14,.72,850);tone(62,.18,"square",.30);tone(118,.08,"sine",.12,.02);return}if(weapon==="shotgun"){noise(.16,.8,1800);tone(58,.22,"square",.34)}else if(weapon==="smg"){noise(.07,.5,2300);tone(105,.09,"square",.18)}else gunS()}
-function diff(w){return{count:6+(w-1)*3,hp:3+Math.floor((w-1)*.7),speed:1.15+(w-1)*.12,attack:Math.max(.32,.86-(w-1)*.04),damage:10+Math.floor((w-1)/3)*2,strafe:Math.min(.78,(w-1)*.06),surge:Math.min(.95,(w-1)*.07)}}
+
 const BOSS_NAME_POOL=["GORE TITAN","THE REND KING","MAWBREAKER","THE ABATTOIR","RIBCAGE","MEATSAINT","BUTCHER PRIME","BLOODHOWL","THE SPLIT-JAW","THE RED GIANT","MARROWLORD","GUTSPIKE","THE CARRION OX","SCARFLESH","THE RUINED HERCULES","GRAVEBULK"];
-function isBossWave(w){return w>0&&w%10===0}
-function bossTier(w){return Math.max(0,Math.floor(w/10)-1)}
-function bossScaleFactor(w){return Math.pow(1.1,bossTier(w))}
+
+
+
 const BOSS_CHARGE_MAX_RANGE=32,BOSS_CHARGE_SPEED=7.6;
 function bossPressureSpeed(dist,base){
  // A boss should eventually close on a player who only walks backward, but full
