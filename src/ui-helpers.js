@@ -200,6 +200,11 @@ export function clearNukeOverlays(flashElement,shockElement){
 }
 
 
+export function hideStartScreen(element){
+ if(element)element.style.display="none";
+}
+
+
 export function renderShopNote(element,text){
  if(!element)return;
  element.textContent=text;
