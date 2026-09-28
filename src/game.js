@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud} from "./ui-helpers.js?v=271";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats} from "./ui-helpers.js?v=272";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 let zombieRigAsset=null,zombieRigError=null;
 try{
@@ -2817,10 +2817,12 @@ function formatRunTime(ms){
 function showDeathScreen(){
  running=false;dying=true;paused=false;pauseOverlay.classList.remove("show");pauseBtn.classList.remove("show");stopAuto();clearKeys();setAim(false);
  const elapsed=runStartTime>0?gameTimeNow()-runStartTime:0;
- document.querySelector("#deathKills").textContent=String(kills);
- document.querySelector("#deathTime").textContent=formatRunTime(elapsed);
- document.querySelector("#deathWave").textContent=String(wave);
- document.querySelector("#deathRounds").textContent=String(Math.max(0,wave-1));
+ renderDeathStats({
+  kills:String(kills),
+  time:formatRunTime(elapsed),
+  wave:String(wave),
+  rounds:String(Math.max(0,wave-1))
+ });
  death.classList.add("show");
  if(document.pointerLockElement===cv)document.exitPointerLock?.();
  document.body.style.cursor="default";

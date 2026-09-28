@@ -113,3 +113,16 @@ export function renderMainHud({elements,values}){
  grenadeEl.textContent=values.grenadeText;
  nukeEl.textContent=values.nukeText;
 }
+
+
+export function renderDeathStats({kills,time,wave,rounds},{
+ killsEl=document.querySelector("#deathKills"),
+ timeEl=document.querySelector("#deathTime"),
+ waveEl=document.querySelector("#deathWave"),
+ roundsEl=document.querySelector("#deathRounds")
+}={}){
+ if(killsEl)killsEl.textContent=kills;
+ if(timeEl)timeEl.textContent=time;
+ if(waveEl)waveEl.textContent=wave;
+ if(roundsEl)roundsEl.textContent=rounds;
+}
