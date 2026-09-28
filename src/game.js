@@ -760,7 +760,7 @@ Object.assign(trailerMapStatus.style,{
 });
 document.body.append(trailerMapStatus);
 
-new GLTFLoader().load("assets/trailer_park.glb?v=328",gltf=>{
+new GLTFLoader().load("assets/trailer_park.glb?v=329",gltf=>{
  const map=gltf.scene;
  map.name="TrailerParkMap";
  map.scale.setScalar(TRAILER_PARK_SCALE);
@@ -928,6 +928,50 @@ function capFX(){
  while(impacts.length>24){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
  while(casings.length>18){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
 }
+const ZOMBIE_HELMET_TARGET_WIDTH=.34,ZOMBIE_HELMET_HEAD_Y=.085;
+let zombieHelmetTemplate=null,zombieHelmetLoadError=null;
+new GLTFLoader().load("assets/ww2_stahlhelm_m35_heer.glb?v=329",gltf=>{
+ const raw=gltf.scene;
+ raw.name="ZombieHelmetSource";
+ raw.updateMatrixWorld(true);
+ const box=new THREE.Box3().setFromObject(raw),size=new THREE.Vector3(),center=new THREE.Vector3();
+ box.getSize(size);box.getCenter(center);
+ if(!(size.x>0&&size.y>0&&size.z>0)){
+  zombieHelmetLoadError=new Error("Zombie helmet has invalid bounds");
+  document.documentElement.dataset.zombieHelmetError=zombieHelmetLoadError.message;
+  console.error("CITY OUTBREAK: zombie helmet failed to load",zombieHelmetLoadError);
+  return;
+ }
+ raw.position.sub(center);
+ raw.updateMatrixWorld(true);
+ const template=new THREE.Group();
+ template.name="ZombieHelmet";
+ template.add(raw);
+ template.scale.setScalar(ZOMBIE_HELMET_TARGET_WIDTH/size.x);
+ template.traverse(o=>{
+  if(!o.isMesh)return;
+  o.castShadow=false;o.receiveShadow=true;o.frustumCulled=true;o.userData.visualOnly=true;
+  const mats=Array.isArray(o.material)?o.material:[o.material];
+  for(const m of mats)if(m){
+   for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
+    const tx=m[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
+   }
+  }
+ });
+ zombieHelmetTemplate=template;
+ document.documentElement.dataset.zombieHelmetLoaded="1";
+ for(const z of zombies)attachZombieHelmet(z);
+ console.log("CITY OUTBREAK: zombie helmet loaded",{
+  sourceSize:{x:size.x,y:size.y,z:size.z},
+  fittedWidth:ZOMBIE_HELMET_TARGET_WIDTH,
+  zombiesPatched:zombies.length
+ });
+},undefined,err=>{
+ zombieHelmetLoadError=err;
+ document.documentElement.dataset.zombieHelmetError=String(err&&err.message||err);
+ console.error("CITY OUTBREAK: zombie helmet failed to load",err);
+});
+
 let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}},grenades=2,nukes=0,nukeInProgress=false,waveTarget=0,waveSpawned=0,currentBoss=null,bossWaveName="",usedBossNames=[],running=false,dying=false,reloading=false,between=false,paused=false,pauseStartedAt=0,pausedAccumulatedMs=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null,sprintEnergy=100,sprintLocked=false,aiming=false,aimBlend=0,awmReadyAt=0,runStartTime=0;
 let shopLowPower=false,shopPauseStartedAt=0,shopPausedAccumulatedMs=0,lastShopRenderAt=0;
 const PLAYER_HEALTH_REGEN_DELAY=5,PLAYER_HEALTH_REGEN_RATE=10;
@@ -1783,6 +1827,24 @@ const ZOMBIE_RIG_PROFILES=Object.freeze({
 function cloneShamblerRig(){
  return zombieRigAsset?SkeletonUtils.clone(zombieRigAsset.scene):null;
 }
+function attachZombieHelmet(z){
+ if(!z||!zombieHelmetTemplate||z.helmet)return false;
+ const parent=(z.rigVisual&&z.rigVisual.getObjectByName("Head"))||z.head;
+ if(!parent)return false;
+ const helmet=zombieHelmetTemplate.clone(true);
+ helmet.name="ZombieHelmet";
+ helmet.position.set(0,ZOMBIE_HELMET_HEAD_Y,0);
+ helmet.rotation.set(0,0,0);
+ helmet.traverse(o=>{
+  if(!o.isMesh)return;
+  o.userData.visualOnly=true;o.userData.zombieHelmet=true;
+  o.castShadow=false;o.receiveShadow=true;o.frustumCulled=true;
+  o.raycast=()=>{};
+ });
+ parent.add(helmet);
+ z.helmet=helmet;
+ return true;
+}
 function applyZombieRigProfile(rig,kind){
  const p=ZOMBIE_RIG_PROFILES[kind]||SHAMBLER_RIG_PROFILE;
  rig.scale.setScalar(p.rigScale);
@@ -2348,6 +2410,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  g.traverse(o=>{if(o.isMesh&&o.geometry&&!o.userData.sharedGeometry)ownedGeometrySet.add(o.geometry)});
  zz.ownedGeometries=[...ownedGeometrySet];
  attachRiggedZombie(zz,g,kind,i,hazardMist);
+ attachZombieHelmet(zz);
  if(kind==="boss"&&zz.rigVisual){
    zz.rigVisual.scale.multiplyScalar(1.10);
    const chestBone=zz.rigVisual.getObjectByName("Chest");if(chestBone)chestBone.scale.set(1.30,1.08,1.22);
