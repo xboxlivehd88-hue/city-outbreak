@@ -3258,9 +3258,14 @@ function setGamePaused(next){
  pausedAccumulatedMs+=pausedFor;pauseStartedAt=0;paused=false;last=now;
  renderPauseUi({pauseOverlay,pauseButton:pauseBtn,paused:false,showPauseButton:running&&!dying&&!between});
  document.body.style.cursor="";
- if(ac&&audioOn)ac.resume().catch(()=>{});
  cv.focus();
- if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}
+ if(document.pointerLockElement!==cv){
+  try{
+   const lockRequest=cv.requestPointerLock?.();
+   if(lockRequest&&typeof lockRequest.catch==="function")lockRequest.catch(()=>{});
+  }catch(_){}
+ }
+ if(ac&&audioOn)ac.resume().catch(()=>{});
 }
 setupPauseButtons(setGamePaused,{pauseButton:pauseBtn,resumeButton:resumeGameBtn});
 
