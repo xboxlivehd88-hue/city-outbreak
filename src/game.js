@@ -733,6 +733,52 @@ function zombieRouteWaypoint(z){
 // collision anchors after their meshes are merged into the city batches.
 batchStaticCity();
 
+// v304: first-stage replacement-city test.
+// The approved v303 procedural city remains recoverable in Git history. We only remove its
+// batched visuals/colliders after the uploaded GLB has loaded successfully.
+let apocalypticCityRoot=null;
+const APOCALYPTIC_CITY_SCALE=.135;
+const APOCALYPTIC_CITY_OFFSET={x:-84.231,y:3.220,z:71.699};
+new GLTFLoader().load("assets/apocalyptic_city.glb",gltf=>{
+ const city=gltf.scene;
+ city.name="ApocalypticCity";
+ city.scale.setScalar(APOCALYPTIC_CITY_SCALE);
+ city.position.set(APOCALYPTIC_CITY_OFFSET.x,APOCALYPTIC_CITY_OFFSET.y,APOCALYPTIC_CITY_OFFSET.z);
+ city.traverse(o=>{
+  o.userData.externalCityAsset=true;
+  if(o.isMesh){
+   o.castShadow=false;o.receiveShadow=true;
+   const mats=Array.isArray(o.material)?o.material:[o.material];
+   for(const mat of mats)if(mat)for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
+    const tx=mat[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
+   }
+  }
+ });
+ scene.add(city);
+ apocalypticCityRoot=city;
+
+ // Hide/remove the old procedural city only after the replacement is confirmed loaded.
+ const oldCityBatches=[];
+ scene.traverse(o=>{if(o.name==="CityBatch")oldCityBatches.push(o)});
+ for(const o of oldCityBatches){
+  if(o.parent)o.parent.remove(o);
+  try{o.geometry.dispose()}catch(_){}
+ }
+ ground.visible=false;
+ buildingColliders.length=0;
+ ZNAV_BLOCK_CACHE.clear();
+
+ document.documentElement.dataset.apocalypticCityLoaded="1";
+ console.log("CITY OUTBREAK: apocalyptic city test loaded",{
+  scale:APOCALYPTIC_CITY_SCALE,
+  position:APOCALYPTIC_CITY_OFFSET,
+  removedOldCityBatches:oldCityBatches.length
+ });
+},undefined,err=>{
+ document.documentElement.dataset.apocalypticCityLoadError=String(err&&err.message||err);
+ console.warn("Apocalyptic city GLB load failed; keeping approved procedural city",err);
+});
+
 function batchLoadedStiCars(){
  const buckets=new Map(),remove=[];
  for(const anchor of parkedCars){
