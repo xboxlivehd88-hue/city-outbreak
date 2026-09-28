@@ -195,3 +195,10 @@ export function renderPauseUi({pauseOverlay,pauseButton,paused,showPauseButton})
   else pauseButton.classList.remove("show");
  }
 }
+
+
+export function renderDeathScreenVisibility(element,visible){
+ if(!element)return;
+ if(visible)element.classList.add("show");
+ else element.classList.remove("show");
+}
