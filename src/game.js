@@ -737,7 +737,7 @@ batchStaticCity();
 // The approved v303 procedural city remains recoverable in Git history. We only remove its
 // batched visuals/colliders after the uploaded GLB has loaded successfully.
 let apocalypticCityRoot=null;
-const APOCALYPTIC_CITY_SCALE=.135;
+const APOCALYPTIC_CITY_SCALE=.080;
 const APOCALYPTIC_CITY_TARGET={x:0,z:30};
 new GLTFLoader().load("assets/apocalyptic_city.glb",gltf=>{
  const city=gltf.scene;
@@ -748,7 +748,7 @@ new GLTFLoader().load("assets/apocalyptic_city.glb",gltf=>{
 
  // The GLB contains a huge distant/background mesh that extends far below the playable city.
  // Anchor placement to the largest broad, thin mesh instead; that is the street/ground surface.
- let cityGroundBounds=null,cityGroundArea=0;
+ let cityGroundBounds=null,cityGroundMesh=null,cityGroundArea=0;
  city.traverse(o=>{
   o.userData.externalCityAsset=true;
   if(o.isMesh){
@@ -760,11 +760,24 @@ new GLTFLoader().load("assets/apocalyptic_city.glb",gltf=>{
    const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
    const area=s.x*s.z;
    if(s.x>80&&s.z>80&&s.y<8&&area>cityGroundArea){
-    cityGroundArea=area;cityGroundBounds=b.clone();
+    cityGroundArea=area;cityGroundBounds=b.clone();cityGroundMesh=o;
    }
   }
  });
- if(!cityGroundBounds)throw new Error("Could not identify playable city ground mesh");
+ if(!cityGroundBounds||!cityGroundMesh)throw new Error("Could not identify playable city ground mesh");
+
+ // v306: remove the imported road/ground texture for now so scale/layout can be judged cleanly.
+ const groundMaterials=Array.isArray(cityGroundMesh.material)?cityGroundMesh.material:[cityGroundMesh.material];
+ const plainGround=groundMaterials.map(mat=>{
+  if(!mat)return mat;
+  const m=mat.clone();
+  m.map=null;m.normalMap=null;m.roughnessMap=null;m.metalnessMap=null;m.aoMap=null;
+  if(m.color)m.color.set(0x3f4141);
+  m.roughness=.96;m.metalness=0;m.needsUpdate=true;
+  return m;
+ });
+ cityGroundMesh.material=Array.isArray(cityGroundMesh.material)?plainGround:plainGround[0];
+
  const groundCenter=new THREE.Vector3();cityGroundBounds.getCenter(groundCenter);
  city.position.set(
   APOCALYPTIC_CITY_TARGET.x-groundCenter.x,
