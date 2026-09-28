@@ -205,6 +205,26 @@ export function hideStartScreen(element){
 }
 
 
+export function resetRunUiOverlays({
+ death,
+ announce,
+ shop,
+ hitmarker,
+ damage,
+ nukeFlash,
+ nukeShock,
+ msg
+}){
+ renderDeathScreenVisibility(death,false);
+ hideAnnouncement(announce);
+ renderShopVisibility(shop,false);
+ clearHitMarker(hitmarker);
+ clearDamageOverlay(damage);
+ clearNukeOverlays(nukeFlash,nukeShock);
+ clearTransientMessage(msg);
+}
+
+
 export function renderShopNote(element,text){
  if(!element)return;
  element.textContent=text;
