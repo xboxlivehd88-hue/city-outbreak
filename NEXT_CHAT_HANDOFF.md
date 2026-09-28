@@ -4,11 +4,12 @@
 
 This section supersedes older v260 "current checkpoint" notes below.
 
-- Current approved modular build: **v286**
-- Current approved commit: **93d02ec315cac96da3b3e677b2647f723d3bdc17**
+- Current approved modular build: **v300**
+- Current approved commit: **cf82f7214878f78662d6176cd3295c4009abceba**
 - Last fully approved pre-modular gameplay baseline: **v257**
 - v257 commit: **138e961c2597cb5ff6099798314d1f40308388c4**
-- The user tested v286 through **wave 10** and reported it works fine.
+- The user has approved the modular cleanup through v300.
+- v289 is the approved pause behavior; v290/v291 were reverted.
 
 ## Live helper modules now in use
 
@@ -23,7 +24,7 @@ This section supersedes older v260 "current checkpoint" notes below.
 
 ## Next-step guidance
 
-The easy input-listener cleanup is substantially complete. Before extracting larger systems, inspect current `main` and choose another genuinely isolated seam. Do not force modularization for its own sake.
+The easy input-listener and low-risk UI/reset cleanup is substantially complete through v300. Before extracting larger systems, inspect current `main` and choose another genuinely isolated seam. Do not force modularization for its own sake. Treat scope/ADS UI and pause-state UI as sensitive because they are closely coupled to approved gameplay behavior.
 
 Continue to avoid high-risk areas unless deliberately tackling them:
 - audio extraction

@@ -6,11 +6,12 @@ This section supersedes older "current checkpoint" references below. Keep the ol
 
 ## Current approved live checkpoint
 
-- Build/cache generation: **v286**
-- Approved live modular checkpoint commit: **93d02ec315cac96da3b3e677b2647f723d3bdc17**
-- GitHub Pages entry loads: `./src/game.js?v=286`
+- Build/cache generation: **v300**
+- Approved live modular checkpoint commit: **cf82f7214878f78662d6176cd3295c4009abceba**
+- GitHub Pages entry loads: `./src/game.js?v=300`
 - Live game: https://xboxlivehd88-hue.github.io/city-outbreak/
-- The user tested this build through **wave 10** and reported that it works fine.
+- The user approved the modular cleanup through **v300**.
+- v289 pause behavior is the approved pause baseline. The v290/v291 pointer-lock experiments were reverted.
 - Last fully approved pre-modular gameplay baseline remains **v257**, commit **138e961c2597cb5ff6099798314d1f40308388c4**.
 
 ## Current live modular structure
@@ -44,19 +45,26 @@ This section supersedes older "current checkpoint" references below. Keep the ol
   - mousemove listener wiring
   - mousedown/mouseup/pointer-cancel listener wiring
 
-## v262–v286 approved modularization sequence
+## v262–v300 approved modularization sequence
 
-The user individually tested and approved the incremental modular changes through v286. Recent checkpoints include:
+The user individually tested and approved the incremental modular changes through v300. Key later checkpoints include:
 - v277 input key reset utility
 - v278 runtime error overlay rendering
-- v279 context-menu guard
-- v280 blur/visibility safety wiring
-- v281 pointer-lock listener wiring
-- v282 keyup listener wiring
-- v283 keydown listener wiring
-- v284 mousemove listener wiring
-- v285 mouse action listener wiring
+- v279–v285 input/listener wiring cleanup
 - v286 runtime error listener wiring
+- v287 damage-overlay flash rendering
+- v288 shop-note rendering
+- v289 pause UI rendering — approved pause baseline
+- v290/v291 pointer-lock resume experiments — reverted
+- v292 death-screen visibility
+- v293 boss HUD hide rendering
+- v294 announcement reset cleanup
+- v295 shop panel visibility
+- v296 duplicate transient-message reset cleanup
+- v297 damage-overlay reset cleanup
+- v298 hit-marker reset cleanup
+- v299 nuke-overlay reset cleanup
+- v300 start-screen reset hide
 
 The input callbacks still keep gameplay decisions in `game.js`; helper modules primarily own registration/DOM plumbing. Do not move gameplay math or weapon behavior merely for decomposition.
 
