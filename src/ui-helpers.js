@@ -144,3 +144,11 @@ export function setupReadyNextButton(readyHandler,{
 }={}){
  if(readyButton)readyButton.addEventListener("click",readyHandler);
 }
+
+
+export function setupShopBuyButtons(shopElement,buyHandler){
+ if(!shopElement)return;
+ shopElement.querySelectorAll("[data-buy]").forEach(button=>{
+  button.addEventListener("click",()=>buyHandler(button.dataset.buy));
+ });
+}
