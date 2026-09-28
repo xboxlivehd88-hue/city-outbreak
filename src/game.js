@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud} from "./ui-helpers.js?v=270";
+import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud} from "./ui-helpers.js?v=271";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 let zombieRigAsset=null,zombieRigError=null;
 try{
@@ -2492,7 +2492,27 @@ function spawnWave(){
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
 }
-function ui(){healthText.textContent=Math.ceil(Math.max(0,health));healthBar.style.width=Math.max(0,health)+"%";healthBar.style.background=health>60?"#55a45c":health>30?"#c49b43":"#ae3535";ammoEl.textContent=weapon==="pistol"?A().mag+" / ∞":A().mag+" / "+A().reserve;killsEl.textContent="KILLS "+kills;headsEl.textContent="HEADSHOTS "+heads;waveEl.textContent="WAVE "+wave;remainingEl.textContent=(currentBoss&&!currentBoss.dead?"BOSS 1":"ZOMBIES "+waveRemainingCount());cashEl.textContent="CASH $"+cash;shopCash.textContent="CASH $"+cash;weaponNameEl.textContent=wd().name;grenadeEl.textContent="GRENADES "+grenades;nukeEl.textContent="NUKES "+nukes;updateBossUI()}
+function ui(){
+ const ammo=A(),weaponDef=wd();
+ renderMainHud({
+  elements:{healthText,healthBar,ammoEl,killsEl,headsEl,waveEl,remainingEl,cashEl,shopCash,weaponNameEl,grenadeEl,nukeEl},
+  values:{
+   healthText:String(Math.ceil(Math.max(0,health))),
+   healthWidth:Math.max(0,health)+"%",
+   healthColor:health>60?"#55a45c":health>30?"#c49b43":"#ae3535",
+   ammoText:weapon==="pistol"?ammo.mag+" / ∞":ammo.mag+" / "+ammo.reserve,
+   killsText:"KILLS "+kills,
+   headsText:"HEADSHOTS "+heads,
+   waveText:"WAVE "+wave,
+   remainingText:currentBoss&&!currentBoss.dead?"BOSS 1":"ZOMBIES "+waveRemainingCount(),
+   cashText:"CASH $"+cash,
+   weaponText:weaponDef.name,
+   grenadeText:"GRENADES "+grenades,
+   nukeText:"NUKES "+nukes
+  }
+ });
+ updateBossUI();
+}
 function show(s){showTransientMessage(msg,s)}
 function burst(pos,big=false){
  const count=big?10:3;

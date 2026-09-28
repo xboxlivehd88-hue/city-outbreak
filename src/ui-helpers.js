@@ -92,3 +92,24 @@ export function renderSprintHud({
  if(state!==previousState)sprintState.textContent=state;
  return {pct:shown,color,state};
 }
+
+
+export function renderMainHud({elements,values}){
+ const {
+  healthText,healthBar,ammoEl,killsEl,headsEl,waveEl,remainingEl,
+  cashEl,shopCash,weaponNameEl,grenadeEl,nukeEl
+ }=elements;
+ healthText.textContent=values.healthText;
+ healthBar.style.width=values.healthWidth;
+ healthBar.style.background=values.healthColor;
+ ammoEl.textContent=values.ammoText;
+ killsEl.textContent=values.killsText;
+ headsEl.textContent=values.headsText;
+ waveEl.textContent=values.waveText;
+ remainingEl.textContent=values.remainingText;
+ cashEl.textContent=values.cashText;
+ shopCash.textContent=values.cashText;
+ weaponNameEl.textContent=values.weaponText;
+ grenadeEl.textContent=values.grenadeText;
+ nukeEl.textContent=values.nukeText;
+}
