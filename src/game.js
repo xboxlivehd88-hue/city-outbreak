@@ -928,9 +928,9 @@ function capFX(){
  while(impacts.length>24){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
  while(casings.length>18){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
 }
-const ZOMBIE_HELMET_TARGET_WIDTH=.34,ZOMBIE_HELMET_HEAD_Y=.085;
+const ZOMBIE_HELMET_TARGET_WIDTH=.38,ZOMBIE_HELMET_HEAD_Y=-.015,ZOMBIE_HELMET_HEAD_Z=-.085;
 let zombieHelmetTemplate=null,zombieHelmetLoadError=null;
-new GLTFLoader().load("assets/ww2_stahlhelm_m35_heer.glb?v=329",gltf=>{
+new GLTFLoader().load("assets/ww2_stahlhelm_m35_heer.glb?v=330",gltf=>{
  const raw=gltf.scene;
  raw.name="ZombieHelmetSource";
  raw.updateMatrixWorld(true);
@@ -1833,7 +1833,7 @@ function attachZombieHelmet(z){
  if(!parent)return false;
  const helmet=zombieHelmetTemplate.clone(true);
  helmet.name="ZombieHelmet";
- helmet.position.set(0,ZOMBIE_HELMET_HEAD_Y,0);
+ helmet.position.set(0,ZOMBIE_HELMET_HEAD_Y,ZOMBIE_HELMET_HEAD_Z);
  helmet.rotation.set(0,0,0);
  helmet.traverse(o=>{
   if(!o.isMesh)return;
