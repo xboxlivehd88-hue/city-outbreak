@@ -757,7 +757,7 @@ Object.assign(streetCityStatus.style,{
 });
 document.body.append(streetCityStatus);
 
-new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=315",gltf=>{
+new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=316",gltf=>{
  const city=gltf.scene;
  city.name="StreetCity7";
  city.scale.setScalar(1);
@@ -793,25 +793,17 @@ new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=315",gltf=>{
   minZ:wb.min.z+.35,maxZ:wb.max.z-.35
  };
 
+ // v316: the first automatic mesh bounding boxes were too coarse and trapped
+ // the player at spawn. Leave city collision empty for this movement-validation pass;
+ // we'll rebuild collision from targeted building meshes after movement is confirmed.
  buildingColliders.length=0;
- let colliderCount=0;
- city.traverse(o=>{
-  if(!o.isMesh||!o.geometry||!o.visible)return;
-  const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3(),c=new THREE.Vector3();
-  b.getSize(s);b.getCenter(c);
-  const touchesPlayerHeight=b.min.y<2.15&&b.max.y>.20;
-  const solidEnough=s.y>1.15&&s.x>.34&&s.z>.34;
-  if(touchesPlayerHeight&&solidEnough){
-   buildingColliders.push({x:c.x,z:c.z,hx:s.x*.5,hz:s.z*.5});
-   colliderCount++;
-  }
- });
+ const colliderCount=0;
  ZNAV_BLOCK_CACHE.clear();
 
  document.documentElement.dataset.streetCityLoaded="1";
  document.documentElement.dataset.streetCityColliders=String(colliderCount);
  document.documentElement.dataset.streetCitySize=ws.x.toFixed(1)+"x"+ws.z.toFixed(1);
- streetCityStatus.textContent="STREET CITY: LOADED "+ws.x.toFixed(0)+" × "+ws.z.toFixed(0)+" / "+colliderCount+" COLLIDERS";
+ streetCityStatus.textContent="STREET CITY: LOADED "+ws.x.toFixed(0)+" × "+ws.z.toFixed(0)+" / MOVEMENT TEST";
  streetCityStatus.style.background="rgba(25,95,40,.90)";
  setTimeout(()=>{if(streetCityStatus.parentNode)streetCityStatus.remove()},12000);
  console.log("CITY OUTBREAK: Street City replacement loaded",{
