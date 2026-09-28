@@ -71,6 +71,8 @@ function taperedPrism(topW,bottomW,h,topD,bottomD,m,x,y,z,p=scene){
 
 const buildingColliders=[],facadeMaterialCache=new Map();
 const USE_TRAILER_PARK_MAP=true;
+const TRAILER_PARK_SCALE=1.25;
+const TRAILER_PARK_Y_OFFSET=.12;
 let externalMapBounds=null,trailerParkRoot=null;
 function facadeMaterial(base,variant=0){
  const style=variant%8,cacheKey=base+"|"+style;
@@ -758,11 +760,11 @@ Object.assign(trailerMapStatus.style,{
 });
 document.body.append(trailerMapStatus);
 
-new GLTFLoader().load("assets/trailer_park.glb?v=320",gltf=>{
+new GLTFLoader().load("assets/trailer_park.glb?v=321",gltf=>{
  const map=gltf.scene;
  map.name="TrailerParkMap";
- map.scale.setScalar(1);
- map.position.set(0,0,0);
+ map.scale.setScalar(TRAILER_PARK_SCALE);
+ map.position.set(0,TRAILER_PARK_Y_OFFSET,0);
  map.updateMatrixWorld(true);
 
  let terrainBounds=new THREE.Box3(),hasTerrain=false,meshCount=0;
@@ -812,7 +814,7 @@ new GLTFLoader().load("assets/trailer_park.glb?v=320",gltf=>{
  document.documentElement.dataset.trailerParkLoaded="1";
  document.documentElement.dataset.trailerParkMeshes=String(meshCount);
  document.documentElement.dataset.trailerParkSize=ws.x.toFixed(1)+"x"+ws.z.toFixed(1);
- trailerMapStatus.textContent="TRAILER PARK: LOADED "+meshCount+" MESHES / "+ws.x.toFixed(0)+" × "+ws.z.toFixed(0);
+ trailerMapStatus.textContent="TRAILER PARK: LOADED / SCALE "+TRAILER_PARK_SCALE.toFixed(2)+" / GROUND +"+TRAILER_PARK_Y_OFFSET.toFixed(2)+"m";
  trailerMapStatus.style.background="rgba(25,95,40,.90)";
  setTimeout(()=>{if(trailerMapStatus.parentNode)trailerMapStatus.remove()},12000);
  console.log("CITY OUTBREAK: Trailer Park map loaded",{
