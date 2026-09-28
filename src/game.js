@@ -277,7 +277,14 @@ function pushOutsideBuilding(x,z,r=.45){
 
 // Ground plane + cleaner city street / sidewalk treatment.
 let ground=new THREE.Mesh(new THREE.PlaneGeometry(280,300),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
-const asphaltAvenue=new THREE.MeshStandardMaterial({color:0x303235,roughness:.96}), asphaltCross=new THREE.MeshStandardMaterial({color:0x303235,roughness:.96}), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
+const asphaltAvenue=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), asphaltCross=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
+new THREE.TextureLoader().load("assets/textures/roads/road_albedo.jpg.jpg",tx=>{
+ tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
+ const avenueTex=tx.clone();avenueTex.needsUpdate=true;avenueTex.repeat.set(3,30);
+ const crossTex=tx.clone();crossTex.needsUpdate=true;crossTex.repeat.set(28,3);
+ asphaltAvenue.map=avenueTex;asphaltAvenue.needsUpdate=true;
+ asphaltCross.map=crossTex;asphaltCross.needsUpdate=true;
+});
 box(24,.10,244,asphaltAvenue,0,.05,30);           // avenue
 box(224,.10,24,asphaltCross,0,.06,30);           // cross street
 
@@ -470,8 +477,46 @@ function batchStaticCity(){
  console.log("CityOutbreak city batching",{batches,mergedObjects,materials:buckets.size});
 }
 
-// v311 Postwar map test: no added STI props.
+let stiModelTemplate=null;
+const pendingStiSedans=[];
+function installStiVisual(g){
+ if(!stiModelTemplate||!g||g.userData.stiVisual)return false;
+ while(g.children.length)g.remove(g.children[g.children.length-1]);
+ // Parked cars are static. Share the STI geometry/materials but do not let twelve
+ // separate full model hierarchies add unnecessary transform/update overhead.
+ const sti=stiModelTemplate.clone(true);
+ sti.traverse(o=>{o.matrixAutoUpdate=false;o.updateMatrix()});
+ g.add(sti);g.userData.stiVisual=true;document.documentElement.dataset.stiVisuals=String((+document.documentElement.dataset.stiVisuals||0)+1);return true;
+}
+new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
+ const sti=gltf.scene;
+ sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ const b0=new THREE.Box3().setFromObject(sti),sz=new THREE.Vector3();b0.getSize(sz);
+ const horizontal=Math.max(sz.x,sz.z)||1;sti.scale.setScalar(4.90/horizontal);
+ const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
+ sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
+ stiModelTemplate=sti;
+ for(const sedan of pendingStiSedans)installStiVisual(sedan);
+ pendingStiSedans.length=0;
+ // Merge all twelve static STI visuals after the model has been installed.
+ batchLoadedStiCars();
+},undefined,err=>{document.documentElement.dataset.stiLoadError=String(err&&err.message||err);console.warn("WRX STI GLB load failed; parked-car collision anchors remain",err)});
+
+function car(x,z,rot=0){
+ // v182: STI-only parked-car visuals. Keep the proven v181 oriented collision footprint.
+ const g=new THREE.Group(),SL=4.90,SW=1.85;
+ g.position.set(x,0,z);g.rotation.y=rot;
+ g.userData.carHalfW=SW*.48;g.userData.carHalfL=SL*.49;g.userData.carType=0;
+ if(stiModelTemplate)installStiVisual(g);
+ else pendingStiSedans.push(g);
+ scene.add(g);
+ return g
+}
 const parkedCars=[];
+[
+ // v190 performance pass: keep only three STI props for now. More varied cars can be added later.
+ [-8,-55,0],[8,78,Math.PI],[32,35,Math.PI/2]
+].forEach(c=>parkedCars.push(car(...c)));
 
 function carPointCollision(c,x,z,pad=.35){
  const dx=x-c.position.x,dz=z-c.position.z,a=c.rotation.y,co=Math.cos(a),si=Math.sin(a);
@@ -687,188 +732,6 @@ function zombieRouteWaypoint(z){
 // does not bring back the old draw-call problem. parkedCars groups stay as cheap
 // collision anchors after their meshes are merged into the city batches.
 batchStaticCity();
-
-// v314: hide the imported gray route floor and explicitly repair original USDZ texture bindings.
-// v303 remains the protected recovery point. Only replace old city visuals after this GLB loads.
-let postwarCityRoot=null;
-const POSTWAR_CITY_SCALE=1.0;
-const POSTWAR_CITY_TARGET={x:0,z:30};
-const postwarStatus=document.createElement("div");
-postwarStatus.textContent="POSTWAR REPAIR: LOADING";
-Object.assign(postwarStatus.style,{
- position:"fixed",right:"12px",bottom:"12px",zIndex:"99999",
- padding:"8px 10px",background:"rgba(0,0,0,.82)",color:"#fff",
- font:"700 12px/1.2 system-ui,sans-serif",border:"1px solid rgba(255,255,255,.35)",
- borderRadius:"5px",pointerEvents:"none"
-});
-document.body.append(postwarStatus);
-
-// v313 test isolation: remove the approved procedural city before loading the Blender-imported Postwar scene.
-// v303 remains the rollback point, so this test can fail visibly without showing the old map.
-const postwarRemovedOldCityBatches=[];
-scene.traverse(o=>{if(o.name==="CityBatch")postwarRemovedOldCityBatches.push(o)});
-for(const o of postwarRemovedOldCityBatches){
- if(o.parent)o.parent.remove(o);
- try{o.geometry.dispose()}catch(_){}
-}
-ground.visible=false;
-buildingColliders.length=0;
-ZNAV_BLOCK_CACHE.clear();
-document.documentElement.dataset.postwarOldCityRemoved=String(postwarRemovedOldCityBatches.length);
-
-const POSTWAR_TEXTURE_REPAIRS={
- wall:{file:"wall_diffuse.jpg"},
- wall_002:{file:"wall.002_diffuse.jpg"},
- wall_buidings_001:{file:"wall.buidings.001_diffuse.jpg"},
- gravas:{file:"gravas_diffuse.jpg"},
- grass:{file:"grass_diffuse_cutoff199.png",alphaTest:199/255,doubleSide:true},
- TexturesCom_BuildingsDerelict0001_M:{file:"TexturesCom_BuildingsTallHouse0057_S_diffuse.jpg"},
- TexturesCom_HighRiseTowers0146_S:{file:"TexturesCom_HighRiseTowers0146_S_diffuse.jpg"},
- TexturesCom_MetalFences0005_S:{file:"TexturesCom_MetalFences0005_S_diffuse_cutoff84.png",alphaTest:84/255,doubleSide:true},
- TexturesCom_NaturePlants0005_1_alphamasked_S:{file:"TexturesCom_NaturePlants0005_1_alphamasked_S_diffuse.png",alphaTest:.5,doubleSide:true},
- TexturesCom_NaturePlants0038_1_alphamasked_S:{file:"TexturesCom_NaturePlants0038_1_alphamasked_S_diffuse_scale4_cutoff252.png",alphaTest:252/255,doubleSide:true},
- TexturesCom_NaturePlants0052_1_alphamasked_S:{file:"TexturesCom_NaturePlants0052_1_alphamasked_S_diffuse.png",alphaTest:.5,doubleSide:true},
- TexturesCom_RoadsBarriers0011_4_S_004:{file:"TexturesCom_RoadsBarriers0011_4_S_diffuse.jpg"}
-};
-
-async function repairPostwarMaterials(city){
- const byName=new Map();
- city.traverse(o=>{
-  if(!o.isMesh||!o.material)return;
-  for(const mat of (Array.isArray(o.material)?o.material:[o.material])){
-   if(!mat)continue;
-   if(!byName.has(mat.name))byName.set(mat.name,new Set());
-   byName.get(mat.name).add(mat);
-   if(mat.map){
-    mat.map.colorSpace=THREE.SRGBColorSpace;
-    mat.map.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
-    mat.map.needsUpdate=true;
-   }
-  }
- });
- const loader=new THREE.TextureLoader(),cache=new Map();
- const loadTexture=async file=>{
-  if(cache.has(file))return cache.get(file);
-  const tx=await loader.loadAsync("./assets/postwar_textures/"+file+"?v=314");
-  tx.colorSpace=THREE.SRGBColorSpace;
-  tx.flipY=false;
-  tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
-  tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
-  tx.needsUpdate=true;
-  cache.set(file,tx);
-  return tx;
- };
- let repaired=0;
- for(const [name,cfg] of Object.entries(POSTWAR_TEXTURE_REPAIRS)){
-  const mats=byName.get(name);
-  if(!mats||!mats.size)continue;
-  try{
-   const tx=await loadTexture(cfg.file);
-   for(const mat of mats){
-    mat.map=tx;
-    if(mat.color)mat.color.set(0xffffff);
-    mat.roughness=Math.max(.72,Number.isFinite(mat.roughness)?mat.roughness:.9);
-    if(Number.isFinite(mat.metalness))mat.metalness=Math.min(.15,mat.metalness);
-    if(cfg.alphaTest){
-     mat.alphaTest=cfg.alphaTest;
-     mat.transparent=false;
-     mat.depthWrite=true;
-    }
-    if(cfg.doubleSide)mat.side=THREE.DoubleSide;
-    mat.needsUpdate=true;
-    repaired++;
-   }
-  }catch(err){
-   console.warn("Postwar texture repair failed",name,cfg.file,err);
-  }
- }
- document.documentElement.dataset.postwarMaterialRepairs=String(repaired);
- return repaired;
-}
-
-function installPostwarCity(city){
- city.name="PostwarCityBlenderUSD";
- city.scale.setScalar(POSTWAR_CITY_SCALE);
- city.position.set(0,0,0);
- city.updateMatrixWorld(true);
-
- // USD prim names/materials can differ from the Blender export, so find the road robustly.
- let roadMesh=null,bestRoadScore=-Infinity;
- city.traverse(o=>{
-  if(!o.isMesh||!o.geometry)return;
-  const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
-  const area=s.x*s.z,lname=String(o.name||"").toLowerCase();
-  const mats=Array.isArray(o.material)?o.material:[o.material];
-  const materialRoad=mats.some(m=>{const n=String(m&&m.name||"").toLowerCase();return n.includes("route")||n.includes("road")});
-  const roadNamed=lname.includes("route")||lname.includes("road")||materialRoad;
-  const flat=s.y<Math.max(.5,Math.min(s.x,s.z)*.12);
-  const score=(roadNamed?1e9:0)+(flat?area:-1);
-  if(score>bestRoadScore){bestRoadScore=score;roadMesh=o}
- });
- if(!roadMesh)throw new Error("Could not identify Postwar City road/ground mesh");
-
- const confirmedRoute=city.getObjectByName("_2526024_001_0")||roadMesh;
- const roadBounds=new THREE.Box3().setFromObject(confirmedRoute),roadCenter=new THREE.Vector3();
- roadBounds.getCenter(roadCenter);
- city.position.set(
-  POSTWAR_CITY_TARGET.x-roadCenter.x,
-  -roadBounds.max.y,
-  POSTWAR_CITY_TARGET.z-roadCenter.z
- );
- city.updateMatrixWorld(true);
-
- // v314: remove only the giant gray route/floor mesh confirmed from the USD source.
- confirmedRoute.visible=false;
- document.documentElement.dataset.postwarHiddenFloor=confirmedRoute.name||"route";
-
- city.traverse(o=>{
-  o.userData.externalCityAsset=true;
-  if(o.isMesh){
-   o.castShadow=false;o.receiveShadow=true;
-   const mats=Array.isArray(o.material)?o.material:[o.material];
-   for(const mat of mats)if(mat)for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
-    const tx=mat[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
-   }
-  }
- });
- scene.add(city);
- postwarCityRoot=city;
-
- document.documentElement.dataset.postwarCityLoaded="1";
- console.log("CITY OUTBREAK: Blender-imported Postwar scene loaded",{
-  scale:POSTWAR_CITY_SCALE,
-  target:POSTWAR_CITY_TARGET,
-  roadBounds,
-  removedOldCityBatches:postwarRemovedOldCityBatches.length
- });
- const worldBounds=new THREE.Box3().setFromObject(city),worldSize=new THREE.Vector3();
- worldBounds.getSize(worldSize);
- let postwarMeshCount=0;city.traverse(o=>{if(o.isMesh)postwarMeshCount++});
- if(postwarMeshCount<70)throw new Error("Blender Postwar scene loaded only "+postwarMeshCount+" meshes; expected about 79");
- document.documentElement.dataset.postwarMeshCount=String(postwarMeshCount);
- postwarStatus.textContent="POSTWAR REPAIR: LOADED "+postwarMeshCount+" MESHES / "+(document.documentElement.dataset.postwarMaterialRepairs||"0")+" MATERIALS";
- postwarStatus.style.background="rgba(25,95,40,.90)";
- setTimeout(()=>{if(postwarStatus.parentNode)postwarStatus.remove()},15000);
-}
-
-(async()=>{
- try{
-  const response=await fetch("./assets/postwar_city_usdz_blender.glb?v=314",{cache:"no-store"});
-  if(!response.ok)throw new Error("HTTP "+response.status+" while fetching Blender Postwar GLB");
-  const bytes=await response.arrayBuffer();
-  if(bytes.byteLength<1000000)throw new Error("Blender Postwar GLB response was unexpectedly small ("+bytes.byteLength+" bytes)");
-  const gltf=await new Promise((resolve,reject)=>new GLTFLoader().parse(bytes,"",resolve,reject));
-  if(!gltf||!gltf.scene)throw new Error("GLTF loader did not return the Postwar scene");
-  await repairPostwarMaterials(gltf.scene);
-  installPostwarCity(gltf.scene);
- }catch(err){
-  const detail=String(err&&err.message||err);
-  document.documentElement.dataset.postwarCityLoadError=detail;
-  postwarStatus.textContent="POSTWAR REPAIR ERROR: "+detail;
-  postwarStatus.style.background="rgba(125,25,25,.94)";
-  console.warn("Blender-imported Postwar GLB load failed; v303 remains the rollback point",err);
- }
-})();
 
 function batchLoadedStiCars(){
  const buckets=new Map(),remove=[];
