@@ -189,6 +189,11 @@ export function clearDamageOverlay(element){
 }
 
 
+export function clearHitMarker(element){
+ if(element)element.classList.remove("show","head");
+}
+
+
 export function renderShopNote(element,text){
  if(!element)return;
  element.textContent=text;
