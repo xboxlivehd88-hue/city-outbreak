@@ -72,7 +72,7 @@ function taperedPrism(topW,bottomW,h,topD,bottomD,m,x,y,z,p=scene){
 const buildingColliders=[],facadeMaterialCache=new Map();
 const USE_TRAILER_PARK_MAP=true;
 const TRAILER_PARK_SCALE=1.25;
-const TRAILER_PARK_Y_OFFSET=.77;
+const TRAILER_PARK_Y_OFFSET=.81;
 let externalMapBounds=null,trailerParkRoot=null;
 function facadeMaterial(base,variant=0){
  const style=variant%8,cacheKey=base+"|"+style;
@@ -760,7 +760,7 @@ Object.assign(trailerMapStatus.style,{
 });
 document.body.append(trailerMapStatus);
 
-new GLTFLoader().load("assets/trailer_park.glb?v=324",gltf=>{
+new GLTFLoader().load("assets/trailer_park.glb?v=325",gltf=>{
  const map=gltf.scene;
  map.name="TrailerParkMap";
  map.scale.setScalar(TRAILER_PARK_SCALE);
