@@ -15,3 +15,16 @@ export function setupGameContextMenuGuard({
   if(documentTarget.pointerLockElement===canvas)event.preventDefault();
  });
 }
+
+
+export function setupFocusSafety({
+ onFocusLost,
+ windowTarget=window,
+ documentTarget=document
+}){
+ if(typeof onFocusLost!=="function")return;
+ windowTarget.addEventListener("blur",onFocusLost);
+ documentTarget.addEventListener("visibilitychange",()=>{
+  if(documentTarget.hidden)onFocusLost();
+ });
+}

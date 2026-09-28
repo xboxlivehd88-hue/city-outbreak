@@ -7,7 +7,7 @@ import {createPerformanceGuard} from "./performance-hud.js?v=262";
 import {showTransientMessage,clearTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay} from "./ui-helpers.js?v=278";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
-import {clearKeyState,setupGameContextMenuGuard} from "./input-utils.js?v=279";
+import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety} from "./input-utils.js?v=280";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -3820,7 +3820,9 @@ function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pa
 rebuildGun();setupResetButtons(reset);
 setupControlsModal();
 addEventListener("keydown",e=>{let k=e.key.toLowerCase(),gameKey=["w","a","s","d","r","g","n","1","2","3","4","5","6","7","8","shift"].includes(k);if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(k==="7")setWeapon("m240");if(k==="8")setWeapon("awm");if(gameKey)e.preventDefault()});
-addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});addEventListener("blur",()=>{clearKeys();stopAuto();setAim(false);if(running&&!dying&&!between&&!paused)setGamePaused(true)});document.addEventListener("visibilitychange",()=>{if(document.hidden){clearKeys();stopAuto();setAim(false);if(running&&!dying&&!between&&!paused)setGamePaused(true)}});
+addEventListener("keyup",e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false});
+const onInputFocusLost=()=>{clearKeys();stopAuto();setAim(false);if(running&&!dying&&!between&&!paused)setGamePaused(true)};
+setupFocusSafety({onFocusLost:onInputFocusLost});
 document.addEventListener("pointerlockchange",()=>{
  if(document.pointerLockElement!==cv){
    stopAuto();setAim(false);
