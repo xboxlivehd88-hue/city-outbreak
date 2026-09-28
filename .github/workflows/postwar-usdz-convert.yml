@@ -32,6 +32,9 @@ jobs:
           unzip -q "assets/Postwar_City_-_Exterior_Scene.usdz" -d /tmp/postwar_usdz
           test -s /tmp/postwar_usdz/scene.usdc
           find /tmp/postwar_usdz -maxdepth 2 -type f -printf '%P %s bytes\n' | sort
+          rm -rf assets/postwar_textures
+          mkdir -p assets/postwar_textures
+          cp -a /tmp/postwar_usdz/0/. assets/postwar_textures/
 
       - name: Import USD and export GLB
         run: |
@@ -148,7 +151,7 @@ jobs:
           test -s assets/postwar_city_usdz_blender.glb
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/postwar_city_usdz_blender.glb
+          git add assets/postwar_city_usdz_blender.glb assets/postwar_textures
           if ! git diff --cached --quiet; then
             git commit -m "Generate Postwar City GLB from original USDZ [skip ci]"
             git push
