@@ -71,7 +71,7 @@ function taperedPrism(topW,bottomW,h,topD,bottomD,m,x,y,z,p=scene){
 
 const buildingColliders=[],facadeMaterialCache=new Map();
 const USE_EXTERNAL_CITY=true;
-const STREET_CITY_SCALE=.70;
+const STREET_CITY_SCALE=1.20;
 const STREET_CITY_SPAWN={x:0,z:-15};
 let externalCityBounds=null,streetCityRoot=null;
 const legacyCityBaseline=new Set(scene.children);
@@ -759,7 +759,7 @@ Object.assign(streetCityStatus.style,{
 });
 document.body.append(streetCityStatus);
 
-new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=318",gltf=>{
+new GLTFLoader().load("assets/street_city_7_for_games_free.glb?v=319",gltf=>{
  const city=gltf.scene;
  city.name="StreetCity7";
  city.scale.setScalar(STREET_CITY_SCALE);
