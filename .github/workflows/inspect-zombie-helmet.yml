@@ -1,0 +1,38 @@
+name: Inspect Zombie Helmet GLB
+
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-zombie-helmet.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect helmet scene bounds
+        run: |
+          python3 - <<'PY'
+          import json,struct,math
+          p='assets/ww2_stahlhelm_m35_heer.glb'
+          with open(p,'rb') as f:
+              magic,version,total=struct.unpack('<4sII',f.read(12))
+              clen,ctype=struct.unpack('<II',f.read(8))
+              g=json.loads(f.read(clen).decode('utf-8').rstrip('\x00 '))
+          print('MAGIC',magic,'VERSION',version,'TOTAL',total)
+          print('SCENE',g.get('scene'),'SCENES',g.get('scenes'))
+          print('NODES',len(g.get('nodes',[])),'MESHES',len(g.get('meshes',[])),'MATERIALS',len(g.get('materials',[])),'IMAGES',len(g.get('images',[])))
+          print('IMAGES_EXTERNAL',[x.get('uri') for x in g.get('images',[]) if x.get('uri')])
+          print('EMBEDDED_IMAGES',sum(1 for x in g.get('images',[]) if 'bufferView' in x))
+          for i,n in enumerate(g.get('nodes',[])):
+              if 'mesh' in n or i<10:
+                  print('NODE',i,'name=',n.get('name'),'mesh=',n.get('mesh'),'t=',n.get('translation'),'r=',n.get('rotation'),'s=',n.get('scale'),'children=',n.get('children'))
+          for i,m in enumerate(g.get('meshes',[])):
+              print('MESH',i,m.get('name'),'prims',len(m.get('primitives',[])))
+              for pi,pr in enumerate(m.get('primitives',[])):
+                  ai=pr.get('attributes',{}).get('POSITION')
+                  if ai is not None:
+                      a=g['accessors'][ai]
+                      print(' POS',pi,'accessor',ai,'min',a.get('min'),'max',a.get('max'),'count',a.get('count'))
+          print('MATERIAL_NAMES',[m.get('name') for m in g.get('materials',[])])
+          PY
