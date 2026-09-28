@@ -748,6 +748,19 @@ Object.assign(postwarStatus.style,{
 });
 document.body.append(postwarStatus);
 
+// v310 test isolation: remove the approved procedural city before loading Postwar City.
+// v303 remains the rollback point, so this test can fail visibly without showing the old map.
+const postwarRemovedOldCityBatches=[];
+scene.traverse(o=>{if(o.name==="CityBatch")postwarRemovedOldCityBatches.push(o)});
+for(const o of postwarRemovedOldCityBatches){
+ if(o.parent)o.parent.remove(o);
+ try{o.geometry.dispose()}catch(_){}
+}
+ground.visible=false;
+buildingColliders.length=0;
+ZNAV_BLOCK_CACHE.clear();
+document.documentElement.dataset.postwarOldCityRemoved=String(postwarRemovedOldCityBatches.length);
+
 function installPostwarCity(gltf){
  const city=gltf.scene;
  city.name="PostwarCity";
@@ -763,7 +776,8 @@ function installPostwarCity(gltf){
    if(!o.isMesh||!o.geometry)return;
    const mats=Array.isArray(o.material)?o.material:[o.material];
    const routeNamed=mats.some(m=>m&&String(m.name||"").toLowerCase().includes("route"));
-   const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s),area=s.x*s.z;
+   const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
+   const area=s.x*s.z;
    if(routeNamed||(s.y<1&&area>bestRoadArea)){roadMesh=o;bestRoadArea=area}
   });
  }
@@ -791,23 +805,12 @@ function installPostwarCity(gltf){
  scene.add(city);
  postwarCityRoot=city;
 
- // Remove the old procedural city's batched visuals only after the Postwar City is confirmed loaded.
- const oldCityBatches=[];
- scene.traverse(o=>{if(o.name==="CityBatch")oldCityBatches.push(o)});
- for(const o of oldCityBatches){
-  if(o.parent)o.parent.remove(o);
-  try{o.geometry.dispose()}catch(_){}
- }
- ground.visible=false;
- buildingColliders.length=0;
- ZNAV_BLOCK_CACHE.clear();
-
  document.documentElement.dataset.postwarCityLoaded="1";
  console.log("CITY OUTBREAK: Postwar City visual test loaded",{
   scale:POSTWAR_CITY_SCALE,
   target:POSTWAR_CITY_TARGET,
   roadBounds,
-  removedOldCityBatches:oldCityBatches.length
+  removedOldCityBatches:postwarRemovedOldCityBatches.length
  });
  const worldBounds=new THREE.Box3().setFromObject(city),worldSize=new THREE.Vector3();
  worldBounds.getSize(worldSize);
@@ -818,7 +821,7 @@ function installPostwarCity(gltf){
 
 (async()=>{
  try{
-  const response=await fetch("./assets/postwar_city_game_ready.glb?v=309",{cache:"no-store"});
+  const response=await fetch("./assets/postwar_city_game_ready.glb?v=310",{cache:"no-store"});
   if(!response.ok)throw new Error("HTTP "+response.status+" while fetching Postwar City");
   const bytes=await response.arrayBuffer();
   if(bytes.byteLength<1000000)throw new Error("Postwar City response was unexpectedly small ("+bytes.byteLength+" bytes)");
