@@ -733,6 +733,77 @@ function zombieRouteWaypoint(z){
 // collision anchors after their meshes are merged into the city batches.
 batchStaticCity();
 
+// v308: first-stage Postwar City visual/scale test.
+// v303 remains the protected recovery point. Only replace old city visuals after this GLB loads.
+let postwarCityRoot=null;
+const POSTWAR_CITY_SCALE=19.36;
+const POSTWAR_CITY_TARGET={x:0,z:30};
+new GLTFLoader().load("assets/postwar_city_game_ready.glb",gltf=>{
+ const city=gltf.scene;
+ city.name="PostwarCity";
+ city.scale.setScalar(POSTWAR_CITY_SCALE);
+ city.position.set(0,0,0);
+ city.updateMatrixWorld(true);
+
+ // Prefer the exported source road mesh. Fall back to the broadest thin horizontal mesh.
+ let roadMesh=city.getObjectByName("42526024.001"),bestRoadArea=0;
+ if(!roadMesh||!roadMesh.isMesh){
+  roadMesh=null;
+  city.traverse(o=>{
+   if(!o.isMesh||!o.geometry)return;
+   const mats=Array.isArray(o.material)?o.material:[o.material];
+   const routeNamed=mats.some(m=>m&&String(m.name||"").toLowerCase().includes("route"));
+   const b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s),area=s.x*s.z;
+   if(routeNamed||(s.y<1&&area>bestRoadArea)){roadMesh=o;bestRoadArea=area}
+  });
+ }
+ if(!roadMesh)throw new Error("Could not identify Postwar City road/ground mesh");
+
+ const roadBounds=new THREE.Box3().setFromObject(roadMesh),roadCenter=new THREE.Vector3();
+ roadBounds.getCenter(roadCenter);
+ city.position.set(
+  POSTWAR_CITY_TARGET.x-roadCenter.x,
+  -roadBounds.max.y,
+  POSTWAR_CITY_TARGET.z-roadCenter.z
+ );
+ city.updateMatrixWorld(true);
+
+ city.traverse(o=>{
+  o.userData.externalCityAsset=true;
+  if(o.isMesh){
+   o.castShadow=false;o.receiveShadow=true;
+   const mats=Array.isArray(o.material)?o.material:[o.material];
+   for(const mat of mats)if(mat)for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
+    const tx=mat[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
+   }
+  }
+ });
+ scene.add(city);
+ postwarCityRoot=city;
+
+ // Remove the old procedural city's batched visuals only after the Postwar City is confirmed loaded.
+ const oldCityBatches=[];
+ scene.traverse(o=>{if(o.name==="CityBatch")oldCityBatches.push(o)});
+ for(const o of oldCityBatches){
+  if(o.parent)o.parent.remove(o);
+  try{o.geometry.dispose()}catch(_){}
+ }
+ ground.visible=false;
+ buildingColliders.length=0;
+ ZNAV_BLOCK_CACHE.clear();
+
+ document.documentElement.dataset.postwarCityLoaded="1";
+ console.log("CITY OUTBREAK: Postwar City visual test loaded",{
+  scale:POSTWAR_CITY_SCALE,
+  target:POSTWAR_CITY_TARGET,
+  roadBounds,
+  removedOldCityBatches:oldCityBatches.length
+ });
+},undefined,err=>{
+ document.documentElement.dataset.postwarCityLoadError=String(err&&err.message||err);
+ console.warn("Postwar City GLB load failed; keeping approved v303 procedural city",err);
+});
+
 function batchLoadedStiCars(){
  const buckets=new Map(),remove=[];
  for(const anchor of parkedCars){
