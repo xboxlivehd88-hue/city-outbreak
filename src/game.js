@@ -74,8 +74,8 @@ const USE_TRAILER_PARK_MAP=true;
 const TRAILER_PARK_SCALE=1.25;
 const TRAILER_PARK_Y_OFFSET=.97;
 const TRAILER_COLLISION_SPAWN_X=0,TRAILER_COLLISION_SPAWN_Z=-15,TRAILER_COLLISION_SPAWN_PAD=.90;
-let externalMapBounds=null,trailerParkRoot=null,playerGroundY=0;
-const trailerWalkableMeshes=[],trailerInteriorSpawns=[],trailerDoorPassages=[],trailerWalkRay=new THREE.Raycaster(),trailerWalkOrigin=new THREE.Vector3(),trailerWalkDown=new THREE.Vector3(0,-1,0);
+let externalMapBounds=null,trailerParkRoot=null,playerGroundY=0,workingTrailerBounds=null;
+const trailerWalkableMeshes=[],trailerInteriorSpawns=[],trailerDoorPassages=[],workingTrailerFloorPatches=[],trailerWalkRay=new THREE.Raycaster(),trailerWalkOrigin=new THREE.Vector3(),trailerWalkDown=new THREE.Vector3(0,-1,0);
 function inTrailerDoorPassage(x,z,pad=0){
  return trailerDoorPassages.some(p=>x>p.minX-pad&&x<p.maxX+pad&&z>p.minZ-pad&&z<p.maxZ+pad);
 }
@@ -241,6 +241,21 @@ function trailerWalkableHeightAt(x,z){
  }
  return 0;
 }
+function inWorkingTrailerArea(x,z,pad=.12){
+ return !!workingTrailerBounds&&x>workingTrailerBounds.minX-pad&&x<workingTrailerBounds.maxX+pad&&z>workingTrailerBounds.minZ-pad&&z<workingTrailerBounds.maxZ+pad;
+}
+function addWorkingTrailerFloorPatch(source,box,name){
+ if(!source||!box||box.isEmpty())return null;
+ const s=new THREE.Vector3(),ctr=new THREE.Vector3();box.getSize(s);box.getCenter(ctr);
+ const srcMat=Array.isArray(source.material)?source.material[0]:source.material;
+ const mat=srcMat&&srcMat.clone?srcMat.clone():new THREE.MeshStandardMaterial({color:0x8d8170,roughness:.92});
+ const thick=.055,top=box.max.y-.008;
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(Math.max(.10,s.x-.035),thick,Math.max(.10,s.z-.035)),mat);
+ mesh.name=name;mesh.position.set(ctr.x,top-thick*.5,ctr.z);mesh.castShadow=false;mesh.receiveShadow=true;
+ mesh.userData.externalMapAsset=true;mesh.userData.workingTrailerFloorPatch=true;
+ scene.add(mesh);workingTrailerFloorPatches.push(mesh);trailerWalkableMeshes.push(mesh);
+ return mesh;
+}
 function addTrailerInteriorSpawnPoints(homeBox,floorBox,doorBox,source){
  if(!homeBox||!floorBox||!doorBox)return;
  const info=trailerDoorInfo(homeBox,doorBox);if(!info)return;
@@ -257,6 +272,8 @@ function addTrailerInteriorSpawnPoints(homeBox,floorBox,doorBox,source){
 }
 function buildTrailerParkCollision(map){
  buildingColliders.length=0;
+ for(const p of workingTrailerFloorPatches){if(p.parent)p.parent.remove(p);if(p.geometry)p.geometry.dispose();if(p.material&&p.material.dispose)p.material.dispose()}
+ workingTrailerFloorPatches.length=0;workingTrailerBounds=null;
  trailerWalkableMeshes.length=0;
  trailerInteriorSpawns.length=0;
  trailerDoorPassages.length=0;
@@ -285,10 +302,11 @@ function buildTrailerParkCollision(map){
    if(homeMatch){
      const key=homeMatch[1].toLowerCase(),b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
      let home=homes.get(key);
-     if(!home){home={all:b.clone(),body:null,shell:null,floor:null};homes.set(key,home)}
+     if(!home){home={all:b.clone(),body:null,shell:null,floor:null,carpetObj:null,tileFloorObj:null};homes.set(key,home)}
      else home.all.union(b);
      if(lower.includes("woodplanksclean")||lower.includes("carpet"))trailerWalkableMeshes.push(o);
-     if(lower.includes("carpet"))home.floor=b.clone();
+     if(lower.includes("carpet")){home.floor=b.clone();if(key==="home")home.carpetObj=o}
+     if(key==="home"&&lower.includes("tilessmall")&&s.y<.05)home.tileFloorObj=o;
      // Prefer the actual tall metal exterior shell for the trailer footprint.
      if(lower.includes("metalplates")&&s.y>=1.25){
        if(!home.shell)home.shell=b.clone();else home.shell.union(b);
@@ -306,6 +324,12 @@ function buildTrailerParkCollision(map){
 
  let homeCount=0,linearCount=0,propCount=0;
  const doorCorridors=[];
+ const working=homes.get("home");
+ if(working){
+   workingTrailerBounds=working.all.clone();
+   if(working.carpetObj)addWorkingTrailerFloorPatch(working.carpetObj,new THREE.Box3().setFromObject(working.carpetObj),"WorkingTrailerCarpetBacking");
+   if(working.tileFloorObj)addWorkingTrailerFloorPatch(working.tileFloorObj,new THREE.Box3().setFromObject(working.tileFloorObj),"WorkingTrailerTileBacking");
+ }
  for(const [key,home] of homes){
    const shell=home.shell||home.body||home.all,hc=new THREE.Vector3();shell.getCenter(hc);
    let nearest=null,best=Infinity;
@@ -804,6 +828,13 @@ function carPointCollision(c,x,z,pad=.35){
  return qx*qx+qz*qz<pad*pad;
 }
 function zombiePointBlocked(x,z,r=.50){
+ // The working trailer deck railing stays solid for zombies even while the player
+ // doorway bypass is active. Use the authored railing's triangle-built colliders.
+ for(const b of buildingColliders){
+   const source=String(b.source||"");
+   if(!source.startsWith("railing_Fence_0:rail"))continue;
+   if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true;
+ }
  if(insideBuilding(x,z,r))return true;
  for(const c of parkedCars)if(carPointCollision(c,x,z,r))return true;
  return false;
@@ -3991,10 +4022,13 @@ for(let z of active){
    const a=rnd()*Math.PI*2,dist=16+rnd()*8;let safe=pushOutsideBuilding(px+Math.sin(a)*dist,pz+Math.cos(a)*dist,.85);
    z.g.position.set(safe.x,0,safe.z);z.groundY=0;z.trailerEscape=null;z.trailerFloor=false;z.targetX=px;z.targetZ=pz;z.stagger=.25;z.navPath=null;z.navIndex=0;z.navCheckT=0;
  }
- if(z.trailerFloor){
+ if(z.trailerFloor||inWorkingTrailerArea(z.g.position.x,z.g.position.z,.18)){
    const gy=trailerWalkableHeightAt(z.g.position.x,z.g.position.z);
-   z.groundY+=(gy-z.groundY)*Math.min(1,dt*11);
-   if(!z.trailerEscape&&gy<.02&&z.groundY<.025){z.groundY=0;z.trailerFloor=false}
+   if(gy>.02||z.trailerFloor){
+     if(gy>.02)z.trailerFloor=true;
+     z.groundY+=(gy-z.groundY)*Math.min(1,dt*11);
+     if(!z.trailerEscape&&gy<.02&&z.groundY<.025){z.groundY=0;z.trailerFloor=false}
+   }
  }
  if(highlightLast&&!z.marker){
    z.marker=createLastZombieMarker();
