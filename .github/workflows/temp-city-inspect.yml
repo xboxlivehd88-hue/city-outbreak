@@ -71,3 +71,5 @@ jobs:
           print(json.dumps({'nodes':len(nodes),'meshes':len(meshes),'matches':out},separators=(',',':')))
           print('CITY_INSPECT_END')
           PY
+
+# trigger inspection
