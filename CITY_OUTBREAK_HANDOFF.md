@@ -1,5 +1,141 @@
 # CITY OUTBREAK — AUTHORITATIVE HANDOFF
 
+# CURRENT STATE UPDATE — 2026-09-29 — READ THIS FIRST
+
+This section supersedes every older "current checkpoint" / "next step" note below. Older sections remain only as history/reference.
+
+## Recovery points and current live work
+
+- Repository: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Live game: https://xboxlivehd88-hue.github.io/city-outbreak/
+- **Protected clean fallback remains v303. Do not lose it.**
+  - approved v303 gameplay commit: `8e0c312eab781ba978ebb7f5bf503253e0d5e955`
+  - clean v303 restore commit: `d7618b8dc26b982f0cfcc8f36b7123e57827a279`
+  - exact clean v303 restore tree: `ce560411d2751ccdc8068bfa16753cc77adeb74a`
+  - restored v303 loader: `./src/game.js?v=303`
+- **Current live runtime is v334**
+  - runtime commit: `c90b33b685ffba3d056a1fe53464930a411de788`
+  - loader: `./src/game.js?v=334`
+  - Pages run `36522837494` completed successfully
+- **Pre-collision visual/helmet checkpoint:** v333 commit `e07067ba609dbf74f4fd50e2c5d04a6f1f455358`.
+  - If the new collision pass traps movement or creates bad invisible walls, v333 is the immediate comparison/recovery point for the current Trailer Park + helmet visuals.
+  - v303 remains the broad clean fallback if a larger regression occurs.
+
+The user explicitly asked that v303 remain a good fallback and said the project is in a great spot at handoff. The collision code was the final runtime change before handoff and did not receive a separate, focused post-deploy collision test report. Treat v334 collision as current live work that should be tested first next chat, not as a reason to overwrite the v303 safety point.
+
+## Current Trailer Park map — preserve these values
+
+Asset:
+- `assets/trailer_park.glb`
+- 19,554,384 bytes
+- valid GLB 2.0
+- 3838 nodes / 2250 meshes / 97 materials
+- 96 embedded images; no external image URIs
+- inspection found no authored collision/physics naming such as collider/collision/UCX/physics/rigidbody/trigger
+
+Approved map transform:
+```js
+const TRAILER_PARK_SCALE=1.25;
+const TRAILER_PARK_Y_OFFSET=.97;
+```
+
+The user iteratively tuned the ground height and then moved on, so **do not change scale 1.25 or Y +0.97 unless the user asks**.
+
+The old road/ground assets from the procedural city were removed from the active Trailer Park build. The current map is the uploaded Trailer Park GLB. `externalMapBounds` is still derived from detected terrain bounds and acts as the outside playable boundary.
+
+## Zombie helmet — current exact state
+
+Uploaded helmet:
+- `assets/ww2_stahlhelm_m35_heer.glb`
+- 11,651,796 bytes
+- 18 nodes / 16 meshes / 11 materials
+- 9 embedded images; no external image files
+
+Current v334 helmet transform:
+```js
+const ZOMBIE_HELMET_TARGET_WIDTH=.38,
+      ZOMBIE_HELMET_HEAD_Y=.055,
+      ZOMBIE_HELMET_HEAD_Z=-.085,
+      ZOMBIE_HELMET_PITCH=.06981;
+```
+
+Important user feedback:
+- **The user explicitly said the helmet size is great. Do not change width .38 unless asked.**
+- The current position is forward on Z, raised slightly on Y, and the front has a small upward pitch.
+- The helmet is normalized around its GLB bounds once, then cloned.
+- Standing zombies attach it to the animated rig `Head` bone.
+- Crawlers fall back to their procedural `z.head`.
+- Existing zombies are patched when the helmet finishes loading; new zombies get `attachZombieHelmet(zz)` during creation.
+- Helmet meshes are `visualOnly`, have `raycast=()=>{}`, and do **not** replace or block zombie headshot hitboxes.
+
+## v334 Trailer Park collision pass
+
+The Trailer Park GLB did **not** bring a ready-made collision system, so v334 builds targeted collision from selected map geometry instead of creating one AABB for every one of the 2250 meshes.
+
+Current collision implementation:
+- `buildTrailerParkCollision(map)` clears `buildingColliders` and rebuilds them from the Trailer Park asset.
+- Trailer/home meshes matching `Home...` are grouped by home and unioned into one conservative footprint per home; collider shrink is about `.14`.
+- `Fence` / `Railing` meshes use `addTrailerLinearMeshCollision()`.
+  - long linear meshes are split into ~1.15 m bins based on actual triangle coverage
+  - this is specifically intended to preserve visible openings instead of turning an entire long fence AABB into an invisible wall
+- metal trash cans (`trash_can_metal`, excluding their top) also get conservative box collision.
+- very small/low meshes are skipped.
+- distant background/environment collision beyond roughly |X| or |Z| 125 is skipped.
+- player spawn at approximately `(0,-15)` has a `.90` protective pad; colliders overlapping spawn are skipped.
+- `ZNAV_BLOCK_CACHE.clear()` runs after rebuilding collision so zombie nav can see the new blockers.
+- Collision uses the existing `buildingColliders` / `insideBuilding` / `slideBuilding` / `pushOutsideBuilding` system, so player and zombie movement share the same blocker data.
+
+**Do not replace this with a generic per-mesh full-map AABB pass.** The earlier Street City experiment proved that coarse automatic collision can trap WASD and create huge invisible blockers.
+
+### First thing to test next chat
+
+Open the current v334 live build and test:
+1. player spawns and can move immediately
+2. player cannot walk through trailer/home bodies
+3. fences/railings block where geometry exists but visible openings remain passable
+4. no giant invisible walls around long fences
+5. trash-can collision feels reasonable
+6. zombies still reach/path toward the player rather than ping-ponging
+7. no zombie spawns become unreachable because of the new map blockers
+
+If collision is wrong, change **only the collision selection/footprints** first. Keep map transform and helmet transform locked. Compare against v333 if needed. Use v303 only for broad recovery.
+
+## Locked gameplay / regression-sensitive systems
+
+Keep these unless the user explicitly asks:
+- `MAX_ACTIVE_ZOMBIES=20`
+- v303 `src/wave-utils.js?v=303` formulas
+- M17 ADS: `pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:.045}`
+- `const pistolAdsZero=0;`
+- M17 16-round mag, effectively unlimited reserve, no SIG ammo drops, lower damage until store upgrade
+- M4 ADS: `rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0}`
+- MP5 ADS: `smg:{x:-.36,y:-.050,z:1.28,fov:55,rx:-.01}`
+- all approved reload animations
+- inline/proven audio in `src/game.js`; `src/audio.js` remains unused
+- v289 pause behavior; v290/v291 pointer-lock experiments stay reverted
+- store low-power pause/freeze behavior
+- start screen, Controls modal, sound, death/restart/death-restart, Ready/next-wave behavior
+- boss chest hitbox and boss behavior
+- zombie reachability/pathing logic unless deliberately adapting it to the Trailer Park collision
+
+## Required workflow
+
+Before every change:
+1. Read this top section and `NEXT_CHAT_HANDOFF.md`.
+2. Fetch latest `main:index.html` and `src/game.js`; never work from stale chat code.
+3. Make **one small atomic change**.
+4. Commit directly to `main`.
+5. Verify the exact diff and the locked values above.
+6. Wait for GitHub Pages deployment success.
+7. Give a fresh cache-busted Pages test link.
+8. Wait for user testing before the next major change.
+
+User testing is ground truth. Never claim a visual/gameplay fix solely because code compiled or deployed.
+
+---
+
+
 # CURRENT STATE UPDATE — 2026-09-28 — READ THIS FIRST
 
 This section supersedes older "current checkpoint" references below. Keep the older sections as project history/reference.
