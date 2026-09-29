@@ -1,5 +1,194 @@
 # CITY OUTBREAK — AUTHORITATIVE HANDOFF
 
+# NEW PROTECTED RECOVERY CHECKPOINT — 2026-09-29 — v324 — READ THIS FIRST
+
+This section supersedes every older "current checkpoint" or "current state" section below. Older sections are retained only as historical reference.
+
+## Recovery checkpoint identity
+
+- **Current approved recovery build:** v324
+- **Exact protected recovery commit:** `afddcebb47e06a82b4196638716f05e6f1adc941`
+- **Exact protected recovery tree:** `5721309fc27f9f16ee7a2568a7f73fd429342502`
+- **v324 loader commit:** `6d9cfb8aaa54916bab78f7a93c95224435c9ec5b`
+- **GitHub Pages entry:** `./src/game.js?v=324`
+- **Latest successful Pages deployment for the protected tree:** run `36616387389`
+- **Live game:** https://xboxlivehd88-hue.github.io/city-outbreak/
+- The user explicitly said the current state is a **great spot** and asked to make it the new recovery save.
+- Future work starts from v324 unless the user explicitly asks to restore an older checkpoint.
+- **Do not redefine or overwrite this recovery identity casually.** If a later build becomes the new approved recovery, record a new dated section above this one.
+
+## Required workflow for every future change
+
+1. Fetch/read this file, `NEXT_CHAT_HANDOFF.md`, current `main:index.html`, current `main:src/game.js`, and any directly relevant module such as `src/wave-utils.js`.
+2. Never work from stale chat snippets when the repository can be read directly.
+3. Make one controlled change at a time.
+4. Commit directly to `main`; do not ask the user to run Git commands or manually upload code.
+5. Verify the exact diff and protected gameplay values after the change.
+6. Temporary Actions inspection/syntax workflows are allowed, but delete them immediately afterward.
+7. `.github/workflows` should return to only `v182-validation.yml`.
+8. Wait for the final GitHub Pages deployment to complete successfully before giving the user a cache-busted test link.
+9. Code/deployment success does **not** equal gameplay approval. The user's live test is final authority.
+
+## Current city/map — LOCKED BASELINE
+
+The old v303 procedural city is no longer active. The active environment is the uploaded GLB:
+
+- `assets/chicken_gun_fruzer_-_city.glb`
+- Valid GLB 2.0, self-contained.
+- Approx file size: 25.47 MB.
+- 1 scene, 1028 nodes, 455 meshes, 9 materials, 8 textures / 8 embedded PNG images.
+- Approx 309,042 triangles.
+- Raw source bounds were approximately 502.52 x 707.53 x 578.54 units.
+- No authored collision/physics metadata and no real punctual-light metadata were found.
+- Sketchfab metadata inside the GLB identifies the asset as **"chicken gun fruzer - city"**, author **amogusstrikesback2**, license **CC-BY-4.0**.
+- Old procedural ground, roads, sidewalks, curbs, buildings, lamps, barriers, road texture, and old hand-placed STI map props are disabled from the active environment.
+
+Current map transform:
+```js
+const NEW_CITY_SCALE=1.55;
+const NEW_CITY_X_OFFSET=21.33575;
+const NEW_CITY_Y_OFFSET=28.68275;
+const NEW_CITY_Z_OFFSET=8.25;
+```
+
+The scale was tuned repeatedly against the character/zombie size. **Do not change it unless the user asks.**
+
+## Current character scale / camera / M4
+
+```js
+const PLAYER_WORLD_SCALE=1.20;
+const ZOMBIE_WORLD_SCALE=1.15;
+```
+
+- Camera uses `playerGroundY + 1.65 * PLAYER_WORLD_SCALE`.
+- The player was raised because the user felt too short compared with the zombies.
+- The M4 hip pose was pulled back toward the shoulder:
+  `m4ViewRoot.position.z = reloading ? -1.66 : THREE.MathUtils.lerp(-1.62,-1.66,aimBlend)`
+- Preserve the approved M4 ADS/reload pose and do not rework other weapon transforms unless requested.
+
+## v320–v324 city collision / navigation — CURRENT APPROVED SYSTEM
+
+The GLB has no native collision, so collision is generated from the city's actual geometry.
+
+### Wall collision
+- Spatial collision bucket size: `CITY_COLLISION_BUCKET=4.0`.
+- Collision is generated only from substantial near-vertical geometry crossing player/zombie body height.
+- Roads/floors/roofs/shallow curbs are intentionally not treated as walls.
+- v324 collision precision:
+```js
+const NEW_CITY_COLLISION_CELL=.34;
+const NEW_CITY_COLLISION_MIN_Y=.10;
+const NEW_CITY_COLLISION_MAX_Y=2.25;
+const NEW_CITY_COLLISION_MIN_VERTICAL_SPAN=.55;
+```
+- Wall triangle edges are rasterized into collision cells and merged into compact AABB strips.
+- `insideBuilding`, `slideBuilding`, zombie blocking, and A* all share the same collision data.
+- Current player wall radius: `.36`.
+- Current zombie collision radius: `.38`.
+- These smaller radii are intentional: v324 was specifically made to open narrow alleys, stoops, door approaches, railings, and other passages that were too restrictive in v323.
+
+### Zombie navigation
+```js
+const ZNAV_CELL=1.5;
+const ZNAV_PAD=.44;
+const ZNAV_MAX_NODES=3600;
+```
+- A* uses the generated wall collision.
+- v324 tightened the nav grid from the older coarser settings so zombies can use narrow real passages without walking through walls.
+- Do not restore the older v320/v323 larger player/zombie clearance values unless explicitly troubleshooting a regression.
+
+### Stairs / vertical ground following
+v323 added real walkable stair/ground following instead of treating the whole game as flat Y=0.
+
+```js
+const PLAYER_STEP_UP=.62;
+const PLAYER_STEP_DOWN=1.35;
+```
+- `samplePlayerGroundY()` raycasts the city GLB beneath the player.
+- It accepts upward-facing surfaces with world normal Y >= .42.
+- `playerGroundY` smoothly follows valid treads/ground, and camera height is added on top.
+- Wall collision remains separate, so vertical surfaces should not become ground.
+- If stairs regress, inspect this system before inventing ramps or changing map scale.
+
+## Zombie spawning — CURRENT APPROVED SYSTEM
+
+v323 stopped zombies from spawning inside enclosed buildings by creating spawn zones from real outdoor map meshes.
+
+- Spawn zones are built only from mesh names matching `Road_*` or `ParkingBG_*`.
+- Large `BG_*` block planes are intentionally excluded because buildings sit on top of them.
+- `validZombieSpawn()` requires the candidate to be on one of those outdoor spawn zones, outside wall collision, and more than 22 units from the player.
+- Normal spawn search: `findReachableZombieSpawn(24,42)`.
+- Boss spawn search: `findReachableZombieSpawn(28,46)`.
+- Spawn candidates are tested for direct or A*-reachable routes to the player.
+- Do not revert to random radial spawning without the road/parking-surface validation; that caused zombies to appear inside buildings and become trapped.
+
+## Waves / zombies / headshots — CURRENT APPROVED VALUES
+
+`src/wave-utils.js` currently starts ordinary waves at:
+```js
+count:10+(w-1)*3
+```
+
+So Wave 1 = 10 normal zombies, then +3 per normal wave formula. Existing boss-wave logic remains every 10th wave.
+
+Active optimization cap:
+```js
+const MAX_ACTIVE_ZOMBIES=30;
+```
+
+Non-boss headshots are **not forced instant kills anymore**:
+```js
+const headshotToughness=1+Math.max(0,wave-1)*.2;
+z.hp-=shotDamage*3/headshotToughness;
+```
+This implements the user's request as increasing zombie headshot resistance by 0.2 per round, so later waves do not stay guaranteed one-shot head kills. Boss headshot logic remains separate.
+
+## Player movement / round recovery — CURRENT APPROVED VALUES
+
+- Walk speed: 5.
+- Sprint speed: **9.5**.
+- Sprint drain: approximately 33.34/sec.
+- Sprint recharge: 14/sec.
+- At every new round / Ready transition:
+  - health is restored to 100,
+  - health regen state resets,
+  - sprint energy is restored to 100,
+  - sprint lock is cleared.
+- Preserve this behavior unless the user asks to change it.
+
+## Weapons / gameplay protections inherited from v303
+
+Unless explicitly requested, preserve the approved weapon/reload/game systems inherited from v303:
+- M17: 16-round magazine, unlimited reserve, lower base damage, centered ADS/hit alignment.
+- M4: preserve damage/ammo/reload behavior; do not give unlimited ammo or lower damage.
+- MP5: preserve approved ADS/recoil/reload behavior.
+- Existing reload choreography is sensitive; do not copy one weapon's reload solution onto another.
+- Audio remains inline in `src/game.js`; prior extraction to `src/audio.js` broke sound.
+- Preserve start screen, START OUTBREAK, sound, store, pause behavior, Ready flow, death/restart, bosses, pickups, boss chest hitbox, zombie head hitboxes, and weapon collision/retraction.
+
+## Protected historical fallback
+
+The former clean recovery point is still valuable if a catastrophic regression requires a known pre-new-city baseline:
+
+- clean v303 gameplay commit: `8e0c312eab781ba978ebb7f5bf503253e0d5e955`
+- clean v303 exact tree: `ce560411d2751ccdc8068bfa16753cc77adeb74a`
+- later exact-v303 restore commit: `15665eab18251b75934d81ba1d7775fa11a3dc0f`
+
+**v324 is now the primary recovery. v303 is the secondary clean fallback.**
+
+## Abandoned map history — DO NOT RESURRECT WITHOUT USER REQUEST
+
+- Trailer Park work was abandoned.
+- Havana work was abandoned and its GLB was removed from the clean baseline.
+- The current city GLB replaced the old procedural city.
+- Do not reintroduce Trailer Park, Havana, old procedural roads/city, or old STI map props unless the user explicitly asks.
+
+## Immediate next-chat priority
+
+The user has approved the current state as the new recovery checkpoint. The next chat should **not immediately redesign anything**. Start by reading the repo and asking/acting on the user's next requested test or change. If collision is revisited, first reproduce the exact problem location from a screenshot and make a narrow fix; do not globally inflate wall collision or nav padding because v324 intentionally opened tight passages.
+
+---
+
 # CURRENT STATE UPDATE — 2026-09-28 — READ THIS FIRST
 
 This section supersedes older "current checkpoint" references below. Keep the older sections as project history/reference.
