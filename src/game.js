@@ -257,7 +257,34 @@ function addBuilding(w,h,d,x,z,base,variant){
  return q
 }
 
-function insideBuilding(x,z,r=.45){for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}return false}
+const CITY_COLLISION_BUCKET=4.0;
+const cityCollisionBuckets=new Map();
+function cityCollisionKey(ix,iz){return ix+","+iz}
+function indexCityCollider(b){
+ const minX=Math.floor((b.x-b.hx)/CITY_COLLISION_BUCKET),maxX=Math.floor((b.x+b.hx)/CITY_COLLISION_BUCKET);
+ const minZ=Math.floor((b.z-b.hz)/CITY_COLLISION_BUCKET),maxZ=Math.floor((b.z+b.hz)/CITY_COLLISION_BUCKET);
+ for(let iz=minZ;iz<=maxZ;iz++)for(let ix=minX;ix<=maxX;ix++){
+   const key=cityCollisionKey(ix,iz);let bucket=cityCollisionBuckets.get(key);
+   if(!bucket){bucket=[];cityCollisionBuckets.set(key,bucket)}bucket.push(b);
+ }
+}
+function nearbyBuildingColliders(x,z,r=.45){
+ if(!cityCollisionBuckets.size)return buildingColliders;
+ const minX=Math.floor((x-r)/CITY_COLLISION_BUCKET),maxX=Math.floor((x+r)/CITY_COLLISION_BUCKET);
+ const minZ=Math.floor((z-r)/CITY_COLLISION_BUCKET),maxZ=Math.floor((z+r)/CITY_COLLISION_BUCKET);
+ const found=[],seen=new Set();
+ for(let iz=minZ;iz<=maxZ;iz++)for(let ix=minX;ix<=maxX;ix++){
+   const bucket=cityCollisionBuckets.get(cityCollisionKey(ix,iz));if(!bucket)continue;
+   for(const b of bucket)if(!seen.has(b)){seen.add(b);found.push(b)}
+ }
+ return found;
+}
+function insideBuilding(x,z,r=.45){
+ for(const b of nearbyBuildingColliders(x,z,r)){
+   if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true
+ }
+ return false
+}
 function slideBuilding(oldx,oldz,newx,newz,r=.45){
  if(!insideBuilding(newx,newz,r))return{x:newx,z:newz};
  if(!insideBuilding(newx,oldz,r))return{x:newx,z:oldz};
@@ -265,12 +292,17 @@ function slideBuilding(oldx,oldz,newx,newz,r=.45){
  return{x:oldx,z:oldz};
 }
 function pushOutsideBuilding(x,z,r=.45){
- for(const b of buildingColliders){
-   const minX=b.x-b.hx-r,maxX=b.x+b.hx+r,minZ=b.z-b.hz-r,maxZ=b.z+b.hz+r;
-   if(x>minX&&x<maxX&&z>minZ&&z<maxZ){
-     const dL=x-minX,dR=maxX-x,dB=z-minZ,dT=maxZ-z,m=Math.min(dL,dR,dB,dT);
-     if(m===dL)x=minX;else if(m===dR)x=maxX;else if(m===dB)z=minZ;else z=maxZ;
+ for(let pass=0;pass<4;pass++){
+   let moved=false;
+   for(const b of nearbyBuildingColliders(x,z,r)){
+     const minX=b.x-b.hx-r,maxX=b.x+b.hx+r,minZ=b.z-b.hz-r,maxZ=b.z+b.hz+r;
+     if(x>minX&&x<maxX&&z>minZ&&z<maxZ){
+       const dL=x-minX,dR=maxX-x,dB=z-minZ,dT=maxZ-z,m=Math.min(dL,dR,dB,dT);
+       if(m===dL)x=minX;else if(m===dR)x=maxX;else if(m===dB)z=minZ;else z=maxZ;
+       moved=true;
+     }
    }
+   if(!moved)break;
  }
  return{x,z}
 }
@@ -291,7 +323,96 @@ let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/429
 // Kept as a no-op because the existing runtime calls it later after pathing setup.
 function batchStaticCity(){}
 
-new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=319",gltf=>{
+// v320: selective collision generated from the uploaded city's real wall geometry.
+// Only substantial near-vertical surfaces crossing player/zombie body height are used;
+// roads, floors, roofs and shallow curbs stay walkable.
+const NEW_CITY_COLLISION_CELL=.48;
+const NEW_CITY_COLLISION_MIN_Y=.10;
+const NEW_CITY_COLLISION_MAX_Y=2.25;
+const NEW_CITY_COLLISION_MIN_VERTICAL_SPAN=.55;
+let newCityCollisionReady=false;
+function buildNewCityCollision(map){
+ buildingColliders.length=0;cityCollisionBuckets.clear();
+ map.updateMatrixWorld(true);
+
+ const used=new Set(),a=new THREE.Vector3(),b=new THREE.Vector3(),cc=new THREE.Vector3();
+ const ab=new THREE.Vector3(),ac=new THREE.Vector3(),normal=new THREE.Vector3();
+ let meshCount=0,triangleCount=0,blockingTriangles=0;
+
+ const mark=(x,z)=>{
+   const ix=Math.floor(x/NEW_CITY_COLLISION_CELL),iz=Math.floor(z/NEW_CITY_COLLISION_CELL);
+   used.add(ix+","+iz);
+ };
+ const sampleEdge=(p,q)=>{
+   const dx=q.x-p.x,dz=q.z-p.z,dist=Math.hypot(dx,dz);
+   const steps=Math.max(1,Math.ceil(dist/(NEW_CITY_COLLISION_CELL*.34)));
+   for(let i=0;i<=steps;i++){
+     const t=i/steps;mark(p.x+dx*t,p.z+dz*t);
+   }
+ };
+
+ map.traverse(o=>{
+   if(!o.isMesh||o.isSkinnedMesh||!o.geometry||!o.geometry.attributes||!o.geometry.attributes.position)return;
+   const pos=o.geometry.attributes.position,idx=o.geometry.index;
+   meshCount++;
+   const read=(out,vi)=>out.fromBufferAttribute(pos,vi).applyMatrix4(o.matrixWorld);
+   const tris=idx?Math.floor(idx.count/3):Math.floor(pos.count/3);
+   for(let t=0;t<tris;t++){
+     const j=t*3,ia=idx?idx.getX(j):j,ib=idx?idx.getX(j+1):j+1,ic=idx?idx.getX(j+2):j+2;
+     read(a,ia);read(b,ib);read(cc,ic);triangleCount++;
+     const minY=Math.min(a.y,b.y,cc.y),maxY=Math.max(a.y,b.y,cc.y);
+     if(maxY<NEW_CITY_COLLISION_MIN_Y||minY>NEW_CITY_COLLISION_MAX_Y||maxY-minY<NEW_CITY_COLLISION_MIN_VERTICAL_SPAN)continue;
+     ab.subVectors(b,a);ac.subVectors(cc,a);normal.crossVectors(ab,ac);
+     const nl=normal.length();if(nl<1e-6)continue;
+     // Ignore floors, roofs, stairs and strong slopes; retain wall-like faces.
+     if(Math.abs(normal.y)/nl>.38)continue;
+     const spanX=Math.max(a.x,b.x,cc.x)-Math.min(a.x,b.x,cc.x);
+     const spanZ=Math.max(a.z,b.z,cc.z)-Math.min(a.z,b.z,cc.z);
+     if(Math.max(spanX,spanZ)<.12)continue;
+     blockingTriangles++;
+     sampleEdge(a,b);sampleEdge(b,cc);sampleEdge(cc,a);
+   }
+ });
+
+ // Merge adjacent wall cells across each Z row into compact AABB strips. Doorways
+ // remain open because no cells are created where the GLB has no wall triangles.
+ const rows=new Map();
+ for(const key of used){
+   const comma=key.indexOf(","),ix=+key.slice(0,comma),iz=+key.slice(comma+1);
+   let row=rows.get(iz);if(!row){row=[];rows.set(iz,row)}row.push(ix);
+ }
+ let colliderCount=0;
+ for(const [iz,xs] of rows){
+   xs.sort((m,n)=>m-n);
+   let start=xs[0],prev=xs[0];
+   const flush=end=>{
+     const cells=end-start+1;
+     const hit={
+       x:(start+end+1)*NEW_CITY_COLLISION_CELL*.5,
+       z:(iz+.5)*NEW_CITY_COLLISION_CELL,
+       hx:Math.max(.08,cells*NEW_CITY_COLLISION_CELL*.5-.025),
+       hz:NEW_CITY_COLLISION_CELL*.5-.025,
+       source:"newCity"
+     };
+     buildingColliders.push(hit);indexCityCollider(hit);colliderCount++;
+   };
+   for(let i=1;i<xs.length;i++){
+     const ix=xs[i];
+     if(ix===prev||ix===prev+1){prev=ix;continue}
+     flush(prev);start=prev=ix;
+   }
+   flush(prev);
+ }
+ ZNAV_BLOCK_CACHE.clear();
+ newCityCollisionReady=true;
+ document.documentElement.dataset.newCityCollision="1";
+ document.documentElement.dataset.newCityColliderCount=String(colliderCount);
+ console.log("CITY OUTBREAK: new city selective collision built",{
+   meshCount,triangleCount,blockingTriangles,cells:used.size,colliderCount
+ });
+}
+
+new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  const map=gltf.scene;
  map.name="ChickenGunCityMap";
  map.scale.setScalar(NEW_CITY_SCALE);
@@ -309,6 +430,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=319",gltf=>{
    }
  });
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
+ buildNewCityCollision(map);
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.newCityLoaded="1";
  document.documentElement.dataset.newCityScale=String(NEW_CITY_SCALE);
@@ -320,6 +442,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=319",gltf=>{
  });
 },undefined,err=>{
  document.documentElement.dataset.newCityLoadError=String(err&&err.message||err);
+ newCityCollisionReady=true;
  console.error("New city GLB load failed",err);
 });
 
@@ -2275,6 +2398,7 @@ function findReachableZombieSpawn(minDist,maxDist){
  return null;
 }
 function spawnOneZombie(i){
+ if(!newCityCollisionReady)return false;
  const p=findReachableZombieSpawn(14,32);
  if(!p)return false;
  makeZombie(p.x,p.z,i);
