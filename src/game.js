@@ -485,7 +485,6 @@ function buildNewCityCollision(map){
 // replacements are visually approved.
 const STREET_LAMP_URL="assets/low_poly_street_light.glb";
 const STREET_LAMP_HEIGHT_SCALE=1.40;
-const STREET_LAMP_AXIS_YAW_OFFSET=Math.PI*.5;
 const streetLampInstances=[];
 
 function scanExactCityLampAnchors(map){
@@ -496,14 +495,18 @@ function scanExactCityLampAnchors(map){
    if(/^Light_01(?:$|_)/i.test(o.name||""))lampRoots.push(o);
  });
  const replacements=[];
- const pos=new THREE.Vector3(),quat=new THREE.Quaternion(),euler=new THREE.Euler(0,0,0,"YXZ");
+ const pos=new THREE.Vector3(),center=new THREE.Vector3(),box=new THREE.Box3();
  for(const root of lampRoots){
+   // The original lamp's root is its pole base. Its bounding-box center is
+   // shifted toward the lamp arm/head, so this vector gives the authored
+   // direction the old fixture actually faced.
    root.getWorldPosition(pos);
-   root.getWorldQuaternion(quat);
-   euler.setFromQuaternion(quat,"YXZ");
+   box.setFromObject(root).getCenter(center);
+   const dx=center.x-pos.x,dz=center.z-pos.z;
+   const rotY=Math.hypot(dx,dz)>.01?Math.atan2(-dz,dx):0;
    replacements.push({
      x:pos.x,y:pos.y,z:pos.z,
-     rotY:euler.y+STREET_LAMP_AXIS_YAW_OFFSET,
+     rotY,
      kind:"replacement",
      sourceName:root.name||""
    });
