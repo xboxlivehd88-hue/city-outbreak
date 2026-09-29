@@ -280,8 +280,23 @@ function nearbyBuildingColliders(x,z,r=.45){
  return found;
 }
 function insideBuilding(x,z,r=.45){
- for(const b of nearbyBuildingColliders(x,z,r)){
-   if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true
+ // Hot path: collision probes run constantly for the player, zombies and A*.
+ // Read the spatial buckets directly so common probes do not allocate a new
+ // array + Set on every call. Duplicate bucket entries are harmless here
+ // because this function only needs the first blocking collider.
+ if(!cityCollisionBuckets.size){
+   for(const b of buildingColliders){
+     if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true
+   }
+   return false
+ }
+ const minX=Math.floor((x-r)/CITY_COLLISION_BUCKET),maxX=Math.floor((x+r)/CITY_COLLISION_BUCKET);
+ const minZ=Math.floor((z-r)/CITY_COLLISION_BUCKET),maxZ=Math.floor((z+r)/CITY_COLLISION_BUCKET);
+ for(let iz=minZ;iz<=maxZ;iz++)for(let ix=minX;ix<=maxX;ix++){
+   const bucket=cityCollisionBuckets.get(cityCollisionKey(ix,iz));if(!bucket)continue;
+   for(const b of bucket){
+     if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true
+   }
  }
  return false
 }
