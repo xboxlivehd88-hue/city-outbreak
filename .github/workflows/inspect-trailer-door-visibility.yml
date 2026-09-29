@@ -1,0 +1,35 @@
+name: Inspect Trailer Door Visibility
+
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-trailer-door-visibility.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read GLB node visibility
+        run: |
+          python3 - <<'PY'
+          import json,struct,re
+          with open('assets/trailer_park.glb','rb') as f:
+              f.read(12)
+              n,typ=struct.unpack('<II',f.read(8))
+              g=json.loads(f.read(n).decode('utf-8').rstrip('\x00 '))
+          nodes=g.get('nodes',[])
+          parents=[None]*len(nodes)
+          for i,n in enumerate(nodes):
+              for ch in n.get('children',[]): parents[ch]=i
+          def effvis(i):
+              j=i
+              while j is not None:
+                  if nodes[j].get('visible',True) is False:return False
+                  j=parents[j]
+              return True
+          for i,n in enumerate(nodes):
+              name=n.get('name','')
+              if name.lower().startswith('door'):
+                  print(i,name,'nodeVisible=',n.get('visible','DEFAULT_TRUE'),'effective=',effvis(i),'parent=',parents[i])
+          PY
