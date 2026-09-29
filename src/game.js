@@ -275,248 +275,55 @@ function pushOutsideBuilding(x,z,r=.45){
  return{x,z}
 }
 
-// Ground plane + cleaner city street / sidewalk treatment.
-let ground=new THREE.Mesh(new THREE.PlaneGeometry(280,300),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
-const asphaltAvenue=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), asphaltCross=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
-new THREE.TextureLoader().load("assets/textures/roads/road_albedo.jpg.jpg",tx=>{
- tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
- const avenueTex=tx.clone();avenueTex.needsUpdate=true;avenueTex.repeat.set(3,30);
- const crossTex=tx.clone();crossTex.needsUpdate=true;crossTex.repeat.set(28,3);
- asphaltAvenue.map=avenueTex;asphaltAvenue.needsUpdate=true;
- asphaltCross.map=crossTex;asphaltCross.needsUpdate=true;
-});
-box(24,.10,244,asphaltAvenue,0,.05,30);           // avenue
-box(224,.10,24,asphaltCross,0,.06,30);           // cross street
+// v313: uploaded city GLB is now the entire active world environment.
+// The old procedural ground, roads, sidewalks, buildings, lamps, barriers and road texture are not created.
+const NEW_CITY_SCALE=1.0;
+const NEW_CITY_X_OFFSET=13.765;
+const NEW_CITY_Y_OFFSET=18.505;
+const NEW_CITY_Z_OFFSET=0;
+let newCityRoot=null;
+buildingColliders.length=0;
 
-// Sidewalks stop at the intersection instead of visually continuing through the road.
-for(const sx of [-16,16]){
-  box(8,.10,110,sidewalk,sx,.11,-37);
-  box(8,.10,110,sidewalk,sx,.11,97);
-}
-for(const sz of [14,46]){
-  box(100,.10,8,sidewalk,-62,.12,sz);
-  box(100,.10,8,sidewalk,62,.12,sz);
-}
-
-// Curbs are segmented at each road opening so the four corners read clearly.
-for(const cx of [-12.2,12.2]){
-  box(.45,.18,110.2,curb,cx,.13,-36.9);
-  box(.45,.18,110.2,curb,cx,.13,96.9);
-}
-for(const cz of [18.2,41.8]){
-  box(99.8,.18,.45,curb,-62.1,.13,cz);
-  box(99.8,.18,.45,curb,62.1,.13,cz);
-}
-
-// Low-cost sidewalk panel joints add scale without adding unique materials or lights.
-for(const sx of [-16,16]){
-  for(let z=-84;z<=10;z+=12)box(7.2,.016,.055,walkJoint,sx,.17,z);
-  for(let z=50;z<=144;z+=12)box(7.2,.016,.055,walkJoint,sx,.17,z);
-}
-for(const sz of [14,46]){
-  for(let x=-104;x<=-24;x+=12)box(.055,.016,7.2,walkJoint,x,.17,sz);
-  for(let x=24;x<=104;x+=12)box(.055,.016,7.2,walkJoint,x,.17,sz);
-}
-
-for(let z=-84;z<146;z+=12)box(.18,.025,5.7,lanePaint,0,.13,z);
-for(let x=-96;x<101;x+=14)box(5.7,.025,.18,lanePaint,x,.14,30);
-
-// Compact zebra crossings now sit entirely on asphalt between the curb openings.
-for(let o=-8;o<=8;o+=2)box(1.25,.03,.52,crosswalk,o,.15,19.05);
-for(let o=-8;o<=8;o+=2)box(1.25,.03,.52,crosswalk,o,.15,40.95);
-for(let o=21;o<=39;o+=2)box(.52,.03,1.25,crosswalk,-11.05,.15,o);
-for(let o=21;o<=39;o+=2)box(.52,.03,1.25,crosswalk,11.05,.15,o);
-
-const fill=new THREE.DirectionalLight(0xb3cfe4,.95);fill.position.set(28,18,35);scene.add(fill);
-const dustGeo=new THREE.BufferGeometry(),dustPts=[];for(let i=0;i<240;i++)dustPts.push((Math.random()-.5)*210,Math.random()*11,(Math.random()-.5)*250);
-dustGeo.setAttribute("position",new THREE.Float32BufferAttribute(dustPts,3));const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({size:.035,color:0xbdb6a6,transparent:true,opacity:.28}));scene.add(dust);
-function lamp(x,z,dir=1){
- const g=new THREE.Group();
- const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,5.2,10),M(0x2a2f31,.45));pole.position.y=2.6;g.add(pole);
- const arm=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,1.4,8),M(0x2a2f31,.45));arm.rotation.z=Math.PI/2;arm.position.set(.58*dir,4.95,0);g.add(arm);
- const bulb=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),M(0xffdd9a,.22));bulb.position.set(1.20*dir,4.95,0);g.add(bulb);
- const hood=box(.34,.08,.30,M(0x1f2425,.55),1.16*dir,5.03,0,g);
- g.position.set(x,0,z);scene.add(g)
-}
-for(let z=-78;z<140;z+=24){lamp(-12,z,1);lamp(12,z+12,-1)}
-
-// Small street props for city feel.
-for(let z=-60;z<126;z+=28){box(.22,1.1,.22,M(0x626866,.75),-13.0,.65,z);box(.22,1.1,.22,M(0x626866,.75),13.0,.65,z+10)}
-
-// Concrete Jersey-style barriers create street chicanes / escape routes.
-// They share a material and use the existing collision system, so they stay cheap after city batching.
-const barrierConcrete=M(0x92918b,.90),barrierTop=M(0xb6b3aa,.84);
-function concreteBarrier(x,z,rot=0,len=4.6){
- const g=new THREE.Group();
- box(len,.62,.54,barrierConcrete,0,.38,0,g);
- box(len*.84,.10,.58,barrierTop,0,.72,0,g);
- box(.72,.16,.82,barrierConcrete,-len*.34,.12,0,g);
- box(.72,.16,.82,barrierConcrete,len*.34,.12,0,g);
- g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
- const alongX=Math.abs(Math.cos(rot))>.7;
- buildingColliders.push({x,z,hx:alongX?len*.50:.48,hz:alongX?.48:len*.50});
- return g
-}
-// Staggered placement leaves walkable gaps instead of walling off whole streets.
-concreteBarrier(-4.8,-72,0,4.8);
-concreteBarrier(5.0,-30,0,4.6);
-concreteBarrier(-4.8,92,0,4.8);
-concreteBarrier(5.0,138,0,4.6);
-concreteBarrier(-72,25,Math.PI/2,4.8);
-concreteBarrier(-61,35,Math.PI/2,4.6);
-concreteBarrier(70,35,Math.PI/2,4.8);
-concreteBarrier(62,25,Math.PI/2,4.6);
-
-
+// Gameplay uses this deterministic RNG in many systems; keep it independent of map generation.
 let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
-let buildingId=0;
-const cityPalettes=[0x6c5a4d,0x56606a,0x8a806f,0x4f555a,0x73685d,0x7d766b,0x5f666c,0x6a4b3e];
 
-// Reserve real sidewalk and alley space based on each building's footprint.
-// This prevents wide procedural buildings from covering sidewalks after generation.
-const AVENUE_WALK_OUTER=20.0,FRONT_BUILD_EDGE=20.8,MID_BUILD_EDGE=42.5,BACK_BUILD_EDGE=62.0;
-const CROSS_SOUTH_OUTER=10.0,CROSS_NORTH_OUTER=50.0;
-function avenueBuildingX(side,innerEdge,width,setback=0){return side*(innerEdge+width*.5+setback)}
-function crossBuildingZ(north,depth,setback=0){
- return north?CROSS_NORTH_OUTER+depth*.5+setback:CROSS_SOUTH_OUTER-depth*.5-setback
-}
+// Kept as a no-op because the existing runtime calls it later after pathing setup.
+function batchStaticCity(){}
 
-// Front rows along the main avenue. Every few lots become low-rise storefronts
-// so the skyline is not made entirely from medium / tall boxes.
-for(let side of [-1,1]){
-  for(let z=-86;z<144;z+=12.5){
-    if(z>16&&z<44)continue;
-    let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
-    const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),lowRise=(buildingId%6===0);
-    let w1=lowRise?8+rw*4:11+rw*5;
-    let h1=lowRise?7+rh*8:18+rh*30;
-    let d1=lowRise?9+rd*4:11+rd*6;
-    let x1=avenueBuildingX(side,FRONT_BUILD_EDGE,w1,rx*1.35);
-    addBuilding(w1,h1,d1,x1,z,base,buildingId++);
-  }
-}
-
-// Mid-depth rows are pushed outward and narrowed slightly. This guarantees a more
-// usable service alley between the front and middle rows instead of random squeeze gaps.
-for(let side of [-1,1]){
-  for(let z=-90;z<146;z+=15){
-    if(z>12&&z<48&&rnd()>.35)continue;
-    let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
-    const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),rz=rnd(),lowRise=(buildingId%8===3);
-    let w=lowRise?8+rw*4:9+rw*5;
-    let h=lowRise?8+rh*9:20+rh*36;
-    let d=lowRise?9+rd*4:10+rd*6;
-    let x=avenueBuildingX(side,MID_BUILD_EDGE,w,rx*3.5);
-    addBuilding(w,h,d,x,z+(rz-.5)*3.5,base,buildingId++);
-  }
-}
-
-// Background towers move outward too, keeping the new alleys accessible while
-// preserving a dense skyline and the existing batching strategy.
-for(let side of [-1,1]){
-  for(let z=-96;z<152;z+=18){
-    let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
-    const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),rz=rnd();
-    let w=11+rw*7,h=28+rh*42,d=11+rd*7,x=avenueBuildingX(side,BACK_BUILD_EDGE,w,rx*7);
-    addBuilding(w,h,d,x,z+(rz-.5)*4,base,buildingId++);
-  }
-}
-
-// Cross-street frontage mixes in a few genuinely small buildings.
-for(let x=-92;x<96;x+=14){
-  if(x>-14&&x<14)continue;
-  let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
-  const rw=rnd(),rh=rnd(),rd=rnd(),rz1=rnd(),rz2=rnd(),lowRise=(buildingId%5===0);
-  let w=lowRise?8+rw*4:10+rw*6;
-  let h=lowRise?6.5+rh*7:14+rh*18;
-  let d=lowRise?8+rd*4:10+rd*5;
-  addBuilding(w,h,d,x,crossBuildingZ(false,d,.8+rz1*1.6),base,buildingId++);
-  addBuilding(w,h,d,x,crossBuildingZ(true,d,.8+rz2*1.6),base,buildingId++);
-}
-
-
-// Static-city shadow cleanup: decorative roofs, curbs, paint, storefront trim,
-// lamps and rooftop props no longer enter the shadow pass. Large building masses
-// still cast shadows, which preserves the city's depth without the huge draw-call cost.
-scene.traverse(o=>{
- if(!o.isMesh)return;
- // Static city shadows were a major GPU cost when looking down dense streets.
- // Keep the sun/player/zombie lighting, but don't render giant building shadow maps.
- o.castShadow=false;o.receiveShadow=false
-});
-ground.receiveShadow=true;
-
-// Merge the hundreds of separate static city meshes into a small number of material batches.
-// Collision stays unchanged because gameplay collision uses buildingColliders, not these meshes.
-function batchStaticCity(){
- scene.updateMatrixWorld(true);
- const buckets=new Map(),originals=[];
- scene.traverse(o=>{
-   if(!o.isMesh||o===ground||o.isSkinnedMesh||!o.geometry||!o.material||Array.isArray(o.material))return;
-   const key=o.material.uuid+"|"+(o.castShadow?1:0)+"|"+(o.receiveShadow?1:0);
-   let b=buckets.get(key);if(!b){b={material:o.material,cast:o.castShadow,receive:o.receiveShadow,items:[]};buckets.set(key,b)}
-   b.items.push(o)
- });
- let batches=0,mergedObjects=0;
- for(const b of buckets.values()){
-   if(b.items.length<2)continue;
-   const geos=[];
-   for(const o of b.items){
-     o.updateWorldMatrix(true,false);
-     const g=o.geometry.clone();g.applyMatrix4(o.matrixWorld);geos.push(g)
+new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=313",gltf=>{
+ const map=gltf.scene;
+ map.name="ChickenGunCityMap";
+ map.scale.setScalar(NEW_CITY_SCALE);
+ map.position.set(NEW_CITY_X_OFFSET,NEW_CITY_Y_OFFSET,NEW_CITY_Z_OFFSET);
+ map.traverse(o=>{
+   o.userData.externalMapAsset=true;
+   if(!o.isMesh)return;
+   o.castShadow=false;o.receiveShadow=false;
+   const mats=Array.isArray(o.material)?o.material:[o.material];
+   for(const mat of mats)if(mat){
+     for(const key of ["map","normalMap","roughnessMap","metalnessMap","emissiveMap"]){
+       const tx=mat[key];
+       if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
+     }
    }
-   const merged=mergeGeometries(geos,false);
-   for(const g of geos)g.dispose();
-   if(!merged)continue;
-   merged.computeBoundingBox();merged.computeBoundingSphere();
-   const mesh=new THREE.Mesh(merged,b.material);
-   mesh.name="CityBatch";mesh.castShadow=b.cast;mesh.receiveShadow=b.receive;mesh.matrixAutoUpdate=false;
-   scene.add(mesh);batches++;mergedObjects+=b.items.length;originals.push(...b.items);
- }
- for(const o of originals){if(o.parent)o.parent.remove(o);try{o.geometry.dispose()}catch(_){}}
- console.log("CityOutbreak city batching",{batches,mergedObjects,materials:buckets.size});
-}
+ });
+ scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
+ const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
+ document.documentElement.dataset.newCityLoaded="1";
+ document.documentElement.dataset.newCityScale=String(NEW_CITY_SCALE);
+ document.documentElement.dataset.newCitySize=[size.x.toFixed(2),size.y.toFixed(2),size.z.toFixed(2)].join("x");
+ console.log("CITY OUTBREAK: new city GLB loaded",{
+   scale:NEW_CITY_SCALE,
+   size:[size.x,size.y,size.z],
+   position:[NEW_CITY_X_OFFSET,NEW_CITY_Y_OFFSET,NEW_CITY_Z_OFFSET]
+ });
+},undefined,err=>{
+ document.documentElement.dataset.newCityLoadError=String(err&&err.message||err);
+ console.error("New city GLB load failed",err);
+});
 
-let stiModelTemplate=null;
-const pendingStiSedans=[];
-function installStiVisual(g){
- if(!stiModelTemplate||!g||g.userData.stiVisual)return false;
- while(g.children.length)g.remove(g.children[g.children.length-1]);
- // Parked cars are static. Share the STI geometry/materials but do not let twelve
- // separate full model hierarchies add unnecessary transform/update overhead.
- const sti=stiModelTemplate.clone(true);
- sti.traverse(o=>{o.matrixAutoUpdate=false;o.updateMatrix()});
- g.add(sti);g.userData.stiVisual=true;document.documentElement.dataset.stiVisuals=String((+document.documentElement.dataset.stiVisuals||0)+1);return true;
-}
-new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
- const sti=gltf.scene;
- sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
- const b0=new THREE.Box3().setFromObject(sti),sz=new THREE.Vector3();b0.getSize(sz);
- const horizontal=Math.max(sz.x,sz.z)||1;sti.scale.setScalar(4.90/horizontal);
- const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
- sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
- stiModelTemplate=sti;
- for(const sedan of pendingStiSedans)installStiVisual(sedan);
- pendingStiSedans.length=0;
- // Merge all twelve static STI visuals after the model has been installed.
- batchLoadedStiCars();
-},undefined,err=>{document.documentElement.dataset.stiLoadError=String(err&&err.message||err);console.warn("WRX STI GLB load failed; parked-car collision anchors remain",err)});
-
-function car(x,z,rot=0){
- // v182: STI-only parked-car visuals. Keep the proven v181 oriented collision footprint.
- const g=new THREE.Group(),SL=4.90,SW=1.85;
- g.position.set(x,0,z);g.rotation.y=rot;
- g.userData.carHalfW=SW*.48;g.userData.carHalfL=SL*.49;g.userData.carType=0;
- if(stiModelTemplate)installStiVisual(g);
- else pendingStiSedans.push(g);
- scene.add(g);
- return g
-}
+// v313: old hand-placed STI map props are disabled with the procedural city.
 const parkedCars=[];
-[
- // v190 performance pass: keep only three STI props for now. More varied cars can be added later.
- [-8,-55,0],[8,78,Math.PI],[32,35,Math.PI/2]
-].forEach(c=>parkedCars.push(car(...c)));
 
 function carPointCollision(c,x,z,pad=.35){
  const dx=x-c.position.x,dz=z-c.position.z,a=c.rotation.y,co=Math.cos(a),si=Math.sin(a);
