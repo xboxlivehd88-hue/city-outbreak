@@ -8,7 +8,7 @@ import {showTransientMessage,clearTransientMessage,setupControlsModal,setupReset
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
-import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=303";
+import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=312";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -257,7 +257,17 @@ function addBuilding(w,h,d,x,z,base,variant){
  return q
 }
 
-function insideBuilding(x,z,r=.45){for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}return false}
+let havanaPlayableBounds=null;
+function insideHavanaPlayableBounds(x,z,r=0){
+ if(!havanaPlayableBounds)return true;
+ return x>=havanaPlayableBounds.minX+r&&x<=havanaPlayableBounds.maxX-r&&
+        z>=havanaPlayableBounds.minZ+r&&z<=havanaPlayableBounds.maxZ-r;
+}
+function insideBuilding(x,z,r=.45){
+ if(!insideHavanaPlayableBounds(x,z,r))return true;
+ for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}
+ return false
+}
 function slideBuilding(oldx,oldz,newx,newz,r=.45){
  if(!insideBuilding(newx,newz,r))return{x:newx,z:newz};
  if(!insideBuilding(newx,oldz,r))return{x:newx,z:oldz};
@@ -281,8 +291,25 @@ const HAVANA_MAP_SCALE=3.0;
 const HAVANA_MAP_X_OFFSET=0;
 const HAVANA_MAP_Y_OFFSET=0;
 const HAVANA_MAP_Z_OFFSET=-4.5;
+const HAVANA_BOUNDARY_THICKNESS=1.4;
+const HAVANA_SPAWN_INSET=1.25;
 let havanaMapRoot=null;
 buildingColliders.length=0;
+
+function installHavanaBoundary(bounds){
+ const minX=bounds.min.x,maxX=bounds.max.x,minZ=bounds.min.z,maxZ=bounds.max.z;
+ const cx=(minX+maxX)*.5,cz=(minZ+maxZ)*.5,w=maxX-minX,d=maxZ-minZ,t=HAVANA_BOUNDARY_THICKNESS;
+ havanaPlayableBounds={minX,maxX,minZ,maxZ};
+ // Four invisible walls form a closed frame around the authored map.
+ buildingColliders.push(
+   {x:cx,z:minZ-t*.5,hx:w*.5+t,hz:t*.5,source:"havanaBoundary"},
+   {x:cx,z:maxZ+t*.5,hx:w*.5+t,hz:t*.5,source:"havanaBoundary"},
+   {x:minX-t*.5,z:cz,hx:t*.5,hz:d*.5+t,source:"havanaBoundary"},
+   {x:maxX+t*.5,z:cz,hx:t*.5,hz:d*.5+t,source:"havanaBoundary"}
+ );
+ ZNAV_BLOCK_CACHE.clear();
+ document.documentElement.dataset.havanaBounds=[minX.toFixed(2),maxX.toFixed(2),minZ.toFixed(2),maxZ.toFixed(2)].join(",");
+}
 
 // Gameplay uses this deterministic RNG in many systems; keep it independent of map generation.
 let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
@@ -393,6 +420,7 @@ new GLTFLoader().load("assets/modular_havana_street__low-poly_asset_kit.glb?v=30
  scene.add(map);map.updateMatrixWorld(true);havanaMapRoot=map;
  buildHavanaCollision(map);
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
+ installHavanaBoundary(bounds);
  document.documentElement.dataset.havanaMapLoaded="1";
  document.documentElement.dataset.havanaMapScale=String(HAVANA_MAP_SCALE);
  document.documentElement.dataset.havanaMapSize=[size.x.toFixed(2),size.y.toFixed(2),size.z.toFixed(2)].join("x");
@@ -413,6 +441,7 @@ function carPointCollision(c,x,z,pad=.35){
  return qx*qx+qz*qz<pad*pad;
 }
 function zombiePointBlocked(x,z,r=.50){
+ if(!insideHavanaPlayableBounds(x,z,r))return true;
  if(insideBuilding(x,z,r))return true;
  for(const c of parkedCars)if(carPointCollision(c,x,z,r))return true;
  return false;
@@ -517,9 +546,13 @@ function buildZombieRoute(sx,sz,gx,gz){
  const margin=34,cell=ZNAV_CELL;
  let minX=Math.floor((Math.min(sx,gx)-margin)/cell),maxX=Math.ceil((Math.max(sx,gx)+margin)/cell);
  let minZ=Math.floor((Math.min(sz,gz)-margin)/cell),maxZ=Math.ceil((Math.max(sz,gz)+margin)/cell);
- // Search the full playable city instead of the old central-only rectangle.
- minX=Math.max(Math.floor(ZNAV_MIN_X/cell),minX);maxX=Math.min(Math.ceil(ZNAV_MAX_X/cell),maxX);
- minZ=Math.max(Math.floor(ZNAV_MIN_Z/cell),minZ);maxZ=Math.min(Math.ceil(ZNAV_MAX_Z/cell),maxZ);
+ // Clamp pathfinding to the loaded Havana map instead of the obsolete procedural-city range.
+ const navMinX=havanaPlayableBounds?havanaPlayableBounds.minX:ZNAV_MIN_X;
+ const navMaxX=havanaPlayableBounds?havanaPlayableBounds.maxX:ZNAV_MAX_X;
+ const navMinZ=havanaPlayableBounds?havanaPlayableBounds.minZ:ZNAV_MIN_Z;
+ const navMaxZ=havanaPlayableBounds?havanaPlayableBounds.maxZ:ZNAV_MAX_Z;
+ minX=Math.max(Math.floor(navMinX/cell),minX);maxX=Math.min(Math.ceil(navMaxX/cell),maxX);
+ minZ=Math.max(Math.floor(navMinZ/cell),minZ);maxZ=Math.min(Math.ceil(navMaxZ/cell),maxZ);
 
  let s=navNearestOpen(Math.round(sx/cell),Math.round(sz/cell),minX,maxX,minZ,maxZ);
  let g=navNearestOpen(Math.round(gx/cell),Math.round(gz/cell),minX,maxX,minZ,maxZ);
@@ -2311,10 +2344,12 @@ function updateDrops(dt){
 const living=()=>zombies.filter(z=>!z.dead);
 const activeFrame=[];
 function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
-const MAX_ACTIVE_ZOMBIES=20;
+const MAX_ACTIVE_ZOMBIES=30;
 const waveRemainingCount=()=>livingCount()+Math.max(0,waveTarget-waveSpawned);
 function validZombieSpawn(x,z){
- if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
+ if(havanaPlayableBounds){
+   if(!insideHavanaPlayableBounds(x,z,HAVANA_SPAWN_INSET))return false;
+ }else if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
  if(insideBuilding(x,z,.8))return false;
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
  return Math.hypot(x-px,z-pz)>11;
@@ -2817,7 +2852,13 @@ function fire(){
      const limbHit=part==="leftArm"||part==="rightArm"||part==="leftLeg"||part==="rightLeg";
      const healthDamage=part==="leftArm"||part==="rightArm"?shotDamage*.15:
                         part==="leftLeg"||part==="rightLeg"?shotDamage*.18:shotDamage;
-     if(hs){if(z.kind==="boss")z.hp-=Math.max(shotDamage*2.6,4.5);else z.hp=0}else z.hp-=healthDamage;
+     if(hs){
+       if(z.kind==="boss")z.hp-=Math.max(shotDamage*2.6,4.5);
+       else{
+         const headshotToughness=1+Math.max(0,wave-1)*.2;
+         z.hp-=shotDamage*3/headshotToughness;
+       }
+     }else z.hp-=healthDamage;
      if(limbHit)limbDamage(z,part,weapon==="shotgun"?shotDamage*2:shotDamage);
      impactFX(hit.point);burst(hit.point,false);stagger(z,hs);didHit=true;headHit=headHit||hs;
      if(z.hp<=0&&!z.dead)killZ(z,hs,hit.point);
