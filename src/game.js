@@ -3725,6 +3725,7 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  if(z.hazardMist){z.hazardMist.rotation.y+=dt*.24;z.hazardMist.scale.y=1.48+Math.sin(last*.002+z.phase)*.08}
 
  const attackRange=isBoss?1.34:isCrawler?1.04:isSprinter?1.08:1.00;
+ const movementClearance=isBoss?.50:ZOMBIE_COLLISION_RADIUS;
  if(d>attackRange){let nx=dx/td,nz=dz/td,sx=-nz,sz=nx;
  let sepX=0,sepZ=0;
  for(const o of active){
@@ -3738,9 +3739,9 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  // Look ahead instead of waiting to physically grind into a wall/car.
  const followingRoute=!!zombieRouteWaypoint(z);
  const probeDist=(huntMode?1.55:1.15)+Math.min(.75,z.speed*.16);
- const aheadBlocked=zombiePointBlocked(z.g.position.x+nx*probeDist,z.g.position.z+nz*probeDist,.52);
+ const aheadBlocked=zombiePointBlocked(z.g.position.x+nx*probeDist,z.g.position.z+nz*probeDist,movementClearance);
  if(!followingRoute&&aheadBlocked&&z.avoidT<=0){
-   z.avoidSide=chooseZombieAvoidSide(z,nx,nz,.52);
+   z.avoidSide=chooseZombieAvoidSide(z,nx,nz,movementClearance);
    z.avoidT=huntMode?1.05:.78;
  }
  if(!followingRoute&&z.avoidT>0){
@@ -3771,7 +3772,7 @@ let stepX=(nx+sx*zig)*navSpeed*motionScale*stun*limpSlow*dt,stepZ=(nz+sz*zig)*na
 let moveLen=Math.hypot(stepX,stepZ);
 const strideRate=(kind==="sprinter"||kind==="infected"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
 z.phase += moveLen*strideRate;
-let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,.50);z.g.position.x=zp.x;z.g.position.z=zp.z;
+let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,movementClearance);z.g.position.x=zp.x;z.g.position.z=zp.z;
 resolveZombiePlayerContact(z,ox,oz);
 
  const moved=Math.hypot(z.g.position.x-ox,z.g.position.z-oz);
@@ -3787,7 +3788,7 @@ resolveZombiePlayerContact(z,ox,oz);
    if(z.navFlipCooldown<=0){
      // Do not blindly reverse direction: that caused zombies to ping-pong at
      // the same wall. Probe both sides and commit to the more open/playerward one.
-     z.avoidSide=chooseZombieAvoidSide(z,nx,nz,.52);
+     z.avoidSide=chooseZombieAvoidSide(z,nx,nz,movementClearance);
      z.navFlipCooldown=1.35;
    }
    z.avoidT=.85;
@@ -3797,7 +3798,7 @@ resolveZombiePlayerContact(z,ox,oz);
  if(z.attackAnim>0&&d>.001){
    const ax=(px-z.g.position.x)/d,az=(pz-z.g.position.z)/d;
    const ox=z.g.position.x,oz=z.g.position.z,lunge=(z.kind==="boss"?.38:z.kind==="crawler"?.16:.28)*dt;
-   const ap=moveZombieSmart(z,ox,oz,ax*lunge,az*lunge,.50);z.g.position.x=ap.x;z.g.position.z=ap.z;resolveZombiePlayerContact(z,ox,oz);
+   const ap=moveZombieSmart(z,ox,oz,ax*lunge,az*lunge,movementClearance);z.g.position.x=ap.x;z.g.position.z=ap.z;resolveZombiePlayerContact(z,ox,oz);
  }
  if(z.cool<=0&&!(z.kind==="boss"&&z.bossAttackState))bite(z)
 }
