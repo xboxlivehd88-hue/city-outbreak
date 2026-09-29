@@ -157,7 +157,12 @@ function buildTrailerParkCollision(map){
 
  let homeCount=0,linearCount=0,propCount=0;
  for(const [key,home] of homes){
-   if(addTrailerColliderBox(home.body||home.all,key,.14))homeCount++;
+   const before=buildingColliders.length;
+   if(addTrailerColliderBox(home.body||home.all,key,.14)){
+     homeCount++;
+     // Player may stand close to trailer siding; zombie/nav radii remain unchanged.
+     if(buildingColliders.length>before)buildingColliders[buildingColliders.length-1].playerRadius=.28;
+   }
  }
  for(const o of linear)linearCount+=addTrailerLinearMeshCollision(o,o.name||"fence");
  for(const o of props)if(addTrailerColliderBox(new THREE.Box3().setFromObject(o),o.name||"prop",.06))propCount++;
@@ -363,7 +368,10 @@ function addBuilding(w,h,d,x,z,base,variant){
 
 function insideBuilding(x,z,r=.45){
  if(externalMapBounds&&(x<externalMapBounds.minX+r||x>externalMapBounds.maxX-r||z<externalMapBounds.minZ+r||z>externalMapBounds.maxZ-r))return true;
- for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}
+ for(const b of buildingColliders){
+   const rr=(r===.62&&Number.isFinite(b.playerRadius))?b.playerRadius:r;
+   if(x>b.x-b.hx-rr&&x<b.x+b.hx+rr&&z>b.z-b.hz-rr&&z<b.z+b.hz+rr)return true
+ }
  return false
 }
 function slideBuilding(oldx,oldz,newx,newz,r=.45){
