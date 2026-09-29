@@ -352,7 +352,8 @@ function buildNewCitySpawnZones(map){
    if(size3.y>.55||size3.x<1.4||size3.z<1.4)return;
    newCitySpawnZones.push({
      minX:box3.min.x,maxX:box3.max.x,
-     minZ:box3.min.z,maxZ:box3.max.z
+     minZ:box3.min.z,maxZ:box3.max.z,
+     name,type:/^ParkingBG_/i.test(name)?"parking":"road"
    });
  });
  document.documentElement.dataset.newCitySpawnZones=String(newCitySpawnZones.length);
@@ -478,39 +479,91 @@ function buildNewCityCollision(map){
  });
 }
 
-// v330: one visual-only street-light test prop near the player spawn.
-// It is intentionally excluded from city/player/zombie collision until its scale
-// and placement are approved in live gameplay.
-const TEST_STREET_LAMP_URL="assets/low_poly_street_light.glb";
-let testStreetLamp=null;
-function addTestStreetLamp(){
- if(testStreetLamp||!newCityRoot)return;
- const candidates=[
-   {x:3.25,z:-19.5,rotY:0},
-   {x:-3.25,z:-19.5,rotY:Math.PI},
-   {x:4.5,z:-17.5,rotY:Math.PI*.5},
-   {x:-4.5,z:-17.5,rotY:-Math.PI*.5}
- ];
- const spot=candidates.find(p=>pointOnNewCitySpawnZone(p.x,p.z,.15)&&!insideBuilding(p.x,p.z,.20))||candidates[0];
- const groundY=samplePlayerGroundY(spot.x,spot.z,0);
- new GLTFLoader().load(TEST_STREET_LAMP_URL,gltf=>{
-   const lamp=gltf.scene;
-   lamp.name="StreetLampTest";
-   lamp.scale.set(1,1.40,1);
-   lamp.position.set(spot.x,groundY,spot.z);
-   lamp.rotation.y=spot.rotY;
-   lamp.traverse(o=>{
-     o.userData.streetLampTest=true;
-     if(!o.isMesh)return;
-     o.castShadow=false;o.receiveShadow=false;
+// v333: spaced city-wide street lamps built from the approved v332 test lamp.
+// Lamps remain visual-only: no player/zombie collision and no dynamic point lights.
+// The source meshes are instanced so the whole layout stays inexpensive to render.
+const STREET_LAMP_URL="assets/low_poly_street_light.glb";
+const STREET_LAMP_HEIGHT_SCALE=1.40;
+const STREET_LAMP_MIN_SPACING=22;
+const STREET_LAMP_MAX_COUNT=30;
+const streetLampInstances=[];
+function buildStreetLampPlacements(){
+ if(!newCityRoot||!newCitySpawnZones.length)return[];
+ const candidates=[],alongSpacing=26;
+ for(const zone of newCitySpawnZones){
+   if(zone.type!=="road")continue;
+   const w=zone.maxX-zone.minX,d=zone.maxZ-zone.minZ;
+   const horizontal=w>=d,longLen=horizontal?w:d,shortLen=horizontal?d:w;
+   if(longLen<8||shortLen<2.0)continue;
+   const edgeInset=Math.min(1.15,Math.max(.55,shortLen*.18));
+   const count=Math.max(1,Math.floor(longLen/alongSpacing));
+   for(let i=0;i<count;i++){
+     const t=(i+.5)/count;
+     const side=((i+Math.round((zone.minX+zone.minZ)*.17))&1)?1:-1;
+     let x,z,rotY;
+     if(horizontal){
+       x=THREE.MathUtils.lerp(zone.minX+1.2,zone.maxX-1.2,t);
+       z=side>0?zone.maxZ-edgeInset:zone.minZ+edgeInset;
+       rotY=side>0?Math.PI*.5:-Math.PI*.5;
+     }else{
+       z=THREE.MathUtils.lerp(zone.minZ+1.2,zone.maxZ-1.2,t);
+       x=side>0?zone.maxX-edgeInset:zone.minX+edgeInset;
+       rotY=side>0?Math.PI:0;
+     }
+     if(insideBuilding(x,z,.42))continue;
+     candidates.push({x,z,rotY});
+   }
+ }
+ // Preserve the approved lamp beside the spawn as the layout anchor.
+ const placements=[],approved={x:3.25,z:-19.5,rotY:0};
+ if(!insideBuilding(approved.x,approved.z,.20))placements.push(approved);
+
+ // Farthest-first selection spreads lamps across the road network instead of
+ // clustering them in whichever road meshes happen to be traversed first.
+ const remaining=candidates.slice();
+ while(remaining.length&&placements.length<STREET_LAMP_MAX_COUNT){
+   let best=-1,bestD=-1;
+   for(let i=0;i<remaining.length;i++){
+     const p=remaining[i];let minD=Infinity;
+     for(const q of placements)minD=Math.min(minD,Math.hypot(p.x-q.x,p.z-q.z));
+     if(minD>bestD){bestD=minD;best=i}
+   }
+   if(best<0||bestD<STREET_LAMP_MIN_SPACING)break;
+   placements.push(remaining.splice(best,1)[0]);
+ }
+ for(const p of placements)p.y=samplePlayerGroundY(p.x,p.z,0);
+ return placements;
+}
+function addStreetLamps(){
+ if(streetLampInstances.length||!newCityRoot)return;
+ const placements=buildStreetLampPlacements();
+ if(!placements.length)return;
+ new GLTFLoader().load(STREET_LAMP_URL,gltf=>{
+   const source=gltf.scene;source.updateMatrixWorld(true);
+   const sourceMeshes=[];source.traverse(o=>{if(o.isMesh)sourceMeshes.push(o)});
+   const base=new THREE.Matrix4(),instanceMatrix=new THREE.Matrix4();
+   const pos=new THREE.Vector3(),quat=new THREE.Quaternion(),scale=new THREE.Vector3(1,STREET_LAMP_HEIGHT_SCALE,1);
+   const yAxis=new THREE.Vector3(0,1,0);
+   for(const src of sourceMeshes){
+     const inst=new THREE.InstancedMesh(src.geometry,src.material,placements.length);
+     inst.name="StreetLampBatch";inst.castShadow=false;inst.receiveShadow=false;inst.userData.streetLampBatch=true;
+     for(let i=0;i<placements.length;i++){
+       const p=placements[i];pos.set(p.x,p.y,p.z);quat.setFromAxisAngle(yAxis,p.rotY);
+       base.compose(pos,quat,scale);instanceMatrix.copy(base).multiply(src.matrixWorld);
+       inst.setMatrixAt(i,instanceMatrix);
+     }
+     inst.instanceMatrix.needsUpdate=true;inst.computeBoundingSphere();
+     scene.add(inst);streetLampInstances.push(inst);
+   }
+   document.documentElement.dataset.streetLampCount=String(placements.length);
+   document.documentElement.dataset.streetLampBatches=String(streetLampInstances.length);
+   console.log("CITY OUTBREAK: spaced street lamps loaded",{
+     count:placements.length,batches:streetLampInstances.length,
+     minSpacing:STREET_LAMP_MIN_SPACING,heightScale:STREET_LAMP_HEIGHT_SCALE
    });
-   scene.add(lamp);lamp.updateMatrixWorld(true);testStreetLamp=lamp;
-   document.documentElement.dataset.streetLampTest="1";
-   document.documentElement.dataset.streetLampTestPosition=[spot.x.toFixed(2),groundY.toFixed(2),spot.z.toFixed(2)].join(",");
-   console.log("CITY OUTBREAK: street lamp test loaded",{position:[spot.x,groundY,spot.z],scale:[1,1.40,1]});
  },undefined,err=>{
-   document.documentElement.dataset.streetLampTestError=String(err&&err.message||err);
-   console.error("Street lamp test GLB load failed",err);
+   document.documentElement.dataset.streetLampError=String(err&&err.message||err);
+   console.error("Street lamp GLB load failed",err);
  });
 }
 
@@ -534,7 +587,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
  buildNewCitySpawnZones(map);
  buildNewCityCollision(map);
- addTestStreetLamp();
+ addStreetLamps();
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.newCityLoaded="1";
  document.documentElement.dataset.newCityScale=String(NEW_CITY_SCALE);
