@@ -143,7 +143,7 @@ function trailerDoorInfo(homeBox,doorBox){
    ["minX",Math.abs(dc.x-homeBox.min.x)],["maxX",Math.abs(dc.x-homeBox.max.x)],
    ["minZ",Math.abs(dc.z-homeBox.min.z)],["maxZ",Math.abs(dc.z-homeBox.max.z)]
  ].sort((a,b)=>a[1]-b[1]);
- const side=sides[0][0],gapHalf=((side==="minX"||side==="maxX")?ds.z:ds.x)*.5+.58;
+ const side=sides[0][0],gapHalf=((side==="minX"||side==="maxX")?ds.z:ds.x)*.5+.72;
  let exitX=dc.x,exitZ=dc.z,corridor;
  if(side==="minX"){exitX=homeBox.min.x-.82;corridor={minX:homeBox.min.x-1.15,maxX:homeBox.min.x+.35,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
  else if(side==="maxX"){exitX=homeBox.max.x+.82;corridor={minX:homeBox.max.x-.35,maxX:homeBox.max.x+1.15,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
@@ -184,29 +184,44 @@ function addTrailerHomePerimeterCollision(homeBox,doorBox,source){
 function corridorOverlapsBox(c,b){
  return b.max.x>c.minX&&b.min.x<c.maxX&&b.max.z>c.minZ&&b.min.z<c.maxZ;
 }
-function addTrailerRailingCollision(o,source,doorCorridors=[]){
+function addTrailerRailingCollision(o,source){
  const box=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();box.getSize(s);
- if(box.isEmpty()||s.y<.42)return 0;
- const longX=s.x>=s.z,rail=.16,parts=[];
- if(longX){
-   const a=box.clone(),b=box.clone();
-   a.max.z=Math.min(a.max.z,a.min.z+rail);
-   b.min.z=Math.max(b.min.z,b.max.z-rail);
-   parts.push(a,b);
- }else{
-   const a=box.clone(),b=box.clone();
-   a.max.x=Math.min(a.max.x,a.min.x+rail);
-   b.min.x=Math.max(b.min.x,b.max.x-rail);
-   parts.push(a,b);
+ const pos=o.geometry&&o.geometry.attributes&&o.geometry.attributes.position;
+ if(box.isEmpty()||s.y<.42||!pos)return 0;
+
+ // Build collision from the railing's real triangle footprint instead of its full
+ // bounding box. This blocks the visible rails/posts while preserving the authored
+ // opening where the stairs enter the deck.
+ const cell=.42,nx=Math.max(1,Math.ceil(s.x/cell)),nz=Math.max(1,Math.ceil(s.z/cell));
+ const used=new Uint8Array(nx*nz),idx=o.geometry.index;
+ const a=new THREE.Vector3(),b=new THREE.Vector3(),cc=new THREE.Vector3();
+ const read=(out,vi)=>out.fromBufferAttribute(pos,vi).applyMatrix4(o.matrixWorld);
+ const triCount=idx?Math.floor(idx.count/3):Math.floor(pos.count/3);
+ for(let t=0;t<triCount;t++){
+   const j=t*3,ia=idx?idx.getX(j):j,ib=idx?idx.getX(j+1):j+1,ic=idx?idx.getX(j+2):j+2;
+   read(a,ia);read(b,ib);read(cc,ic);
+   const maxY=Math.max(a.y,b.y,cc.y),minY=Math.min(a.y,b.y,cc.y);
+   if(maxY<.28||minY>2.65)continue;
+   const loX=Math.max(box.min.x,Math.min(a.x,b.x,cc.x)),hiX=Math.min(box.max.x,Math.max(a.x,b.x,cc.x));
+   const loZ=Math.max(box.min.z,Math.min(a.z,b.z,cc.z)),hiZ=Math.min(box.max.z,Math.max(a.z,b.z,cc.z));
+   let x0=Math.max(0,Math.floor((loX-box.min.x)/cell)),x1=Math.min(nx-1,Math.floor((hiX-box.min.x)/cell));
+   let z0=Math.max(0,Math.floor((loZ-box.min.z)/cell)),z1=Math.min(nz-1,Math.floor((hiZ-box.min.z)/cell));
+   for(let iz=z0;iz<=z1;iz++)for(let ix=x0;ix<=x1;ix++)used[iz*nx+ix]=1;
  }
- let made=0;
- for(const part of parts){
-   if(doorCorridors.some(c=>corridorOverlapsBox(c,part)))continue;
-   const before=buildingColliders.length;
-   if(addTrailerColliderBox(part,source,.005)){
-     made++;
-     if(buildingColliders.length>before)buildingColliders[buildingColliders.length-1].playerRadius=.12;
+ const done=new Uint8Array(used.length);let made=0;
+ for(let iz=0;iz<nz;iz++)for(let ix=0;ix<nx;ix++){
+   const at=iz*nx+ix;if(!used[at]||done[at])continue;
+   let x2=ix;
+   while(x2+1<nx&&used[iz*nx+x2+1]&&!done[iz*nx+x2+1])x2++;
+   let z2=iz,canGrow=true;
+   while(canGrow&&z2+1<nz){
+     for(let x=ix;x<=x2;x++)if(!used[(z2+1)*nx+x]||done[(z2+1)*nx+x]){canGrow=false;break}
+     if(canGrow)z2++;
    }
+   for(let zc=iz;zc<=z2;zc++)for(let xc=ix;xc<=x2;xc++)done[zc*nx+xc]=1;
+   const minX=box.min.x+ix*cell,maxX=Math.min(box.max.x,box.min.x+(x2+1)*cell);
+   const minZ=box.min.z+iz*cell,maxZ=Math.min(box.max.z,box.min.z+(z2+1)*cell);
+   made+=addTrailerFootprintCollider(minX,maxX,minZ,maxZ,source+":rail",.16);
  }
  return made;
 }
@@ -268,7 +283,8 @@ function buildTrailerParkCollision(map){
      }
      return;
    }
-   if(lower.includes("railing")){railings.push(o);return}
+   if(lower.startsWith("ladders")&&lower.includes("woodplanksclean")){trailerWalkableMeshes.push(o);return}
+   if(lower.includes("railing")){if(lower.includes("_fence"))railings.push(o);return}
    if(lower.includes("fence")){linear.push(o);return}
    if(lower.includes("trash_can_metal")&&!lower.includes("top"))props.push(o);
  });
@@ -292,7 +308,7 @@ function buildTrailerParkCollision(map){
    }
  }
  for(const o of linear)linearCount+=addTrailerLinearMeshCollision(o,o.name||"fence");
- for(const o of railings)linearCount+=addTrailerRailingCollision(o,o.name||"railing",doorCorridors);
+ for(const o of railings)linearCount+=addTrailerRailingCollision(o,o.name||"railing");
  for(const o of props)if(addTrailerColliderBox(new THREE.Box3().setFromObject(o),o.name||"prop",.06))propCount++;
 
  ZNAV_BLOCK_CACHE.clear();
