@@ -76,6 +76,9 @@ const TRAILER_PARK_Y_OFFSET=.97;
 const TRAILER_COLLISION_SPAWN_X=0,TRAILER_COLLISION_SPAWN_Z=-15,TRAILER_COLLISION_SPAWN_PAD=.90;
 let externalMapBounds=null,trailerParkRoot=null,playerGroundY=0;
 const trailerWalkableMeshes=[],trailerInteriorSpawns=[],trailerDoorPassages=[],trailerWalkRay=new THREE.Raycaster(),trailerWalkOrigin=new THREE.Vector3(),trailerWalkDown=new THREE.Vector3(0,-1,0);
+function inTrailerDoorPassage(x,z,pad=0){
+ return trailerDoorPassages.some(p=>x>p.minX-pad&&x<p.maxX+pad&&z>p.minZ-pad&&z<p.maxZ+pad);
+}
 
 function trailerColliderOverlapsSpawn(c){
  return TRAILER_COLLISION_SPAWN_X>c.x-c.hx-TRAILER_COLLISION_SPAWN_PAD&&
@@ -532,7 +535,7 @@ function insideBuilding(x,z,r=.45){
  // Each authored exterior door owns a guaranteed passage. Expand the passage by
  // the caller's collision radius so the player/zombie body can enter the opening
  // before its center point crosses the threshold.
- if(trailerDoorPassages.some(p=>x>p.minX-r&&x<p.maxX+r&&z>p.minZ-r&&z<p.maxZ+r))return false;
+ if(inTrailerDoorPassage(x,z,r))return false;
  for(const b of buildingColliders){
    const rr=(r===.62&&Number.isFinite(b.playerRadius))?b.playerRadius:r;
    if(x>b.x-b.hx-rr&&x<b.x+b.hx+rr&&z>b.z-b.hz-rr&&z<b.z+b.hz+rr)return true
@@ -3826,19 +3829,22 @@ function updateSprintUI(){
  sprintUiState=next.state;
 }
 function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
-for(const c of parkedCars){
- if(carPointCollision(c,px,pz,.38)){
-   const tx=px,tz=pz;
-   px=tx;pz=oldz;
-   if(carPointCollision(c,px,pz,.38)){
-     px=oldx;pz=tz;
-     if(carPointCollision(c,px,pz,.38)){px=oldx;pz=oldz}
-   }
-   break;
+const doorwayMove=inTrailerDoorPassage(oldx,oldz,.10)||inTrailerDoorPassage(px,pz,.10);
+if(!doorwayMove){
+ for(const c of parkedCars){
+  if(carPointCollision(c,px,pz,.38)){
+    const tx=px,tz=pz;
+    px=tx;pz=oldz;
+    if(carPointCollision(c,px,pz,.38)){
+      px=oldx;pz=tz;
+      if(carPointCollision(c,px,pz,.38)){px=oldx;pz=oldz}
+    }
+    break;
+  }
  }
+ let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
+ resolvePlayerZombieContact(oldx,oldz);
 }
-let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
-resolvePlayerZombieContact(oldx,oldz);
 stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;const stairY=trailerWalkableHeightAt(px,pz);playerGroundY+=(stairY-playerGroundY)*Math.min(1,dt*(stairY>playerGroundY?12:9));if(Math.abs(stairY-playerGroundY)<.002)playerGroundY=stairY;cam.position.set(px,1.65+playerGroundY,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
