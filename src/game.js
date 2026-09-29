@@ -75,7 +75,7 @@ const TRAILER_PARK_SCALE=1.25;
 const TRAILER_PARK_Y_OFFSET=.97;
 const TRAILER_COLLISION_SPAWN_X=0,TRAILER_COLLISION_SPAWN_Z=-15,TRAILER_COLLISION_SPAWN_PAD=.90;
 let externalMapBounds=null,trailerParkRoot=null,playerGroundY=0;
-const trailerWalkableMeshes=[],trailerWalkRay=new THREE.Raycaster(),trailerWalkOrigin=new THREE.Vector3(),trailerWalkDown=new THREE.Vector3(0,-1,0);
+const trailerWalkableMeshes=[],trailerInteriorSpawns=[],trailerWalkRay=new THREE.Raycaster(),trailerWalkOrigin=new THREE.Vector3(),trailerWalkDown=new THREE.Vector3(0,-1,0);
 
 function trailerColliderOverlapsSpawn(c){
  return TRAILER_COLLISION_SPAWN_X>c.x-c.hx-TRAILER_COLLISION_SPAWN_PAD&&
@@ -93,6 +93,12 @@ function addTrailerColliderBox(box,source,shrink=.04){
  if(trailerColliderOverlapsSpawn(hit))return false;
  buildingColliders.push(hit);return true;
 }
+function addTrailerFootprintCollider(minX,maxX,minZ,maxZ,source,playerRadius=.16){
+ if(maxX-minX<.04||maxZ-minZ<.04)return 0;
+ const hit={x:(minX+maxX)*.5,z:(minZ+maxZ)*.5,hx:(maxX-minX)*.5,hz:(maxZ-minZ)*.5,source,playerRadius};
+ if(Math.abs(hit.x)>125||Math.abs(hit.z)>125||trailerColliderOverlapsSpawn(hit))return 0;
+ buildingColliders.push(hit);return 1;
+}
 function addTrailerLinearMeshCollision(o,source){
  const box=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();box.getSize(s);
  const longX=s.x>=s.z,span=longX?s.x:s.z;
@@ -102,7 +108,7 @@ function addTrailerLinearMeshCollision(o,source){
  if(!pos)return addTrailerColliderBox(box,source,.025)?1:0;
  const idx=o.geometry.index,binSize=1.15,minCoord=longX?box.min.x:box.min.z,maxCoord=longX?box.max.x:box.max.z;
  const binCount=Math.max(1,Math.ceil((maxCoord-minCoord)/binSize)),used=new Uint8Array(binCount);
- const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
+ const a=new THREE.Vector3(),b=new THREE.Vector3(),cc=new THREE.Vector3();
  const read=(out,vi)=>out.fromBufferAttribute(pos,vi).applyMatrix4(o.matrixWorld);
  const mark=(lo,hi)=>{
    let i0=Math.max(0,Math.floor((lo-minCoord)/binSize)),i1=Math.min(binCount-1,Math.floor((hi-minCoord)/binSize));
@@ -111,9 +117,9 @@ function addTrailerLinearMeshCollision(o,source){
  const triCount=idx?Math.floor(idx.count/3):Math.floor(pos.count/3);
  for(let t=0;t<triCount;t++){
    const j=t*3,ia=idx?idx.getX(j):j,ib=idx?idx.getX(j+1):j+1,ic=idx?idx.getX(j+2):j+2;
-   read(a,ia);read(b,ib);read(c,ic);
-   const lo=Math.min(longX?a.x:a.z,longX?b.x:b.z,longX?c.x:c.z);
-   const hi=Math.max(longX?a.x:a.z,longX?b.x:b.z,longX?c.x:c.z);
+   read(a,ia);read(b,ib);read(cc,ic);
+   const lo=Math.min(longX?a.x:a.z,longX?b.x:b.z,longX?cc.x:cc.z);
+   const hi=Math.max(longX?a.x:a.z,longX?b.x:b.z,longX?cc.x:cc.z);
    mark(lo,hi);
  }
  let made=0,start=-1;
@@ -121,8 +127,8 @@ function addTrailerLinearMeshCollision(o,source){
    const on=i<binCount&&used[i];
    if(on&&start<0)start=i;
    if(!on&&start>=0){
-     const end=i-1,seg=box.clone();
-     const lo=minCoord+start*binSize,hi=Math.min(maxCoord,minCoord+(end+1)*binSize);
+     const finish=i-1,seg=box.clone();
+     const lo=minCoord+start*binSize,hi=Math.min(maxCoord,minCoord+(finish+1)*binSize);
      if(longX){seg.min.x=lo;seg.max.x=hi}else{seg.min.z=lo;seg.max.z=hi}
      if(addTrailerColliderBox(seg,source,.015))made++;
      start=-1;
@@ -130,7 +136,55 @@ function addTrailerLinearMeshCollision(o,source){
  }
  return made;
 }
-function addTrailerRailingCollision(o,source){
+function trailerDoorInfo(homeBox,doorBox){
+ if(!homeBox||!doorBox)return null;
+ const dc=new THREE.Vector3(),ds=new THREE.Vector3();doorBox.getCenter(dc);doorBox.getSize(ds);
+ const sides=[
+   ["minX",Math.abs(dc.x-homeBox.min.x)],["maxX",Math.abs(dc.x-homeBox.max.x)],
+   ["minZ",Math.abs(dc.z-homeBox.min.z)],["maxZ",Math.abs(dc.z-homeBox.max.z)]
+ ].sort((a,b)=>a[1]-b[1]);
+ const side=sides[0][0],gapHalf=((side==="minX"||side==="maxX")?ds.z:ds.x)*.5+.58;
+ let exitX=dc.x,exitZ=dc.z,corridor;
+ if(side==="minX"){exitX=homeBox.min.x-.82;corridor={minX:homeBox.min.x-1.15,maxX:homeBox.min.x+.35,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
+ else if(side==="maxX"){exitX=homeBox.max.x+.82;corridor={minX:homeBox.max.x-.35,maxX:homeBox.max.x+1.15,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
+ else if(side==="minZ"){exitZ=homeBox.min.z-.82;corridor={minX:dc.x-gapHalf,maxX:dc.x+gapHalf,minZ:homeBox.min.z-1.15,maxZ:homeBox.min.z+.35}}
+ else{exitZ=homeBox.max.z+.82;corridor={minX:dc.x-gapHalf,maxX:dc.x+gapHalf,minZ:homeBox.max.z-.35,maxZ:homeBox.max.z+1.15}}
+ return{side,dc,ds,gapHalf,exitX,exitZ,corridor};
+}
+function addTrailerHomePerimeterCollision(homeBox,doorBox,source){
+ if(!homeBox||homeBox.isEmpty())return 0;
+ const wall=.16,info=trailerDoorInfo(homeBox,doorBox),g=info?info.gapHalf:0,dc=info&&info.dc;
+ let made=0;
+ // End walls.
+ made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.max.x,homeBox.min.z,homeBox.min.z+wall,source+":wall");
+ made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.max.x,homeBox.max.z-wall,homeBox.max.z,source+":wall");
+ // Long side walls; split only the side that contains the exterior doorway.
+ if(info&&info.side==="minX"){
+   made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.min.x+wall,homeBox.min.z,Math.max(homeBox.min.z,dc.z-g),source+":wall");
+   made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.min.x+wall,Math.min(homeBox.max.z,dc.z+g),homeBox.max.z,source+":wall");
+ }else made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.min.x+wall,homeBox.min.z,homeBox.max.z,source+":wall");
+ if(info&&info.side==="maxX"){
+   made+=addTrailerFootprintCollider(homeBox.max.x-wall,homeBox.max.x,homeBox.min.z,Math.max(homeBox.min.z,dc.z-g),source+":wall");
+   made+=addTrailerFootprintCollider(homeBox.max.x-wall,homeBox.max.x,Math.min(homeBox.max.z,dc.z+g),homeBox.max.z,source+":wall");
+ }else made+=addTrailerFootprintCollider(homeBox.max.x-wall,homeBox.max.x,homeBox.min.z,homeBox.max.z,source+":wall");
+ // If a future trailer uses a doorway on an end wall, replace that full end with split segments.
+ if(info&&(info.side==="minZ"||info.side==="maxZ")){
+   const targetZ=info.side==="minZ"?homeBox.min.z:homeBox.max.z-wall;
+   // Remove the full end collider we added above, then rebuild it around the doorway.
+   const removeSource=source+":wall",endCenterZ=targetZ+wall*.5;
+   for(let i=buildingColliders.length-1;i>=0;i--){
+     const b=buildingColliders[i];
+     if(b.source===removeSource&&Math.abs(b.z-endCenterZ)<wall){buildingColliders.splice(i,1);made--;break}
+   }
+   made+=addTrailerFootprintCollider(homeBox.min.x,Math.max(homeBox.min.x,dc.x-g),targetZ,targetZ+wall,source+":wall");
+   made+=addTrailerFootprintCollider(Math.min(homeBox.max.x,dc.x+g),homeBox.max.x,targetZ,targetZ+wall,source+":wall");
+ }
+ return made;
+}
+function corridorOverlapsBox(c,b){
+ return b.max.x>c.minX&&b.min.x<c.maxX&&b.max.z>c.minZ&&b.min.z<c.maxZ;
+}
+function addTrailerRailingCollision(o,source,doorCorridors=[]){
  const box=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();box.getSize(s);
  if(box.isEmpty()||s.y<.42)return 0;
  const longX=s.x>=s.z,rail=.16,parts=[];
@@ -147,6 +201,7 @@ function addTrailerRailingCollision(o,source){
  }
  let made=0;
  for(const part of parts){
+   if(doorCorridors.some(c=>corridorOverlapsBox(c,part)))continue;
    const before=buildingColliders.length;
    if(addTrailerColliderBox(part,source,.005)){
      made++;
@@ -168,26 +223,43 @@ function trailerWalkableHeightAt(x,z){
  }
  return 0;
 }
-
+function addTrailerInteriorSpawnPoints(homeBox,floorBox,doorBox,source){
+ if(!homeBox||!floorBox||!doorBox)return;
+ const info=trailerDoorInfo(homeBox,doorBox);if(!info)return;
+ const fc=new THREE.Vector3();floorBox.getCenter(fc);
+ const floorY=floorBox.max.y;
+ const tangentIsZ=info.side==="minX"||info.side==="maxX";
+ const offsets=[0,1.45,-1.45];
+ for(const off of offsets){
+   let x=fc.x,z=fc.z;
+   if(tangentIsZ)z=Math.max(floorBox.min.z+.72,Math.min(floorBox.max.z-.72,info.dc.z+off));
+   else x=Math.max(floorBox.min.x+.72,Math.min(floorBox.max.x-.72,info.dc.x+off));
+   trailerInteriorSpawns.push({x,z,groundY:floorY,exitX:info.exitX,exitZ:info.exitZ,source});
+ }
+}
 function buildTrailerParkCollision(map){
  buildingColliders.length=0;
  trailerWalkableMeshes.length=0;
+ trailerInteriorSpawns.length=0;
  map.updateMatrixWorld(true);
- const homes=new Map(),linear=[],railings=[],props=[];
+ const homes=new Map(),doors=[],linear=[],railings=[],props=[];
  map.traverse(o=>{
    if(!o.isMesh||!o.geometry||!o.visible)return;
-   const name=String(o.name||"");
-   const lower=name.toLowerCase();
+   const name=String(o.name||""),lower=name.toLowerCase();
+   if(lower.startsWith("door")){
+     if(/^Door(?:\.\d+)?_Door_0$/i.test(name))doors.push({box:new THREE.Box3().setFromObject(o),name});
+     // Door leaves are intentionally removed; frames stay visible.
+     o.visible=false;o.userData.visualOnly=true;return;
+   }
    const homeMatch=name.match(/^(Home(?:_\d+)?)(?:[._]|$)/i);
    if(homeMatch){
-     const key=homeMatch[1].toLowerCase(),b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();
-     b.getSize(s);
+     const key=homeMatch[1].toLowerCase(),b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
      let home=homes.get(key);
-     if(!home){home={all:b.clone(),body:null,shell:null};homes.set(key,home)}
+     if(!home){home={all:b.clone(),body:null,shell:null,floor:null};homes.set(key,home)}
      else home.all.union(b);
-     if(lower.includes("woodplanksclean"))trailerWalkableMeshes.push(o);
-     // Prefer the actual tall metal exterior shell for the trailer footprint. Broad
-     // plaster/interior meshes can extend across the porch and must not close the stairs.
+     if(lower.includes("woodplanksclean")||lower.includes("carpet"))trailerWalkableMeshes.push(o);
+     if(lower.includes("carpet"))home.floor=b.clone();
+     // Prefer the actual tall metal exterior shell for the trailer footprint.
      if(lower.includes("metalplates")&&s.y>=1.25){
        if(!home.shell)home.shell=b.clone();else home.shell.union(b);
      }
@@ -202,26 +274,38 @@ function buildTrailerParkCollision(map){
  });
 
  let homeCount=0,linearCount=0,propCount=0;
+ const doorCorridors=[];
  for(const [key,home] of homes){
-   const before=buildingColliders.length;
-   if(addTrailerColliderBox(home.shell||home.body||home.all,key,.14)){
-     homeCount++;
-     // Player may stand close to trailer siding; zombie/nav radii remain unchanged.
-     if(buildingColliders.length>before)buildingColliders[buildingColliders.length-1].playerRadius=.28;
+   const shell=home.shell||home.body||home.all,hc=new THREE.Vector3();shell.getCenter(hc);
+   let nearest=null,best=Infinity;
+   for(const d of doors){
+     const dc=new THREE.Vector3();d.box.getCenter(dc);
+     const dist=Math.hypot(dc.x-hc.x,dc.z-hc.z);
+     if(dist<best){best=dist;nearest=d}
+   }
+   const doorBox=nearest&&best<15?nearest.box:null;
+   if(addTrailerHomePerimeterCollision(shell,doorBox,key)>0)homeCount++;
+   if(doorBox){
+     const info=trailerDoorInfo(shell,doorBox);
+     if(info)doorCorridors.push(info.corridor);
+     addTrailerInteriorSpawnPoints(shell,home.floor,doorBox,key);
    }
  }
  for(const o of linear)linearCount+=addTrailerLinearMeshCollision(o,o.name||"fence");
- for(const o of railings)linearCount+=addTrailerRailingCollision(o,o.name||"railing");
+ for(const o of railings)linearCount+=addTrailerRailingCollision(o,o.name||"railing",doorCorridors);
  for(const o of props)if(addTrailerColliderBox(new THREE.Box3().setFromObject(o),o.name||"prop",.06))propCount++;
 
  ZNAV_BLOCK_CACHE.clear();
  document.documentElement.dataset.trailerParkCollision="1";
  document.documentElement.dataset.trailerParkColliderCount=String(buildingColliders.length);
+ document.documentElement.dataset.trailerParkIndoorSpawns=String(trailerInteriorSpawns.length);
  console.log("CITY OUTBREAK: Trailer Park collision built",{
    total:buildingColliders.length,
    homes:homeCount,
    fenceAndRailingSegments:linearCount,
    props:propCount,
+   exteriorDoorsRemoved:doors.length,
+   indoorSpawnPoints:trailerInteriorSpawns.length,
    spawnProtected:true
  });
  return{total:buildingColliders.length,homes:homeCount,linear:linearCount,props:propCount};
@@ -2356,7 +2440,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(hazardMist&&hazardMist.material)ownedMaterials.push(hazardMist.material);
 
  let marker=null;
- let safe=pushOutsideBuilding(x,z,.50);g.position.set(safe.x,0,safe.z);scene.add(g);
+ let safe=pushOutsideBuilding(x,z,.50),spawnGroundY=trailerWalkableHeightAt(safe.x,safe.z);g.position.set(safe.x,spawnGroundY,safe.z);scene.add(g);
 
  const baseArmLX=.22+rnd()*.045,baseArmRX=.20+rnd()*.045,
        gait=kind==="sprinter"||kind==="infected"||kind==="acidic"?.95+rnd()*.10:kind==="boss"?.72+rnd()*.07:.84+rnd()*.10,
@@ -2375,7 +2459,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
 
  let zz={g,head,torso,armL,armR,legL,legR,chest,stomach,pelvis,neck,jaw,marker,mouth,shoulderL,shoulderR,elbowL,elbowR,kneeL,kneeR,jacket,hazardMist,ownedMaterials,ownedGeometries:null,
    baseArmLX,baseArmRX,headLean,gait,bob,limp,dragSide,hunch:hunchBias,turnRate,lurch:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.10:kind==="boss"?.76:.92,
-   shoulderDrop,pauseClock,attackAnim,attackSide,feral,twitch,snapBias,snapRate,nightmareType,armDrop,kind,groundY:0,
+   shoulderDrop,pauseClock,attackAnim,attackSide,feral,twitch,snapBias,snapRate,nightmareType,armDrop,kind,groundY:spawnGroundY,
    hp,maxHP:hp,dead:false,speed,attack,damage,strafe,surge,bossName:kind==="boss"?(bossSpec?.name||bossWaveName||"BOSS"):"",bossBounty:kind==="boss"?(bossSpec?.bounty||250):0,bossSpecialCd:kind==="boss"?(bossSpec?.specialCd||7.5):0,bossAttackState:"",bossAttackT:0,bossChargeHit:false,
    cool:0,groan:1+rnd()*3,step:.2+rnd()*.38,phase:rnd()*6.28,zig:rnd()>.5?1:-1,surgeT:.5+rnd()*2,stagger:0,staggerDir:1,
    leftArmHP:2,rightArmHP:2,leftLegHP:2.5,rightLegHP:2.5,legDamage:0,leftArmDetached:false,rightArmDetached:false,leftLegDetached:false,rightLegDetached:false,ragdoll:null,knockdown:null,falling:false,corpseAge:0,fallDir:rnd()>.5?1:-1,fallAxis:rnd()>.55?"z":"x",fallSpeed:3.2+rnd()*2.1,
@@ -2597,7 +2681,8 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    hitMeshes.push(o)
  });
  zz.hitMeshes=hitMeshes;
- zombies.push(zz);if(kind==="boss")currentBoss=zz
+ zombies.push(zz);if(kind==="boss")currentBoss=zz;
+ return zz
 }
 
 function medkit(x,z){let g=new THREE.Group();box(1,.38,.72,M(0xe7e4da),0,.35,0,g);box(.18,.05,.5,M(0xa52c2c),0,.56,0,g);box(.5,.05,.18,M(0xa52c2c),0,.56,0,g);g.position.set(x,0,z);scene.add(g);kits.push({g,used:false})}medkit(-10,8);medkit(16,56);medkit(-17,91);
@@ -2779,7 +2864,30 @@ function findReachableZombieSpawn(minDist,maxDist){
  }
  return null;
 }
+function findTrailerInteriorSpawn(i){
+ if(!trailerInteriorSpawns.length)return null;
+ const start=(i*5+wave*3)%trailerInteriorSpawns.length;
+ for(let n=0;n<trailerInteriorSpawns.length;n++){
+   const p=trailerInteriorSpawns[(start+n)%trailerInteriorSpawns.length];
+   if(Math.hypot(p.x-px,p.z-pz)<=11||insideBuilding(p.x,p.z,.50))continue;
+   let occupied=false;
+   for(const z of zombies)if(!z.dead&&Math.hypot(z.g.position.x-p.x,z.g.position.z-p.z)<1.35){occupied=true;break}
+   if(!occupied)return p;
+ }
+ return null;
+}
 function spawnOneZombie(i){
+ const indoor=(i%3===0)?findTrailerInteriorSpawn(i):null;
+ if(indoor){
+   const z=makeZombie(indoor.x,indoor.z,i);
+   if(z){
+     z.trailerEscape={x:indoor.exitX,z:indoor.exitZ};
+     z.trailerFloor=true;
+     z.groundY=indoor.groundY;
+     z.g.position.y=indoor.groundY;
+   }
+   return true;
+ }
  const p=findReachableZombieSpawn(14,32);
  if(!p)return false;
  makeZombie(p.x,p.z,i);
@@ -3841,7 +3949,12 @@ const highlightLast=(active.length+Math.max(0,waveTarget-waveSpawned))<=5&&!curr
 for(let z of active){
  if(!Number.isFinite(z.g.position.x)||!Number.isFinite(z.g.position.y)||!Number.isFinite(z.g.position.z)){
    const a=rnd()*Math.PI*2,dist=16+rnd()*8;let safe=pushOutsideBuilding(px+Math.sin(a)*dist,pz+Math.cos(a)*dist,.85);
-   z.g.position.set(safe.x,0,safe.z);z.targetX=px;z.targetZ=pz;z.stagger=.25;z.navPath=null;z.navIndex=0;z.navCheckT=0;
+   z.g.position.set(safe.x,0,safe.z);z.groundY=0;z.trailerEscape=null;z.trailerFloor=false;z.targetX=px;z.targetZ=pz;z.stagger=.25;z.navPath=null;z.navIndex=0;z.navCheckT=0;
+ }
+ if(z.trailerFloor){
+   const gy=trailerWalkableHeightAt(z.g.position.x,z.g.position.z);
+   z.groundY+=(gy-z.groundY)*Math.min(1,dt*11);
+   if(!z.trailerEscape&&gy<.02&&z.groundY<.025){z.groundY=0;z.trailerFloor=false}
  }
  if(highlightLast&&!z.marker){
    z.marker=createLastZombieMarker();
@@ -3878,40 +3991,49 @@ let animRate=0;
 if(z.pauseClock<=0){z.pauseClock=1.1+rnd()*3.2;if(rnd()<.22)z.stagger=Math.max(z.stagger,.10+rnd()*.12)}
 if(z.surgeT<=0){z.surgeT=.65+rnd()*1.7;z.zig*=-1}z.think-=dt;
 z.avoidT=Math.max(0,(z.avoidT||0)-dt);z.navFlipCooldown=Math.max(0,(z.navFlipCooldown||0)-dt);
-if(z.kind!=="boss")updateZombieRoute(z,dt,huntMode);
+if(z.kind!=="boss"&&!z.trailerEscape)updateZombieRoute(z,dt,huntMode);
 if(z.kind==="boss")tickBossSpecial(z,dt,playerDistToZombie);
 if(z.think<=0){
  z.think=huntMode?.025+rnd()*.025:.08+rnd()*.10;
  const speed=Math.hypot(playerVX,playerVZ),lead=Math.min(1.5,speed*.14);
  let tx=px, tz=pz;
+ if(z.trailerEscape){
+   const ed=Math.hypot(z.trailerEscape.x-z.g.position.x,z.trailerEscape.z-z.g.position.z);
+   if(ed<.68){
+     z.trailerEscape=null;z.navForceRepath=true;z.navCheckT=0;
+   }else{
+     tx=z.trailerEscape.x;tz=z.trailerEscape.z;
+   }
+ }
+ if(!z.trailerEscape){
+   // Roles now modify pursuit instead of replacing interest in the player.
+   if(z.role==="interceptor"){
+     tx=px+playerVX*lead*.75;tz=pz+playerVZ*lead*.75;
+   }
+   if(z.role==="flanker"&&playerDistToZombie>5){
+     const pd=playerDistToZombie||1;
+     const nx=(px-z.g.position.x)/pd,nz=(pz-z.g.position.z)/pd;
+     const off=Math.min(2.8,1.4+playerDistToZombie*.055);
+     tx=px+(-nz)*z.side*off;
+     tz=pz+(nx)*z.side*off;
+   }
+   if(z.role==="stalker"){
+     // stalkers still close distance and never park in place while the player is nearby
+     tx=px+playerVX*lead*.28;tz=pz+playerVZ*lead*.28;
+   }
+   if(z.role==="charger"){
+     tx=px+playerVX*lead*.18;tz=pz+playerVZ*lead*.18;
+   }
 
- // Roles now modify pursuit instead of replacing interest in the player.
- if(z.role==="interceptor"){
-   tx=px+playerVX*lead*.75;tz=pz+playerVZ*lead*.75;
- }
- if(z.role==="flanker"&&playerDistToZombie>5){
-   const pd=playerDistToZombie||1;
-   const nx=(px-z.g.position.x)/pd,nz=(pz-z.g.position.z)/pd;
-   const off=Math.min(2.8,1.4+playerDistToZombie*.055);
-   tx=px+(-nz)*z.side*off;
-   tz=pz+(nx)*z.side*off;
- }
- if(z.role==="stalker"){
-   // stalkers still close distance and never park in place while the player is nearby
-   tx=px+playerVX*lead*.28;tz=pz+playerVZ*lead*.28;
- }
- if(z.role==="charger"){
-   tx=px+playerVX*lead*.18;tz=pz+playerVZ*lead*.18;
- }
+   // Keep every role strongly biased toward the player.
+   tx=px+(tx-px)*.42;
+   tz=pz+(tz-pz)*.42;
+   if(huntMode||playerDistToZombie<6||active.length<=2){tx=px;tz=pz;}
 
- // Keep every role strongly biased toward the player.
- tx=px+(tx-px)*.42;
- tz=pz+(tz-pz)*.42;
- if(huntMode||playerDistToZombie<6||active.length<=2){tx=px;tz=pz;}
-
- // If direct pursuit is blocked, follow the A* corner route until line of sight opens again.
- const wp=zombieRouteWaypoint(z);
- if(wp){tx=wp.x;tz=wp.z}
+   // If direct pursuit is blocked, follow the A* corner route until line of sight opens again.
+   const wp=zombieRouteWaypoint(z);
+   if(wp){tx=wp.x;tz=wp.z}
+ }
 
  z.targetX=tx;z.targetZ=tz;
 }
