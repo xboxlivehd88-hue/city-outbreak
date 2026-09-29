@@ -1,0 +1,73 @@
+name: Inspect Havana Collision Metadata
+
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-havana-collision.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect GLB collision and physics metadata
+        run: |
+          python3 - <<'PY'
+          import json,struct,re
+          p='assets/modular_havana_street__low-poly_asset_kit.glb'
+          data=open(p,'rb').read()
+          magic,ver,total=struct.unpack_from('<4sII',data,0)
+          off=12
+          g=None
+          while off+8<=len(data):
+              n,t=struct.unpack_from('<II',data,off);off+=8
+              chunk=data[off:off+n];off+=n
+              if t==0x4E4F534A:
+                  g=json.loads(chunk.decode('utf-8').rstrip('\x00 \t\r\n'))
+                  break
+          if g is None: raise SystemExit('missing JSON chunk')
+
+          terms=re.compile(r'collid|collision|collider|ucx|ubx|usp|ucp|physics|rigid|trigger|navmesh|nav_mesh|walkmesh|walk_mesh|blocker|obstacle',re.I)
+          print('TOP_EXTENSIONS_USED',g.get('extensionsUsed',[]))
+          print('TOP_EXTENSIONS_REQUIRED',g.get('extensionsRequired',[]))
+          print('TOP_EXTENSIONS',g.get('extensions',{}))
+          print('TOP_EXTRAS',g.get('extras'))
+
+          hits=[]
+          for section in ['nodes','meshes','materials','scenes','accessors','bufferViews','images']:
+              for i,obj in enumerate(g.get(section,[])):
+                  name=str(obj.get('name',''))
+                  extras=obj.get('extras')
+                  exts=obj.get('extensions')
+                  blob=json.dumps({'name':name,'extras':extras,'extensions':exts},sort_keys=True)
+                  if terms.search(blob):
+                      hits.append((section,i,name,extras,exts))
+          print('COLLISION_PHYSICS_NAME_OR_METADATA_HITS',len(hits))
+          for h in hits:
+              print(h)
+
+          # Print every node/mesh name so odd authored conventions can be reviewed.
+          print('NODE_NAMES')
+          for i,n in enumerate(g.get('nodes',[])):
+              print(i,repr(n.get('name','')), 'mesh=',n.get('mesh'), 'extras=',n.get('extras'), 'extensions=',n.get('extensions'))
+          print('MESH_NAMES')
+          for i,m in enumerate(g.get('meshes',[])):
+              print(i,repr(m.get('name','')), 'extras=',m.get('extras'), 'extensions=',m.get('extensions'))
+
+          # Show primitive-level extensions/extras too.
+          prim_hits=[]
+          for mi,m in enumerate(g.get('meshes',[])):
+              for pi,pr in enumerate(m.get('primitives',[])):
+                  exts=pr.get('extensions');extras=pr.get('extras')
+                  blob=json.dumps({'extras':extras,'extensions':exts},sort_keys=True)
+                  if exts or extras or terms.search(blob):
+                      prim_hits.append((mi,pi,m.get('name',''),extras,exts))
+          print('PRIMITIVE_METADATA_COUNT',len(prim_hits))
+          for h in prim_hits:
+              print(h)
+
+          # Broad scan of the JSON text for collision/physics keywords.
+          raw=json.dumps(g,sort_keys=True)
+          matches=sorted(set(m.group(0).lower() for m in terms.finditer(raw)))
+          print('KEYWORDS_PRESENT',matches)
+          PY
