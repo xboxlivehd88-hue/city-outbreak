@@ -3184,7 +3184,7 @@ for(const c of parkedCars){
 }
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
 resolvePlayerZombieContact(oldx,oldz);
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.80,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
