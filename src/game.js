@@ -384,15 +384,6 @@ new GLTFLoader().load("assets/modular_havana_street__low-poly_asset_kit.glb?v=30
    o.castShadow=false;o.receiveShadow=false;
    const mats=Array.isArray(o.material)?o.material:[o.material];
    for(const mat of mats)if(mat){
-     // Sketchfab exported seven large Havana surfaces as alpha-blended layers.
-     // Keep their intended transparency, but make them participate in the depth
-     // buffer so they cannot visibly sort/draw through nearby opaque walls.
-     if(mat.transparent){
-       mat.depthTest=true;
-       mat.depthWrite=true;
-       mat.alphaTest=Math.max(mat.alphaTest||0,.02);
-       mat.needsUpdate=true;
-     }
      for(const key of ["map","normalMap","roughnessMap","metalnessMap","emissiveMap"]){
        const tx=mat[key];
        if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
@@ -2359,6 +2350,24 @@ function findReachableZombieSpawn(minDist,maxDist){
  }
  return null;
 }
+function findBossStreetSpawn(minDist=18,maxDist=32){
+ // Bosses must have direct open access to the player at spawn time. Unlike normal
+ // zombies, do not accept an A* route from behind/inside Havana building shells.
+ for(let tries=0;tries<48;tries++){
+   const a=rnd()*Math.PI*2,dist=minDist+rnd()*(maxDist-minDist);
+   const x=px+Math.sin(a)*dist,z=pz+Math.cos(a)*dist;
+   if(validZombieSpawn(x,z)&&zombieRouteClear(x,z,px,pz,ZNAV_PAD))return{x,z};
+ }
+ // Deterministic ring sweep gives the boss a broad set of street/alley candidates.
+ const startA=rnd()*Math.PI*2;
+ for(let ring=Math.max(12,minDist-4);ring<=Math.max(40,maxDist+8);ring+=3){
+   for(let k=0;k<32;k++){
+     const a=startA+k*(Math.PI*2/32),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
+     if(validZombieSpawn(x,z)&&zombieRouteClear(x,z,px,pz,ZNAV_PAD))return{x,z};
+   }
+ }
+ return null;
+}
 function spawnOneZombie(i){
  const p=findReachableZombieSpawn(14,32);
  if(!p)return false;
@@ -2378,15 +2387,24 @@ function spawnWave(){
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=findReachableZombieSpawn(18,30);
+   const bossSpawn=findBossStreetSpawn(18,30);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
-     // Extremely defensive fallback: keep boss-wave behavior intact even if the
-     // route search cannot find a candidate during this frame. The expanded A*
-     // will still take over immediately after spawn.
-     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=18+rnd()*10;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
+     // Final safety sweep: still require direct open access. Never deliberately
+     // place a boss behind a Havana wall just to force the wave to start.
+     const wide=findBossStreetSpawn(12,40);
+     if(wide){sx=wide.x;sz=wide.z;ok=true}
    }
-   if(!ok){const a=rnd()*Math.PI*2,dist=22+rnd()*9;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
+   if(!ok){
+     // Extremely rare fallback: spawn just outside the player's immediate area
+     // only if the straight route is actually clear.
+     for(let ring=12;ring<=36&&!ok;ring+=2){
+       for(let k=0;k<48&&!ok;k++){
+         const a=k*(Math.PI*2/48),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
+         if(validZombieSpawn(x,z)&&zombieRouteClear(x,z,px,pz,.55)){sx=x;sz=z;ok=true}
+       }
+     }
+   }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
