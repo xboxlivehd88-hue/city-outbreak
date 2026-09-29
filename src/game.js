@@ -70,305 +70,6 @@ function taperedPrism(topW,bottomW,h,topD,bottomD,m,x,y,z,p=scene){
 // in-browser, so the city keeps working as a single self-contained game build.
 
 const buildingColliders=[],facadeMaterialCache=new Map();
-const USE_TRAILER_PARK_MAP=true;
-const TRAILER_PARK_SCALE=1.25;
-const TRAILER_PARK_Y_OFFSET=.97;
-const TRAILER_COLLISION_SPAWN_X=0,TRAILER_COLLISION_SPAWN_Z=-15,TRAILER_COLLISION_SPAWN_PAD=.90;
-let externalMapBounds=null,trailerParkRoot=null,playerGroundY=0,workingTrailerBounds=null;
-const trailerWalkableMeshes=[],trailerInteriorSpawns=[],trailerDoorPassages=[],workingTrailerFloorPatches=[],trailerWalkRay=new THREE.Raycaster(),trailerWalkOrigin=new THREE.Vector3(),trailerWalkDown=new THREE.Vector3(0,-1,0);
-function inTrailerDoorPassage(x,z,pad=0){
- return trailerDoorPassages.some(p=>x>p.minX-pad&&x<p.maxX+pad&&z>p.minZ-pad&&z<p.maxZ+pad);
-}
-
-function trailerColliderOverlapsSpawn(c){
- return TRAILER_COLLISION_SPAWN_X>c.x-c.hx-TRAILER_COLLISION_SPAWN_PAD&&
-        TRAILER_COLLISION_SPAWN_X<c.x+c.hx+TRAILER_COLLISION_SPAWN_PAD&&
-        TRAILER_COLLISION_SPAWN_Z>c.z-c.hz-TRAILER_COLLISION_SPAWN_PAD&&
-        TRAILER_COLLISION_SPAWN_Z<c.z+c.hz+TRAILER_COLLISION_SPAWN_PAD;
-}
-function addTrailerColliderBox(box,source,shrink=.04){
- if(!box||box.isEmpty())return false;
- const s=new THREE.Vector3(),c=new THREE.Vector3();box.getSize(s);box.getCenter(c);
- if(s.y<.42||s.x<.07||s.z<.07)return false;
- // Ignore distant background/environment meshes from the authored scene.
- if(Math.abs(c.x)>125||Math.abs(c.z)>125)return false;
- const hit={x:c.x,z:c.z,hx:Math.max(.035,s.x*.5-shrink),hz:Math.max(.035,s.z*.5-shrink),source};
- if(trailerColliderOverlapsSpawn(hit))return false;
- buildingColliders.push(hit);return true;
-}
-function addTrailerFootprintCollider(minX,maxX,minZ,maxZ,source,playerRadius=.16){
- if(maxX-minX<.04||maxZ-minZ<.04)return 0;
- const hit={x:(minX+maxX)*.5,z:(minZ+maxZ)*.5,hx:(maxX-minX)*.5,hz:(maxZ-minZ)*.5,source,playerRadius};
- if(Math.abs(hit.x)>125||Math.abs(hit.z)>125||trailerColliderOverlapsSpawn(hit))return 0;
- buildingColliders.push(hit);return 1;
-}
-function addTrailerLinearMeshCollision(o,source){
- const box=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();box.getSize(s);
- const longX=s.x>=s.z,span=longX?s.x:s.z;
- if(span<=7)return addTrailerColliderBox(box,source,.025)?1:0;
-
- const pos=o.geometry&&o.geometry.attributes&&o.geometry.attributes.position;
- if(!pos)return addTrailerColliderBox(box,source,.025)?1:0;
- const idx=o.geometry.index,binSize=1.15,minCoord=longX?box.min.x:box.min.z,maxCoord=longX?box.max.x:box.max.z;
- const binCount=Math.max(1,Math.ceil((maxCoord-minCoord)/binSize)),used=new Uint8Array(binCount);
- const a=new THREE.Vector3(),b=new THREE.Vector3(),cc=new THREE.Vector3();
- const read=(out,vi)=>out.fromBufferAttribute(pos,vi).applyMatrix4(o.matrixWorld);
- const mark=(lo,hi)=>{
-   let i0=Math.max(0,Math.floor((lo-minCoord)/binSize)),i1=Math.min(binCount-1,Math.floor((hi-minCoord)/binSize));
-   for(let i=i0;i<=i1;i++)used[i]=1;
- };
- const triCount=idx?Math.floor(idx.count/3):Math.floor(pos.count/3);
- for(let t=0;t<triCount;t++){
-   const j=t*3,ia=idx?idx.getX(j):j,ib=idx?idx.getX(j+1):j+1,ic=idx?idx.getX(j+2):j+2;
-   read(a,ia);read(b,ib);read(cc,ic);
-   const lo=Math.min(longX?a.x:a.z,longX?b.x:b.z,longX?cc.x:cc.z);
-   const hi=Math.max(longX?a.x:a.z,longX?b.x:b.z,longX?cc.x:cc.z);
-   mark(lo,hi);
- }
- let made=0,start=-1;
- for(let i=0;i<=binCount;i++){
-   const on=i<binCount&&used[i];
-   if(on&&start<0)start=i;
-   if(!on&&start>=0){
-     const finish=i-1,seg=box.clone();
-     const lo=minCoord+start*binSize,hi=Math.min(maxCoord,minCoord+(finish+1)*binSize);
-     if(longX){seg.min.x=lo;seg.max.x=hi}else{seg.min.z=lo;seg.max.z=hi}
-     if(addTrailerColliderBox(seg,source,.015))made++;
-     start=-1;
-   }
- }
- return made;
-}
-function trailerDoorInfo(homeBox,doorBox){
- if(!homeBox||!doorBox)return null;
- const dc=new THREE.Vector3(),ds=new THREE.Vector3();doorBox.getCenter(dc);doorBox.getSize(ds);
- const sides=[
-   ["minX",Math.abs(dc.x-homeBox.min.x)],["maxX",Math.abs(dc.x-homeBox.max.x)],
-   ["minZ",Math.abs(dc.z-homeBox.min.z)],["maxZ",Math.abs(dc.z-homeBox.max.z)]
- ].sort((a,b)=>a[1]-b[1]);
- const side=sides[0][0],gapHalf=((side==="minX"||side==="maxX")?ds.z:ds.x)*.5+.72;
- let exitX=dc.x,exitZ=dc.z,corridor;
- if(side==="minX"){exitX=homeBox.min.x-.82;corridor={minX:homeBox.min.x-3.6,maxX:homeBox.min.x+1.15,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
- else if(side==="maxX"){exitX=homeBox.max.x+.82;corridor={minX:homeBox.max.x-1.15,maxX:homeBox.max.x+3.6,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
- else if(side==="minZ"){exitZ=homeBox.min.z-.82;corridor={minX:dc.x-gapHalf,maxX:dc.x+gapHalf,minZ:homeBox.min.z-3.6,maxZ:homeBox.min.z+1.15}}
- else{exitZ=homeBox.max.z+.82;corridor={minX:dc.x-gapHalf,maxX:dc.x+gapHalf,minZ:homeBox.max.z-1.15,maxZ:homeBox.max.z+3.6}}
- return{side,dc,ds,gapHalf,exitX,exitZ,corridor};
-}
-function addTrailerHomePerimeterCollision(homeBox,doorBox,source){
- if(!homeBox||homeBox.isEmpty())return 0;
- const wall=.16,info=trailerDoorInfo(homeBox,doorBox),g=info?info.gapHalf:0,dc=info&&info.dc;
- let made=0;
- // End walls. The working trailer uses full player clearance here so the
- // camera/body stops at the visible wall instead of sinking partway through it.
- const endPlayerRadius=source==="home"?.52:.16;
- made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.max.x,homeBox.min.z,homeBox.min.z+wall,source+":wall",endPlayerRadius);
- made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.max.x,homeBox.max.z-wall,homeBox.max.z,source+":wall",endPlayerRadius);
- // Long side walls; split only the side that contains the exterior doorway.
- if(info&&info.side==="minX"){
-   made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.min.x+wall,homeBox.min.z,Math.max(homeBox.min.z,dc.z-g),source+":wall");
-   made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.min.x+wall,Math.min(homeBox.max.z,dc.z+g),homeBox.max.z,source+":wall");
- }else made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.min.x+wall,homeBox.min.z,homeBox.max.z,source+":wall");
- if(info&&info.side==="maxX"){
-   made+=addTrailerFootprintCollider(homeBox.max.x-wall,homeBox.max.x,homeBox.min.z,Math.max(homeBox.min.z,dc.z-g),source+":wall");
-   made+=addTrailerFootprintCollider(homeBox.max.x-wall,homeBox.max.x,Math.min(homeBox.max.z,dc.z+g),homeBox.max.z,source+":wall");
- }else made+=addTrailerFootprintCollider(homeBox.max.x-wall,homeBox.max.x,homeBox.min.z,homeBox.max.z,source+":wall");
- // If a future trailer uses a doorway on an end wall, replace that full end with split segments.
- if(info&&(info.side==="minZ"||info.side==="maxZ")){
-   const targetZ=info.side==="minZ"?homeBox.min.z:homeBox.max.z-wall;
-   // Remove the full end collider we added above, then rebuild it around the doorway.
-   const removeSource=source+":wall",endCenterZ=targetZ+wall*.5;
-   for(let i=buildingColliders.length-1;i>=0;i--){
-     const b=buildingColliders[i];
-     if(b.source===removeSource&&Math.abs(b.z-endCenterZ)<wall){buildingColliders.splice(i,1);made--;break}
-   }
-   made+=addTrailerFootprintCollider(homeBox.min.x,Math.max(homeBox.min.x,dc.x-g),targetZ,targetZ+wall,source+":wall");
-   made+=addTrailerFootprintCollider(Math.min(homeBox.max.x,dc.x+g),homeBox.max.x,targetZ,targetZ+wall,source+":wall");
- }
- return made;
-}
-function corridorOverlapsBox(c,b){
- return b.max.x>c.minX&&b.min.x<c.maxX&&b.max.z>c.minZ&&b.min.z<c.maxZ;
-}
-function addTrailerRailingCollision(o,source){
- const box=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();box.getSize(s);
- const pos=o.geometry&&o.geometry.attributes&&o.geometry.attributes.position;
- if(box.isEmpty()||s.y<.42||!pos)return 0;
-
- // Build collision from the railing's real triangle footprint instead of its full
- // bounding box. This blocks the visible rails/posts while preserving the authored
- // opening where the stairs enter the deck.
- const cell=.42,nx=Math.max(1,Math.ceil(s.x/cell)),nz=Math.max(1,Math.ceil(s.z/cell));
- const used=new Uint8Array(nx*nz),idx=o.geometry.index;
- const a=new THREE.Vector3(),b=new THREE.Vector3(),cc=new THREE.Vector3();
- const read=(out,vi)=>out.fromBufferAttribute(pos,vi).applyMatrix4(o.matrixWorld);
- const triCount=idx?Math.floor(idx.count/3):Math.floor(pos.count/3);
- for(let t=0;t<triCount;t++){
-   const j=t*3,ia=idx?idx.getX(j):j,ib=idx?idx.getX(j+1):j+1,ic=idx?idx.getX(j+2):j+2;
-   read(a,ia);read(b,ib);read(cc,ic);
-   const maxY=Math.max(a.y,b.y,cc.y),minY=Math.min(a.y,b.y,cc.y);
-   if(maxY<.28||minY>2.65)continue;
-   const loX=Math.max(box.min.x,Math.min(a.x,b.x,cc.x)),hiX=Math.min(box.max.x,Math.max(a.x,b.x,cc.x));
-   const loZ=Math.max(box.min.z,Math.min(a.z,b.z,cc.z)),hiZ=Math.min(box.max.z,Math.max(a.z,b.z,cc.z));
-   let x0=Math.max(0,Math.floor((loX-box.min.x)/cell)),x1=Math.min(nx-1,Math.floor((hiX-box.min.x)/cell));
-   let z0=Math.max(0,Math.floor((loZ-box.min.z)/cell)),z1=Math.min(nz-1,Math.floor((hiZ-box.min.z)/cell));
-   for(let iz=z0;iz<=z1;iz++)for(let ix=x0;ix<=x1;ix++)used[iz*nx+ix]=1;
- }
- const done=new Uint8Array(used.length);let made=0;
- for(let iz=0;iz<nz;iz++)for(let ix=0;ix<nx;ix++){
-   const at=iz*nx+ix;if(!used[at]||done[at])continue;
-   let x2=ix;
-   while(x2+1<nx&&used[iz*nx+x2+1]&&!done[iz*nx+x2+1])x2++;
-   let z2=iz,canGrow=true;
-   while(canGrow&&z2+1<nz){
-     for(let x=ix;x<=x2;x++)if(!used[(z2+1)*nx+x]||done[(z2+1)*nx+x]){canGrow=false;break}
-     if(canGrow)z2++;
-   }
-   for(let zc=iz;zc<=z2;zc++)for(let xc=ix;xc<=x2;xc++)done[zc*nx+xc]=1;
-   const minX=box.min.x+ix*cell,maxX=Math.min(box.max.x,box.min.x+(x2+1)*cell);
-   const minZ=box.min.z+iz*cell,maxZ=Math.min(box.max.z,box.min.z+(z2+1)*cell);
-   made+=addTrailerFootprintCollider(minX,maxX,minZ,maxZ,source+":rail",.16);
- }
- return made;
-}
-function trailerWalkableHeightAt(x,z){
- if(!trailerWalkableMeshes.length)return 0;
- trailerWalkOrigin.set(x,5.5,z);
- trailerWalkRay.set(trailerWalkOrigin,trailerWalkDown);
- trailerWalkRay.near=0;
- trailerWalkRay.far=7;
- const hits=trailerWalkRay.intersectObjects(trailerWalkableMeshes,false);
- for(const hit of hits){
-   const y=hit.point.y;
-   if(y>=-.04&&y<=2.65)return y;
- }
- return 0;
-}
-function inWorkingTrailerArea(x,z,pad=.12){
- return !!workingTrailerBounds&&x>workingTrailerBounds.minX-pad&&x<workingTrailerBounds.maxX+pad&&z>workingTrailerBounds.minZ-pad&&z<workingTrailerBounds.maxZ+pad;
-}
-function addWorkingTrailerFloorPatch(source,box,name){
- if(!source||!box||box.isEmpty())return null;
- const s=new THREE.Vector3(),ctr=new THREE.Vector3();box.getSize(s);box.getCenter(ctr);
- const srcMat=Array.isArray(source.material)?source.material[0]:source.material;
- const mat=srcMat&&srcMat.clone?srcMat.clone():new THREE.MeshStandardMaterial({color:0x8d8170,roughness:.92});
- const thick=.055,top=box.max.y-.008;
- const mesh=new THREE.Mesh(new THREE.BoxGeometry(Math.max(.10,s.x-.035),thick,Math.max(.10,s.z-.035)),mat);
- mesh.name=name;mesh.position.set(ctr.x,top-thick*.5,ctr.z);mesh.castShadow=false;mesh.receiveShadow=true;
- mesh.userData.externalMapAsset=true;mesh.userData.workingTrailerFloorPatch=true;
- scene.add(mesh);workingTrailerFloorPatches.push(mesh);trailerWalkableMeshes.push(mesh);
- return mesh;
-}
-function addTrailerInteriorSpawnPoints(homeBox,floorBox,doorBox,source){
- if(!homeBox||!floorBox||!doorBox)return;
- const info=trailerDoorInfo(homeBox,doorBox);if(!info)return;
- const fc=new THREE.Vector3();floorBox.getCenter(fc);
- const floorY=floorBox.max.y;
- const tangentIsZ=info.side==="minX"||info.side==="maxX";
- const offsets=[0,1.45,-1.45];
- for(const off of offsets){
-   let x=fc.x,z=fc.z;
-   if(tangentIsZ)z=Math.max(floorBox.min.z+.72,Math.min(floorBox.max.z-.72,info.dc.z+off));
-   else x=Math.max(floorBox.min.x+.72,Math.min(floorBox.max.x-.72,info.dc.x+off));
-   trailerInteriorSpawns.push({x,z,groundY:floorY,exitX:info.exitX,exitZ:info.exitZ,source});
- }
-}
-function buildTrailerParkCollision(map){
- buildingColliders.length=0;
- for(const p of workingTrailerFloorPatches){if(p.parent)p.parent.remove(p);if(p.geometry)p.geometry.dispose();if(p.material&&p.material.dispose)p.material.dispose()}
- workingTrailerFloorPatches.length=0;workingTrailerBounds=null;
- trailerWalkableMeshes.length=0;
- trailerInteriorSpawns.length=0;
- trailerDoorPassages.length=0;
- map.updateMatrixWorld(true);
- const homes=new Map(),doors=[],linear=[],railings=[],props=[];
- map.traverse(o=>{
-   if(!o.isMesh||!o.geometry||!o.visible)return;
-   const name=String(o.name||""),lower=name.toLowerCase();
-   if(lower.startsWith("door")){
-     if(/^Door(?:\.\d+)?_Door_0$/i.test(name)){
-       const box=new THREE.Box3().setFromObject(o),dc=new THREE.Vector3(),ds=new THREE.Vector3();
-       box.getCenter(dc);box.getSize(ds);
-       doors.push({box,name});
-       // All six authored exterior doors face the same direction. Give every one the
-       // same passage depth/width as the entrance that already works in live play.
-       trailerDoorPassages.push({
-         minX:dc.x-3.75,maxX:dc.x+1.20,
-         minZ:dc.z-(ds.z*.5+.72),maxZ:dc.z+(ds.z*.5+.72),
-         name
-       });
-     }
-     // Door leaves are intentionally removed; frames stay visible.
-     o.visible=false;o.userData.visualOnly=true;return;
-   }
-   const homeMatch=name.match(/^(Home(?:_\d+)?)(?:[._]|$)/i);
-   if(homeMatch){
-     const key=homeMatch[1].toLowerCase(),b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();b.getSize(s);
-     let home=homes.get(key);
-     if(!home){home={all:b.clone(),body:null,shell:null,floor:null,carpetObj:null,tileFloorObj:null};homes.set(key,home)}
-     else home.all.union(b);
-     if(lower.includes("woodplanksclean")||lower.includes("carpet"))trailerWalkableMeshes.push(o);
-     if(lower.includes("carpet")){home.floor=b.clone();if(key==="home")home.carpetObj=o}
-     if(key==="home"&&lower.includes("tilessmall")&&s.y<.05)home.tileFloorObj=o;
-     // Prefer the actual tall metal exterior shell for the trailer footprint.
-     if(lower.includes("metalplates")&&s.y>=1.25){
-       if(!home.shell)home.shell=b.clone();else home.shell.union(b);
-     }
-     if(s.y>=1.25&&(s.x>=.45||s.z>=.45)){
-       if(!home.body)home.body=b.clone();else home.body.union(b);
-     }
-     return;
-   }
-   if(lower.startsWith("ladders")&&lower.includes("woodplanksclean")){trailerWalkableMeshes.push(o);return}
-   if(lower.includes("railing")){if(lower.includes("_fence"))railings.push(o);return}
-   if(lower.includes("fence")){linear.push(o);return}
-   if(lower.includes("trash_can_metal")&&!lower.includes("top"))props.push(o);
- });
-
- let homeCount=0,linearCount=0,propCount=0;
- const doorCorridors=[];
- const working=homes.get("home");
- if(working){
-   workingTrailerBounds=working.all.clone();
-   if(working.carpetObj)addWorkingTrailerFloorPatch(working.carpetObj,new THREE.Box3().setFromObject(working.carpetObj),"WorkingTrailerCarpetBacking");
-   if(working.tileFloorObj)addWorkingTrailerFloorPatch(working.tileFloorObj,new THREE.Box3().setFromObject(working.tileFloorObj),"WorkingTrailerTileBacking");
- }
- for(const [key,home] of homes){
-   const shell=home.shell||home.body||home.all,hc=new THREE.Vector3();shell.getCenter(hc);
-   let nearest=null,best=Infinity;
-   for(const d of doors){
-     const dc=new THREE.Vector3();d.box.getCenter(dc);
-     const dist=Math.hypot(dc.x-hc.x,dc.z-hc.z);
-     if(dist<best){best=dist;nearest=d}
-   }
-   const doorBox=nearest&&best<15?nearest.box:null;
-   if(addTrailerHomePerimeterCollision(shell,doorBox,key)>0)homeCount++;
-   if(doorBox){
-     const info=trailerDoorInfo(shell,doorBox);
-     if(info)doorCorridors.push(info.corridor);
-     addTrailerInteriorSpawnPoints(shell,home.floor,doorBox,key);
-   }
- }
- for(const o of linear)linearCount+=addTrailerLinearMeshCollision(o,o.name||"fence");
- for(const o of railings)linearCount+=addTrailerRailingCollision(o,o.name||"railing");
- for(const o of props)if(addTrailerColliderBox(new THREE.Box3().setFromObject(o),o.name||"prop",.06))propCount++;
-
- ZNAV_BLOCK_CACHE.clear();
- document.documentElement.dataset.trailerParkCollision="1";
- document.documentElement.dataset.trailerParkColliderCount=String(buildingColliders.length);
- document.documentElement.dataset.trailerParkIndoorSpawns=String(trailerInteriorSpawns.length);
- document.documentElement.dataset.trailerParkDoorPassages=String(trailerDoorPassages.length);
- console.log("CITY OUTBREAK: Trailer Park collision built",{
-   total:buildingColliders.length,
-   homes:homeCount,
-   fenceAndRailingSegments:linearCount,
-   props:propCount,
-   exteriorDoorsRemoved:doors.length,
-   doorwayPassages:trailerDoorPassages.length,
-   indoorSpawnPoints:trailerInteriorSpawns.length,
-   spawnProtected:true
- });
- return{total:buildingColliders.length,homes:homeCount,linear:linearCount,props:propCount};
-}
 function facadeMaterial(base,variant=0){
  const style=variant%8,cacheKey=base+"|"+style;
  if(facadeMaterialCache.has(cacheKey))return facadeMaterialCache.get(cacheKey);
@@ -556,18 +257,7 @@ function addBuilding(w,h,d,x,z,base,variant){
  return q
 }
 
-function insideBuilding(x,z,r=.45){
- if(externalMapBounds&&(x<externalMapBounds.minX+r||x>externalMapBounds.maxX-r||z<externalMapBounds.minZ+r||z>externalMapBounds.maxZ-r))return true;
- // Each authored exterior door owns a guaranteed passage. Expand the passage by
- // the caller's collision radius so the player/zombie body can enter the opening
- // before its center point crosses the threshold.
- if(inTrailerDoorPassage(x,z,r))return false;
- for(const b of buildingColliders){
-   const rr=(r===.62&&Number.isFinite(b.playerRadius))?b.playerRadius:r;
-   if(x>b.x-b.hx-rr&&x<b.x+b.hx+rr&&z>b.z-b.hz-rr&&z<b.z+b.hz+rr)return true
- }
- return false
-}
+function insideBuilding(x,z,r=.45){for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}return false}
 function slideBuilding(oldx,oldz,newx,newz,r=.45){
  if(!insideBuilding(newx,newz,r))return{x:newx,z:newz};
  if(!insideBuilding(newx,oldz,r))return{x:newx,z:oldz};
@@ -586,9 +276,15 @@ function pushOutsideBuilding(x,z,r=.45){
 }
 
 // Ground plane + cleaner city street / sidewalk treatment.
-const legacyMapStartChildren=new Set(scene.children);
 let ground=new THREE.Mesh(new THREE.PlaneGeometry(280,300),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
 const asphaltAvenue=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), asphaltCross=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
+new THREE.TextureLoader().load("assets/textures/roads/road_albedo.jpg.jpg",tx=>{
+ tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
+ const avenueTex=tx.clone();avenueTex.needsUpdate=true;avenueTex.repeat.set(3,30);
+ const crossTex=tx.clone();crossTex.needsUpdate=true;crossTex.repeat.set(28,3);
+ asphaltAvenue.map=avenueTex;asphaltAvenue.needsUpdate=true;
+ asphaltCross.map=crossTex;asphaltCross.needsUpdate=true;
+});
 box(24,.10,244,asphaltAvenue,0,.05,30);           // avenue
 box(224,.10,24,asphaltCross,0,.06,30);           // cross street
 
@@ -830,13 +526,6 @@ function carPointCollision(c,x,z,pad=.35){
  return qx*qx+qz*qz<pad*pad;
 }
 function zombiePointBlocked(x,z,r=.50){
- // The working trailer deck railing stays solid for zombies even while the player
- // doorway bypass is active. Use the authored railing's triangle-built colliders.
- for(const b of buildingColliders){
-   const source=String(b.source||"");
-   if(!source.startsWith("railing_Fence_0:rail"))continue;
-   if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true;
- }
  if(insideBuilding(x,z,r))return true;
  for(const c of parkedCars)if(carPointCollision(c,x,z,r))return true;
  return false;
@@ -1042,103 +731,7 @@ function zombieRouteWaypoint(z){
 // Batch the cars together with the static city so the improved vehicle detail
 // does not bring back the old draw-call problem. parkedCars groups stay as cheap
 // collision anchors after their meshes are merged into the city batches.
-if(!USE_TRAILER_PARK_MAP)batchStaticCity();
-
-function removeLegacyMapWorld(){
- const remove=[];
- for(const o of scene.children)if(!legacyMapStartChildren.has(o))remove.push(o);
- for(const o of remove){
-  if(o.parent)o.parent.remove(o);
-  if(o.geometry){try{o.geometry.dispose()}catch(_){}}
- }
- buildingColliders.length=0;
- parkedCars.length=0;
- pendingStiSedans.length=0;
- ZNAV_BLOCK_CACHE.clear();
- document.documentElement.dataset.legacyMapRemoved=String(remove.length);
-}
-if(USE_TRAILER_PARK_MAP)removeLegacyMapWorld();
-
-const trailerMapStatus=document.createElement("div");
-trailerMapStatus.textContent="TRAILER PARK: LOADING";
-Object.assign(trailerMapStatus.style,{
- position:"fixed",left:"50%",top:"12px",transform:"translateX(-50%)",zIndex:"99999",
- padding:"7px 10px",background:"rgba(0,0,0,.82)",color:"#fff",
- font:"700 12px/1.2 system-ui,sans-serif",border:"1px solid rgba(255,255,255,.30)",
- borderRadius:"5px",pointerEvents:"none"
-});
-document.body.append(trailerMapStatus);
-
-new GLTFLoader().load("assets/trailer_park.glb?v=334",gltf=>{
- const map=gltf.scene;
- map.name="TrailerParkMap";
- map.scale.setScalar(TRAILER_PARK_SCALE);
- map.position.set(0,TRAILER_PARK_Y_OFFSET,0);
- map.updateMatrixWorld(true);
-
- let terrainBounds=new THREE.Box3(),hasTerrain=false,meshCount=0;
- map.traverse(o=>{
-  if(!o.isMesh||!o.geometry)return;
-  meshCount++;
-  o.userData.externalMapAsset=true;
-  o.castShadow=false;
-  o.receiveShadow=true;
-  const mats=Array.isArray(o.material)?o.material:[o.material];
-  for(const mat of mats)if(mat){
-   for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
-    const tx=mat[key];
-    if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
-   }
-  }
-  const lname=String(o.name||"").toLowerCase();
-  const terrainNamed=lname.includes("terrain");
-  const terrainMaterial=mats.some(m=>{
-   const n=String(m&&m.name||"").toLowerCase();
-   return n==="soil"||n==="soil_01"||n==="grass"||n.includes("terrain");
-  });
-  if(terrainNamed||terrainMaterial){
-   const b=new THREE.Box3().setFromObject(o);
-   if(!hasTerrain){terrainBounds.copy(b);hasTerrain=true}else terrainBounds.union(b);
-  }
- });
-
- scene.add(map);
- trailerParkRoot=map;
- map.updateMatrixWorld(true);
-
- const wb=new THREE.Box3().setFromObject(map),ws=new THREE.Vector3();
- wb.getSize(ws);
- const playBounds=hasTerrain?terrainBounds:wb;
- externalMapBounds={
-  minX:playBounds.min.x+.6,maxX:playBounds.max.x-.6,
-  minZ:playBounds.min.z+.6,maxZ:playBounds.max.z-.6
- };
-
- // Build map-specific collision from the approved Trailer Park asset.
- // Homes use one conservative footprint each. Long fences/railings are split from
- // their actual triangle coverage so visual openings do not become giant invisible walls.
- const collisionStats=buildTrailerParkCollision(map);
-
- document.documentElement.dataset.trailerParkLoaded="1";
- document.documentElement.dataset.trailerParkMeshes=String(meshCount);
- document.documentElement.dataset.trailerParkSize=ws.x.toFixed(1)+"x"+ws.z.toFixed(1);
- trailerMapStatus.textContent="TRAILER PARK: LOADED / COLLISION "+collisionStats.total+" / SCALE "+TRAILER_PARK_SCALE.toFixed(2);
- trailerMapStatus.style.background="rgba(25,95,40,.90)";
- setTimeout(()=>{if(trailerMapStatus.parentNode)trailerMapStatus.remove()},12000);
- console.log("CITY OUTBREAK: Trailer Park map loaded",{
-  meshes:meshCount,
-  size:{x:ws.x,y:ws.y,z:ws.z},
-  bounds:externalMapBounds,
-  terrainDetected:hasTerrain,
-  collision:collisionStats
- });
-},undefined,err=>{
- const detail=String(err&&err.message||err);
- document.documentElement.dataset.trailerParkLoadError=detail;
- trailerMapStatus.textContent="TRAILER PARK ERROR: "+detail;
- trailerMapStatus.style.background="rgba(125,25,25,.94)";
- console.error("Trailer Park GLB failed to load",err);
-});
+batchStaticCity();
 
 function batchLoadedStiCars(){
  const buckets=new Map(),remove=[];
@@ -1237,50 +830,6 @@ function capFX(){
  while(impacts.length>24){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
  while(casings.length>18){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
 }
-const ZOMBIE_HELMET_TARGET_WIDTH=.38,ZOMBIE_HELMET_HEAD_Y=.055,ZOMBIE_HELMET_HEAD_Z=-.085,ZOMBIE_HELMET_PITCH=.06981;
-let zombieHelmetTemplate=null,zombieHelmetLoadError=null;
-new GLTFLoader().load("assets/ww2_stahlhelm_m35_heer.glb?v=334",gltf=>{
- const raw=gltf.scene;
- raw.name="ZombieHelmetSource";
- raw.updateMatrixWorld(true);
- const box=new THREE.Box3().setFromObject(raw),size=new THREE.Vector3(),center=new THREE.Vector3();
- box.getSize(size);box.getCenter(center);
- if(!(size.x>0&&size.y>0&&size.z>0)){
-  zombieHelmetLoadError=new Error("Zombie helmet has invalid bounds");
-  document.documentElement.dataset.zombieHelmetError=zombieHelmetLoadError.message;
-  console.error("CITY OUTBREAK: zombie helmet failed to load",zombieHelmetLoadError);
-  return;
- }
- raw.position.sub(center);
- raw.updateMatrixWorld(true);
- const template=new THREE.Group();
- template.name="ZombieHelmet";
- template.add(raw);
- template.scale.setScalar(ZOMBIE_HELMET_TARGET_WIDTH/size.x);
- template.traverse(o=>{
-  if(!o.isMesh)return;
-  o.castShadow=false;o.receiveShadow=true;o.frustumCulled=true;o.userData.visualOnly=true;
-  const mats=Array.isArray(o.material)?o.material:[o.material];
-  for(const m of mats)if(m){
-   for(const key of ["map","normalMap","roughnessMap","metalnessMap","aoMap"]){
-    const tx=m[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
-   }
-  }
- });
- zombieHelmetTemplate=template;
- document.documentElement.dataset.zombieHelmetLoaded="1";
- for(const z of zombies)attachZombieHelmet(z);
- console.log("CITY OUTBREAK: zombie helmet loaded",{
-  sourceSize:{x:size.x,y:size.y,z:size.z},
-  fittedWidth:ZOMBIE_HELMET_TARGET_WIDTH,
-  zombiesPatched:zombies.length
- });
-},undefined,err=>{
- zombieHelmetLoadError=err;
- document.documentElement.dataset.zombieHelmetError=String(err&&err.message||err);
- console.error("CITY OUTBREAK: zombie helmet failed to load",err);
-});
-
 let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}},grenades=2,nukes=0,nukeInProgress=false,waveTarget=0,waveSpawned=0,currentBoss=null,bossWaveName="",usedBossNames=[],running=false,dying=false,reloading=false,between=false,paused=false,pauseStartedAt=0,pausedAccumulatedMs=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null,sprintEnergy=100,sprintLocked=false,aiming=false,aimBlend=0,awmReadyAt=0,runStartTime=0;
 let shopLowPower=false,shopPauseStartedAt=0,shopPausedAccumulatedMs=0,lastShopRenderAt=0;
 const PLAYER_HEALTH_REGEN_DELAY=5,PLAYER_HEALTH_REGEN_RATE=10;
@@ -2136,24 +1685,6 @@ const ZOMBIE_RIG_PROFILES=Object.freeze({
 function cloneShamblerRig(){
  return zombieRigAsset?SkeletonUtils.clone(zombieRigAsset.scene):null;
 }
-function attachZombieHelmet(z){
- if(!z||!zombieHelmetTemplate||z.helmet)return false;
- const parent=(z.rigVisual&&z.rigVisual.getObjectByName("Head"))||z.head;
- if(!parent)return false;
- const helmet=zombieHelmetTemplate.clone(true);
- helmet.name="ZombieHelmet";
- helmet.position.set(0,ZOMBIE_HELMET_HEAD_Y,ZOMBIE_HELMET_HEAD_Z);
- helmet.rotation.set(ZOMBIE_HELMET_PITCH,0,0);
- helmet.traverse(o=>{
-  if(!o.isMesh)return;
-  o.userData.visualOnly=true;o.userData.zombieHelmet=true;
-  o.castShadow=false;o.receiveShadow=true;o.frustumCulled=true;
-  o.raycast=()=>{};
- });
- parent.add(helmet);
- z.helmet=helmet;
- return true;
-}
 function applyZombieRigProfile(rig,kind){
  const p=ZOMBIE_RIG_PROFILES[kind]||SHAMBLER_RIG_PROFILE;
  rig.scale.setScalar(p.rigScale);
@@ -2510,7 +2041,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(hazardMist&&hazardMist.material)ownedMaterials.push(hazardMist.material);
 
  let marker=null;
- let safe=pushOutsideBuilding(x,z,.50),spawnGroundY=trailerWalkableHeightAt(safe.x,safe.z);g.position.set(safe.x,spawnGroundY,safe.z);scene.add(g);
+ let safe=pushOutsideBuilding(x,z,.50);g.position.set(safe.x,0,safe.z);scene.add(g);
 
  const baseArmLX=.22+rnd()*.045,baseArmRX=.20+rnd()*.045,
        gait=kind==="sprinter"||kind==="infected"||kind==="acidic"?.95+rnd()*.10:kind==="boss"?.72+rnd()*.07:.84+rnd()*.10,
@@ -2529,7 +2060,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
 
  let zz={g,head,torso,armL,armR,legL,legR,chest,stomach,pelvis,neck,jaw,marker,mouth,shoulderL,shoulderR,elbowL,elbowR,kneeL,kneeR,jacket,hazardMist,ownedMaterials,ownedGeometries:null,
    baseArmLX,baseArmRX,headLean,gait,bob,limp,dragSide,hunch:hunchBias,turnRate,lurch:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.10:kind==="boss"?.76:.92,
-   shoulderDrop,pauseClock,attackAnim,attackSide,feral,twitch,snapBias,snapRate,nightmareType,armDrop,kind,groundY:spawnGroundY,
+   shoulderDrop,pauseClock,attackAnim,attackSide,feral,twitch,snapBias,snapRate,nightmareType,armDrop,kind,groundY:0,
    hp,maxHP:hp,dead:false,speed,attack,damage,strafe,surge,bossName:kind==="boss"?(bossSpec?.name||bossWaveName||"BOSS"):"",bossBounty:kind==="boss"?(bossSpec?.bounty||250):0,bossSpecialCd:kind==="boss"?(bossSpec?.specialCd||7.5):0,bossAttackState:"",bossAttackT:0,bossChargeHit:false,
    cool:0,groan:1+rnd()*3,step:.2+rnd()*.38,phase:rnd()*6.28,zig:rnd()>.5?1:-1,surgeT:.5+rnd()*2,stagger:0,staggerDir:1,
    leftArmHP:2,rightArmHP:2,leftLegHP:2.5,rightLegHP:2.5,legDamage:0,leftArmDetached:false,rightArmDetached:false,leftLegDetached:false,rightLegDetached:false,ragdoll:null,knockdown:null,falling:false,corpseAge:0,fallDir:rnd()>.5?1:-1,fallAxis:rnd()>.55?"z":"x",fallSpeed:3.2+rnd()*2.1,
@@ -2719,7 +2250,6 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  g.traverse(o=>{if(o.isMesh&&o.geometry&&!o.userData.sharedGeometry)ownedGeometrySet.add(o.geometry)});
  zz.ownedGeometries=[...ownedGeometrySet];
  attachRiggedZombie(zz,g,kind,i,hazardMist);
- attachZombieHelmet(zz);
  if(kind==="boss"&&zz.rigVisual){
    zz.rigVisual.scale.multiplyScalar(1.10);
    const chestBone=zz.rigVisual.getObjectByName("Chest");if(chestBone)chestBone.scale.set(1.30,1.08,1.22);
@@ -2751,8 +2281,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    hitMeshes.push(o)
  });
  zz.hitMeshes=hitMeshes;
- zombies.push(zz);if(kind==="boss")currentBoss=zz;
- return zz
+ zombies.push(zz);if(kind==="boss")currentBoss=zz
 }
 
 function medkit(x,z){let g=new THREE.Group();box(1,.38,.72,M(0xe7e4da),0,.35,0,g);box(.18,.05,.5,M(0xa52c2c),0,.56,0,g);box(.5,.05,.18,M(0xa52c2c),0,.56,0,g);g.position.set(x,0,z);scene.add(g);kits.push({g,used:false})}medkit(-10,8);medkit(16,56);medkit(-17,91);
@@ -2934,30 +2463,7 @@ function findReachableZombieSpawn(minDist,maxDist){
  }
  return null;
 }
-function findTrailerInteriorSpawn(i){
- if(!trailerInteriorSpawns.length)return null;
- const start=(i*5+wave*3)%trailerInteriorSpawns.length;
- for(let n=0;n<trailerInteriorSpawns.length;n++){
-   const p=trailerInteriorSpawns[(start+n)%trailerInteriorSpawns.length];
-   if(Math.hypot(p.x-px,p.z-pz)<=11||insideBuilding(p.x,p.z,.50))continue;
-   let occupied=false;
-   for(const z of zombies)if(!z.dead&&Math.hypot(z.g.position.x-p.x,z.g.position.z-p.z)<1.35){occupied=true;break}
-   if(!occupied)return p;
- }
- return null;
-}
 function spawnOneZombie(i){
- const indoor=(i%3===0)?findTrailerInteriorSpawn(i):null;
- if(indoor){
-   const z=makeZombie(indoor.x,indoor.z,i);
-   if(z){
-     z.trailerEscape={x:indoor.exitX,z:indoor.exitZ};
-     z.trailerFloor=true;
-     z.groundY=indoor.groundY;
-     z.g.position.y=indoor.groundY;
-   }
-   return true;
- }
  const p=findReachableZombieSpawn(14,32);
  if(!p)return false;
  makeZombie(p.x,p.z,i);
@@ -3862,23 +3368,20 @@ function updateSprintUI(){
  sprintUiState=next.state;
 }
 function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
-const doorwayMove=inTrailerDoorPassage(oldx,oldz,.10)||inTrailerDoorPassage(px,pz,.10);
-if(!doorwayMove){
- for(const c of parkedCars){
-  if(carPointCollision(c,px,pz,.38)){
-    const tx=px,tz=pz;
-    px=tx;pz=oldz;
-    if(carPointCollision(c,px,pz,.38)){
-      px=oldx;pz=tz;
-      if(carPointCollision(c,px,pz,.38)){px=oldx;pz=oldz}
-    }
-    break;
-  }
+for(const c of parkedCars){
+ if(carPointCollision(c,px,pz,.38)){
+   const tx=px,tz=pz;
+   px=tx;pz=oldz;
+   if(carPointCollision(c,px,pz,.38)){
+     px=oldx;pz=tz;
+     if(carPointCollision(c,px,pz,.38)){px=oldx;pz=oldz}
+   }
+   break;
  }
- let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
- resolvePlayerZombieContact(oldx,oldz);
 }
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;const stairY=trailerWalkableHeightAt(px,pz);playerGroundY+=(stairY-playerGroundY)*Math.min(1,dt*(stairY>playerGroundY?12:9));if(Math.abs(stairY-playerGroundY)<.002)playerGroundY=stairY;cam.position.set(px,1.65+playerGroundY,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
+let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
+resolvePlayerZombieContact(oldx,oldz);
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
@@ -4022,15 +3525,7 @@ const highlightLast=(active.length+Math.max(0,waveTarget-waveSpawned))<=5&&!curr
 for(let z of active){
  if(!Number.isFinite(z.g.position.x)||!Number.isFinite(z.g.position.y)||!Number.isFinite(z.g.position.z)){
    const a=rnd()*Math.PI*2,dist=16+rnd()*8;let safe=pushOutsideBuilding(px+Math.sin(a)*dist,pz+Math.cos(a)*dist,.85);
-   z.g.position.set(safe.x,0,safe.z);z.groundY=0;z.trailerEscape=null;z.trailerFloor=false;z.targetX=px;z.targetZ=pz;z.stagger=.25;z.navPath=null;z.navIndex=0;z.navCheckT=0;
- }
- if(z.trailerFloor||inWorkingTrailerArea(z.g.position.x,z.g.position.z,.18)){
-   const gy=trailerWalkableHeightAt(z.g.position.x,z.g.position.z);
-   if(gy>.02||z.trailerFloor){
-     if(gy>.02)z.trailerFloor=true;
-     z.groundY+=(gy-z.groundY)*Math.min(1,dt*11);
-     if(!z.trailerEscape&&gy<.02&&z.groundY<.025){z.groundY=0;z.trailerFloor=false}
-   }
+   z.g.position.set(safe.x,0,safe.z);z.targetX=px;z.targetZ=pz;z.stagger=.25;z.navPath=null;z.navIndex=0;z.navCheckT=0;
  }
  if(highlightLast&&!z.marker){
    z.marker=createLastZombieMarker();
@@ -4067,49 +3562,40 @@ let animRate=0;
 if(z.pauseClock<=0){z.pauseClock=1.1+rnd()*3.2;if(rnd()<.22)z.stagger=Math.max(z.stagger,.10+rnd()*.12)}
 if(z.surgeT<=0){z.surgeT=.65+rnd()*1.7;z.zig*=-1}z.think-=dt;
 z.avoidT=Math.max(0,(z.avoidT||0)-dt);z.navFlipCooldown=Math.max(0,(z.navFlipCooldown||0)-dt);
-if(z.kind!=="boss"&&!z.trailerEscape)updateZombieRoute(z,dt,huntMode);
+if(z.kind!=="boss")updateZombieRoute(z,dt,huntMode);
 if(z.kind==="boss")tickBossSpecial(z,dt,playerDistToZombie);
 if(z.think<=0){
  z.think=huntMode?.025+rnd()*.025:.08+rnd()*.10;
  const speed=Math.hypot(playerVX,playerVZ),lead=Math.min(1.5,speed*.14);
  let tx=px, tz=pz;
- if(z.trailerEscape){
-   const ed=Math.hypot(z.trailerEscape.x-z.g.position.x,z.trailerEscape.z-z.g.position.z);
-   if(ed<.68){
-     z.trailerEscape=null;z.navForceRepath=true;z.navCheckT=0;
-   }else{
-     tx=z.trailerEscape.x;tz=z.trailerEscape.z;
-   }
- }
- if(!z.trailerEscape){
-   // Roles now modify pursuit instead of replacing interest in the player.
-   if(z.role==="interceptor"){
-     tx=px+playerVX*lead*.75;tz=pz+playerVZ*lead*.75;
-   }
-   if(z.role==="flanker"&&playerDistToZombie>5){
-     const pd=playerDistToZombie||1;
-     const nx=(px-z.g.position.x)/pd,nz=(pz-z.g.position.z)/pd;
-     const off=Math.min(2.8,1.4+playerDistToZombie*.055);
-     tx=px+(-nz)*z.side*off;
-     tz=pz+(nx)*z.side*off;
-   }
-   if(z.role==="stalker"){
-     // stalkers still close distance and never park in place while the player is nearby
-     tx=px+playerVX*lead*.28;tz=pz+playerVZ*lead*.28;
-   }
-   if(z.role==="charger"){
-     tx=px+playerVX*lead*.18;tz=pz+playerVZ*lead*.18;
-   }
 
-   // Keep every role strongly biased toward the player.
-   tx=px+(tx-px)*.42;
-   tz=pz+(tz-pz)*.42;
-   if(huntMode||playerDistToZombie<6||active.length<=2){tx=px;tz=pz;}
-
-   // If direct pursuit is blocked, follow the A* corner route until line of sight opens again.
-   const wp=zombieRouteWaypoint(z);
-   if(wp){tx=wp.x;tz=wp.z}
+ // Roles now modify pursuit instead of replacing interest in the player.
+ if(z.role==="interceptor"){
+   tx=px+playerVX*lead*.75;tz=pz+playerVZ*lead*.75;
  }
+ if(z.role==="flanker"&&playerDistToZombie>5){
+   const pd=playerDistToZombie||1;
+   const nx=(px-z.g.position.x)/pd,nz=(pz-z.g.position.z)/pd;
+   const off=Math.min(2.8,1.4+playerDistToZombie*.055);
+   tx=px+(-nz)*z.side*off;
+   tz=pz+(nx)*z.side*off;
+ }
+ if(z.role==="stalker"){
+   // stalkers still close distance and never park in place while the player is nearby
+   tx=px+playerVX*lead*.28;tz=pz+playerVZ*lead*.28;
+ }
+ if(z.role==="charger"){
+   tx=px+playerVX*lead*.18;tz=pz+playerVZ*lead*.18;
+ }
+
+ // Keep every role strongly biased toward the player.
+ tx=px+(tx-px)*.42;
+ tz=pz+(tz-pz)*.42;
+ if(huntMode||playerDistToZombie<6||active.length<=2){tx=px;tz=pz;}
+
+ // If direct pursuit is blocked, follow the A* corner route until line of sight opens again.
+ const wp=zombieRouteWaypoint(z);
+ if(wp){tx=wp.x;tz=wp.z}
 
  z.targetX=tx;z.targetZ=tz;
 }
@@ -4330,7 +3816,7 @@ function frame(t){
  requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame);
-function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;playerGroundY=0;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();setupResetButtons(reset);
 setupControlsModal();
 const onKeyDown=e=>{let k=e.key.toLowerCase(),gameKey=["w","a","s","d","r","g","n","1","2","3","4","5","6","7","8","shift"].includes(k);if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(k==="7")setWeapon("m240");if(k==="8")setWeapon("awm");if(gameKey)e.preventDefault()};
