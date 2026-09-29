@@ -1,0 +1,14 @@
+name: Check v324 Navigation JS
+
+on:
+  push:
+    paths:
+      - '.github/workflows/check-v324-navigation.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check game module
+        run: node --input-type=module --check < src/game.js
