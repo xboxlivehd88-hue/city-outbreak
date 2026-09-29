@@ -290,7 +290,90 @@ let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/429
 // Kept as a no-op because the existing runtime calls it later after pathing setup.
 function batchStaticCity(){}
 
-new GLTFLoader().load("assets/modular_havana_street__low-poly_asset_kit.glb?v=304",gltf=>{
+// v309: selective Havana collision from the GLB's real vertical triangle surfaces.
+// Horizontal roads/floors/roofs are ignored, and collision is rasterized into short
+// grid segments so visible openings are preserved instead of becoming giant AABBs.
+const HAVANA_COLLISION_CELL=.72;
+const HAVANA_COLLISION_MIN_Y=.12;
+const HAVANA_COLLISION_MAX_Y=1.55;
+const HAVANA_COLLISION_MIN_VERTICAL_SPAN=.45;
+function buildHavanaCollision(map){
+ buildingColliders.length=0;
+ map.updateMatrixWorld(true);
+
+ const used=new Set(),a=new THREE.Vector3(),b=new THREE.Vector3(),cc=new THREE.Vector3();
+ const ab=new THREE.Vector3(),ac=new THREE.Vector3(),normal=new THREE.Vector3();
+ let meshCount=0,triangleCount=0,blockingTriangles=0;
+
+ const mark=(x,z)=>{
+   // Always leave the current v303/v308 player spawn immediately usable.
+   if(Math.hypot(x,z+15)<1.15)return;
+   const ix=Math.floor(x/HAVANA_COLLISION_CELL),iz=Math.floor(z/HAVANA_COLLISION_CELL);
+   used.add(ix+","+iz);
+ };
+ const sampleEdge=(p,q)=>{
+   const dx=q.x-p.x,dz=q.z-p.z,dist=Math.hypot(dx,dz);
+   const steps=Math.max(1,Math.ceil(dist/(HAVANA_COLLISION_CELL*.28)));
+   for(let i=0;i<=steps;i++){
+     const t=i/steps;
+     mark(p.x+dx*t,p.z+dz*t);
+   }
+ };
+
+ map.traverse(o=>{
+   if(!o.isMesh||!o.geometry||!o.geometry.attributes||!o.geometry.attributes.position)return;
+   meshCount++;
+   const pos=o.geometry.attributes.position,idx=o.geometry.index;
+   const read=(out,vi)=>out.fromBufferAttribute(pos,vi).applyMatrix4(o.matrixWorld);
+   const tris=idx?Math.floor(idx.count/3):Math.floor(pos.count/3);
+   for(let t=0;t<tris;t++){
+     const j=t*3,ia=idx?idx.getX(j):j,ib=idx?idx.getX(j+1):j+1,ic=idx?idx.getX(j+2):j+2;
+     read(a,ia);read(b,ib);read(cc,ic);triangleCount++;
+     const minY=Math.min(a.y,b.y,cc.y),maxY=Math.max(a.y,b.y,cc.y);
+     if(maxY<HAVANA_COLLISION_MIN_Y||minY>HAVANA_COLLISION_MAX_Y||maxY-minY<HAVANA_COLLISION_MIN_VERTICAL_SPAN)continue;
+     ab.subVectors(b,a);ac.subVectors(cc,a);normal.crossVectors(ab,ac);
+     const nl=normal.length();if(nl<1e-6)continue;
+     // Skip horizontal and strongly sloped surfaces. Keep walls/fences/solid sides.
+     if(Math.abs(normal.y)/nl>.48)continue;
+     const spanX=Math.max(a.x,b.x,cc.x)-Math.min(a.x,b.x,cc.x);
+     const spanZ=Math.max(a.z,b.z,cc.z)-Math.min(a.z,b.z,cc.z);
+     if(Math.max(spanX,spanZ)<.10)continue;
+     blockingTriangles++;
+     sampleEdge(a,b);sampleEdge(b,cc);sampleEdge(cc,a);
+   }
+ });
+
+ // Convert occupied cells into short contiguous row segments.
+ const rows=new Map();
+ for(const key of used){
+   const comma=key.indexOf(","),ix=+key.slice(0,comma),iz=+key.slice(comma+1);
+   let row=rows.get(iz);if(!row){row=[];rows.set(iz,row)}row.push(ix);
+ }
+ let colliderCount=0;
+ for(const [iz,xs] of rows){
+   xs.sort((m,n)=>m-n);
+   let start=xs[0],prev=xs[0];
+   const flush=end=>{
+     const cells=end-start+1;
+     const x=(start+end+1)*HAVANA_COLLISION_CELL*.5;
+     const z=(iz+.5)*HAVANA_COLLISION_CELL;
+     const hit={x,z,hx:Math.max(.08,cells*HAVANA_COLLISION_CELL*.5-.035),hz:HAVANA_COLLISION_CELL*.5-.035,source:"havana"};
+     if(Math.hypot(hit.x,hit.z+15)>=1.35){buildingColliders.push(hit);colliderCount++}
+   };
+   for(let i=1;i<xs.length;i++){
+     const ix=xs[i];
+     if(ix===prev||ix===prev+1){prev=ix;continue}
+     flush(prev);start=prev=ix;
+   }
+   flush(prev);
+ }
+ ZNAV_BLOCK_CACHE.clear();
+ document.documentElement.dataset.havanaCollision="1";
+ document.documentElement.dataset.havanaColliderCount=String(colliderCount);
+ console.log("CITY OUTBREAK: Havana selective collision built",{meshCount,triangleCount,blockingTriangles,cells:used.size,colliderCount});
+}
+
+new GLTFLoader().load("assets/modular_havana_street__low-poly_asset_kit.glb?v=309",gltf=>{
  const map=gltf.scene;
  map.name="HavanaMap";
  map.scale.setScalar(HAVANA_MAP_SCALE);
@@ -308,6 +391,7 @@ new GLTFLoader().load("assets/modular_havana_street__low-poly_asset_kit.glb?v=30
    }
  });
  scene.add(map);map.updateMatrixWorld(true);havanaMapRoot=map;
+ buildHavanaCollision(map);
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.havanaMapLoaded="1";
  document.documentElement.dataset.havanaMapScale=String(HAVANA_MAP_SCALE);
