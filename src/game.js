@@ -139,8 +139,16 @@ function buildTrailerParkCollision(map){
    const lower=name.toLowerCase();
    const homeMatch=name.match(/^(Home(?:_\d+)?)(?:[._]|$)/i);
    if(homeMatch){
-     const key=homeMatch[1].toLowerCase(),b=new THREE.Box3().setFromObject(o);
-     if(!homes.has(key))homes.set(key,b.clone());else homes.get(key).union(b);
+     const key=homeMatch[1].toLowerCase(),b=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();
+     b.getSize(s);
+     let home=homes.get(key);
+     if(!home){home={all:b.clone(),body:null};homes.set(key,home)}
+     else home.all.union(b);
+     // Keep porch/deck/stair pieces from stretching the trailer body collider forward.
+     // Tall, broad wall/body pieces define the blocking footprint; the full union is fallback only.
+     if(s.y>=1.25&&(s.x>=.45||s.z>=.45)){
+       if(!home.body)home.body=b.clone();else home.body.union(b);
+     }
      return;
    }
    if(lower.includes("fence")||lower.includes("railing")){linear.push(o);return}
@@ -148,8 +156,8 @@ function buildTrailerParkCollision(map){
  });
 
  let homeCount=0,linearCount=0,propCount=0;
- for(const [key,b] of homes){
-   if(addTrailerColliderBox(b,key,.14))homeCount++;
+ for(const [key,home] of homes){
+   if(addTrailerColliderBox(home.body||home.all,key,.14))homeCount++;
  }
  for(const o of linear)linearCount+=addTrailerLinearMeshCollision(o,o.name||"fence");
  for(const o of props)if(addTrailerColliderBox(new THREE.Box3().setFromObject(o),o.name||"prop",.06))propCount++;
