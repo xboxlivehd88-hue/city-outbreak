@@ -73,7 +73,99 @@ const buildingColliders=[],facadeMaterialCache=new Map();
 const USE_TRAILER_PARK_MAP=true;
 const TRAILER_PARK_SCALE=1.25;
 const TRAILER_PARK_Y_OFFSET=.97;
+const TRAILER_COLLISION_SPAWN_X=0,TRAILER_COLLISION_SPAWN_Z=-15,TRAILER_COLLISION_SPAWN_PAD=.90;
 let externalMapBounds=null,trailerParkRoot=null;
+
+function trailerColliderOverlapsSpawn(c){
+ return TRAILER_COLLISION_SPAWN_X>c.x-c.hx-TRAILER_COLLISION_SPAWN_PAD&&
+        TRAILER_COLLISION_SPAWN_X<c.x+c.hx+TRAILER_COLLISION_SPAWN_PAD&&
+        TRAILER_COLLISION_SPAWN_Z>c.z-c.hz-TRAILER_COLLISION_SPAWN_PAD&&
+        TRAILER_COLLISION_SPAWN_Z<c.z+c.hz+TRAILER_COLLISION_SPAWN_PAD;
+}
+function addTrailerColliderBox(box,source,shrink=.04){
+ if(!box||box.isEmpty())return false;
+ const s=new THREE.Vector3(),c=new THREE.Vector3();box.getSize(s);box.getCenter(c);
+ if(s.y<.42||s.x<.07||s.z<.07)return false;
+ // Ignore distant background/environment meshes from the authored scene.
+ if(Math.abs(c.x)>125||Math.abs(c.z)>125)return false;
+ const hit={x:c.x,z:c.z,hx:Math.max(.035,s.x*.5-shrink),hz:Math.max(.035,s.z*.5-shrink),source};
+ if(trailerColliderOverlapsSpawn(hit))return false;
+ buildingColliders.push(hit);return true;
+}
+function addTrailerLinearMeshCollision(o,source){
+ const box=new THREE.Box3().setFromObject(o),s=new THREE.Vector3();box.getSize(s);
+ const longX=s.x>=s.z,span=longX?s.x:s.z;
+ if(span<=7)return addTrailerColliderBox(box,source,.025)?1:0;
+
+ const pos=o.geometry&&o.geometry.attributes&&o.geometry.attributes.position;
+ if(!pos)return addTrailerColliderBox(box,source,.025)?1:0;
+ const idx=o.geometry.index,binSize=1.15,minCoord=longX?box.min.x:box.min.z,maxCoord=longX?box.max.x:box.max.z;
+ const binCount=Math.max(1,Math.ceil((maxCoord-minCoord)/binSize)),used=new Uint8Array(binCount);
+ const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
+ const read=(out,vi)=>out.fromBufferAttribute(pos,vi).applyMatrix4(o.matrixWorld);
+ const mark=(lo,hi)=>{
+   let i0=Math.max(0,Math.floor((lo-minCoord)/binSize)),i1=Math.min(binCount-1,Math.floor((hi-minCoord)/binSize));
+   for(let i=i0;i<=i1;i++)used[i]=1;
+ };
+ const triCount=idx?Math.floor(idx.count/3):Math.floor(pos.count/3);
+ for(let t=0;t<triCount;t++){
+   const j=t*3,ia=idx?idx.getX(j):j,ib=idx?idx.getX(j+1):j+1,ic=idx?idx.getX(j+2):j+2;
+   read(a,ia);read(b,ib);read(c,ic);
+   const lo=Math.min(longX?a.x:a.z,longX?b.x:b.z,longX?c.x:c.z);
+   const hi=Math.max(longX?a.x:a.z,longX?b.x:b.z,longX?c.x:c.z);
+   mark(lo,hi);
+ }
+ let made=0,start=-1;
+ for(let i=0;i<=binCount;i++){
+   const on=i<binCount&&used[i];
+   if(on&&start<0)start=i;
+   if(!on&&start>=0){
+     const end=i-1,seg=box.clone();
+     const lo=minCoord+start*binSize,hi=Math.min(maxCoord,minCoord+(end+1)*binSize);
+     if(longX){seg.min.x=lo;seg.max.x=hi}else{seg.min.z=lo;seg.max.z=hi}
+     if(addTrailerColliderBox(seg,source,.015))made++;
+     start=-1;
+   }
+ }
+ return made;
+}
+function buildTrailerParkCollision(map){
+ buildingColliders.length=0;
+ map.updateMatrixWorld(true);
+ const homes=new Map(),linear=[],props=[];
+ map.traverse(o=>{
+   if(!o.isMesh||!o.geometry||!o.visible)return;
+   const name=String(o.name||"");
+   const lower=name.toLowerCase();
+   const homeMatch=name.match(/^(Home(?:_\d+)?)(?:[._]|$)/i);
+   if(homeMatch){
+     const key=homeMatch[1].toLowerCase(),b=new THREE.Box3().setFromObject(o);
+     if(!homes.has(key))homes.set(key,b.clone());else homes.get(key).union(b);
+     return;
+   }
+   if(lower.includes("fence")||lower.includes("railing")){linear.push(o);return}
+   if(lower.includes("trash_can_metal")&&!lower.includes("top"))props.push(o);
+ });
+
+ let homeCount=0,linearCount=0,propCount=0;
+ for(const [key,b] of homes){
+   if(addTrailerColliderBox(b,key,.14))homeCount++;
+ }
+ for(const o of linear)linearCount+=addTrailerLinearMeshCollision(o,o.name||"fence");
+ for(const o of props)if(addTrailerColliderBox(new THREE.Box3().setFromObject(o),o.name||"prop",.06))propCount++;
+
+ ZNAV_BLOCK_CACHE.clear();
+ document.documentElement.dataset.trailerParkCollision="1";
+ document.documentElement.dataset.trailerParkColliderCount=String(buildingColliders.length);
+ console.log("CITY OUTBREAK: Trailer Park collision built",{
+   total:buildingColliders.length,
+   homes:homeCount,
+   fenceAndRailingSegments:linearCount,
+   props:propCount,
+   spawnProtected:true
+ });
+ return{total:buildingColliders.length,homes:homeCount,linear:linearCount,props:propCount};
+}
 function facadeMaterial(base,variant=0){
  const style=variant%8,cacheKey=base+"|"+style;
  if(facadeMaterialCache.has(cacheKey))return facadeMaterialCache.get(cacheKey);
@@ -760,7 +852,7 @@ Object.assign(trailerMapStatus.style,{
 });
 document.body.append(trailerMapStatus);
 
-new GLTFLoader().load("assets/trailer_park.glb?v=333",gltf=>{
+new GLTFLoader().load("assets/trailer_park.glb?v=334",gltf=>{
  const map=gltf.scene;
  map.name="TrailerParkMap";
  map.scale.setScalar(TRAILER_PARK_SCALE);
@@ -805,23 +897,23 @@ new GLTFLoader().load("assets/trailer_park.glb?v=333",gltf=>{
   minZ:playBounds.min.z+.6,maxZ:playBounds.max.z-.6
  };
 
- // Do not reuse any invisible v303 city/building collision on the new map.
- // First pass keeps the actual Trailer Park visuals authoritative and movement free;
- // map-specific collision/navigation will be built from this asset after visual placement is approved.
- buildingColliders.length=0;
- ZNAV_BLOCK_CACHE.clear();
+ // Build map-specific collision from the approved Trailer Park asset.
+ // Homes use one conservative footprint each. Long fences/railings are split from
+ // their actual triangle coverage so visual openings do not become giant invisible walls.
+ const collisionStats=buildTrailerParkCollision(map);
 
  document.documentElement.dataset.trailerParkLoaded="1";
  document.documentElement.dataset.trailerParkMeshes=String(meshCount);
  document.documentElement.dataset.trailerParkSize=ws.x.toFixed(1)+"x"+ws.z.toFixed(1);
- trailerMapStatus.textContent="TRAILER PARK: LOADED / SCALE "+TRAILER_PARK_SCALE.toFixed(2)+" / GROUND +"+TRAILER_PARK_Y_OFFSET.toFixed(2)+"m";
+ trailerMapStatus.textContent="TRAILER PARK: LOADED / COLLISION "+collisionStats.total+" / SCALE "+TRAILER_PARK_SCALE.toFixed(2);
  trailerMapStatus.style.background="rgba(25,95,40,.90)";
  setTimeout(()=>{if(trailerMapStatus.parentNode)trailerMapStatus.remove()},12000);
  console.log("CITY OUTBREAK: Trailer Park map loaded",{
   meshes:meshCount,
   size:{x:ws.x,y:ws.y,z:ws.z},
   bounds:externalMapBounds,
-  terrainDetected:hasTerrain
+  terrainDetected:hasTerrain,
+  collision:collisionStats
  });
 },undefined,err=>{
  const detail=String(err&&err.message||err);
@@ -930,7 +1022,7 @@ function capFX(){
 }
 const ZOMBIE_HELMET_TARGET_WIDTH=.38,ZOMBIE_HELMET_HEAD_Y=.055,ZOMBIE_HELMET_HEAD_Z=-.085,ZOMBIE_HELMET_PITCH=.06981;
 let zombieHelmetTemplate=null,zombieHelmetLoadError=null;
-new GLTFLoader().load("assets/ww2_stahlhelm_m35_heer.glb?v=333",gltf=>{
+new GLTFLoader().load("assets/ww2_stahlhelm_m35_heer.glb?v=334",gltf=>{
  const raw=gltf.scene;
  raw.name="ZombieHelmetSource";
  raw.updateMatrixWorld(true);
