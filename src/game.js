@@ -2364,7 +2364,7 @@ function validZombieSpawn(x,z){
  if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
  if(insideBuilding(x,z,.8))return false;
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
- return Math.hypot(x-px,z-pz)>11;
+ return Math.hypot(x-px,z-pz)>22;
 }
 function reachableZombieSpawn(x,z,allowRoute=true){
  if(!validZombieSpawn(x,z))return false;
@@ -2399,7 +2399,7 @@ function findReachableZombieSpawn(minDist,maxDist){
 }
 function spawnOneZombie(i){
  if(!newCityCollisionReady)return false;
- const p=findReachableZombieSpawn(14,32);
+ const p=findReachableZombieSpawn(24,42);
  if(!p)return false;
  makeZombie(p.x,p.z,i);
  return true;
@@ -2417,15 +2417,15 @@ function spawnWave(){
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=findReachableZombieSpawn(18,30);
+   const bossSpawn=findReachableZombieSpawn(28,46);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
      // Extremely defensive fallback: keep boss-wave behavior intact even if the
      // route search cannot find a candidate during this frame. The expanded A*
      // will still take over immediately after spawn.
-     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=18+rnd()*10;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
+     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=28+rnd()*18;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
    }
-   if(!ok){const a=rnd()*Math.PI*2,dist=22+rnd()*9;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
+   if(!ok){const a=rnd()*Math.PI*2,dist=30+rnd()*16;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
@@ -2926,7 +2926,11 @@ function readyNextWave(){
  between=false;pauseBtn.classList.add("show");
  clearRoundCorpses();
  if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}
- wave++;ammoState.rifle.reserve+=18+wave*2;
+ wave++;
+ // Every new round begins fully recovered so the player is ready immediately.
+ health=100;healthRegenCooldown=0;healthRegenShown=100;
+ sprintEnergy=100;sprintLocked=false;updateSprintUI();
+ ammoState.rifle.reserve+=18+wave*2;
  let waveTitle="",waveSubtitle="";
  if(isBossWave(wave)){ensureBossWaveName(wave);waveTitle="WAVE "+wave+" — BOSS FIGHT";waveSubtitle=bossWaveName+" IS COMING"}else{waveTitle="WAVE "+wave;waveSubtitle=diff(wave).count+" ZOMBIES INCOMING"}
  showAnnouncement({container:announce,titleEl:big,subtitleEl:small,title:waveTitle,subtitle:waveSubtitle});
@@ -3302,7 +3306,7 @@ function updateSprintUI(){
  sprintUiColor=next.color;
  sprintUiState=next.state;
 }
-function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
+function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9.5:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
 for(const c of parkedCars){
  if(carPointCollision(c,px,pz,.38)){
    const tx=px,tz=pz;
