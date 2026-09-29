@@ -523,112 +523,38 @@ function scanExactCityLampAnchors(map){
  return replacements;
 }
 
-// v340: additional curbside lamps only. The approved v337 replacement lamps stay
-// byte-for-byte untouched. Each real PowerLines_01 pole can seed a lamp on the
-// opposite curb, trying several sidewalk-edge offsets so valid spots are not lost
-// to broad map collision/parking bounds.
-const EXTRA_STREET_LAMP_MAX=10;
-const EXTRA_STREET_LAMP_MIN_SPACING=12;
-const EXTRA_STREET_LAMP_TREE_PAD=.75;
-
-function streetZoneDistance(zone,x,z){
- const dx=x<zone.minX?zone.minX-x:x>zone.maxX?x-zone.maxX:0;
- const dz=z<zone.minZ?zone.minZ-z:z>zone.maxZ?z-zone.maxZ:0;
- return Math.hypot(dx,dz);
-}
-function nearestExtraLampRoad(x,z){
- let best=null,bestScore=Infinity;
- for(const zone of newCitySpawnZones){
-   if(zone.type!=="road")continue;
-   const w=zone.maxX-zone.minX,d=zone.maxZ-zone.minZ;
-   const long=Math.max(w,d),short=Math.min(w,d);
-   if(long<4||short<1.8)continue;
-   const ratio=long/Math.max(.01,short);
-   const shapePenalty=ratio<1.35?3:ratio<1.65?1:0;
-   const score=streetZoneDistance(zone,x,z)+shapePenalty;
-   if(score<bestScore){bestScore=score;best=zone}
+// v341: five hand-placed additional street lamps on the curb opposite the
+// long PowerLines_01 row. The approved v337 replacement lamps above remain
+// untouched. These points are authored directly from the city GLB coordinates,
+// with the church entrance/stair frontage intentionally left clear.
+const EXTRA_STREET_LAMP_LOCAL_POINTS=[
+ {x:-7.38,y:-18.45,z:-26.0,rotY:Math.PI},
+ {x:-7.38,y:-18.45,z:-16.0,rotY:Math.PI},
+ {x:-7.38,y:-18.45,z:4.0,rotY:Math.PI},
+ {x:-7.38,y:-18.45,z:14.0,rotY:Math.PI},
+ {x:-7.38,y:-18.45,z:30.0,rotY:Math.PI}
+];
+function buildManualAdditionalStreetLamps(map){
+ const placements=[];
+ const p=new THREE.Vector3();
+ for(const spec of EXTRA_STREET_LAMP_LOCAL_POINTS){
+   p.set(spec.x,spec.y,spec.z);
+   map.localToWorld(p);
+   placements.push({
+     x:p.x,
+     y:samplePlayerGroundY(p.x,p.z,p.y),
+     z:p.z,
+     rotY:spec.rotY,
+     kind:"additional-manual"
+   });
  }
- return best?{zone:best,score:bestScore}:null;
-}
-function pointInExtraLampZone(x,z,type,pad=0){
- for(const zone of newCitySpawnZones){
-   if(zone.type!==type)continue;
-   if(x>zone.minX-pad&&x<zone.maxX+pad&&z>zone.minZ-pad&&z<zone.maxZ+pad)return true;
- }
- return false;
-}
-function buildAdditionalCurbsideLampPlacements(map,existingPlacements){
- map.updateMatrixWorld(true);
- const powerRoots=[],treeRoots=[];
- map.traverse(o=>{
-   if(o===map||o.isMesh)return;
-   const name=o.name||"";
-   if(/^PowerLines_01(?:$|_)/i.test(name)){powerRoots.push(o);return}
-   if(/^Tree_/i.test(name))treeRoots.push(o);
+ document.documentElement.dataset.streetLampCandidateCount=String(placements.length);
+ document.documentElement.dataset.streetLampAddedCount=String(placements.length);
+ console.log("CITY OUTBREAK: v341 manual additional street lamps built",{
+   added:placements.length,
+   localPoints:EXTRA_STREET_LAMP_LOCAL_POINTS
  });
- const treeBoxes=[],box=new THREE.Box3(),size=new THREE.Vector3();
- for(const root of treeRoots){
-   box.setFromObject(root);box.getSize(size);
-   if(size.y>.5)treeBoxes.push(box.clone());
- }
- const nearTree=(x,z)=>{
-   for(const b of treeBoxes){
-     if(x>b.min.x-EXTRA_STREET_LAMP_TREE_PAD&&x<b.max.x+EXTRA_STREET_LAMP_TREE_PAD&&
-        z>b.min.z-EXTRA_STREET_LAMP_TREE_PAD&&z<b.max.z+EXTRA_STREET_LAMP_TREE_PAD)return true;
-   }
-   return false;
- };
- const pos=new THREE.Vector3(),candidates=[];
- const sidewalkOffsets=[.42,.62,.82,1.02,1.22];
- for(const root of powerRoots){
-   root.getWorldPosition(pos);
-   const near=nearestExtraLampRoad(pos.x,pos.z);
-   if(!near||near.score>10)continue;
-   const zone=near.zone,w=zone.maxX-zone.minX,d=zone.maxZ-zone.minZ,horizontal=w>=d;
-   const cx=(zone.minX+zone.maxX)*.5,cz=(zone.minZ+zone.maxZ)*.5;
-   let candidate=null;
-   for(const offset of sidewalkOffsets){
-     let x,z,rotY;
-     if(horizontal){
-       const powerSide=pos.z>=cz?1:-1,lampSide=-powerSide;
-       x=THREE.MathUtils.clamp(pos.x,zone.minX+.8,zone.maxX-.8);
-       z=lampSide>0?zone.maxZ+offset:zone.minZ-offset;
-       rotY=lampSide>0?Math.PI*.5:-Math.PI*.5;
-     }else{
-       const powerSide=pos.x>=cx?1:-1,lampSide=-powerSide;
-       z=THREE.MathUtils.clamp(pos.z,zone.minZ+.8,zone.maxZ-.8);
-       x=lampSide>0?zone.maxX+offset:zone.minX-offset;
-       rotY=lampSide>0?Math.PI:0;
-     }
-     // Never put the pole in a travel lane, an actual parking surface, or a tree.
-     if(pointInExtraLampZone(x,z,"road",.05))continue;
-     if(pointInExtraLampZone(x,z,"parking",-0.15))continue;
-     if(nearTree(x,z))continue;
-     candidate={x,y:samplePlayerGroundY(x,z,0),z,rotY,kind:"additional"};break;
-   }
-   if(candidate)candidates.push(candidate);
- }
- const chosen=[];
- // Keep one lamp per useful stretch, favoring candidates furthest from the
- // existing v337 lamps and then from each newly accepted lamp.
- const pool=candidates.slice();
- while(pool.length&&chosen.length<EXTRA_STREET_LAMP_MAX){
-   let best=-1,bestD=-1;
-   for(let i=0;i<pool.length;i++){
-     const p=pool[i];let minD=Infinity;
-     for(const q of existingPlacements)minD=Math.min(minD,Math.hypot(p.x-q.x,p.z-q.z));
-     for(const q of chosen)minD=Math.min(minD,Math.hypot(p.x-q.x,p.z-q.z));
-     if(minD>bestD){bestD=minD;best=i}
-   }
-   if(best<0||bestD<EXTRA_STREET_LAMP_MIN_SPACING)break;
-   chosen.push(pool.splice(best,1)[0]);
- }
- document.documentElement.dataset.streetLampCandidateCount=String(candidates.length);
- document.documentElement.dataset.streetLampAddedCount=String(chosen.length);
- console.log("CITY OUTBREAK: v340 additional curbside lamps built",{
-   candidates:candidates.length,added:chosen.length,minSpacing:EXTRA_STREET_LAMP_MIN_SPACING
- });
- return chosen;
+ return placements;
 }
 
 function addStreetLamps(placements){
@@ -680,7 +606,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  buildNewCitySpawnZones(map);
  const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
- const additionalStreetLampPlacements=buildAdditionalCurbsideLampPlacements(map,streetLampPlacements);
+ const additionalStreetLampPlacements=buildManualAdditionalStreetLamps(map);
  addStreetLamps(streetLampPlacements.concat(additionalStreetLampPlacements));
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.newCityLoaded="1";
