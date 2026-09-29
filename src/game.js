@@ -522,6 +522,106 @@ function scanExactCityLampAnchors(map){
  });
  return replacements;
 }
+
+// v339: additional curbside lamps only. The approved v337 replacement lamps above
+// are left completely untouched. New lamps are anchored from the real PowerLines_01
+// utility poles, placed on the opposite curb edge, and aimed inward over the road.
+const EXTRA_STREET_LAMP_MAX=8;
+const EXTRA_STREET_LAMP_MIN_SPACING=18;
+const EXTRA_STREET_LAMP_CURB_OFFSET=.52;
+const EXTRA_STREET_LAMP_TREE_PAD=1.0;
+
+function streetZoneDistance(zone,x,z){
+ const dx=x<zone.minX?zone.minX-x:x>zone.maxX?x-zone.maxX:0;
+ const dz=z<zone.minZ?zone.minZ-z:z>zone.maxZ?z-zone.maxZ:0;
+ return Math.hypot(dx,dz);
+}
+function nearestExtraLampRoad(x,z){
+ let best=null,bestScore=Infinity;
+ for(const zone of newCitySpawnZones){
+   if(zone.type!=="road")continue;
+   const w=zone.maxX-zone.minX,d=zone.maxZ-zone.minZ;
+   const long=Math.max(w,d),short=Math.min(w,d);
+   if(long<4||short<1.8)continue;
+   const ratio=long/Math.max(.01,short);
+   const shapePenalty=ratio<1.35?4:ratio<1.65?1.25:0;
+   const score=streetZoneDistance(zone,x,z)+shapePenalty;
+   if(score<bestScore){bestScore=score;best=zone}
+ }
+ return best?{zone:best,score:bestScore}:null;
+}
+function pointInExtraLampZone(x,z,type,pad=0){
+ for(const zone of newCitySpawnZones){
+   if(zone.type!==type)continue;
+   if(x>zone.minX-pad&&x<zone.maxX+pad&&z>zone.minZ-pad&&z<zone.maxZ+pad)return true;
+ }
+ return false;
+}
+function buildAdditionalCurbsideLampPlacements(map,existingPlacements){
+ map.updateMatrixWorld(true);
+ const powerRoots=[],treeRoots=[];
+ map.traverse(o=>{
+   if(o===map||o.isMesh)return;
+   const name=o.name||"";
+   if(/^PowerLines_01(?:$|_)/i.test(name)){powerRoots.push(o);return}
+   if(/^Tree_/i.test(name))treeRoots.push(o);
+ });
+ const treeBoxes=[],box=new THREE.Box3(),size=new THREE.Vector3();
+ for(const root of treeRoots){
+   box.setFromObject(root);box.getSize(size);
+   if(size.y>.5)treeBoxes.push(box.clone());
+ }
+ const nearTree=(x,z)=>{
+   for(const b of treeBoxes){
+     if(x>b.min.x-EXTRA_STREET_LAMP_TREE_PAD&&x<b.max.x+EXTRA_STREET_LAMP_TREE_PAD&&
+        z>b.min.z-EXTRA_STREET_LAMP_TREE_PAD&&z<b.max.z+EXTRA_STREET_LAMP_TREE_PAD)return true;
+   }
+   return false;
+ };
+ const pos=new THREE.Vector3(),candidates=[];
+ for(const root of powerRoots){
+   root.getWorldPosition(pos);
+   const near=nearestExtraLampRoad(pos.x,pos.z);
+   if(!near||near.score>7)continue;
+   const zone=near.zone,w=zone.maxX-zone.minX,d=zone.maxZ-zone.minZ,horizontal=w>=d;
+   const cx=(zone.minX+zone.maxX)*.5,cz=(zone.minZ+zone.maxZ)*.5;
+   let x,z,rotY;
+   if(horizontal){
+     const powerSide=pos.z>=cz?1:-1,lampSide=-powerSide;
+     x=THREE.MathUtils.clamp(pos.x,zone.minX+.8,zone.maxX-.8);
+     z=lampSide>0?zone.maxZ+EXTRA_STREET_LAMP_CURB_OFFSET:zone.minZ-EXTRA_STREET_LAMP_CURB_OFFSET;
+     rotY=lampSide>0?Math.PI*.5:-Math.PI*.5;
+   }else{
+     const powerSide=pos.x>=cx?1:-1,lampSide=-powerSide;
+     z=THREE.MathUtils.clamp(pos.z,zone.minZ+.8,zone.maxZ-.8);
+     x=lampSide>0?zone.maxX+EXTRA_STREET_LAMP_CURB_OFFSET:zone.minX-EXTRA_STREET_LAMP_CURB_OFFSET;
+     rotY=lampSide>0?Math.PI:0;
+   }
+   if(pointInExtraLampZone(x,z,"road",.08)||pointInExtraLampZone(x,z,"parking",.4))continue;
+   if(nearTree(x,z)||insideBuilding(x,z,.32))continue;
+   const y=samplePlayerGroundY(x,z,0);
+   candidates.push({x,y,z,rotY,kind:"additional"});
+ }
+ const chosen=[],pool=candidates.slice();
+ while(pool.length&&chosen.length<EXTRA_STREET_LAMP_MAX){
+   let best=-1,bestD=-1;
+   for(let i=0;i<pool.length;i++){
+     const p=pool[i];
+     let minD=Infinity;
+     for(const q of existingPlacements)minD=Math.min(minD,Math.hypot(p.x-q.x,p.z-q.z));
+     for(const q of chosen)minD=Math.min(minD,Math.hypot(p.x-q.x,p.z-q.z));
+     if(minD>bestD){bestD=minD;best=i}
+   }
+   if(best<0||bestD<EXTRA_STREET_LAMP_MIN_SPACING)break;
+   chosen.push(pool.splice(best,1)[0]);
+ }
+ document.documentElement.dataset.streetLampAddedCount=String(chosen.length);
+ console.log("CITY OUTBREAK: additional curbside lamps built",{
+   candidates:candidates.length,added:chosen.length,
+   minSpacing:EXTRA_STREET_LAMP_MIN_SPACING,curbOffset:EXTRA_STREET_LAMP_CURB_OFFSET
+ });
+ return chosen;
+}
 function addStreetLamps(placements){
  if(streetLampInstances.length||!placements.length)return;
  new GLTFLoader().load(STREET_LAMP_URL,gltf=>{
@@ -571,7 +671,8 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  buildNewCitySpawnZones(map);
  const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
- addStreetLamps(streetLampPlacements);
+ const additionalStreetLampPlacements=buildAdditionalCurbsideLampPlacements(map,streetLampPlacements);
+ addStreetLamps(streetLampPlacements.concat(additionalStreetLampPlacements));
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.newCityLoaded="1";
  document.documentElement.dataset.newCityScale=String(NEW_CITY_SCALE);
