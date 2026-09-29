@@ -158,9 +158,11 @@ function addTrailerHomePerimeterCollision(homeBox,doorBox,source){
  if(!homeBox||homeBox.isEmpty())return 0;
  const wall=.16,info=trailerDoorInfo(homeBox,doorBox),g=info?info.gapHalf:0,dc=info&&info.dc;
  let made=0;
- // End walls.
- made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.max.x,homeBox.min.z,homeBox.min.z+wall,source+":wall");
- made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.max.x,homeBox.max.z-wall,homeBox.max.z,source+":wall");
+ // End walls. The working trailer uses full player clearance here so the
+ // camera/body stops at the visible wall instead of sinking partway through it.
+ const endPlayerRadius=source==="home"?.52:.16;
+ made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.max.x,homeBox.min.z,homeBox.min.z+wall,source+":wall",endPlayerRadius);
+ made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.max.x,homeBox.max.z-wall,homeBox.max.z,source+":wall",endPlayerRadius);
  // Long side walls; split only the side that contains the exterior doorway.
  if(info&&info.side==="minX"){
    made+=addTrailerFootprintCollider(homeBox.min.x,homeBox.min.x+wall,homeBox.min.z,Math.max(homeBox.min.z,dc.z-g),source+":wall");
