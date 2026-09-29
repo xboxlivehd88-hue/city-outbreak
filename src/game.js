@@ -566,7 +566,7 @@ function moveZombieSmart(z,ox,oz,stepX,stepZ,r=ZOMBIE_COLLISION_RADIUS){
 // v152: keep city generation untouched and make pathfinding itself conservative.
  // Finer cells and realistic body clearance keep alleys, stoops and door approaches usable
  // while still routing zombies around true walls.
-const ZNAV_CELL=1.5,ZNAV_PAD=.44,ZNAV_MAX_NODES=3600,
+const ZNAV_CELL=1.5,ZNAV_PAD=.38,ZNAV_MAX_NODES=3600,
       ZNAV_MIN_X=-148,ZNAV_MAX_X=148,ZNAV_MIN_Z=-158,ZNAV_MAX_Z=164;
 const ZNAV_BLOCK_CACHE=new Map();
 function navCellBlocked(ix,iz){
