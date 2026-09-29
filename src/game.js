@@ -478,6 +478,42 @@ function buildNewCityCollision(map){
  });
 }
 
+// v330: one visual-only street-light test prop near the player spawn.
+// It is intentionally excluded from city/player/zombie collision until its scale
+// and placement are approved in live gameplay.
+const TEST_STREET_LAMP_URL="assets/low_poly_street_light.glb";
+let testStreetLamp=null;
+function addTestStreetLamp(){
+ if(testStreetLamp||!newCityRoot)return;
+ const candidates=[
+   {x:3.25,z:-19.5,rotY:0},
+   {x:-3.25,z:-19.5,rotY:Math.PI},
+   {x:4.5,z:-17.5,rotY:Math.PI*.5},
+   {x:-4.5,z:-17.5,rotY:-Math.PI*.5}
+ ];
+ const spot=candidates.find(p=>pointOnNewCitySpawnZone(p.x,p.z,.15)&&!insideBuilding(p.x,p.z,.20))||candidates[0];
+ const groundY=samplePlayerGroundY(spot.x,spot.z,0);
+ new GLTFLoader().load(TEST_STREET_LAMP_URL,gltf=>{
+   const lamp=gltf.scene;
+   lamp.name="StreetLampTest";
+   lamp.scale.setScalar(1);
+   lamp.position.set(spot.x,groundY,spot.z);
+   lamp.rotation.y=spot.rotY;
+   lamp.traverse(o=>{
+     o.userData.streetLampTest=true;
+     if(!o.isMesh)return;
+     o.castShadow=false;o.receiveShadow=false;
+   });
+   scene.add(lamp);lamp.updateMatrixWorld(true);testStreetLamp=lamp;
+   document.documentElement.dataset.streetLampTest="1";
+   document.documentElement.dataset.streetLampTestPosition=[spot.x.toFixed(2),groundY.toFixed(2),spot.z.toFixed(2)].join(",");
+   console.log("CITY OUTBREAK: street lamp test loaded",{position:[spot.x,groundY,spot.z],scale:1});
+ },undefined,err=>{
+   document.documentElement.dataset.streetLampTestError=String(err&&err.message||err);
+   console.error("Street lamp test GLB load failed",err);
+ });
+}
+
 new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  const map=gltf.scene;
  map.name="ChickenGunCityMap";
@@ -498,6 +534,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
  buildNewCitySpawnZones(map);
  buildNewCityCollision(map);
+ addTestStreetLamp();
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.newCityLoaded="1";
  document.documentElement.dataset.newCityScale=String(NEW_CITY_SCALE);
