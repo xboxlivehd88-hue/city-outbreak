@@ -479,39 +479,18 @@ function buildNewCityCollision(map){
  });
 }
 
-// v334: replace authored city lamps with the approved street-lamp GLB and add
-// a restrained set opposite real utility/power poles. Placement is deterministic
-// and avoids road surfaces, parking areas and building collision.
+// v335: exact street-lamp replacement using the uploaded city's authored names.
+// The city GLB contains 15 Light_01... lamp roots, 20 PowerLines_01... pole roots,
+// and Tree_... assemblies. Replace the authored lamps one-for-one, then add a
+// restrained set on the opposite side of roads from real power poles.
 const STREET_LAMP_URL="assets/low_poly_street_light.glb";
 const STREET_LAMP_HEIGHT_SCALE=1.40;
-const STREET_LAMP_ADDED_MIN_SPACING=24;
-const STREET_LAMP_MAX_ADDED=12;
+const STREET_LAMP_ADDED_MIN_SPACING=18;
+const STREET_LAMP_MAX_ADDED=10;
+const STREET_LAMP_TREE_PAD=1.15;
 const streetLampInstances=[];
-const STREET_LAMP_NAME_RE=/(street[\\s_.-]*(?:lamp|light)|lamp|light[\\s_.-]*(?:post|pole))/i;
-const STREET_LAMP_EXCLUDE_RE=/(traffic|signal|vehicle|headlight|taillight|window|interior|shop|sign|neon)/i;
-const POWER_POLE_NAME_RE=/(power|utility|electric|telephone|wire|cable|pole)/i;
+const streetLampTreeBoxes=[];
 
-function objectNameText(o){
- const parts=[o.name||""];
- if(o.isMesh){
-   const mats=Array.isArray(o.material)?o.material:[o.material];
-   for(const m of mats)if(m&&m.name)parts.push(m.name);
- }
- let p=o.parent,depth=0;
- while(p&&p!==newCityRoot&&depth++<2){if(p.name)parts.push(p.name);p=p.parent}
- return parts.join(" ");
-}
-function compactPropAssembly(o,maxFoot=6,maxHeight=16){
- let best=o,cur=o,box=new THREE.Box3(),size=new THREE.Vector3();
- while(cur.parent&&cur.parent!==newCityRoot){
-   box.setFromObject(cur.parent);box.getSize(size);
-   if(size.y>.1&&size.y<=maxHeight&&Math.max(size.x,size.z)<=maxFoot){best=cur.parent;cur=cur.parent}
-   else break;
- }
- box.setFromObject(best);box.getSize(size);
- if(size.y<2.6||size.y>maxHeight||Math.max(size.x,size.z)>maxFoot)return null;
- return{root:best,box:box.clone(),size:size.clone()};
-}
 function zoneDistance(zone,x,z){
  const dx=x<zone.minX?zone.minX-x:x>zone.maxX?x-zone.maxX:0;
  const dz=z<zone.minZ?zone.minZ-z:z>zone.maxZ?z-zone.maxZ:0;
@@ -533,58 +512,63 @@ function pointInZoneType(x,z,type,pad=0){
  }
  return false;
 }
+function pointNearTree(x,z,pad=STREET_LAMP_TREE_PAD){
+ for(const b of streetLampTreeBoxes){
+   if(x>b.min.x-pad&&x<b.max.x+pad&&z>b.min.z-pad&&z<b.max.z+pad)return true;
+ }
+ return false;
+}
 function lampRotationTowardRoad(x,z,fallback=0){
  const near=nearestRoadZone(x,z);
  if(!near||near.dist>12)return fallback;
  const zone=near.zone,cx=(zone.minX+zone.maxX)*.5,cz=(zone.minZ+zone.maxZ)*.5;
  return Math.atan2(-(cz-z),cx-x);
 }
-function scanAuthoredLampAndPowerAnchors(map){
+function scanExactCityLampAnchors(map){
  map.updateMatrixWorld(true);
- const lampRoots=new Set(),powerRoots=new Set(),lampMatches=[];
- const box=new THREE.Box3(),size=new THREE.Vector3(),wp=new THREE.Vector3(),q=new THREE.Quaternion(),e=new THREE.Euler(0,0,0,"YXZ");
+ streetLampTreeBoxes.length=0;
+ const lampRoots=[],powerPoleRoots=[],treeRoots=[];
  map.traverse(o=>{
-   if(o===map)return;
-   const text=objectNameText(o);
-   if(STREET_LAMP_NAME_RE.test(text)&&!STREET_LAMP_EXCLUDE_RE.test(text)){
-     const a=compactPropAssembly(o,6,16);
-     if(a)lampRoots.add(a.root);
-     return;
-   }
-   if(POWER_POLE_NAME_RE.test(text)&&!STREET_LAMP_NAME_RE.test(text)&&!STREET_LAMP_EXCLUDE_RE.test(text)){
-     const a=compactPropAssembly(o,6,22);
-     if(a&&a.size.y>=4.5)powerRoots.add(a.root);
-   }
+   if(o===map||o.isMesh)return;
+   const name=o.name||"";
+   if(/^Light_01(?:$|_)/i.test(name)){lampRoots.push(o);return}
+   if(/^PowerLines_01(?:$|_)/i.test(name)){powerPoleRoots.push(o);return}
+   if(/^Tree_/i.test(name)){treeRoots.push(o)}
  });
+ const box=new THREE.Box3(),size=new THREE.Vector3();
+ for(const root of treeRoots){
+   box.setFromObject(root);box.getSize(size);
+   if(size.y>.5)streetLampTreeBoxes.push(box.clone());
+ }
  const replacements=[];
  for(const root of lampRoots){
-   box.setFromObject(root);box.getSize(size);root.getWorldPosition(wp);root.getWorldQuaternion(q);e.setFromQuaternion(q,"YXZ");
-   let x=wp.x,z=wp.z;
-   if(x<box.min.x-.75||x>box.max.x+.75||z<box.min.z-.75||z>box.max.z+.75){
-     x=(box.min.x+box.max.x)*.5;z=(box.min.z+box.max.z)*.5;
-   }
-   replacements.push({x,z,y:box.min.y,rotY:lampRotationTowardRoad(x,z,e.y),kind:"replacement"});
+   box.setFromObject(root);box.getSize(size);
+   if(size.y<2.5||size.y>12)continue;
+   const x=(box.min.x+box.max.x)*.5,z=(box.min.z+box.max.z)*.5,y=box.min.y;
+   replacements.push({x,z,y,rotY:lampRotationTowardRoad(x,z,0),kind:"replacement"});
    root.traverse(n=>{n.userData.replacedStreetLamp=true});
-   root.visible=false;lampMatches.push(root.name||"(unnamed)");
+   root.visible=false;
  }
  const powerPoles=[];
- for(const root of powerRoots){
-   box.setFromObject(root);box.getSize(size);root.getWorldPosition(wp);
-   let x=wp.x,z=wp.z;
-   if(x<box.min.x-1||x>box.max.x+1||z<box.min.z-1||z>box.max.z+1){
-     x=(box.min.x+box.max.x)*.5;z=(box.min.z+box.max.z)*.5;
-   }
+ for(const root of powerPoleRoots){
+   box.setFromObject(root);box.getSize(size);
+   if(size.y<4||size.y>14)continue;
+   const x=(box.min.x+box.max.x)*.5,z=(box.min.z+box.max.z)*.5;
    const near=nearestRoadZone(x,z);
    if(near&&near.dist<=10)powerPoles.push({x,z,road:near.zone});
  }
  document.documentElement.dataset.authoredLampMatches=String(replacements.length);
  document.documentElement.dataset.powerPoleMatches=String(powerPoles.length);
- console.log("CITY OUTBREAK: city lamp anchors scanned",{replacements:replacements.length,powerPoles:powerPoles.length,lampMatches});
+ document.documentElement.dataset.treeAvoidBoxes=String(streetLampTreeBoxes.length);
+ console.log("CITY OUTBREAK: exact city lamp anchors scanned",{
+   replacements:replacements.length,powerPoles:powerPoles.length,trees:streetLampTreeBoxes.length
+ });
  return{replacements,powerPoles};
 }
 function addedLampSpotClear(x,z,placements){
- if(pointInZoneType(x,z,"road",.12)||pointInZoneType(x,z,"parking",.35))return false;
- if(insideBuilding(x,z,.30))return false;
+ if(pointInZoneType(x,z,"road",.18)||pointInZoneType(x,z,"parking",.45))return false;
+ if(pointNearTree(x,z))return false;
+ if(insideBuilding(x,z,.32))return false;
  for(const p of placements)if(Math.hypot(x-p.x,z-p.z)<STREET_LAMP_ADDED_MIN_SPACING)return false;
  return true;
 }
@@ -599,7 +583,7 @@ function buildStreetLampPlacements(scan){
    const powerSide=horizontal?(pole.z>=cz?1:-1):(pole.x>=cx?1:-1);
    const lampSide=-powerSide;
    let placed=null;
-   for(const offset of [.75,1.05,1.35,1.65,2.0]){
+   for(const offset of [.85,1.10,1.35,1.65,2.0,2.35]){
      let x,z,rotY;
      if(horizontal){
        x=THREE.MathUtils.clamp(pole.x,zone.minX+1.6,zone.maxX-1.6);
@@ -611,7 +595,8 @@ function buildStreetLampPlacements(scan){
        rotY=lampSide>0?Math.PI:0;
      }
      if(!addedLampSpotClear(x,z,placements))continue;
-     placed={x,z,y:samplePlayerGroundY(x,z,0),rotY,kind:"powerOpposite"};break;
+     const y=samplePlayerGroundY(x,z,0);
+     placed={x,z,y,rotY,kind:"powerOpposite"};break;
    }
    if(placed){placements.push(placed);added++}
  }
@@ -637,7 +622,7 @@ function addStreetLamps(placements){
    }
    document.documentElement.dataset.streetLampCount=String(placements.length);
    document.documentElement.dataset.streetLampBatches=String(streetLampInstances.length);
-   console.log("CITY OUTBREAK: replacement street lamps loaded",{
+   console.log("CITY OUTBREAK: exact replacement street lamps loaded",{
      total:placements.length,replacements:+document.documentElement.dataset.streetLampReplacementCount,
      added:+document.documentElement.dataset.streetLampAddedCount,heightScale:STREET_LAMP_HEIGHT_SCALE
    });
@@ -666,7 +651,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  });
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
  buildNewCitySpawnZones(map);
- const streetLampScan=scanAuthoredLampAndPowerAnchors(map);
+ const streetLampScan=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
  addStreetLamps(buildStreetLampPlacements(streetLampScan));
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
