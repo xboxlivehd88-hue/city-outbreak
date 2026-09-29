@@ -291,7 +291,7 @@ let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/429
 // Kept as a no-op because the existing runtime calls it later after pathing setup.
 function batchStaticCity(){}
 
-new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=315",gltf=>{
+new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=316",gltf=>{
  const map=gltf.scene;
  map.name="ChickenGunCityMap";
  map.scale.setScalar(NEW_CITY_SCALE);
@@ -1716,8 +1716,11 @@ function rolledZombieKind(w,roll){
  return "shambler";
 }
 
+const PLAYER_WORLD_SCALE=1.10;
+const ZOMBIE_WORLD_SCALE=1.10;
+
 function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
- let d=diff(wave),g=new THREE.Group(),scale=.90+rnd()*.045;
+ let d=diff(wave),g=new THREE.Group(),scale=(.90+rnd()*.045)*ZOMBIE_WORLD_SCALE;
  let roll=rnd(),kind=forcedKind||rolledZombieKind(wave,roll);
 
  const nightmareType = kind==="crawler"?"crawler":(kind==="boss"?"brute":((kind==="sprinter"||kind==="infected"||kind==="acidic")?"twitch":"normal"));
@@ -3189,7 +3192,7 @@ for(const c of parkedCars){
 }
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
 resolvePlayerZombieContact(oldx,oldz);
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65*PLAYER_WORLD_SCALE,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
