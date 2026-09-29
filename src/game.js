@@ -277,11 +277,11 @@ function pushOutsideBuilding(x,z,r=.45){
 
 // v313: uploaded city GLB is now the entire active world environment.
 // The old procedural ground, roads, sidewalks, buildings, lamps, barriers and road texture are not created.
-const NEW_CITY_SCALE=2.0;
-// Keep the exact v313 player/spawn anchor fixed while doubling the city around it.
-const NEW_CITY_X_OFFSET=27.53;
-const NEW_CITY_Y_OFFSET=37.01;
-const NEW_CITY_Z_OFFSET=15;
+const NEW_CITY_SCALE=1.75;
+// Keep the exact v313 player/spawn anchor fixed while tuning the city scale.
+const NEW_CITY_X_OFFSET=24.08875;
+const NEW_CITY_Y_OFFSET=32.38375;
+const NEW_CITY_Z_OFFSET=11.25;
 let newCityRoot=null;
 buildingColliders.length=0;
 
@@ -291,7 +291,7 @@ let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/429
 // Kept as a no-op because the existing runtime calls it later after pathing setup.
 function batchStaticCity(){}
 
-new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=314",gltf=>{
+new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=315",gltf=>{
  const map=gltf.scene;
  map.name="ChickenGunCityMap";
  map.scale.setScalar(NEW_CITY_SCALE);
