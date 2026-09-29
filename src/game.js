@@ -496,7 +496,7 @@ function addTestStreetLamp(){
  new GLTFLoader().load(TEST_STREET_LAMP_URL,gltf=>{
    const lamp=gltf.scene;
    lamp.name="StreetLampTest";
-   lamp.scale.setScalar(1);
+   lamp.scale.set(1,1.25,1);
    lamp.position.set(spot.x,groundY,spot.z);
    lamp.rotation.y=spot.rotY;
    lamp.traverse(o=>{
@@ -507,7 +507,7 @@ function addTestStreetLamp(){
    scene.add(lamp);lamp.updateMatrixWorld(true);testStreetLamp=lamp;
    document.documentElement.dataset.streetLampTest="1";
    document.documentElement.dataset.streetLampTestPosition=[spot.x.toFixed(2),groundY.toFixed(2),spot.z.toFixed(2)].join(",");
-   console.log("CITY OUTBREAK: street lamp test loaded",{position:[spot.x,groundY,spot.z],scale:1});
+   console.log("CITY OUTBREAK: street lamp test loaded",{position:[spot.x,groundY,spot.z],scale:[1,1.25,1]});
  },undefined,err=>{
    document.documentElement.dataset.streetLampTestError=String(err&&err.message||err);
    console.error("Street lamp test GLB load failed",err);
