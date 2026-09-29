@@ -384,6 +384,15 @@ new GLTFLoader().load("assets/modular_havana_street__low-poly_asset_kit.glb?v=30
    o.castShadow=false;o.receiveShadow=false;
    const mats=Array.isArray(o.material)?o.material:[o.material];
    for(const mat of mats)if(mat){
+     // Sketchfab exported seven large Havana surfaces as alpha-blended layers.
+     // Keep their intended transparency, but make them participate in the depth
+     // buffer so they cannot visibly sort/draw through nearby opaque walls.
+     if(mat.transparent){
+       mat.depthTest=true;
+       mat.depthWrite=true;
+       mat.alphaTest=Math.max(mat.alphaTest||0,.02);
+       mat.needsUpdate=true;
+     }
      for(const key of ["map","normalMap","roughnessMap","metalnessMap","emissiveMap"]){
        const tx=mat[key];
        if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
