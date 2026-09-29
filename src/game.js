@@ -703,7 +703,10 @@ function updateZombieRoute(z,dt,huntMode){
  z.navCheckT=(huntMode?.46:.78)+((z.g.id%7)*.035);
 
  const goalMoved=Math.hypot(px-(z.navGoalX??px),pz-(z.navGoalZ??pz))>(huntMode?3.2:4.8);
- const directClear=zombieRouteClear(z.g.position.x,z.g.position.z,px,pz,ZNAV_PAD);
+ // Direct pursuit should use the zombie's real physical clearance. A* keeps
+ // its slightly larger conservative padding for routing around obstacles.
+ // This prevents tight but genuinely passable alleys from forcing long detours.
+ const directClear=zombieRouteClear(z.g.position.x,z.g.position.z,px,pz,ZOMBIE_COLLISION_RADIUS);
  if(directClear){
    z.navPath=null;z.navIndex=0;z.navGoalX=px;z.navGoalZ=pz;
    return;
