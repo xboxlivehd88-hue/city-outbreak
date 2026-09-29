@@ -1,5 +1,165 @@
 # CITY OUTBREAK — NEXT CHAT HANDOFF
 
+# CURRENT NEXT-CHAT STATE — 2026-09-29 — v324 RECOVERY — READ THIS FIRST
+
+This section supersedes every older "current next-chat state" below.
+
+## Start here
+
+- **Current approved recovery build:** v324
+- **Exact protected recovery commit:** `afddcebb47e06a82b4196638716f05e6f1adc941`
+- **Exact protected recovery tree:** `5721309fc27f9f16ee7a2568a7f73fd429342502`
+- **GitHub Pages loader:** `./src/game.js?v=324`
+- **Successful Pages run for the protected tree:** `36616387389`
+- **Repo:** `xboxlivehd88-hue/city-outbreak`
+- **Branch:** `main`
+- **Live:** https://xboxlivehd88-hue.github.io/city-outbreak/
+- The user explicitly called the current state a **great spot** and asked to make it the new recovery save.
+- Former v303 remains a secondary clean fallback only.
+
+Before any new code change, fetch/read:
+1. `CITY_OUTBREAK_HANDOFF.md`
+2. `NEXT_CHAT_HANDOFF.md`
+3. current `main:index.html`
+4. current `main:src/game.js`
+5. any directly relevant module, especially `src/wave-utils.js`
+
+Do not work from stale conversation code.
+
+## What is live now
+
+### City
+Active environment:
+`assets/chicken_gun_fruzer_-_city.glb`
+
+Current transform:
+```js
+const NEW_CITY_SCALE=1.55;
+const NEW_CITY_X_OFFSET=21.33575;
+const NEW_CITY_Y_OFFSET=28.68275;
+const NEW_CITY_Z_OFFSET=8.25;
+```
+
+Old procedural roads/city, old road texture, barriers, lamps, and old parked STI props are disabled.
+
+### Character/world scale
+```js
+const PLAYER_WORLD_SCALE=1.20;
+const ZOMBIE_WORLD_SCALE=1.15;
+```
+
+Camera height:
+`playerGroundY + 1.65 * PLAYER_WORLD_SCALE`
+
+### M4
+The user said the rifle looked held too far out. Current hip/ADS Z tuning:
+```js
+m4ViewRoot.position.z =
+  reloading ? -1.66 : THREE.MathUtils.lerp(-1.62,-1.66,aimBlend);
+```
+Do not disturb approved ADS/reload behavior unless asked.
+
+## Collision/navigation
+
+Current wall collision:
+```js
+const NEW_CITY_COLLISION_CELL=.34;
+const NEW_CITY_COLLISION_MIN_Y=.10;
+const NEW_CITY_COLLISION_MAX_Y=2.25;
+const NEW_CITY_COLLISION_MIN_VERTICAL_SPAN=.55;
+```
+
+Other current navigation values:
+```js
+const ZOMBIE_COLLISION_RADIUS=.38;
+const ZNAV_CELL=1.5;
+const ZNAV_PAD=.44;
+const ZNAV_MAX_NODES=3600;
+const playerWallRadius=.36;
+```
+
+- Collision is generated from real near-vertical GLB wall geometry.
+- Roads/floors/roofs/shallow curbs remain walkable.
+- v324 deliberately uses finer collision/nav and smaller player/zombie clearance than v323 so tight alleys, stoops, door approaches, railings, and other narrow passages are usable.
+- Do not globally increase these radii/padding to fix a single problem.
+
+### Stairs
+```js
+const PLAYER_STEP_UP=.62;
+const PLAYER_STEP_DOWN=1.35;
+```
+
+`samplePlayerGroundY()` raycasts the real GLB and follows upward-facing stair/ground surfaces. The camera uses `playerGroundY`. This was added because stairs previously behaved like walls / flat ground.
+
+## Zombie spawning
+
+Current spawning is restricted to real outdoor ground:
+- only `Road_*` and `ParkingBG_*` mesh bounds become spawn zones,
+- large `BG_*` planes are excluded,
+- `validZombieSpawn()` also rejects wall collision and requires >22 units from player,
+- normal spawn search = 24–42 units,
+- boss spawn search = 28–46 units,
+- candidate must have a direct or A*-reachable route.
+
+This fixed zombies spawning inside buildings and getting trapped. Preserve it.
+
+## Waves / active cap / headshots
+
+`src/wave-utils.js` normal wave formula:
+```js
+count:10+(w-1)*3
+```
+
+Active cap:
+```js
+const MAX_ACTIVE_ZOMBIES=30;
+```
+
+Non-boss headshot formula:
+```js
+const headshotToughness=1+Math.max(0,wave-1)*.2;
+z.hp-=shotDamage*3/headshotToughness;
+```
+
+Boss headshots stay on their separate boss formula.
+
+## Player sprint / round reset
+
+- walk speed = 5
+- sprint speed = 9.5
+- sprint drain ~= 33.34/sec
+- recharge = 14/sec
+- every new round restores health to 100
+- every new round restores sprint to 100 and clears sprint lock
+
+## Workflow rules for this user
+
+- Do the GitHub work directly.
+- One controlled change at a time.
+- Do not ask the user to manually edit/upload or run Git commands.
+- Verify exact diff and locked values.
+- Temporary inspection/syntax workflow is okay, then delete it.
+- Final `.github/workflows` should contain only `v182-validation.yml`.
+- Wait for successful Pages deployment before giving a test URL.
+- Use a new cache-busted link each test.
+- Never say gameplay is fixed just because code deployed; user live testing is authoritative.
+
+## Protected fallback
+
+Primary recovery now:
+`afddcebb47e06a82b4196638716f05e6f1adc941` / tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+
+Secondary clean fallback:
+v303 tree `ce560411d2751ccdc8068bfa16753cc77adeb74a`
+
+Do not resurrect Trailer Park, Havana, or old procedural-city experiments unless the user explicitly asks.
+
+## Best next action
+
+Do **not** invent the next feature. The current build is intentionally frozen as the new recovery point. Read the user's next request and make the smallest change that satisfies it while preserving v324.
+
+---
+
 # CURRENT NEXT-CHAT STATE — 2026-09-28 — READ THIS FIRST
 
 This section supersedes older v260 "current checkpoint" notes below.
