@@ -8,7 +8,7 @@ import {showTransientMessage,clearTransientMessage,setupControlsModal,setupReset
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
-import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=312";
+import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=303";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -257,17 +257,7 @@ function addBuilding(w,h,d,x,z,base,variant){
  return q
 }
 
-let havanaPlayableBounds=null;
-function insideHavanaPlayableBounds(x,z,r=0){
- if(!havanaPlayableBounds)return true;
- return x>=havanaPlayableBounds.minX+r&&x<=havanaPlayableBounds.maxX-r&&
-        z>=havanaPlayableBounds.minZ+r&&z<=havanaPlayableBounds.maxZ-r;
-}
-function insideBuilding(x,z,r=.45){
- if(!insideHavanaPlayableBounds(x,z,r))return true;
- for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}
- return false
-}
+function insideBuilding(x,z,r=.45){for(const b of buildingColliders){if(x>b.x-b.hx-r&&x<b.x+b.hx+r&&z>b.z-b.hz-r&&z<b.z+b.hz+r)return true}return false}
 function slideBuilding(oldx,oldz,newx,newz,r=.45){
  if(!insideBuilding(newx,newz,r))return{x:newx,z:newz};
  if(!insideBuilding(newx,oldz,r))return{x:newx,z:oldz};
@@ -285,153 +275,248 @@ function pushOutsideBuilding(x,z,r=.45){
  return{x,z}
 }
 
-// v304: the uploaded Havana GLB is the entire active world map.
-// The old procedural ground, roads, sidewalks, buildings, lamps, barriers and road texture are not created.
-const HAVANA_MAP_SCALE=3.0;
-const HAVANA_MAP_X_OFFSET=0;
-const HAVANA_MAP_Y_OFFSET=0;
-const HAVANA_MAP_Z_OFFSET=-4.5;
-const HAVANA_BOUNDARY_THICKNESS=1.4;
-const HAVANA_SPAWN_INSET=1.25;
-let havanaMapRoot=null;
-buildingColliders.length=0;
-
-function installHavanaBoundary(bounds){
- const minX=bounds.min.x,maxX=bounds.max.x,minZ=bounds.min.z,maxZ=bounds.max.z;
- const cx=(minX+maxX)*.5,cz=(minZ+maxZ)*.5,w=maxX-minX,d=maxZ-minZ,t=HAVANA_BOUNDARY_THICKNESS;
- havanaPlayableBounds={minX,maxX,minZ,maxZ};
- // Four invisible walls form a closed frame around the authored map.
- buildingColliders.push(
-   {x:cx,z:minZ-t*.5,hx:w*.5+t,hz:t*.5,source:"havanaBoundary"},
-   {x:cx,z:maxZ+t*.5,hx:w*.5+t,hz:t*.5,source:"havanaBoundary"},
-   {x:minX-t*.5,z:cz,hx:t*.5,hz:d*.5+t,source:"havanaBoundary"},
-   {x:maxX+t*.5,z:cz,hx:t*.5,hz:d*.5+t,source:"havanaBoundary"}
- );
- ZNAV_BLOCK_CACHE.clear();
- document.documentElement.dataset.havanaBounds=[minX.toFixed(2),maxX.toFixed(2),minZ.toFixed(2),maxZ.toFixed(2)].join(",");
-}
-
-// Gameplay uses this deterministic RNG in many systems; keep it independent of map generation.
-let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
-
-// Kept as a no-op because the existing runtime calls it later after pathing setup.
-function batchStaticCity(){}
-
-// v309: selective Havana collision from the GLB's real vertical triangle surfaces.
-// Horizontal roads/floors/roofs are ignored, and collision is rasterized into short
-// grid segments so visible openings are preserved instead of becoming giant AABBs.
-const HAVANA_COLLISION_CELL=.72;
-const HAVANA_COLLISION_MIN_Y=.12;
-const HAVANA_COLLISION_MAX_Y=1.55;
-const HAVANA_COLLISION_MIN_VERTICAL_SPAN=.45;
-function buildHavanaCollision(map){
- buildingColliders.length=0;
- map.updateMatrixWorld(true);
-
- const used=new Set(),a=new THREE.Vector3(),b=new THREE.Vector3(),cc=new THREE.Vector3();
- const ab=new THREE.Vector3(),ac=new THREE.Vector3(),normal=new THREE.Vector3();
- let meshCount=0,triangleCount=0,blockingTriangles=0;
-
- const mark=(x,z)=>{
-   // Always leave the current v303/v308 player spawn immediately usable.
-   if(Math.hypot(x,z+15)<1.15)return;
-   const ix=Math.floor(x/HAVANA_COLLISION_CELL),iz=Math.floor(z/HAVANA_COLLISION_CELL);
-   used.add(ix+","+iz);
- };
- const sampleEdge=(p,q)=>{
-   const dx=q.x-p.x,dz=q.z-p.z,dist=Math.hypot(dx,dz);
-   const steps=Math.max(1,Math.ceil(dist/(HAVANA_COLLISION_CELL*.28)));
-   for(let i=0;i<=steps;i++){
-     const t=i/steps;
-     mark(p.x+dx*t,p.z+dz*t);
-   }
- };
-
- map.traverse(o=>{
-   if(!o.isMesh||!o.geometry||!o.geometry.attributes||!o.geometry.attributes.position)return;
-   meshCount++;
-   const pos=o.geometry.attributes.position,idx=o.geometry.index;
-   const read=(out,vi)=>out.fromBufferAttribute(pos,vi).applyMatrix4(o.matrixWorld);
-   const tris=idx?Math.floor(idx.count/3):Math.floor(pos.count/3);
-   for(let t=0;t<tris;t++){
-     const j=t*3,ia=idx?idx.getX(j):j,ib=idx?idx.getX(j+1):j+1,ic=idx?idx.getX(j+2):j+2;
-     read(a,ia);read(b,ib);read(cc,ic);triangleCount++;
-     const minY=Math.min(a.y,b.y,cc.y),maxY=Math.max(a.y,b.y,cc.y);
-     if(maxY<HAVANA_COLLISION_MIN_Y||minY>HAVANA_COLLISION_MAX_Y||maxY-minY<HAVANA_COLLISION_MIN_VERTICAL_SPAN)continue;
-     ab.subVectors(b,a);ac.subVectors(cc,a);normal.crossVectors(ab,ac);
-     const nl=normal.length();if(nl<1e-6)continue;
-     // Skip horizontal and strongly sloped surfaces. Keep walls/fences/solid sides.
-     if(Math.abs(normal.y)/nl>.48)continue;
-     const spanX=Math.max(a.x,b.x,cc.x)-Math.min(a.x,b.x,cc.x);
-     const spanZ=Math.max(a.z,b.z,cc.z)-Math.min(a.z,b.z,cc.z);
-     if(Math.max(spanX,spanZ)<.10)continue;
-     blockingTriangles++;
-     sampleEdge(a,b);sampleEdge(b,cc);sampleEdge(cc,a);
-   }
- });
-
- // Convert occupied cells into short contiguous row segments.
- const rows=new Map();
- for(const key of used){
-   const comma=key.indexOf(","),ix=+key.slice(0,comma),iz=+key.slice(comma+1);
-   let row=rows.get(iz);if(!row){row=[];rows.set(iz,row)}row.push(ix);
- }
- let colliderCount=0;
- for(const [iz,xs] of rows){
-   xs.sort((m,n)=>m-n);
-   let start=xs[0],prev=xs[0];
-   const flush=end=>{
-     const cells=end-start+1;
-     const x=(start+end+1)*HAVANA_COLLISION_CELL*.5;
-     const z=(iz+.5)*HAVANA_COLLISION_CELL;
-     const hit={x,z,hx:Math.max(.08,cells*HAVANA_COLLISION_CELL*.5-.035),hz:HAVANA_COLLISION_CELL*.5-.035,source:"havana"};
-     if(Math.hypot(hit.x,hit.z+15)>=1.35){buildingColliders.push(hit);colliderCount++}
-   };
-   for(let i=1;i<xs.length;i++){
-     const ix=xs[i];
-     if(ix===prev||ix===prev+1){prev=ix;continue}
-     flush(prev);start=prev=ix;
-   }
-   flush(prev);
- }
- ZNAV_BLOCK_CACHE.clear();
- document.documentElement.dataset.havanaCollision="1";
- document.documentElement.dataset.havanaColliderCount=String(colliderCount);
- console.log("CITY OUTBREAK: Havana selective collision built",{meshCount,triangleCount,blockingTriangles,cells:used.size,colliderCount});
-}
-
-new GLTFLoader().load("assets/modular_havana_street__low-poly_asset_kit.glb?v=309",gltf=>{
- const map=gltf.scene;
- map.name="HavanaMap";
- map.scale.setScalar(HAVANA_MAP_SCALE);
- map.position.set(HAVANA_MAP_X_OFFSET,HAVANA_MAP_Y_OFFSET,HAVANA_MAP_Z_OFFSET);
- map.traverse(o=>{
-   o.userData.externalMapAsset=true;
-   if(!o.isMesh)return;
-   o.castShadow=false;o.receiveShadow=false;
-   const mats=Array.isArray(o.material)?o.material:[o.material];
-   for(const mat of mats)if(mat){
-     for(const key of ["map","normalMap","roughnessMap","metalnessMap","emissiveMap"]){
-       const tx=mat[key];
-       if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
-     }
-   }
- });
- scene.add(map);map.updateMatrixWorld(true);havanaMapRoot=map;
- buildHavanaCollision(map);
- const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
- installHavanaBoundary(bounds);
- document.documentElement.dataset.havanaMapLoaded="1";
- document.documentElement.dataset.havanaMapScale=String(HAVANA_MAP_SCALE);
- document.documentElement.dataset.havanaMapSize=[size.x.toFixed(2),size.y.toFixed(2),size.z.toFixed(2)].join("x");
- console.log("CITY OUTBREAK: Havana GLB map loaded",{scale:HAVANA_MAP_SCALE,size:[size.x,size.y,size.z],position:[HAVANA_MAP_X_OFFSET,HAVANA_MAP_Y_OFFSET,HAVANA_MAP_Z_OFFSET]});
-},undefined,err=>{
- document.documentElement.dataset.havanaMapLoadError=String(err&&err.message||err);
- console.error("Havana map GLB load failed",err);
+// Ground plane + cleaner city street / sidewalk treatment.
+let ground=new THREE.Mesh(new THREE.PlaneGeometry(280,300),M(0x434740));ground.rotation.x=-Math.PI/2;scene.add(ground);
+const asphaltAvenue=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), asphaltCross=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96}), sidewalk=M(0x8a877f,.92), curb=M(0xb2aca0,.84), walkJoint=M(0x716f69,.94), lanePaint=M(0xd9ca76,.82), crosswalk=M(0xe4e0d4,.80);
+new THREE.TextureLoader().load("assets/textures/roads/road_albedo.jpg.jpg",tx=>{
+ tx.colorSpace=THREE.SRGBColorSpace;tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
+ const avenueTex=tx.clone();avenueTex.needsUpdate=true;avenueTex.repeat.set(3,30);
+ const crossTex=tx.clone();crossTex.needsUpdate=true;crossTex.repeat.set(28,3);
+ asphaltAvenue.map=avenueTex;asphaltAvenue.needsUpdate=true;
+ asphaltCross.map=crossTex;asphaltCross.needsUpdate=true;
 });
+box(24,.10,244,asphaltAvenue,0,.05,30);           // avenue
+box(224,.10,24,asphaltCross,0,.06,30);           // cross street
 
-// v304: old hand-placed STI map props are disabled with the procedural city.
+// Sidewalks stop at the intersection instead of visually continuing through the road.
+for(const sx of [-16,16]){
+  box(8,.10,110,sidewalk,sx,.11,-37);
+  box(8,.10,110,sidewalk,sx,.11,97);
+}
+for(const sz of [14,46]){
+  box(100,.10,8,sidewalk,-62,.12,sz);
+  box(100,.10,8,sidewalk,62,.12,sz);
+}
+
+// Curbs are segmented at each road opening so the four corners read clearly.
+for(const cx of [-12.2,12.2]){
+  box(.45,.18,110.2,curb,cx,.13,-36.9);
+  box(.45,.18,110.2,curb,cx,.13,96.9);
+}
+for(const cz of [18.2,41.8]){
+  box(99.8,.18,.45,curb,-62.1,.13,cz);
+  box(99.8,.18,.45,curb,62.1,.13,cz);
+}
+
+// Low-cost sidewalk panel joints add scale without adding unique materials or lights.
+for(const sx of [-16,16]){
+  for(let z=-84;z<=10;z+=12)box(7.2,.016,.055,walkJoint,sx,.17,z);
+  for(let z=50;z<=144;z+=12)box(7.2,.016,.055,walkJoint,sx,.17,z);
+}
+for(const sz of [14,46]){
+  for(let x=-104;x<=-24;x+=12)box(.055,.016,7.2,walkJoint,x,.17,sz);
+  for(let x=24;x<=104;x+=12)box(.055,.016,7.2,walkJoint,x,.17,sz);
+}
+
+for(let z=-84;z<146;z+=12)box(.18,.025,5.7,lanePaint,0,.13,z);
+for(let x=-96;x<101;x+=14)box(5.7,.025,.18,lanePaint,x,.14,30);
+
+// Compact zebra crossings now sit entirely on asphalt between the curb openings.
+for(let o=-8;o<=8;o+=2)box(1.25,.03,.52,crosswalk,o,.15,19.05);
+for(let o=-8;o<=8;o+=2)box(1.25,.03,.52,crosswalk,o,.15,40.95);
+for(let o=21;o<=39;o+=2)box(.52,.03,1.25,crosswalk,-11.05,.15,o);
+for(let o=21;o<=39;o+=2)box(.52,.03,1.25,crosswalk,11.05,.15,o);
+
+const fill=new THREE.DirectionalLight(0xb3cfe4,.95);fill.position.set(28,18,35);scene.add(fill);
+const dustGeo=new THREE.BufferGeometry(),dustPts=[];for(let i=0;i<240;i++)dustPts.push((Math.random()-.5)*210,Math.random()*11,(Math.random()-.5)*250);
+dustGeo.setAttribute("position",new THREE.Float32BufferAttribute(dustPts,3));const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({size:.035,color:0xbdb6a6,transparent:true,opacity:.28}));scene.add(dust);
+function lamp(x,z,dir=1){
+ const g=new THREE.Group();
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,5.2,10),M(0x2a2f31,.45));pole.position.y=2.6;g.add(pole);
+ const arm=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,1.4,8),M(0x2a2f31,.45));arm.rotation.z=Math.PI/2;arm.position.set(.58*dir,4.95,0);g.add(arm);
+ const bulb=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),M(0xffdd9a,.22));bulb.position.set(1.20*dir,4.95,0);g.add(bulb);
+ const hood=box(.34,.08,.30,M(0x1f2425,.55),1.16*dir,5.03,0,g);
+ g.position.set(x,0,z);scene.add(g)
+}
+for(let z=-78;z<140;z+=24){lamp(-12,z,1);lamp(12,z+12,-1)}
+
+// Small street props for city feel.
+for(let z=-60;z<126;z+=28){box(.22,1.1,.22,M(0x626866,.75),-13.0,.65,z);box(.22,1.1,.22,M(0x626866,.75),13.0,.65,z+10)}
+
+// Concrete Jersey-style barriers create street chicanes / escape routes.
+// They share a material and use the existing collision system, so they stay cheap after city batching.
+const barrierConcrete=M(0x92918b,.90),barrierTop=M(0xb6b3aa,.84);
+function concreteBarrier(x,z,rot=0,len=4.6){
+ const g=new THREE.Group();
+ box(len,.62,.54,barrierConcrete,0,.38,0,g);
+ box(len*.84,.10,.58,barrierTop,0,.72,0,g);
+ box(.72,.16,.82,barrierConcrete,-len*.34,.12,0,g);
+ box(.72,.16,.82,barrierConcrete,len*.34,.12,0,g);
+ g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
+ const alongX=Math.abs(Math.cos(rot))>.7;
+ buildingColliders.push({x,z,hx:alongX?len*.50:.48,hz:alongX?.48:len*.50});
+ return g
+}
+// Staggered placement leaves walkable gaps instead of walling off whole streets.
+concreteBarrier(-4.8,-72,0,4.8);
+concreteBarrier(5.0,-30,0,4.6);
+concreteBarrier(-4.8,92,0,4.8);
+concreteBarrier(5.0,138,0,4.6);
+concreteBarrier(-72,25,Math.PI/2,4.8);
+concreteBarrier(-61,35,Math.PI/2,4.6);
+concreteBarrier(70,35,Math.PI/2,4.8);
+concreteBarrier(62,25,Math.PI/2,4.6);
+
+
+let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+let buildingId=0;
+const cityPalettes=[0x6c5a4d,0x56606a,0x8a806f,0x4f555a,0x73685d,0x7d766b,0x5f666c,0x6a4b3e];
+
+// Reserve real sidewalk and alley space based on each building's footprint.
+// This prevents wide procedural buildings from covering sidewalks after generation.
+const AVENUE_WALK_OUTER=20.0,FRONT_BUILD_EDGE=20.8,MID_BUILD_EDGE=42.5,BACK_BUILD_EDGE=62.0;
+const CROSS_SOUTH_OUTER=10.0,CROSS_NORTH_OUTER=50.0;
+function avenueBuildingX(side,innerEdge,width,setback=0){return side*(innerEdge+width*.5+setback)}
+function crossBuildingZ(north,depth,setback=0){
+ return north?CROSS_NORTH_OUTER+depth*.5+setback:CROSS_SOUTH_OUTER-depth*.5-setback
+}
+
+// Front rows along the main avenue. Every few lots become low-rise storefronts
+// so the skyline is not made entirely from medium / tall boxes.
+for(let side of [-1,1]){
+  for(let z=-86;z<144;z+=12.5){
+    if(z>16&&z<44)continue;
+    let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
+    const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),lowRise=(buildingId%6===0);
+    let w1=lowRise?8+rw*4:11+rw*5;
+    let h1=lowRise?7+rh*8:18+rh*30;
+    let d1=lowRise?9+rd*4:11+rd*6;
+    let x1=avenueBuildingX(side,FRONT_BUILD_EDGE,w1,rx*1.35);
+    addBuilding(w1,h1,d1,x1,z,base,buildingId++);
+  }
+}
+
+// Mid-depth rows are pushed outward and narrowed slightly. This guarantees a more
+// usable service alley between the front and middle rows instead of random squeeze gaps.
+for(let side of [-1,1]){
+  for(let z=-90;z<146;z+=15){
+    if(z>12&&z<48&&rnd()>.35)continue;
+    let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
+    const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),rz=rnd(),lowRise=(buildingId%8===3);
+    let w=lowRise?8+rw*4:9+rw*5;
+    let h=lowRise?8+rh*9:20+rh*36;
+    let d=lowRise?9+rd*4:10+rd*6;
+    let x=avenueBuildingX(side,MID_BUILD_EDGE,w,rx*3.5);
+    addBuilding(w,h,d,x,z+(rz-.5)*3.5,base,buildingId++);
+  }
+}
+
+// Background towers move outward too, keeping the new alleys accessible while
+// preserving a dense skyline and the existing batching strategy.
+for(let side of [-1,1]){
+  for(let z=-96;z<152;z+=18){
+    let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
+    const rw=rnd(),rh=rnd(),rd=rnd(),rx=rnd(),rz=rnd();
+    let w=11+rw*7,h=28+rh*42,d=11+rd*7,x=avenueBuildingX(side,BACK_BUILD_EDGE,w,rx*7);
+    addBuilding(w,h,d,x,z+(rz-.5)*4,base,buildingId++);
+  }
+}
+
+// Cross-street frontage mixes in a few genuinely small buildings.
+for(let x=-92;x<96;x+=14){
+  if(x>-14&&x<14)continue;
+  let base=cityPalettes[Math.floor(rnd()*cityPalettes.length)];
+  const rw=rnd(),rh=rnd(),rd=rnd(),rz1=rnd(),rz2=rnd(),lowRise=(buildingId%5===0);
+  let w=lowRise?8+rw*4:10+rw*6;
+  let h=lowRise?6.5+rh*7:14+rh*18;
+  let d=lowRise?8+rd*4:10+rd*5;
+  addBuilding(w,h,d,x,crossBuildingZ(false,d,.8+rz1*1.6),base,buildingId++);
+  addBuilding(w,h,d,x,crossBuildingZ(true,d,.8+rz2*1.6),base,buildingId++);
+}
+
+
+// Static-city shadow cleanup: decorative roofs, curbs, paint, storefront trim,
+// lamps and rooftop props no longer enter the shadow pass. Large building masses
+// still cast shadows, which preserves the city's depth without the huge draw-call cost.
+scene.traverse(o=>{
+ if(!o.isMesh)return;
+ // Static city shadows were a major GPU cost when looking down dense streets.
+ // Keep the sun/player/zombie lighting, but don't render giant building shadow maps.
+ o.castShadow=false;o.receiveShadow=false
+});
+ground.receiveShadow=true;
+
+// Merge the hundreds of separate static city meshes into a small number of material batches.
+// Collision stays unchanged because gameplay collision uses buildingColliders, not these meshes.
+function batchStaticCity(){
+ scene.updateMatrixWorld(true);
+ const buckets=new Map(),originals=[];
+ scene.traverse(o=>{
+   if(!o.isMesh||o===ground||o.isSkinnedMesh||!o.geometry||!o.material||Array.isArray(o.material))return;
+   const key=o.material.uuid+"|"+(o.castShadow?1:0)+"|"+(o.receiveShadow?1:0);
+   let b=buckets.get(key);if(!b){b={material:o.material,cast:o.castShadow,receive:o.receiveShadow,items:[]};buckets.set(key,b)}
+   b.items.push(o)
+ });
+ let batches=0,mergedObjects=0;
+ for(const b of buckets.values()){
+   if(b.items.length<2)continue;
+   const geos=[];
+   for(const o of b.items){
+     o.updateWorldMatrix(true,false);
+     const g=o.geometry.clone();g.applyMatrix4(o.matrixWorld);geos.push(g)
+   }
+   const merged=mergeGeometries(geos,false);
+   for(const g of geos)g.dispose();
+   if(!merged)continue;
+   merged.computeBoundingBox();merged.computeBoundingSphere();
+   const mesh=new THREE.Mesh(merged,b.material);
+   mesh.name="CityBatch";mesh.castShadow=b.cast;mesh.receiveShadow=b.receive;mesh.matrixAutoUpdate=false;
+   scene.add(mesh);batches++;mergedObjects+=b.items.length;originals.push(...b.items);
+ }
+ for(const o of originals){if(o.parent)o.parent.remove(o);try{o.geometry.dispose()}catch(_){}}
+ console.log("CityOutbreak city batching",{batches,mergedObjects,materials:buckets.size});
+}
+
+let stiModelTemplate=null;
+const pendingStiSedans=[];
+function installStiVisual(g){
+ if(!stiModelTemplate||!g||g.userData.stiVisual)return false;
+ while(g.children.length)g.remove(g.children[g.children.length-1]);
+ // Parked cars are static. Share the STI geometry/materials but do not let twelve
+ // separate full model hierarchies add unnecessary transform/update overhead.
+ const sti=stiModelTemplate.clone(true);
+ sti.traverse(o=>{o.matrixAutoUpdate=false;o.updateMatrix()});
+ g.add(sti);g.userData.stiVisual=true;document.documentElement.dataset.stiVisuals=String((+document.documentElement.dataset.stiVisuals||0)+1);return true;
+}
+new GLTFLoader().load("assets/2018_subaru_wrx_sti.glb",gltf=>{
+ const sti=gltf.scene;
+ sti.traverse(o=>{o.userData.externalCarAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ const b0=new THREE.Box3().setFromObject(sti),sz=new THREE.Vector3();b0.getSize(sz);
+ const horizontal=Math.max(sz.x,sz.z)||1;sti.scale.setScalar(4.90/horizontal);
+ const b1=new THREE.Box3().setFromObject(sti),ctr=new THREE.Vector3();b1.getCenter(ctr);
+ sti.position.set(-ctr.x,-b1.min.y,-ctr.z);
+ stiModelTemplate=sti;
+ for(const sedan of pendingStiSedans)installStiVisual(sedan);
+ pendingStiSedans.length=0;
+ // Merge all twelve static STI visuals after the model has been installed.
+ batchLoadedStiCars();
+},undefined,err=>{document.documentElement.dataset.stiLoadError=String(err&&err.message||err);console.warn("WRX STI GLB load failed; parked-car collision anchors remain",err)});
+
+function car(x,z,rot=0){
+ // v182: STI-only parked-car visuals. Keep the proven v181 oriented collision footprint.
+ const g=new THREE.Group(),SL=4.90,SW=1.85;
+ g.position.set(x,0,z);g.rotation.y=rot;
+ g.userData.carHalfW=SW*.48;g.userData.carHalfL=SL*.49;g.userData.carType=0;
+ if(stiModelTemplate)installStiVisual(g);
+ else pendingStiSedans.push(g);
+ scene.add(g);
+ return g
+}
 const parkedCars=[];
+[
+ // v190 performance pass: keep only three STI props for now. More varied cars can be added later.
+ [-8,-55,0],[8,78,Math.PI],[32,35,Math.PI/2]
+].forEach(c=>parkedCars.push(car(...c)));
 
 function carPointCollision(c,x,z,pad=.35){
  const dx=x-c.position.x,dz=z-c.position.z,a=c.rotation.y,co=Math.cos(a),si=Math.sin(a);
@@ -441,7 +526,6 @@ function carPointCollision(c,x,z,pad=.35){
  return qx*qx+qz*qz<pad*pad;
 }
 function zombiePointBlocked(x,z,r=.50){
- if(!insideHavanaPlayableBounds(x,z,r))return true;
  if(insideBuilding(x,z,r))return true;
  for(const c of parkedCars)if(carPointCollision(c,x,z,r))return true;
  return false;
@@ -546,13 +630,9 @@ function buildZombieRoute(sx,sz,gx,gz){
  const margin=34,cell=ZNAV_CELL;
  let minX=Math.floor((Math.min(sx,gx)-margin)/cell),maxX=Math.ceil((Math.max(sx,gx)+margin)/cell);
  let minZ=Math.floor((Math.min(sz,gz)-margin)/cell),maxZ=Math.ceil((Math.max(sz,gz)+margin)/cell);
- // Clamp pathfinding to the loaded Havana map instead of the obsolete procedural-city range.
- const navMinX=havanaPlayableBounds?havanaPlayableBounds.minX:ZNAV_MIN_X;
- const navMaxX=havanaPlayableBounds?havanaPlayableBounds.maxX:ZNAV_MAX_X;
- const navMinZ=havanaPlayableBounds?havanaPlayableBounds.minZ:ZNAV_MIN_Z;
- const navMaxZ=havanaPlayableBounds?havanaPlayableBounds.maxZ:ZNAV_MAX_Z;
- minX=Math.max(Math.floor(navMinX/cell),minX);maxX=Math.min(Math.ceil(navMaxX/cell),maxX);
- minZ=Math.max(Math.floor(navMinZ/cell),minZ);maxZ=Math.min(Math.ceil(navMaxZ/cell),maxZ);
+ // Search the full playable city instead of the old central-only rectangle.
+ minX=Math.max(Math.floor(ZNAV_MIN_X/cell),minX);maxX=Math.min(Math.ceil(ZNAV_MAX_X/cell),maxX);
+ minZ=Math.max(Math.floor(ZNAV_MIN_Z/cell),minZ);maxZ=Math.min(Math.ceil(ZNAV_MAX_Z/cell),maxZ);
 
  let s=navNearestOpen(Math.round(sx/cell),Math.round(sz/cell),minX,maxX,minZ,maxZ);
  let g=navNearestOpen(Math.round(gx/cell),Math.round(gz/cell),minX,maxX,minZ,maxZ);
@@ -2344,12 +2424,10 @@ function updateDrops(dt){
 const living=()=>zombies.filter(z=>!z.dead);
 const activeFrame=[];
 function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
-const MAX_ACTIVE_ZOMBIES=30;
+const MAX_ACTIVE_ZOMBIES=20;
 const waveRemainingCount=()=>livingCount()+Math.max(0,waveTarget-waveSpawned);
 function validZombieSpawn(x,z){
- if(havanaPlayableBounds){
-   if(!insideHavanaPlayableBounds(x,z,HAVANA_SPAWN_INSET))return false;
- }else if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
+ if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
  if(insideBuilding(x,z,.8))return false;
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
  return Math.hypot(x-px,z-pz)>11;
@@ -2385,24 +2463,6 @@ function findReachableZombieSpawn(minDist,maxDist){
  }
  return null;
 }
-function findBossStreetSpawn(minDist=18,maxDist=32){
- // Bosses must have direct open access to the player at spawn time. Unlike normal
- // zombies, do not accept an A* route from behind/inside Havana building shells.
- for(let tries=0;tries<48;tries++){
-   const a=rnd()*Math.PI*2,dist=minDist+rnd()*(maxDist-minDist);
-   const x=px+Math.sin(a)*dist,z=pz+Math.cos(a)*dist;
-   if(validZombieSpawn(x,z)&&zombieRouteClear(x,z,px,pz,ZNAV_PAD))return{x,z};
- }
- // Deterministic ring sweep gives the boss a broad set of street/alley candidates.
- const startA=rnd()*Math.PI*2;
- for(let ring=Math.max(12,minDist-4);ring<=Math.max(40,maxDist+8);ring+=3){
-   for(let k=0;k<32;k++){
-     const a=startA+k*(Math.PI*2/32),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
-     if(validZombieSpawn(x,z)&&zombieRouteClear(x,z,px,pz,ZNAV_PAD))return{x,z};
-   }
- }
- return null;
-}
 function spawnOneZombie(i){
  const p=findReachableZombieSpawn(14,32);
  if(!p)return false;
@@ -2422,24 +2482,15 @@ function spawnWave(){
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=findBossStreetSpawn(18,30);
+   const bossSpawn=findReachableZombieSpawn(18,30);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
-     // Final safety sweep: still require direct open access. Never deliberately
-     // place a boss behind a Havana wall just to force the wave to start.
-     const wide=findBossStreetSpawn(12,40);
-     if(wide){sx=wide.x;sz=wide.z;ok=true}
+     // Extremely defensive fallback: keep boss-wave behavior intact even if the
+     // route search cannot find a candidate during this frame. The expanded A*
+     // will still take over immediately after spawn.
+     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=18+rnd()*10;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
    }
-   if(!ok){
-     // Extremely rare fallback: spawn just outside the player's immediate area
-     // only if the straight route is actually clear.
-     for(let ring=12;ring<=36&&!ok;ring+=2){
-       for(let k=0;k<48&&!ok;k++){
-         const a=k*(Math.PI*2/48),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
-         if(validZombieSpawn(x,z)&&zombieRouteClear(x,z,px,pz,.55)){sx=x;sz=z;ok=true}
-       }
-     }
-   }
+   if(!ok){const a=rnd()*Math.PI*2,dist=22+rnd()*9;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
@@ -2852,13 +2903,7 @@ function fire(){
      const limbHit=part==="leftArm"||part==="rightArm"||part==="leftLeg"||part==="rightLeg";
      const healthDamage=part==="leftArm"||part==="rightArm"?shotDamage*.15:
                         part==="leftLeg"||part==="rightLeg"?shotDamage*.18:shotDamage;
-     if(hs){
-       if(z.kind==="boss")z.hp-=Math.max(shotDamage*2.6,4.5);
-       else{
-         const headshotToughness=1+Math.max(0,wave-1)*.2;
-         z.hp-=shotDamage*3/headshotToughness;
-       }
-     }else z.hp-=healthDamage;
+     if(hs){if(z.kind==="boss")z.hp-=Math.max(shotDamage*2.6,4.5);else z.hp=0}else z.hp-=healthDamage;
      if(limbHit)limbDamage(z,part,weapon==="shotgun"?shotDamage*2:shotDamage);
      impactFX(hit.point);burst(hit.point,false);stagger(z,hs);didHit=true;headHit=headHit||hs;
      if(z.hp<=0&&!z.dead)killZ(z,hs,hit.point);
@@ -3336,7 +3381,7 @@ for(const c of parkedCars){
 }
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
 resolvePlayerZombieContact(oldx,oldz);
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.80,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
