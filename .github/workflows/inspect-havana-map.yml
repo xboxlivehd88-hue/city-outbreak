@@ -1,0 +1,114 @@
+name: Inspect Havana Map GLB
+
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-havana-map.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect GLB structure and bounds
+        run: |
+          python3 - <<'PY'
+          import json,struct,math,os
+          p='assets/modular_havana_street__low-poly_asset_kit.glb'
+          data=open(p,'rb').read()
+          print('FILE_BYTES',len(data))
+          if len(data)<20: raise SystemExit('too small')
+          magic,ver,total=struct.unpack_from('<4sII',data,0)
+          print('MAGIC',magic,'VERSION',ver,'DECLARED_LENGTH',total,'ACTUAL_LENGTH',len(data))
+          if magic!=b'glTF' or ver!=2 or total!=len(data): raise SystemExit('invalid GLB header')
+          off=12; chunks=[]
+          while off+8<=len(data):
+              n,t=struct.unpack_from('<II',data,off);off+=8
+              chunks.append((t,n,off));off+=n
+          print('CHUNKS',[(hex(t),n) for t,n,_ in chunks])
+          jchunk=next((x for x in chunks if x[0]==0x4E4F534A),None)
+          if not jchunk: raise SystemExit('missing JSON chunk')
+          _,n,st=jchunk
+          g=json.loads(data[st:st+n].decode('utf-8').rstrip('\x00 \t\r\n'))
+          print('ASSET',g.get('asset'))
+          print('SCENES',len(g.get('scenes',[])),'DEFAULT_SCENE',g.get('scene'))
+          for key in ['nodes','meshes','materials','textures','images','samplers','accessors','bufferViews','buffers','animations','skins','cameras']:
+              print(key.upper(),len(g.get(key,[])))
+          print('EXTENSIONS_USED',g.get('extensionsUsed',[]))
+          print('EXTENSIONS_REQUIRED',g.get('extensionsRequired',[]))
+          uris=[]
+          for b in g.get('buffers',[]):
+              if b.get('uri'): uris.append(('buffer',b.get('uri')))
+          for im in g.get('images',[]):
+              if im.get('uri'): uris.append(('image',im.get('uri')))
+          print('EXTERNAL_URIS',uris)
+          print('EMBEDDED_IMAGES',sum(1 for im in g.get('images',[]) if 'bufferView' in im))
+          print('IMAGE_MIMES',sorted(set(im.get('mimeType','') for im in g.get('images',[]) if im.get('mimeType'))))
+          nodes=g.get('nodes',[]);meshes=g.get('meshes',[]);acc=g.get('accessors',[])
+          parents=[None]*len(nodes)
+          for i,node in enumerate(nodes):
+              for ch in node.get('children',[]): parents[ch]=i
+          def mm(a,b):
+              return [[sum(a[r][k]*b[k][c] for k in range(4)) for c in range(4)] for r in range(4)]
+          def local(node):
+              if 'matrix' in node:
+                  m=node['matrix']; return [[m[c*4+r] for c in range(4)] for r in range(4)]
+              t=node.get('translation',[0,0,0]);s=node.get('scale',[1,1,1]);q=node.get('rotation',[0,0,0,1]);x,y,z,w=q
+              R=[[1-2*y*y-2*z*z,2*x*y-2*z*w,2*x*z+2*y*w,0],
+                 [2*x*y+2*z*w,1-2*x*x-2*z*z,2*y*z-2*x*w,0],
+                 [2*x*z-2*y*w,2*y*z+2*x*w,1-2*x*x-2*y*y,0],
+                 [0,0,0,1]]
+              S=[[s[0],0,0,0],[0,s[1],0,0],[0,0,s[2],0],[0,0,0,1]]
+              M=mm(R,S);M[0][3]=t[0];M[1][3]=t[1];M[2][3]=t[2];return M
+          cache={}
+          def world(i):
+              if i in cache:return cache[i]
+              M=local(nodes[i]);pa=parents[i]
+              cache[i]=M if pa is None else mm(world(pa),M)
+              return cache[i]
+          def tx(M,p):
+              x,y,z=p
+              return (M[0][0]*x+M[0][1]*y+M[0][2]*z+M[0][3],
+                      M[1][0]*x+M[1][1]*y+M[1][2]*z+M[1][3],
+                      M[2][0]*x+M[2][1]*y+M[2][2]*z+M[2][3])
+          def mesh_bounds(mi):
+              lo=[1e30]*3;hi=[-1e30]*3;ok=False;tris=0
+              for pr in meshes[mi].get('primitives',[]):
+                  ai=pr.get('attributes',{}).get('POSITION')
+                  if ai is not None:
+                      a=acc[ai]
+                      if 'min' in a and 'max' in a:
+                          ok=True
+                          for k in range(3): lo[k]=min(lo[k],a['min'][k]);hi[k]=max(hi[k],a['max'][k])
+                  ii=pr.get('indices')
+                  if ii is not None: tris+=acc[ii].get('count',0)//3
+                  elif ai is not None: tris+=acc[ai].get('count',0)//3
+              return (lo,hi,tris) if ok else None
+          scene_idx=g.get('scene',0)
+          roots=(g.get('scenes') or [{}])[scene_idx].get('nodes',[]) if g.get('scenes') else [i for i,p in enumerate(parents) if p is None]
+          descendants=set()
+          stack=list(roots)
+          while stack:
+              i=stack.pop()
+              if i in descendants: continue
+              descendants.add(i);stack.extend(nodes[i].get('children',[]))
+          glo=[1e30]*3;ghi=[-1e30]*3;mesh_nodes=0;triangles=0;named=[]
+          for i in sorted(descendants):
+              mi=nodes[i].get('mesh')
+              if mi is None: continue
+              b=mesh_bounds(mi)
+              if not b: continue
+              lo,hi,tris=b;triangles+=tris;mesh_nodes+=1;M=world(i)
+              pts=[tx(M,(x,y,z)) for x in (lo[0],hi[0]) for y in (lo[1],hi[1]) for z in (lo[2],hi[2])]
+              mn=[min(p[k] for p in pts) for k in range(3)];mx=[max(p[k] for p in pts) for k in range(3)]
+              for k in range(3):glo[k]=min(glo[k],mn[k]);ghi[k]=max(ghi[k],mx[k])
+              named.append((nodes[i].get('name') or meshes[mi].get('name') or f'node_{i}',mn,mx,tris))
+          print('ROOT_NODES',[(i,nodes[i].get('name','')) for i in roots])
+          print('SCENE_MESH_NODES',mesh_nodes,'APPROX_TRIANGLES',triangles)
+          print('SCENE_BOUNDS_MIN',tuple(round(v,4) for v in glo))
+          print('SCENE_BOUNDS_MAX',tuple(round(v,4) for v in ghi))
+          print('SCENE_SIZE',tuple(round(ghi[k]-glo[k],4) for k in range(3)))
+          print('FIRST_80_MESH_NODES')
+          for name,mn,mx,tris in named[:80]:
+              print(name,'center',tuple(round((mn[k]+mx[k])/2,3) for k in range(3)),'size',tuple(round(mx[k]-mn[k],3) for k in range(3)),'tris',tris)
+          PY
