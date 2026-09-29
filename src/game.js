@@ -315,7 +315,58 @@ const NEW_CITY_X_OFFSET=21.33575;
 const NEW_CITY_Y_OFFSET=28.68275;
 const NEW_CITY_Z_OFFSET=8.25;
 let newCityRoot=null;
+const newCitySpawnZones=[];
+const playerGroundRaycaster=new THREE.Raycaster();
+const playerGroundNormal=new THREE.Vector3();
+const playerGroundNormalMatrix=new THREE.Matrix3();
+const PLAYER_STEP_UP=.62,PLAYER_STEP_DOWN=1.35;
+let playerGroundY=0;
 buildingColliders.length=0;
+
+function buildNewCitySpawnZones(map){
+ newCitySpawnZones.length=0;
+ map.updateMatrixWorld(true);
+ const box3=new THREE.Box3(),size3=new THREE.Vector3();
+ map.traverse(o=>{
+   if(!o.isMesh||o.isSkinnedMesh)return;
+   const name=o.name||"";
+   // Restrict zombie spawns to true outdoor road / parking ground pieces.
+   // Do not use the large BG block planes because buildings sit on top of them.
+   if(!(/^Road_\d/i.test(name)||/^ParkingBG_/i.test(name)))return;
+   box3.setFromObject(o);box3.getSize(size3);
+   if(size3.y>.55||size3.x<1.4||size3.z<1.4)return;
+   newCitySpawnZones.push({
+     minX:box3.min.x,maxX:box3.max.x,
+     minZ:box3.min.z,maxZ:box3.max.z
+   });
+ });
+ document.documentElement.dataset.newCitySpawnZones=String(newCitySpawnZones.length);
+ console.log("CITY OUTBREAK: outdoor zombie spawn zones built",{count:newCitySpawnZones.length});
+}
+function pointOnNewCitySpawnZone(x,z,pad=.55){
+ for(const zone of newCitySpawnZones){
+   if(x>zone.minX+pad&&x<zone.maxX-pad&&z>zone.minZ+pad&&z<zone.maxZ-pad)return true;
+ }
+ return false;
+}
+function samplePlayerGroundY(x,z,currentY){
+ if(!newCityRoot)return currentY;
+ playerGroundRaycaster.ray.origin.set(x,currentY+PLAYER_STEP_UP+.08,z);
+ playerGroundRaycaster.ray.direction.set(0,-1,0);
+ playerGroundRaycaster.near=0;
+ playerGroundRaycaster.far=PLAYER_STEP_UP+PLAYER_STEP_DOWN+.22;
+ const hits=playerGroundRaycaster.intersectObject(newCityRoot,true);
+ for(const hit of hits){
+   if(!hit.face||!hit.object||!hit.object.isMesh)continue;
+   playerGroundNormalMatrix.getNormalMatrix(hit.object.matrixWorld);
+   playerGroundNormal.copy(hit.face.normal).applyMatrix3(playerGroundNormalMatrix).normalize();
+   // Only stand on upward-facing ground/treads; vertical walls remain wall collision.
+   if(playerGroundNormal.y<.42)continue;
+   const dy=hit.point.y-currentY;
+   if(dy<=PLAYER_STEP_UP&&dy>=-PLAYER_STEP_DOWN)return hit.point.y;
+ }
+ return currentY;
+}
 
 // Gameplay uses this deterministic RNG in many systems; keep it independent of map generation.
 let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
@@ -430,6 +481,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
    }
  });
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
+ buildNewCitySpawnZones(map);
  buildNewCityCollision(map);
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.newCityLoaded="1";
@@ -2362,6 +2414,7 @@ const MAX_ACTIVE_ZOMBIES=30;
 const waveRemainingCount=()=>livingCount()+Math.max(0,waveTarget-waveSpawned);
 function validZombieSpawn(x,z){
  if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
+ if(!pointOnNewCitySpawnZone(x,z,.55))return false;
  if(insideBuilding(x,z,.8))return false;
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
  return Math.hypot(x-px,z-pz)>22;
@@ -2374,24 +2427,34 @@ function reachableZombieSpawn(x,z,allowRoute=true){
  return route!==null&&route.length>0;
 }
 function findReachableZombieSpawn(minDist,maxDist){
- // Cheap pass first: prefer a spawn with direct street/alley access to the player.
- for(let tries=0;tries<14;tries++){
-   const a=rnd()*Math.PI*2,dist=minDist+rnd()*(maxDist-minDist);
-   const x=px+Math.sin(a)*dist,z=pz+Math.cos(a)*dist;
-   if(reachableZombieSpawn(x,z,false))return{x,z};
+ // Sample the GLB's real road surfaces first. This prevents enclosed building
+ // interiors from becoming valid spawn locations just because they are empty.
+ if(newCitySpawnZones.length){
+   for(let tries=0;tries<42;tries++){
+     const zone=newCitySpawnZones[Math.floor(rnd()*newCitySpawnZones.length)];
+     const pad=.65,usableX=zone.maxX-zone.minX-pad*2,usableZ=zone.maxZ-zone.minZ-pad*2;
+     if(usableX<=0||usableZ<=0)continue;
+     const x=zone.minX+pad+rnd()*usableX,z=zone.minZ+pad+rnd()*usableZ;
+     const dist=Math.hypot(x-px,z-pz);
+     if(dist<minDist||dist>maxDist)continue;
+     if(reachableZombieSpawn(x,z,false))return{x,z};
+   }
+   for(let tries=0;tries<32;tries++){
+     const zone=newCitySpawnZones[Math.floor(rnd()*newCitySpawnZones.length)];
+     const pad=.65,usableX=zone.maxX-zone.minX-pad*2,usableZ=zone.maxZ-zone.minZ-pad*2;
+     if(usableX<=0||usableZ<=0)continue;
+     const x=zone.minX+pad+rnd()*usableX,z=zone.minZ+pad+rnd()*usableZ;
+     const dist=Math.hypot(x-px,z-pz);
+     if(dist<minDist||dist>maxDist)continue;
+     if(reachableZombieSpawn(x,z,true))return{x,z};
+   }
  }
- // Only blocked candidates pay for A*. This keeps wave starts from doing dozens
- // of expensive path searches while still allowing zombies to emerge around corners.
- for(let tries=0;tries<10;tries++){
-   const a=rnd()*Math.PI*2,dist=minDist+rnd()*(maxDist-minDist);
-   const x=px+Math.sin(a)*dist,z=pz+Math.cos(a)*dist;
-   if(reachableZombieSpawn(x,z,true))return{x,z};
- }
- // Deterministic sweep is the final guarantee against a trapped random spawn.
+ // Deterministic ring sweep remains a fallback, but validZombieSpawn still
+ // requires the point to land on a real road/parking surface.
  const startA=rnd()*Math.PI*2;
  for(let ring=minDist+2;ring<=maxDist;ring+=4){
-   for(let k=0;k<16;k++){
-     const a=startA+k*(Math.PI*2/16),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
+   for(let k=0;k<24;k++){
+     const a=startA+k*(Math.PI*2/24),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
      if(reachableZombieSpawn(x,z,true))return{x,z};
    }
  }
@@ -3320,7 +3383,10 @@ for(const c of parkedCars){
 }
 let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
 resolvePlayerZombieContact(oldx,oldz);
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,1.65*PLAYER_WORLD_SCALE,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
+const targetGroundY=samplePlayerGroundY(px,pz,playerGroundY);
+const groundFollowRate=targetGroundY>playerGroundY?18:13;
+playerGroundY=THREE.MathUtils.lerp(playerGroundY,targetGroundY,Math.min(1,dt*groundFollowRate));
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,playerGroundY+1.65*PLAYER_WORLD_SCALE,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
@@ -3755,7 +3821,7 @@ function frame(t){
  requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame);
-function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();setupResetButtons(reset);
 setupControlsModal();
 const onKeyDown=e=>{let k=e.key.toLowerCase(),gameKey=["w","a","s","d","r","g","n","1","2","3","4","5","6","7","8","shift"].includes(k);if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(k==="7")setWeapon("m240");if(k==="8")setWeapon("awm");if(gameKey)e.preventDefault()};
