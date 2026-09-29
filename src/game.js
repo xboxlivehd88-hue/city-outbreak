@@ -479,91 +479,49 @@ function buildNewCityCollision(map){
  });
 }
 
-// v338: keep the same 15 authored lamp replacements, but move each pole to the
-// curb edge on the side opposite the nearest PowerLines_01 utility pole. The new
-// lamp arm points inward over the roadway. No additional lamps are created.
+// v336: true one-for-one replacement of the city's 15 authored Light_01 lamps.
+// Use each original lamp root's exact world origin and yaw. No extra lamps are
+// added in this build; power-line-side placement will be handled only after these
+// replacements are visually approved.
 const STREET_LAMP_URL="assets/low_poly_street_light.glb";
 const STREET_LAMP_HEIGHT_SCALE=1.40;
-const STREET_LAMP_CURB_OFFSET=.42;
 const streetLampInstances=[];
 
-function zoneDistance(zone,x,z){
- const dx=x<zone.minX?zone.minX-x:x>zone.maxX?x-zone.maxX:0;
- const dz=z<zone.minZ?zone.minZ-z:z>zone.maxZ?z-zone.maxZ:0;
- return Math.hypot(dx,dz);
-}
-function nearestStreetSegment(x,z){
- let best=null,bestScore=Infinity;
- for(const zone of newCitySpawnZones){
-   if(zone.type!=="road")continue;
-   const w=zone.maxX-zone.minX,d=zone.maxZ-zone.minZ;
-   const long=Math.max(w,d),short=Math.min(w,d);
-   if(long<4||short<1.8)continue;
-   // Prefer elongated street pieces over square intersection slabs.
-   const ratio=long/Math.max(.01,short);
-   const shapePenalty=ratio<1.35?4:ratio<1.65?1.5:0;
-   const score=zoneDistance(zone,x,z)+shapePenalty;
-   if(score<bestScore){bestScore=score;best=zone}
- }
- return best;
-}
-function scanCurbsideLampPlacements(map){
+function scanExactCityLampAnchors(map){
  map.updateMatrixWorld(true);
- const lampRoots=[],powerRoots=[];
+ const lampRoots=[];
  map.traverse(o=>{
    if(o===map||o.isMesh)return;
-   const name=o.name||"";
-   if(/^Light_01(?:$|_)/i.test(name)){lampRoots.push(o);return}
-   if(/^PowerLines_01(?:$|_)/i.test(name))powerRoots.push(o);
+   if(/^Light_01(?:$|_)/i.test(o.name||""))lampRoots.push(o);
  });
- const pos=new THREE.Vector3(),polePos=new THREE.Vector3();
- const powerPoles=powerRoots.map(root=>{
-   root.getWorldPosition(polePos);
-   return{x:polePos.x,z:polePos.z};
- });
- const placements=[];
+ const replacements=[];
+ const pos=new THREE.Vector3(),center=new THREE.Vector3(),box=new THREE.Box3();
  for(const root of lampRoots){
+   // The original lamp's root is its pole base. Its bounding-box center is
+   // shifted toward the lamp arm/head, so this vector gives the authored
+   // direction the old fixture actually faced.
    root.getWorldPosition(pos);
-   const zone=nearestStreetSegment(pos.x,pos.z);
-   let x=pos.x,z=pos.z,rotY=0,y=pos.y;
-   if(zone){
-     const w=zone.maxX-zone.minX,d=zone.maxZ-zone.minZ,horizontal=w>=d;
-     const cx=(zone.minX+zone.maxX)*.5,cz=(zone.minZ+zone.maxZ)*.5;
-     let nearestPole=null,nearestPoleD=Infinity;
-     for(const p of powerPoles){
-       const pd=Math.hypot(p.x-pos.x,p.z-pos.z);
-       if(pd<nearestPoleD){nearestPoleD=pd;nearestPole=p}
-     }
-     let lampSide;
-     if(horizontal){
-       const powerSide=nearestPole&&nearestPoleD<24?(nearestPole.z>=cz?1:-1):(pos.z>=cz?-1:1);
-       lampSide=-powerSide;
-       x=THREE.MathUtils.clamp(pos.x,zone.minX+.55,zone.maxX-.55);
-       z=lampSide>0?zone.maxZ+STREET_LAMP_CURB_OFFSET:zone.minZ-STREET_LAMP_CURB_OFFSET;
-       rotY=lampSide>0?Math.PI*.5:-Math.PI*.5;
-     }else{
-       const powerSide=nearestPole&&nearestPoleD<24?(nearestPole.x>=cx?1:-1):(pos.x>=cx?-1:1);
-       lampSide=-powerSide;
-       z=THREE.MathUtils.clamp(pos.z,zone.minZ+.55,zone.maxZ-.55);
-       x=lampSide>0?zone.maxX+STREET_LAMP_CURB_OFFSET:zone.minX-STREET_LAMP_CURB_OFFSET;
-       rotY=lampSide>0?Math.PI:0;
-     }
-     y=samplePlayerGroundY(x,z,pos.y);
-   }
-   placements.push({x,y,z,rotY,kind:"replacement",sourceName:root.name||""});
+   box.setFromObject(root).getCenter(center);
+   const dx=center.x-pos.x,dz=center.z-pos.z;
+   const rotY=Math.hypot(dx,dz)>.01?Math.atan2(-dz,dx):0;
+   replacements.push({
+     x:pos.x,y:pos.y,z:pos.z,
+     rotY,
+     kind:"replacement",
+     sourceName:root.name||""
+   });
    root.traverse(n=>{n.userData.replacedStreetLamp=true});
    root.visible=false;
  }
- document.documentElement.dataset.authoredLampMatches=String(placements.length);
- document.documentElement.dataset.streetLampReplacementCount=String(placements.length);
+ document.documentElement.dataset.authoredLampMatches=String(replacements.length);
+ document.documentElement.dataset.streetLampReplacementCount=String(replacements.length);
  document.documentElement.dataset.streetLampAddedCount="0";
- console.log("CITY OUTBREAK: curbside one-for-one lamp placements built",{
-   replacements:placements.length,curbOffset:STREET_LAMP_CURB_OFFSET,
-   names:placements.map(p=>p.sourceName)
+ console.log("CITY OUTBREAK: one-for-one lamp anchors scanned",{
+   replacements:replacements.length,
+   names:replacements.map(p=>p.sourceName)
  });
- return placements;
+ return replacements;
 }
-
 function addStreetLamps(placements){
  if(streetLampInstances.length||!placements.length)return;
  new GLTFLoader().load(STREET_LAMP_URL,gltf=>{
@@ -611,7 +569,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  });
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
  buildNewCitySpawnZones(map);
- const streetLampPlacements=scanCurbsideLampPlacements(map);
+ const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
  addStreetLamps(streetLampPlacements);
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
