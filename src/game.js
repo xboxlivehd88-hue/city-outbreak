@@ -75,7 +75,7 @@ const TRAILER_PARK_SCALE=1.25;
 const TRAILER_PARK_Y_OFFSET=.97;
 const TRAILER_COLLISION_SPAWN_X=0,TRAILER_COLLISION_SPAWN_Z=-15,TRAILER_COLLISION_SPAWN_PAD=.90;
 let externalMapBounds=null,trailerParkRoot=null,playerGroundY=0;
-const trailerWalkableMeshes=[],trailerInteriorSpawns=[],trailerWalkRay=new THREE.Raycaster(),trailerWalkOrigin=new THREE.Vector3(),trailerWalkDown=new THREE.Vector3(0,-1,0);
+const trailerWalkableMeshes=[],trailerInteriorSpawns=[],trailerDoorPassages=[],trailerWalkRay=new THREE.Raycaster(),trailerWalkOrigin=new THREE.Vector3(),trailerWalkDown=new THREE.Vector3(0,-1,0);
 
 function trailerColliderOverlapsSpawn(c){
  return TRAILER_COLLISION_SPAWN_X>c.x-c.hx-TRAILER_COLLISION_SPAWN_PAD&&
@@ -145,10 +145,10 @@ function trailerDoorInfo(homeBox,doorBox){
  ].sort((a,b)=>a[1]-b[1]);
  const side=sides[0][0],gapHalf=((side==="minX"||side==="maxX")?ds.z:ds.x)*.5+.72;
  let exitX=dc.x,exitZ=dc.z,corridor;
- if(side==="minX"){exitX=homeBox.min.x-.82;corridor={minX:homeBox.min.x-1.15,maxX:homeBox.min.x+.35,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
- else if(side==="maxX"){exitX=homeBox.max.x+.82;corridor={minX:homeBox.max.x-.35,maxX:homeBox.max.x+1.15,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
- else if(side==="minZ"){exitZ=homeBox.min.z-.82;corridor={minX:dc.x-gapHalf,maxX:dc.x+gapHalf,minZ:homeBox.min.z-1.15,maxZ:homeBox.min.z+.35}}
- else{exitZ=homeBox.max.z+.82;corridor={minX:dc.x-gapHalf,maxX:dc.x+gapHalf,minZ:homeBox.max.z-.35,maxZ:homeBox.max.z+1.15}}
+ if(side==="minX"){exitX=homeBox.min.x-.82;corridor={minX:homeBox.min.x-3.6,maxX:homeBox.min.x+1.15,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
+ else if(side==="maxX"){exitX=homeBox.max.x+.82;corridor={minX:homeBox.max.x-1.15,maxX:homeBox.max.x+3.6,minZ:dc.z-gapHalf,maxZ:dc.z+gapHalf}}
+ else if(side==="minZ"){exitZ=homeBox.min.z-.82;corridor={minX:dc.x-gapHalf,maxX:dc.x+gapHalf,minZ:homeBox.min.z-3.6,maxZ:homeBox.min.z+1.15}}
+ else{exitZ=homeBox.max.z+.82;corridor={minX:dc.x-gapHalf,maxX:dc.x+gapHalf,minZ:homeBox.max.z-1.15,maxZ:homeBox.max.z+3.6}}
  return{side,dc,ds,gapHalf,exitX,exitZ,corridor};
 }
 function addTrailerHomePerimeterCollision(homeBox,doorBox,source){
@@ -256,6 +256,7 @@ function buildTrailerParkCollision(map){
  buildingColliders.length=0;
  trailerWalkableMeshes.length=0;
  trailerInteriorSpawns.length=0;
+ trailerDoorPassages.length=0;
  map.updateMatrixWorld(true);
  const homes=new Map(),doors=[],linear=[],railings=[],props=[];
  map.traverse(o=>{
@@ -303,7 +304,7 @@ function buildTrailerParkCollision(map){
    if(addTrailerHomePerimeterCollision(shell,doorBox,key)>0)homeCount++;
    if(doorBox){
      const info=trailerDoorInfo(shell,doorBox);
-     if(info)doorCorridors.push(info.corridor);
+     if(info){doorCorridors.push(info.corridor);trailerDoorPassages.push(info.corridor)}
      addTrailerInteriorSpawnPoints(shell,home.floor,doorBox,key);
    }
  }
@@ -315,12 +316,14 @@ function buildTrailerParkCollision(map){
  document.documentElement.dataset.trailerParkCollision="1";
  document.documentElement.dataset.trailerParkColliderCount=String(buildingColliders.length);
  document.documentElement.dataset.trailerParkIndoorSpawns=String(trailerInteriorSpawns.length);
+ document.documentElement.dataset.trailerParkDoorPassages=String(trailerDoorPassages.length);
  console.log("CITY OUTBREAK: Trailer Park collision built",{
    total:buildingColliders.length,
    homes:homeCount,
    fenceAndRailingSegments:linearCount,
    props:propCount,
    exteriorDoorsRemoved:doors.length,
+   doorwayPassages:trailerDoorPassages.length,
    indoorSpawnPoints:trailerInteriorSpawns.length,
    spawnProtected:true
  });
@@ -515,7 +518,12 @@ function addBuilding(w,h,d,x,z,base,variant){
 
 function insideBuilding(x,z,r=.45){
  if(externalMapBounds&&(x<externalMapBounds.minX+r||x>externalMapBounds.maxX-r||z<externalMapBounds.minZ+r||z>externalMapBounds.maxZ-r))return true;
+ const inTrailerDoorway=trailerDoorPassages.some(p=>x>p.minX&&x<p.maxX&&z>p.minZ&&z<p.maxZ);
  for(const b of buildingColliders){
+   const source=String(b.source||"");
+   // A real exterior doorway is a guaranteed passage through only the trailer wall
+   // and deck railing. Fences, props, cars and all collision outside the doorway remain solid.
+   if(inTrailerDoorway&&(source.includes(":wall")||source.includes(":rail")))continue;
    const rr=(r===.62&&Number.isFinite(b.playerRadius))?b.playerRadius:r;
    if(x>b.x-b.hx-rr&&x<b.x+b.hx+rr&&z>b.z-b.hz-rr&&z<b.z+b.hz+rr)return true
  }
