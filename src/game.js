@@ -8,7 +8,7 @@ import {showTransientMessage,clearTransientMessage,setupControlsModal,setupReset
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
-import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=303";
+import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -1839,7 +1839,7 @@ function rolledZombieKind(w,roll){
  return "shambler";
 }
 
-const PLAYER_WORLD_SCALE=1.15;
+const PLAYER_WORLD_SCALE=1.20;
 const ZOMBIE_WORLD_SCALE=1.15;
 
 function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
@@ -2358,7 +2358,7 @@ function updateDrops(dt){
 const living=()=>zombies.filter(z=>!z.dead);
 const activeFrame=[];
 function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
-const MAX_ACTIVE_ZOMBIES=20;
+const MAX_ACTIVE_ZOMBIES=30;
 const waveRemainingCount=()=>livingCount()+Math.max(0,waveTarget-waveSpawned);
 function validZombieSpawn(x,z){
  if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
@@ -2838,7 +2838,7 @@ function fire(){
      const limbHit=part==="leftArm"||part==="rightArm"||part==="leftLeg"||part==="rightLeg";
      const healthDamage=part==="leftArm"||part==="rightArm"?shotDamage*.15:
                         part==="leftLeg"||part==="rightLeg"?shotDamage*.18:shotDamage;
-     if(hs){if(z.kind==="boss")z.hp-=Math.max(shotDamage*2.6,4.5);else z.hp=0}else z.hp-=healthDamage;
+     if(hs){if(z.kind==="boss")z.hp-=Math.max(shotDamage*2.6,4.5);else{const headshotToughness=1+Math.max(0,wave-1)*.2;z.hp-=shotDamage*3/headshotToughness}}else z.hp-=healthDamage;
      if(limbHit)limbDamage(z,part,weapon==="shotgun"?shotDamage*2:shotDamage);
      impactFX(hit.point);burst(hit.point,false);stagger(z,hs);didHit=true;headHit=headHit||hs;
      if(z.hp<=0&&!z.dead)killZ(z,hs,hit.point);
@@ -3333,9 +3333,9 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.position.z+=weaponContact*contactSpec.retract;
  gun.rotation.x+=weaponContact*contactSpec.tilt;
  if(weapon==="rifle"&&m4ViewRoot){
-   // Hip-fire only: move the M4 a touch farther from the camera so the rear of
-   // the rifle does not dominate the screen. Preserve the approved ADS/reload position.
-   m4ViewRoot.position.z=reloading?-1.66:THREE.MathUtils.lerp(-1.78,-1.66,aimBlend);
+   // Hip-fire: pull the M4 back toward the shoulder so it no longer reads like
+   // the player is holding it at arm's length. Preserve the approved ADS/reload position.
+   m4ViewRoot.position.z=reloading?-1.66:THREE.MathUtils.lerp(-1.62,-1.66,aimBlend);
  }
  if(weapon==="smg"&&mp5ViewRoot){
    const a=aimBlend;
