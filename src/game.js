@@ -277,7 +277,7 @@ function pushOutsideBuilding(x,z,r=.45){
 
 // v304: the uploaded Havana GLB is the entire active world map.
 // The old procedural ground, roads, sidewalks, buildings, lamps, barriers and road texture are not created.
-const HAVANA_MAP_SCALE=2.0;
+const HAVANA_MAP_SCALE=5.0;
 const HAVANA_MAP_X_OFFSET=0;
 const HAVANA_MAP_Y_OFFSET=0;
 const HAVANA_MAP_Z_OFFSET=-4.5;
