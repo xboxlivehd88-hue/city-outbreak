@@ -760,7 +760,7 @@ Object.assign(trailerMapStatus.style,{
 });
 document.body.append(trailerMapStatus);
 
-new GLTFLoader().load("assets/trailer_park.glb?v=329",gltf=>{
+new GLTFLoader().load("assets/trailer_park.glb?v=333",gltf=>{
  const map=gltf.scene;
  map.name="TrailerParkMap";
  map.scale.setScalar(TRAILER_PARK_SCALE);
@@ -928,9 +928,9 @@ function capFX(){
  while(impacts.length>24){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
  while(casings.length>18){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
 }
-const ZOMBIE_HELMET_TARGET_WIDTH=.38,ZOMBIE_HELMET_HEAD_Y=.043,ZOMBIE_HELMET_HEAD_Z=-.085,ZOMBIE_HELMET_PITCH=.05236;
+const ZOMBIE_HELMET_TARGET_WIDTH=.38,ZOMBIE_HELMET_HEAD_Y=.055,ZOMBIE_HELMET_HEAD_Z=-.085,ZOMBIE_HELMET_PITCH=.06981;
 let zombieHelmetTemplate=null,zombieHelmetLoadError=null;
-new GLTFLoader().load("assets/ww2_stahlhelm_m35_heer.glb?v=330",gltf=>{
+new GLTFLoader().load("assets/ww2_stahlhelm_m35_heer.glb?v=333",gltf=>{
  const raw=gltf.scene;
  raw.name="ZombieHelmetSource";
  raw.updateMatrixWorld(true);
