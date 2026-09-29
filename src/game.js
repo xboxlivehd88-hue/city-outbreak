@@ -529,9 +529,10 @@ function addBuilding(w,h,d,x,z,base,variant){
 
 function insideBuilding(x,z,r=.45){
  if(externalMapBounds&&(x<externalMapBounds.minX+r||x>externalMapBounds.maxX-r||z<externalMapBounds.minZ+r||z>externalMapBounds.maxZ-r))return true;
- // Each authored exterior door owns a narrow guaranteed passage. This is intentionally
- // checked before the collider list so all six trailer entrances behave identically.
- if(trailerDoorPassages.some(p=>x>p.minX&&x<p.maxX&&z>p.minZ&&z<p.maxZ))return false;
+ // Each authored exterior door owns a guaranteed passage. Expand the passage by
+ // the caller's collision radius so the player/zombie body can enter the opening
+ // before its center point crosses the threshold.
+ if(trailerDoorPassages.some(p=>x>p.minX-r&&x<p.maxX+r&&z>p.minZ-r&&z<p.maxZ+r))return false;
  for(const b of buildingColliders){
    const rr=(r===.62&&Number.isFinite(b.playerRadius))?b.playerRadius:r;
    if(x>b.x-b.hx-rr&&x<b.x+b.hx+rr&&z>b.z-b.hz-rr&&z<b.z+b.hz+rr)return true
