@@ -1,0 +1,59 @@
+name: Inspect Havana Materials And Lights
+
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-havana-materials-lights.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect materials, transparency and lights
+        run: |
+          python3 - <<'PY'
+          import json,struct,re,math
+          p='assets/modular_havana_street__low-poly_asset_kit.glb'
+          data=open(p,'rb').read()
+          off=12; g=None
+          while off+8<=len(data):
+              n,t=struct.unpack_from('<II',data,off);off+=8
+              chunk=data[off:off+n];off+=n
+              if t==0x4E4F534A:
+                  g=json.loads(chunk.decode('utf-8').rstrip('\x00 \t\r\n'));break
+          if g is None: raise SystemExit('missing JSON')
+          print('EXTENSIONS_USED',g.get('extensionsUsed',[]))
+          print('EXTENSIONS_REQUIRED',g.get('extensionsRequired',[]))
+          print('TOP_EXTENSIONS',json.dumps(g.get('extensions',{}),indent=2))
+          print('MATERIALS')
+          for i,m in enumerate(g.get('materials',[])):
+              pbr=m.get('pbrMetallicRoughness',{})
+              print(i,{
+                'name':m.get('name'),
+                'alphaMode':m.get('alphaMode','OPAQUE'),
+                'alphaCutoff':m.get('alphaCutoff'),
+                'doubleSided':m.get('doubleSided',False),
+                'baseColorFactor':pbr.get('baseColorFactor'),
+                'baseColorTexture':pbr.get('baseColorTexture'),
+                'emissiveFactor':m.get('emissiveFactor'),
+                'emissiveTexture':m.get('emissiveTexture'),
+                'extensions':m.get('extensions')
+              })
+          nodes=g.get('nodes',[]);meshes=g.get('meshes',[])
+          print('LIGHT_NODES')
+          found=0
+          for i,n in enumerate(nodes):
+              ex=n.get('extensions',{})
+              if 'KHR_lights_punctual' in ex:
+                  found+=1;print(i,n.get('name'),ex['KHR_lights_punctual'])
+          print('LIGHT_NODE_COUNT',found)
+          lamp=re.compile(r'lamp|light|street|pole|bulb',re.I)
+          print('LAMPISH_NAMES')
+          for i,n in enumerate(nodes):
+              if lamp.search(n.get('name','')):
+                  print('node',i,n.get('name'), 'mesh', n.get('mesh'))
+          for i,m in enumerate(meshes):
+              if lamp.search(m.get('name','')):
+                  print('mesh',i,m.get('name'))
+          PY
