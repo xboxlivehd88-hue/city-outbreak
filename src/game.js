@@ -374,10 +374,10 @@ let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/429
 // Kept as a no-op because the existing runtime calls it later after pathing setup.
 function batchStaticCity(){}
 
-// v320: selective collision generated from the uploaded city's real wall geometry.
+// v324: selective collision generated from the uploaded city's real wall geometry, with finer passage precision.
 // Only substantial near-vertical surfaces crossing player/zombie body height are used;
 // roads, floors, roofs and shallow curbs stay walkable.
-const NEW_CITY_COLLISION_CELL=.48;
+const NEW_CITY_COLLISION_CELL=.34;
 const NEW_CITY_COLLISION_MIN_Y=.10;
 const NEW_CITY_COLLISION_MAX_Y=2.25;
 const NEW_CITY_COLLISION_MIN_VERTICAL_SPAN=.55;
@@ -508,12 +508,13 @@ function carPointCollision(c,x,z,pad=.35){
  const qx=Math.max(Math.abs(lx)-hw,0),qz=Math.max(Math.abs(lz)-hl,0);
  return qx*qx+qz*qz<pad*pad;
 }
-function zombiePointBlocked(x,z,r=.50){
+const ZOMBIE_COLLISION_RADIUS=.38;
+function zombiePointBlocked(x,z,r=ZOMBIE_COLLISION_RADIUS){
  if(insideBuilding(x,z,r))return true;
  for(const c of parkedCars)if(carPointCollision(c,x,z,r))return true;
  return false;
 }
-function chooseZombieAvoidSide(z,nx,nz,r=.50){
+function chooseZombieAvoidSide(z,nx,nz,r=ZOMBIE_COLLISION_RADIUS){
  const sideX=-nz,sideZ=nx,probe=1.35;
  const lx=z.g.position.x+sideX*probe+nx*.20,lz=z.g.position.z+sideZ*probe+nz*.20;
  const rx=z.g.position.x-sideX*probe+nx*.20,rz=z.g.position.z-sideZ*probe+nz*.20;
@@ -526,7 +527,7 @@ function chooseZombieAvoidSide(z,nx,nz,r=.50){
  }
  return z.avoidSide||z.side||1;
 }
-function moveZombieSmart(z,ox,oz,stepX,stepZ,r=.50){
+function moveZombieSmart(z,ox,oz,stepX,stepZ,r=ZOMBIE_COLLISION_RADIUS){
  const tx=ox+stepX,tz=oz+stepZ;
  if(!zombiePointBlocked(tx,tz,r))return{x:tx,z:tz,blocked:false};
 
@@ -548,9 +549,9 @@ function moveZombieSmart(z,ox,oz,stepX,stepZ,r=.50){
 }
 
 // v152: keep city generation untouched and make pathfinding itself conservative.
- // The larger clearance makes A* reject squeeze gaps that are technically open
- // but too narrow for reliable zombie motion, without adding startup-time geometry.
-const ZNAV_CELL=2.0,ZNAV_PAD=.72,ZNAV_MAX_NODES=2600,
+ // Finer cells and realistic body clearance keep alleys, stoops and door approaches usable
+ // while still routing zombies around true walls.
+const ZNAV_CELL=1.5,ZNAV_PAD=.44,ZNAV_MAX_NODES=3600,
       ZNAV_MIN_X=-148,ZNAV_MAX_X=148,ZNAV_MIN_Z=-158,ZNAV_MAX_Z=164;
 const ZNAV_BLOCK_CACHE=new Map();
 function navCellBlocked(ix,iz){
@@ -3381,7 +3382,8 @@ for(const c of parkedCars){
    break;
  }
 }
-let bp=slideBuilding(oldx,oldz,px,pz,.62);px=bp.x;pz=bp.z;
+const playerWallRadius=.36;
+let bp=slideBuilding(oldx,oldz,px,pz,playerWallRadius);px=bp.x;pz=bp.z;
 resolvePlayerZombieContact(oldx,oldz);
 const targetGroundY=samplePlayerGroundY(px,pz,playerGroundY);
 const groundFollowRate=targetGroundY>playerGroundY?18:13;
