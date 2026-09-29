@@ -291,7 +291,7 @@ let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/429
 // Kept as a no-op because the existing runtime calls it later after pathing setup.
 function batchStaticCity(){}
 
-new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=316",gltf=>{
+new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=317",gltf=>{
  const map=gltf.scene;
  map.name="ChickenGunCityMap";
  map.scale.setScalar(NEW_CITY_SCALE);
@@ -1716,8 +1716,8 @@ function rolledZombieKind(w,roll){
  return "shambler";
 }
 
-const PLAYER_WORLD_SCALE=1.10;
-const ZOMBIE_WORLD_SCALE=1.10;
+const PLAYER_WORLD_SCALE=1.15;
+const ZOMBIE_WORLD_SCALE=1.15;
 
 function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  let d=diff(wave),g=new THREE.Group(),scale=(.90+rnd()*.045)*ZOMBIE_WORLD_SCALE;
