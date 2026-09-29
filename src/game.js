@@ -557,6 +557,29 @@ function buildManualAdditionalStreetLamps(map){
  return placements;
 }
 
+// v342: tight pole-base collision for all placed street lamps.
+// Only the vertical post is solid; the lamp arm/head does not create invisible walls.
+const STREET_LAMP_COLLISION_HALF=.13;
+function addStreetLampColliders(placements){
+ let added=0;
+ for(const p of placements){
+   const hit={
+     x:p.x,z:p.z,
+     hx:STREET_LAMP_COLLISION_HALF,
+     hz:STREET_LAMP_COLLISION_HALF,
+     source:"streetLamp"
+   };
+   buildingColliders.push(hit);
+   indexCityCollider(hit);
+   added++;
+ }
+ ZNAV_BLOCK_CACHE.clear();
+ document.documentElement.dataset.streetLampCollisionCount=String(added);
+ console.log("CITY OUTBREAK: street lamp pole collision added",{
+   count:added,halfSize:STREET_LAMP_COLLISION_HALF
+ });
+}
+
 function addStreetLamps(placements){
  if(streetLampInstances.length||!placements.length)return;
  new GLTFLoader().load(STREET_LAMP_URL,gltf=>{
@@ -607,7 +630,9 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
  const additionalStreetLampPlacements=buildManualAdditionalStreetLamps(map);
- addStreetLamps(streetLampPlacements.concat(additionalStreetLampPlacements));
+ const allStreetLampPlacements=streetLampPlacements.concat(additionalStreetLampPlacements);
+ addStreetLampColliders(allStreetLampPlacements);
+ addStreetLamps(allStreetLampPlacements);
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.newCityLoaded="1";
  document.documentElement.dataset.newCityScale=String(NEW_CITY_SCALE);
