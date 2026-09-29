@@ -263,7 +263,18 @@ function buildTrailerParkCollision(map){
    if(!o.isMesh||!o.geometry||!o.visible)return;
    const name=String(o.name||""),lower=name.toLowerCase();
    if(lower.startsWith("door")){
-     if(/^Door(?:\.\d+)?_Door_0$/i.test(name))doors.push({box:new THREE.Box3().setFromObject(o),name});
+     if(/^Door(?:\.\d+)?_Door_0$/i.test(name)){
+       const box=new THREE.Box3().setFromObject(o),dc=new THREE.Vector3(),ds=new THREE.Vector3();
+       box.getCenter(dc);box.getSize(ds);
+       doors.push({box,name});
+       // All six authored exterior doors face the same direction. Give every one the
+       // same passage depth/width as the entrance that already works in live play.
+       trailerDoorPassages.push({
+         minX:dc.x-3.75,maxX:dc.x+1.20,
+         minZ:dc.z-(ds.z*.5+.72),maxZ:dc.z+(ds.z*.5+.72),
+         name
+       });
+     }
      // Door leaves are intentionally removed; frames stay visible.
      o.visible=false;o.userData.visualOnly=true;return;
    }
@@ -304,7 +315,7 @@ function buildTrailerParkCollision(map){
    if(addTrailerHomePerimeterCollision(shell,doorBox,key)>0)homeCount++;
    if(doorBox){
      const info=trailerDoorInfo(shell,doorBox);
-     if(info){doorCorridors.push(info.corridor);trailerDoorPassages.push(info.corridor)}
+     if(info)doorCorridors.push(info.corridor);
      addTrailerInteriorSpawnPoints(shell,home.floor,doorBox,key);
    }
  }
@@ -518,12 +529,10 @@ function addBuilding(w,h,d,x,z,base,variant){
 
 function insideBuilding(x,z,r=.45){
  if(externalMapBounds&&(x<externalMapBounds.minX+r||x>externalMapBounds.maxX-r||z<externalMapBounds.minZ+r||z>externalMapBounds.maxZ-r))return true;
- const inTrailerDoorway=trailerDoorPassages.some(p=>x>p.minX&&x<p.maxX&&z>p.minZ&&z<p.maxZ);
+ // Each authored exterior door owns a narrow guaranteed passage. This is intentionally
+ // checked before the collider list so all six trailer entrances behave identically.
+ if(trailerDoorPassages.some(p=>x>p.minX&&x<p.maxX&&z>p.minZ&&z<p.maxZ))return false;
  for(const b of buildingColliders){
-   const source=String(b.source||"");
-   // A real exterior doorway is a guaranteed passage through only the trailer wall
-   // and deck railing. Fences, props, cars and all collision outside the doorway remain solid.
-   if(inTrailerDoorway&&(source.includes(":wall")||source.includes(":rail")))continue;
    const rr=(r===.62&&Number.isFinite(b.playerRadius))?b.playerRadius:r;
    if(x>b.x-b.hx-rr&&x<b.x+b.hx+rr&&z>b.z-b.hz-rr&&z<b.z+b.hz+rr)return true
  }
