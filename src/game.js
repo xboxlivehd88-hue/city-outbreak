@@ -337,9 +337,13 @@ function applyWetCityMaterials(map){
      let wet=wetMaterialCache.get(key);
      if(wet)return wet;
      wet=mat.clone();
-     if(wet.color)wet.color.multiplyScalar(mode==="road"?.78:.90);
-     if("roughness" in wet)wet.roughness=Math.min(wet.roughness??1,mode==="road"?.24:.36);
-     if("metalness" in wet)wet.metalness=Math.min(Math.max(wet.metalness??0,.015),.05);
+     // v351: keep the pavement visibly damp, but avoid mirror-like moon streaks.
+     // Higher roughness spreads/dims the highlight and zero metalness prevents the
+     // road from behaving like a reflective strip when the moon is behind buildings.
+     if(wet.color)wet.color.multiplyScalar(mode==="road"?.80:.92);
+     if("roughness" in wet)wet.roughness=Math.max(wet.roughness??1,mode==="road"?.68:.78);
+     if("metalness" in wet)wet.metalness=0;
+     if("envMapIntensity" in wet)wet.envMapIntensity=Math.min(wet.envMapIntensity??1,.08);
      wet.needsUpdate=true;wetMaterialCache.set(key,wet);return wet;
    };
    o.material=Array.isArray(o.material)?o.material.map(wetOne):wetOne(o.material);
