@@ -3060,11 +3060,13 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
        if(reachableZombieSpawn(x,z,true))return{x,z};
      }
    }
-   // Deterministic ring sweep fallback still obeys the current spread pass.
-   const startA=rnd()*Math.PI*2;
+   // Ring fallback starts from this zombie's assigned approach direction and
+   // fans left/right from there, instead of choosing another random corridor.
+   const center=targetAngle===null?rnd()*Math.PI*2:targetAngle;
    for(let ring=minDist+2;ring<=maxDist;ring+=4){
      for(let k=0;k<24;k++){
-       const a=startA+k*(Math.PI*2/24),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
+       const step=(k===0?0:Math.ceil(k/2)*(k%2?1:-1))*(Math.PI*2/24);
+       const a=center+step,x=px+Math.cos(a)*ring,z=pz+Math.sin(a)*ring;
        if(!angleOk(x,z,spreadRule.tol))continue;
        if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,0))continue;
        if(reachableZombieSpawn(x,z,true))return{x,z};
