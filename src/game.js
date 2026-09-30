@@ -172,7 +172,7 @@ rainLines.renderOrder=850;
 scene.add(rainLines);
 
 // One additional draw call for small four-way pavement splashes.
-const RAIN_SPLASH_COUNT=40;
+const RAIN_SPLASH_COUNT=56;
 const RAIN_SPLASH_RADIUS=8.5;
 const rainSplashPositions=new Float32Array(RAIN_SPLASH_COUNT*24);
 const rainSplashAge=new Float32Array(RAIN_SPLASH_COUNT);
@@ -236,7 +236,7 @@ function spawnRainSplash(){
 }
 function updateRainSplashes(dt){
  if(!rainCovered){
-   rainSplashSpawnAcc+=dt*24;
+   rainSplashSpawnAcc+=dt*34;
    while(rainSplashSpawnAcc>=1){spawnRainSplash();rainSplashSpawnAcc-=1}
  }else rainSplashSpawnAcc=Math.min(rainSplashSpawnAcc,.25);
 
@@ -2983,7 +2983,27 @@ const living=()=>zombies.filter(z=>!z.dead);
 const activeFrame=[];
 function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
 const MAX_ACTIVE_ZOMBIES=30;
+const RECENT_ZOMBIE_SPAWN_LIMIT=12;
+const recentZombieSpawnPoints=[];
 const waveRemainingCount=()=>livingCount()+Math.max(0,waveTarget-waveSpawned);
+function clearRecentZombieSpawns(){recentZombieSpawnPoints.length=0}
+function rememberZombieSpawn(p){
+ recentZombieSpawnPoints.push({x:p.x,z:p.z});
+ if(recentZombieSpawnPoints.length>RECENT_ZOMBIE_SPAWN_LIMIT)recentZombieSpawnPoints.shift();
+}
+function zombieSpawnSpreadOk(x,z,minSeparation,minAngle){
+ if(!recentZombieSpawnPoints.length)return true;
+ const a=Math.atan2(z-pz,x-px);
+ for(const p of recentZombieSpawnPoints){
+   if(Math.hypot(x-p.x,z-p.z)<minSeparation)return false;
+   if(minAngle>0){
+     const pa=Math.atan2(p.z-pz,p.x-px);
+     const da=Math.abs(Math.atan2(Math.sin(a-pa),Math.cos(a-pa)));
+     if(da<minAngle)return false;
+   }
+ }
+ return true;
+}
 function validZombieSpawn(x,z){
  if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
  if(!pointOnNewCitySpawnZone(x,z,.55))return false;
@@ -2998,44 +3018,58 @@ function reachableZombieSpawn(x,z,allowRoute=true){
  const route=buildZombieRoute(x,z,px,pz);
  return route!==null&&route.length>0;
 }
-function findReachableZombieSpawn(minDist,maxDist){
- // Sample the GLB's real road surfaces first. This prevents enclosed building
- // interiors from becoming valid spawn locations just because they are empty.
- if(newCitySpawnZones.length){
-   for(let tries=0;tries<42;tries++){
-     const zone=newCitySpawnZones[Math.floor(rnd()*newCitySpawnZones.length)];
-     const pad=.65,usableX=zone.maxX-zone.minX-pad*2,usableZ=zone.maxZ-zone.minZ-pad*2;
-     if(usableX<=0||usableZ<=0)continue;
-     const x=zone.minX+pad+rnd()*usableX,z=zone.minZ+pad+rnd()*usableZ;
-     const dist=Math.hypot(x-px,z-pz);
-     if(dist<minDist||dist>maxDist)continue;
-     if(reachableZombieSpawn(x,z,false))return{x,z};
+function findReachableZombieSpawn(minDist,maxDist,spread=true){
+ // Try progressively relaxed spacing. The first passes favor genuinely different
+ // approach angles; later passes preserve reliability on constrained road layouts.
+ const spreadPasses=spread?[
+   {sep:10.5,angle:.34},
+   {sep:8.5,angle:.20},
+   {sep:6.0,angle:0},
+   {sep:0,angle:0}
+ ]:[{sep:0,angle:0}];
+
+ for(const spreadRule of spreadPasses){
+   // Sample the GLB's real road surfaces first. This prevents enclosed building
+   // interiors from becoming valid spawn locations just because they are empty.
+   if(newCitySpawnZones.length){
+     for(let tries=0;tries<44;tries++){
+       const zone=newCitySpawnZones[Math.floor(rnd()*newCitySpawnZones.length)];
+       const pad=.65,usableX=zone.maxX-zone.minX-pad*2,usableZ=zone.maxZ-zone.minZ-pad*2;
+       if(usableX<=0||usableZ<=0)continue;
+       const x=zone.minX+pad+rnd()*usableX,z=zone.minZ+pad+rnd()*usableZ;
+       const dist=Math.hypot(x-px,z-pz);
+       if(dist<minDist||dist>maxDist)continue;
+       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.angle))continue;
+       if(reachableZombieSpawn(x,z,false))return{x,z};
+     }
+     for(let tries=0;tries<34;tries++){
+       const zone=newCitySpawnZones[Math.floor(rnd()*newCitySpawnZones.length)];
+       const pad=.65,usableX=zone.maxX-zone.minX-pad*2,usableZ=zone.maxZ-zone.minZ-pad*2;
+       if(usableX<=0||usableZ<=0)continue;
+       const x=zone.minX+pad+rnd()*usableX,z=zone.minZ+pad+rnd()*usableZ;
+       const dist=Math.hypot(x-px,z-pz);
+       if(dist<minDist||dist>maxDist)continue;
+       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.angle))continue;
+       if(reachableZombieSpawn(x,z,true))return{x,z};
+     }
    }
-   for(let tries=0;tries<32;tries++){
-     const zone=newCitySpawnZones[Math.floor(rnd()*newCitySpawnZones.length)];
-     const pad=.65,usableX=zone.maxX-zone.minX-pad*2,usableZ=zone.maxZ-zone.minZ-pad*2;
-     if(usableX<=0||usableZ<=0)continue;
-     const x=zone.minX+pad+rnd()*usableX,z=zone.minZ+pad+rnd()*usableZ;
-     const dist=Math.hypot(x-px,z-pz);
-     if(dist<minDist||dist>maxDist)continue;
-     if(reachableZombieSpawn(x,z,true))return{x,z};
-   }
- }
- // Deterministic ring sweep remains a fallback, but validZombieSpawn still
- // requires the point to land on a real road/parking surface.
- const startA=rnd()*Math.PI*2;
- for(let ring=minDist+2;ring<=maxDist;ring+=4){
-   for(let k=0;k<24;k++){
-     const a=startA+k*(Math.PI*2/24),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
-     if(reachableZombieSpawn(x,z,true))return{x,z};
+   // Deterministic ring sweep fallback still obeys the current spread pass.
+   const startA=rnd()*Math.PI*2;
+   for(let ring=minDist+2;ring<=maxDist;ring+=4){
+     for(let k=0;k<24;k++){
+       const a=startA+k*(Math.PI*2/24),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
+       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.angle))continue;
+       if(reachableZombieSpawn(x,z,true))return{x,z};
+     }
    }
  }
  return null;
 }
 function spawnOneZombie(i){
  if(!newCityCollisionReady)return false;
- const p=findReachableZombieSpawn(24,42);
+ const p=findReachableZombieSpawn(24,42,true);
  if(!p)return false;
+ rememberZombieSpawn(p);
  makeZombie(p.x,p.z,i);
  return true;
 }
@@ -3048,11 +3082,11 @@ function spawnQueuedZombies(){
  }
 }
 function spawnWave(){
- let d=diff(wave);currentBoss=null;
+ let d=diff(wave);currentBoss=null;clearRecentZombieSpawns();
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=findReachableZombieSpawn(28,46);
+   const bossSpawn=findReachableZombieSpawn(28,46,false);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
      // Extremely defensive fallback: keep boss-wave behavior intact even if the
@@ -4376,6 +4410,7 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  // uses the same principle: it beats walking, but a committed full sprint escapes.
  const huntTargetSpeed=playerDistToZombie>32?5.8:playerDistToZombie>16?5.4:5.0;
  let navSpeed=huntMode?Math.min(6.15,Math.max(huntTargetSpeed,z.speed)):z.speed;
+ if(huntMode&&kind==="crawler")navSpeed*=.75;
  if(kind==="boss")navSpeed=bossCharging?BOSS_CHARGE_SPEED:bossPressureSpeed(playerDistToZombie,z.speed);
  const motionScale=(huntMode||bossCharging||bossPressuring)?1:surge*shamble;
 let stepX=(nx+sx*zig)*navSpeed*motionScale*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*motionScale*stun*limpSlow*dt;
