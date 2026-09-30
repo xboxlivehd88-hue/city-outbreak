@@ -140,6 +140,95 @@ const earlyNightSkyMaterial=new THREE.ShaderMaterial({
 const earlyNightSky=new THREE.Mesh(new THREE.SphereGeometry(185,48,24),earlyNightSkyMaterial);
 earlyNightSky.renderOrder=-1000;earlyNightSky.frustumCulled=false;scene.add(earlyNightSky);
 document.documentElement.dataset.earlyNightSky="1";
+
+// v346: local early-night rain. One dynamic LineSegments draw call follows the
+// player, with a lightweight upward roof check so rain fades under solid cover.
+const RAIN_DROP_COUNT=420;
+const RAIN_RADIUS=27;
+const RAIN_TOP=19;
+const RAIN_BOTTOM=-2.0;
+const RAIN_WIND_X=1.15;
+const RAIN_WIND_Z=-.42;
+const rainPositions=new Float32Array(RAIN_DROP_COUNT*6);
+const rainX=new Float32Array(RAIN_DROP_COUNT);
+const rainY=new Float32Array(RAIN_DROP_COUNT);
+const rainZ=new Float32Array(RAIN_DROP_COUNT);
+const rainSpeed=new Float32Array(RAIN_DROP_COUNT);
+const rainLength=new Float32Array(RAIN_DROP_COUNT);
+const rainGeometry=new THREE.BufferGeometry();
+const rainPositionAttr=new THREE.BufferAttribute(rainPositions,3);
+rainPositionAttr.setUsage(THREE.DynamicDrawUsage);
+rainGeometry.setAttribute("position",rainPositionAttr);
+const rainMaterial=new THREE.LineBasicMaterial({
+ color:0xc7d2dc,
+ transparent:true,
+ opacity:.34,
+ depthWrite:false,
+ depthTest:true
+});
+const rainLines=new THREE.LineSegments(rainGeometry,rainMaterial);
+rainLines.frustumCulled=false;
+rainLines.renderOrder=850;
+scene.add(rainLines);
+
+const rainCoverRay=new THREE.Raycaster();
+const rainUp=new THREE.Vector3(0,1,0);
+let rainCoverCheckAt=-1e9,rainCovered=false,rainOpacity=.34;
+
+function resetRainDrop(i,randomY=true){
+ const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*RAIN_RADIUS;
+ rainX[i]=Math.cos(a)*r;
+ rainZ[i]=Math.sin(a)*r;
+ rainY[i]=randomY?RAIN_BOTTOM+Math.random()*(RAIN_TOP-RAIN_BOTTOM):RAIN_TOP+Math.random()*4;
+ rainSpeed[i]=17+Math.random()*9;
+ rainLength[i]=.48+Math.random()*.72;
+}
+for(let i=0;i<RAIN_DROP_COUNT;i++)resetRainDrop(i,true);
+
+function updateRainCover(t){
+ if(t-rainCoverCheckAt<240)return;
+ rainCoverCheckAt=t;
+ rainCovered=false;
+ if(!newCityRoot)return;
+ rainCoverRay.set(new THREE.Vector3(px,playerGroundY+1.35,pz),rainUp);
+ rainCoverRay.near=.15;rainCoverRay.far=18;
+ const hits=rainCoverRay.intersectObject(newCityRoot,true);
+ for(const hit of hits){
+   let o=hit.object,hidden=false;
+   while(o&&o!==newCityRoot){
+     if(o.visible===false||o.userData?.replacedStreetLamp){hidden=true;break}
+     o=o.parent;
+   }
+   if(!hidden){rainCovered=true;break}
+ }
+}
+function updateRainEffect(dt,t){
+ if(!rainLines)return;
+ updateRainCover(t);
+ const targetOpacity=rainCovered?.018:.34;
+ rainOpacity=THREE.MathUtils.lerp(rainOpacity,targetOpacity,Math.min(1,dt*7));
+ rainMaterial.opacity=rainOpacity;
+ rainLines.position.set(px,playerGroundY,pz);
+ if(paused||shopLowPower)return;
+ for(let i=0;i<RAIN_DROP_COUNT;i++){
+   rainX[i]+=RAIN_WIND_X*dt;
+   rainZ[i]+=RAIN_WIND_Z*dt;
+   rainY[i]-=rainSpeed[i]*dt;
+   if(rainY[i]<RAIN_BOTTOM||Math.abs(rainX[i])>RAIN_RADIUS+4||Math.abs(rainZ[i])>RAIN_RADIUS+4)resetRainDrop(i,false);
+   const j=i*6,len=rainLength[i];
+   const leanX=RAIN_WIND_X*.055*len,leanZ=RAIN_WIND_Z*.055*len;
+   rainPositions[j]=rainX[i];
+   rainPositions[j+1]=rainY[i];
+   rainPositions[j+2]=rainZ[i];
+   rainPositions[j+3]=rainX[i]-leanX;
+   rainPositions[j+4]=rainY[i]+len;
+   rainPositions[j+5]=rainZ[i]-leanZ;
+ }
+ rainPositionAttr.needsUpdate=true;
+}
+document.documentElement.dataset.rainEffect="1";
+document.documentElement.dataset.rainDropCount=String(RAIN_DROP_COUNT);
+
 const materialCache=new Map(),emissiveMaterialCache=new Map(),zombieMaterialCache=new Map();
 const M=(c,r=.82)=>{const k=c+"|"+r;let m=materialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,roughness:r});materialCache.set(k,m)}return m};
 const EM=(c,e=.95,r=.28)=>{const k=c+"|"+e+"|"+r;let m=emissiveMaterialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:e,roughness:r});emissiveMaterialCache.set(k,m)}return m};
@@ -4239,6 +4328,7 @@ function frame(t){
  }
  if(!paused)update(dt);
  updateStreetLampLighting(t);
+ updateRainEffect(dt,t);
  earlyNightSky.position.copy(cam.position);
  earlyNightSkyUniforms.uTime.value=t*.001;
  ren.render(scene,cam);
