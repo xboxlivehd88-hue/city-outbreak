@@ -3461,6 +3461,26 @@ function createBlastRagdollPivot(z){
  z.ragdollBodyPivot=pivot;
  return pivot;
 }
+function forceDeadRagdollVisible(z){
+ if(!z)return;
+ z.g.visible=true;
+ if(z.ragdollBodyPivot)z.ragdollBodyPivot.visible=true;
+ if(z.rigVisual){
+   z.rigVisual.visible=true;
+   z.rigVisual.traverse(o=>{
+     if(!o.isMesh)return;
+     o.frustumCulled=false;
+     const mats=Array.isArray(o.material)?o.material:[o.material];
+     for(const m of mats)if(m){
+       m.visible=true;
+       m.opacity=1;
+       m.transparent=false;
+       m.depthTest=true;
+       m.depthWrite=true;
+     }
+   });
+ }
+}
 function resolveRagdollGroundImpact(r){
  r.grounded=true;
  const canBounce=(r.impactCooldown||0)<=0;
@@ -3624,27 +3644,25 @@ function updateRagdoll(z,dt){
  const prevRagdollY=z.g.position.y;
  r.vy-=(r.blast?6.35:5.4)*dt;
  z.g.position.y+=r.vy*dt;
- let hasRagdollSurface=true,ragdollSurfaceY=null;
- if(r.blast){
-   // v364: the gameplay root stays upright and represents the bottom of the
-   // centered ragdoll body pivot, so real city-surface contact is stable.
-   ragdollSurfaceY=sampleRagdollCitySurfaceY(
-     z.g.position.x,z.g.position.z,
-     Math.max(prevRagdollY,z.g.position.y)
-   );
-   hasRagdollSurface=ragdollSurfaceY!==null;
-   if(hasRagdollSurface)r.floorY=ragdollSurfaceY;
- }else{
-   r.floorY=sampleRagdollGroundY(
-     z.g.position.x,z.g.position.z,r.floorY,
-     Math.max(prevRagdollY,z.g.position.y)
-   );
- }
+ // v365 diagnostic-safe contact: use the same indexed walkable city surfaces
+ // that already support zombie feet, with the corpse's last valid floor as the
+ // fallback. No live raycast or animated skeleton transform can change this floor.
+ r.floorY=sampleRagdollGroundY(
+   z.g.position.x,z.g.position.z,r.floorY,
+   Math.max(prevRagdollY,z.g.position.y)
+ );
  const floorContact=r.floorY+(r.blast?.015:-.08);
  r.grounded=false;
- if(hasRagdollSurface&&z.g.position.y<=floorContact+.018&&r.vy<=0){
+ if(z.g.position.y<=floorContact+.018&&r.vy<=0){
    z.g.position.y=floorContact;
    resolveRagdollGroundImpact(r);
+ }
+ // Hard invariant for this test: the gameplay corpse root can never exist below
+ // its known floor, even on a later frame after bounce/settling calculations.
+ if(r.blast&&z.g.position.y<floorContact){
+   z.g.position.y=floorContact;
+   if(r.vy<0)r.vy=0;
+   r.grounded=true;
  }
 
  for(const b of r.bones){
@@ -3697,6 +3715,7 @@ function updateRagdoll(z,dt){
  }
 
  if(r.blast){
+   forceDeadRagdollVisible(z);
    let maxBoneSpin=0;
    for(const b of r.bones)maxBoneSpin=Math.max(maxBoneSpin,Math.abs(b.avx||0),Math.abs(b.avy||0),Math.abs(b.avz||0));
    const rootSpin=Math.max(Math.abs(r.ravx||0),Math.abs(r.ravy||0),Math.abs(r.ravz||0));
