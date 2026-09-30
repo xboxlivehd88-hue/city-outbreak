@@ -45,9 +45,101 @@ function groan(v){
  o.connect(f);f.connect(g);g.connect(master);o.onended=()=>{try{o.disconnect();f.disconnect();g.disconnect()}catch(_){}};
  o.start(t);o.stop(t+.60)
 }
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x89999a);scene.fog=new THREE.FogExp2(0x89999a,.0052);
-const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,1.10));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.42;
-scene.add(new THREE.HemisphereLight(0xcbd9dc,0x596158,1.75));let sun=new THREE.DirectionalLight(0xffe5bd,3.15);sun.position.set(-35,48,-25);sun.castShadow=true;sun.shadow.mapSize.set(768,768);sun.shadow.camera.left=-62;sun.shadow.camera.right=62;sun.shadow.camera.top=62;sun.shadow.camera.bottom=-62;scene.add(sun);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x171b22);scene.fog=new THREE.FogExp2(0x242321,.0047);
+const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,1.10));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.18;
+
+// v344 early-night atmosphere: dark but still readable, with cool moon fill
+// and enough exposure left for the warm street lamps to visibly light the road.
+scene.add(new THREE.HemisphereLight(0x73879a,0x4b4036,.92));
+let sun=new THREE.DirectionalLight(0xb9c9d6,1.35);
+sun.position.set(18,28,-92);sun.castShadow=true;sun.shadow.mapSize.set(768,768);sun.shadow.camera.left=-62;sun.shadow.camera.right=62;sun.shadow.camera.top=62;sun.shadow.camera.bottom=-62;scene.add(sun);
+
+const earlyNightSkyUniforms={uTime:{value:0}};
+const earlyNightSkyMaterial=new THREE.ShaderMaterial({
+ side:THREE.BackSide,
+ depthWrite:false,
+ depthTest:false,
+ fog:false,
+ uniforms:earlyNightSkyUniforms,
+ vertexShader:`
+ varying vec3 vDir;
+ void main(){
+   vDir=normalize(position);
+   gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+ }`,
+ fragmentShader:`
+ precision highp float;
+ varying vec3 vDir;
+ uniform float uTime;
+
+ float hash3(vec3 p){
+   p=fract(p*.3183099+.1);
+   p*=17.0;
+   return fract(p.x*p.y*p.z*(p.x+p.y+p.z));
+ }
+ float noise3(vec3 p){
+   vec3 i=floor(p),f=fract(p);
+   f=f*f*(3.0-2.0*f);
+   return mix(
+     mix(mix(hash3(i+vec3(0,0,0)),hash3(i+vec3(1,0,0)),f.x),
+         mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),
+     mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),
+         mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);
+ }
+ float fbm(vec3 p){
+   float v=0.0,a=.5;
+   v+=a*noise3(p);p=p*2.03+vec3(1.7,2.1,.8);a*=.5;
+   v+=a*noise3(p);p=p*2.01+vec3(.4,1.3,2.4);a*=.5;
+   v+=a*noise3(p);p=p*2.04+vec3(2.2,.7,1.1);a*=.5;
+   v+=a*noise3(p);
+   return v;
+ }
+ void main(){
+   vec3 d=normalize(vDir);
+   float horizon=pow(1.0-clamp(d.y,0.0,1.0),2.15);
+   vec3 zenith=vec3(.020,.034,.060);
+   vec3 horizonCol=vec3(.235,.185,.118);
+   vec3 sky=mix(zenith,horizonCol,horizon*.82);
+   float lowGlow=exp(-abs(d.y-.035)*7.0);
+   sky+=vec3(.105,.073,.040)*lowGlow;
+
+   vec3 drift=vec3(uTime*.0022,0.0,-uTime*.0014);
+   float n1=fbm(d*3.55+drift);
+   float n2=fbm(d*8.4-drift*1.8);
+   float cloudNoise=n1*.72+n2*.28;
+   float cloudBand=smoothstep(-.16,.05,d.y)*(1.0-smoothstep(.62,.86,d.y));
+   float clouds=smoothstep(.46,.68,cloudNoise+.055)*cloudBand;
+   vec3 darkCloud=vec3(.052,.049,.052);
+   vec3 tanCloud=vec3(.285,.225,.145);
+   vec3 cloudCol=mix(darkCloud,tanCloud,smoothstep(.48,.75,cloudNoise));
+
+   // Small full moon, low over the skyline and slightly off-center from spawn.
+   vec3 moonDir=normalize(vec3(.18,.20,-.963));
+   float md=dot(d,moonDir);
+   float moon=smoothstep(cos(.024),cos(.018),md);
+   float halo=smoothstep(cos(.070),cos(.025),md);
+   vec3 moonUp=normalize(vec3(-moonDir.x*moonDir.y,1.0-moonDir.y*moonDir.y,-moonDir.z*moonDir.y));
+   float moonY=dot(d,moonUp);
+   float moonTexture=.88+.12*noise3(d*95.0);
+   sky+=vec3(.31,.275,.205)*halo*.22;
+   sky=mix(sky,vec3(.94,.88,.72)*moonTexture,moon);
+
+   // Keep the upper moon readable, while a dense tan cloud bank covers its bottom.
+   float upperMoon=moon*smoothstep(-.001,.009,moonY);
+   float lowerMoon=moon*(1.0-smoothstep(-.010,.006,moonY));
+   float cloudOpacity=clouds*.78*(1.0-upperMoon*.90);
+   float lowerCover=lowerMoon*(.64+.36*smoothstep(.40,.70,cloudNoise));
+   cloudOpacity=max(cloudOpacity,lowerCover*.92);
+   sky=mix(sky,cloudCol,clamp(cloudOpacity,0.0,.94));
+
+   // Faint moonlit haze keeps silhouettes visible without turning the sky gray.
+   sky+=vec3(.022,.027,.034)*smoothstep(-.05,.38,d.y);
+   gl_FragColor=vec4(sky,1.0);
+ }`
+});
+const earlyNightSky=new THREE.Mesh(new THREE.SphereGeometry(185,48,24),earlyNightSkyMaterial);
+earlyNightSky.renderOrder=-1000;earlyNightSky.frustumCulled=false;scene.add(earlyNightSky);
+document.documentElement.dataset.earlyNightSky="1";
 const materialCache=new Map(),emissiveMaterialCache=new Map(),zombieMaterialCache=new Map();
 const M=(c,r=.82)=>{const k=c+"|"+r;let m=materialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,roughness:r});materialCache.set(k,m)}return m};
 const EM=(c,e=.95,r=.28)=>{const k=c+"|"+e+"|"+r;let m=emissiveMaterialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:e,roughness:r});emissiveMaterialCache.set(k,m)}return m};
@@ -4039,6 +4131,8 @@ function frame(t){
  }
  if(!paused)update(dt);
  updateStreetLampLighting(t);
+ earlyNightSky.position.copy(cam.position);
+ earlyNightSkyUniforms.uTime.value=t*.001;
  ren.render(scene,cam);
  requestAnimationFrame(frame)
 }
