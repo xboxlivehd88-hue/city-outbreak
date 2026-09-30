@@ -3406,7 +3406,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  const power=Math.max(.65,Math.min(isBlast?4.6:2.6,force));
 
  const rag=z.ragdoll={
-   t:0,bones:[],blast:isBlast,power,settleT:0,grounded:false,
+   t:0,bones:[],blast:isBlast,power,settleT:0,grounded:false,bounceCount:0,
    floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
    baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
    targetX:z.g.rotation.x+forward*(isBlast?1.35:.78+rnd()*.22),
@@ -3420,7 +3420,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
 
  const add=(o,dx,dy,dz,delay=.08,duration=.72,wob=.12)=>{
    if(!o||!o.parent)return;
-   const loose=rag.blast?2.15+.30*rag.power:1.24;
+   const loose=rag.blast?1.08+.06*rag.power:1.24;
    rag.bones.push({
      o,
      sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
@@ -3435,7 +3435,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  if(z.rigVisual){
    const hips=rigBone(z,"Hips");
    rag.hips=hips;
-   if(hips){rag.hipsStartY=hips.position.y;rag.hipsTargetY=Math.max(.20,hips.position.y-.62-rnd()*.10)}
+   if(hips){rag.hipsStartY=hips.position.y;rag.hipsTargetY=Math.max(.20,hips.position.y-(rag.blast?.24:.62)-rnd()*(rag.blast?.05:.10))}
 
    // Knees give way first, then the pelvis and torso fold, with head/arms arriving late.
    add(rigBone(z,"L_UpperLeg"), .65+(rnd()-.5)*.30,(rnd()-.5)*.14,-.20-rnd()*.18,.00,.40,.07);
@@ -3489,27 +3489,38 @@ function updateRagdoll(z,dt){
  r.floorY=sampleRagdollGroundY(z.g.position.x,z.g.position.z,r.floorY,z.g.position.y);
  const floorContact=r.floorY-.08;
  r.grounded=false;
- if(z.g.position.y<floorContact){
+ if(z.g.position.y<=floorContact+.018&&r.vy<=0){
    z.g.position.y=floorContact;r.grounded=true;
-   if(r.vy<-(r.blast?.24:.22)){
-     r.vy*=r.blast?-.24:-.10;
-     r.vx*=r.blast?.78:.78;r.vz*=r.blast?.78:.78;
-   }else r.vy=0;
+   if(r.blast&&r.vy<-.52&&r.bounceCount<3){
+     const bounce=[.34,.20,.10][r.bounceCount]||.08;
+     r.vy=-r.vy*bounce;
+     r.vx*=r.bounceCount===0?.68:.52;
+     r.vz*=r.bounceCount===0?.68:.52;
+     r.bounceCount++;
+     r.grounded=false;
+   }else if(!r.blast&&r.vy<-.22){
+     r.vy*=-.10;r.vx*=.78;r.vz*=.78;
+   }else{
+     r.vy=0;
+     r.vx*=r.blast?.72:.78;
+     r.vz*=r.blast?.72:.78;
+     r.grounded=true;
+   }
  }
 
  for(const b of r.bones){
    const t=smooth((r.t-b.delay)/b.duration);
    const baseLoose=(1-t)*Math.exp(-Math.max(0,r.t-b.delay)*(r.blast?.58:1.85))*b.wob;
-   const airborneFlop=r.blast&&!r.grounded?(.48+.11*r.power)*Math.exp(-r.t*.12):0;
+   const airborneFlop=r.blast&&!r.grounded?(.58+.12*r.power)*Math.exp(-r.t*.32):0;
    b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*b.flopX+b.phase)*(baseLoose+airborneFlop);
    b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*b.flopY+b.phase+1.4)*(baseLoose*.72+airborneFlop*.78);
    b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*b.flopZ+b.phase+2.2)*(baseLoose*.88+airborneFlop*.92);
  }
 
  if(r.blast){
-   const settled=r.grounded&&Math.abs(r.vy)<.20&&Math.hypot(r.vx,r.vz)<.42;
+   const settled=r.grounded&&Math.abs(r.vy)<.08&&Math.hypot(r.vx,r.vz)<.24;
    r.settleT=settled?r.settleT+dt:0;
-   if(r.settleT>.58)z.falling=false;
+   if(r.settleT>.45)z.falling=false;
  }else if(r.t>1.90&&r.grounded)z.falling=false;
 }
 function killZ(z,hs,p,ragForce=1,ragOrigin=null){
@@ -3675,7 +3686,7 @@ function openShop(){
 }
 function toggleShop(){if(!between)return;openShop()}
 function buy(type){
- const needUnlock={smgAmmo:"smg",shotgunAmmo:"shotgun",pistolAmmo:"pistol",dmrAmmo:"dmr",grenadeLauncherAmmo:"grenadeLauncher",m240Ammo:"m240",awmAmmo:"awm"};
+ const needUnlock={rifleAmmo:"rifle",smgAmmo:"smg",shotgunAmmo:"shotgun",pistolAmmo:"pistol",dmrAmmo:"dmr",grenadeLauncherAmmo:"grenadeLauncher",m240Ammo:"m240",awmAmmo:"awm"};
  if(needUnlock[type]&&!unlocked[needUnlock[type]]){show("UNLOCK "+weaponDefs[needUnlock[type]].name+" FIRST");return}
  let price=0,ok=false;
 
@@ -3690,6 +3701,7 @@ function buy(type){
  if(type==="mag"){price=250;if(cash>=price){cash-=price;magSize+=5;show("MAGAZINE +5");ok=true}}
  if(type==="damage"){price=350;if(cash>=price){cash-=price;damageLevel++;show("DAMAGE LEVEL "+damageLevel);ok=true}}
  if(type==="reload"){price=300;if(cash>=price){cash-=price;reloadLevel++;show("FASTER RELOAD");ok=true}}
+ if(type==="rifle"){price=1;if(unlocked.rifle){show("M4 CARBINE ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.rifle=true;show("M4 CARBINE UNLOCKED");ok=true}}
  if(type==="smg"){price=1;if(unlocked.smg){show("MP5 ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.smg=true;show("MP5 UNLOCKED");ok=true}}
  if(type==="grenade"){price=175;if(cash>=price){cash-=price;grenades++;show("+1 GRENADE");ok=true}}
  if(type==="nuke"){price=100;if(cash>=price){cash-=price;nukes++;show("TACTICAL NUKE ACQUIRED");ok=true}}
