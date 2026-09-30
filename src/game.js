@@ -2107,7 +2107,7 @@ function rebuildGun(){
      const m240Scale=4.28/Math.max(.001,sz.z);
      model.scale.setScalar(m240Scale);
      model.position.copy(ctr).multiplyScalar(-m240Scale);
-     root.position.set(x,-.34,-2.14);gun.add(root);
+     root.position.set(x,-.34,-2.14);root.rotation.y=Math.PI;gun.add(root);
    }
  }else if(weapon==='awm'){
    // AWM Ultimate: long precision rifle, skeletal stock, oversized scope and heavy fluted barrel.
