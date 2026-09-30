@@ -141,8 +141,9 @@ const earlyNightSky=new THREE.Mesh(new THREE.SphereGeometry(185,48,24),earlyNigh
 earlyNightSky.renderOrder=-1000;earlyNightSky.frustumCulled=false;scene.add(earlyNightSky);
 document.documentElement.dataset.earlyNightSky="1";
 
-// v346: local early-night rain. One dynamic LineSegments draw call follows the
-// player, with a lightweight upward roof check so rain fades under solid cover.
+// v347: world-space early-night rain. Drops stay fixed in city/world space while
+// the player moves through them; only individual drops recycle when they fall or
+// leave the local weather radius. This removes the visible "rain follows me" effect.
 const RAIN_DROP_COUNT=420;
 const RAIN_RADIUS=27;
 const RAIN_TOP=19;
@@ -175,15 +176,15 @@ const rainCoverRay=new THREE.Raycaster();
 const rainUp=new THREE.Vector3(0,1,0);
 let rainCoverCheckAt=-1e9,rainCovered=false,rainOpacity=.34;
 
-function resetRainDrop(i,randomY=true){
+function resetRainDrop(i,randomY=true,centerX=0,centerY=0,centerZ=-15){
  const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*RAIN_RADIUS;
- rainX[i]=Math.cos(a)*r;
- rainZ[i]=Math.sin(a)*r;
- rainY[i]=randomY?RAIN_BOTTOM+Math.random()*(RAIN_TOP-RAIN_BOTTOM):RAIN_TOP+Math.random()*4;
+ rainX[i]=centerX+Math.cos(a)*r;
+ rainZ[i]=centerZ+Math.sin(a)*r;
+ rainY[i]=centerY+(randomY?RAIN_BOTTOM+Math.random()*(RAIN_TOP-RAIN_BOTTOM):RAIN_TOP+Math.random()*4);
  rainSpeed[i]=17+Math.random()*9;
  rainLength[i]=.48+Math.random()*.72;
 }
-for(let i=0;i<RAIN_DROP_COUNT;i++)resetRainDrop(i,true);
+for(let i=0;i<RAIN_DROP_COUNT;i++)resetRainDrop(i,true,0,0,-15);
 
 function updateRainCover(t){
  if(t-rainCoverCheckAt<240)return;
@@ -208,13 +209,17 @@ function updateRainEffect(dt,t){
  const targetOpacity=rainCovered?.018:.34;
  rainOpacity=THREE.MathUtils.lerp(rainOpacity,targetOpacity,Math.min(1,dt*7));
  rainMaterial.opacity=rainOpacity;
- rainLines.position.set(px,playerGroundY,pz);
  if(paused||shopLowPower)return;
+ const groundBottom=playerGroundY+RAIN_BOTTOM;
+ const recycleRadius=RAIN_RADIUS+4,recycleRadiusSq=recycleRadius*recycleRadius;
  for(let i=0;i<RAIN_DROP_COUNT;i++){
    rainX[i]+=RAIN_WIND_X*dt;
    rainZ[i]+=RAIN_WIND_Z*dt;
    rainY[i]-=rainSpeed[i]*dt;
-   if(rainY[i]<RAIN_BOTTOM||Math.abs(rainX[i])>RAIN_RADIUS+4||Math.abs(rainZ[i])>RAIN_RADIUS+4)resetRainDrop(i,false);
+   const dx=rainX[i]-px,dz=rainZ[i]-pz;
+   if(rainY[i]<groundBottom||dx*dx+dz*dz>recycleRadiusSq){
+     resetRainDrop(i,false,px,playerGroundY,pz);
+   }
    const j=i*6,len=rainLength[i];
    const leanX=RAIN_WIND_X*.055*len,leanZ=RAIN_WIND_Z*.055*len;
    rainPositions[j]=rainX[i];
@@ -226,7 +231,7 @@ function updateRainEffect(dt,t){
  }
  rainPositionAttr.needsUpdate=true;
 }
-document.documentElement.dataset.rainEffect="1";
+document.documentElement.dataset.rainEffect="world-space";
 document.documentElement.dataset.rainDropCount=String(RAIN_DROP_COUNT);
 
 const materialCache=new Map(),emissiveMaterialCache=new Map(),zombieMaterialCache=new Map();
