@@ -4404,7 +4404,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  if(weapon==="m240"&&m240ViewRoot){
    // v377: hip-fire keeps the shouldered pitch, ADS levels the complete M240
    // so the iron-sight channel can line up with screen center.
-   m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,0,aimBlend);
+   m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,-.025,aimBlend);
  }
  if(weapon==="m240"&&m240ViewModel&&m240ViewBasePos&&m240ViewBaseQuat){
    // Keep recoil around the rear stock point; do not move the complete gun rig.
