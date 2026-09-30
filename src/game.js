@@ -2104,7 +2104,9 @@ function rebuildGun(){
      else model.rotation.y=Math.PI;
      model.updateMatrixWorld(true);
      bx=new THREE.Box3().setFromObject(model);const ctr=new THREE.Vector3();bx.getCenter(ctr);bx.getSize(sz);
-     model.position.sub(ctr);model.scale.setScalar(4.28/Math.max(.001,sz.z));
+     const m240Scale=4.28/Math.max(.001,sz.z);
+     model.scale.setScalar(m240Scale);
+     model.position.copy(ctr).multiplyScalar(-m240Scale);
      root.position.set(x,-.34,-2.14);gun.add(root);
    }
  }else if(weapon==='awm'){
