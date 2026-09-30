@@ -141,15 +141,14 @@ const earlyNightSky=new THREE.Mesh(new THREE.SphereGeometry(185,48,24),earlyNigh
 earlyNightSky.renderOrder=-1000;earlyNightSky.frustumCulled=false;scene.add(earlyNightSky);
 document.documentElement.dataset.earlyNightSky="1";
 
-// v347: world-space early-night rain. Drops stay fixed in city/world space while
-// the player moves through them; only individual drops recycle when they fall or
-// leave the local weather radius. This removes the visible "rain follows me" effect.
-const RAIN_DROP_COUNT=420;
-const RAIN_RADIUS=27;
-const RAIN_TOP=19;
+// v348: heavier world-space rain with stronger wind, wet surfaces and pooled
+// pavement splashes. The approved streak length range stays unchanged.
+const RAIN_DROP_COUNT=620;
+const RAIN_RADIUS=29;
+const RAIN_TOP=20;
 const RAIN_BOTTOM=-2.0;
-const RAIN_WIND_X=1.15;
-const RAIN_WIND_Z=-.42;
+const RAIN_WIND_X=1.72;
+const RAIN_WIND_Z=-.68;
 const rainPositions=new Float32Array(RAIN_DROP_COUNT*6);
 const rainX=new Float32Array(RAIN_DROP_COUNT);
 const rainY=new Float32Array(RAIN_DROP_COUNT);
@@ -163,7 +162,7 @@ rainGeometry.setAttribute("position",rainPositionAttr);
 const rainMaterial=new THREE.LineBasicMaterial({
  color:0xc7d2dc,
  transparent:true,
- opacity:.34,
+ opacity:.39,
  depthWrite:false,
  depthTest:true
 });
@@ -172,9 +171,36 @@ rainLines.frustumCulled=false;
 rainLines.renderOrder=850;
 scene.add(rainLines);
 
+// One additional draw call for small four-way pavement splashes.
+const RAIN_SPLASH_COUNT=40;
+const RAIN_SPLASH_RADIUS=8.5;
+const rainSplashPositions=new Float32Array(RAIN_SPLASH_COUNT*24);
+const rainSplashAge=new Float32Array(RAIN_SPLASH_COUNT);
+const rainSplashLife=new Float32Array(RAIN_SPLASH_COUNT);
+const rainSplashX=new Float32Array(RAIN_SPLASH_COUNT);
+const rainSplashY=new Float32Array(RAIN_SPLASH_COUNT);
+const rainSplashZ=new Float32Array(RAIN_SPLASH_COUNT);
+const rainSplashSize=new Float32Array(RAIN_SPLASH_COUNT);
+const rainSplashActive=new Uint8Array(RAIN_SPLASH_COUNT);
+const rainSplashGeometry=new THREE.BufferGeometry();
+const rainSplashAttr=new THREE.BufferAttribute(rainSplashPositions,3);
+rainSplashAttr.setUsage(THREE.DynamicDrawUsage);
+rainSplashGeometry.setAttribute("position",rainSplashAttr);
+const rainSplashMaterial=new THREE.LineBasicMaterial({
+ color:0xd5dfe6,
+ transparent:true,
+ opacity:.30,
+ depthWrite:false,
+ depthTest:true
+});
+const rainSplashes=new THREE.LineSegments(rainSplashGeometry,rainSplashMaterial);
+rainSplashes.frustumCulled=false;
+rainSplashes.renderOrder=851;
+scene.add(rainSplashes);
+
 const rainCoverRay=new THREE.Raycaster();
 const rainUp=new THREE.Vector3(0,1,0);
-let rainCoverCheckAt=-1e9,rainCovered=false,rainOpacity=.34;
+let rainCoverCheckAt=-1e9,rainCovered=false,rainOpacity=.39,rainSplashSpawnAcc=0,rainSplashCursor=0;
 
 function resetRainDrop(i,randomY=true,centerX=0,centerY=0,centerZ=-15){
  const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*RAIN_RADIUS;
@@ -182,9 +208,58 @@ function resetRainDrop(i,randomY=true,centerX=0,centerY=0,centerZ=-15){
  rainZ[i]=centerZ+Math.sin(a)*r;
  rainY[i]=centerY+(randomY?RAIN_BOTTOM+Math.random()*(RAIN_TOP-RAIN_BOTTOM):RAIN_TOP+Math.random()*4);
  rainSpeed[i]=17+Math.random()*9;
+ // Keep v347's approved streak length exactly.
  rainLength[i]=.48+Math.random()*.72;
 }
 for(let i=0;i<RAIN_DROP_COUNT;i++)resetRainDrop(i,true,0,0,-15);
+
+function hideRainSplash(i){
+ const j=i*24;
+ for(let k=0;k<8;k++){
+   rainSplashPositions[j+k*3]=0;
+   rainSplashPositions[j+k*3+1]=-9999;
+   rainSplashPositions[j+k*3+2]=0;
+ }
+ rainSplashActive[i]=0;
+}
+for(let i=0;i<RAIN_SPLASH_COUNT;i++)hideRainSplash(i);
+
+function spawnRainSplash(){
+ const i=rainSplashCursor++%RAIN_SPLASH_COUNT;
+ const a=Math.random()*Math.PI*2,r=1.4+Math.sqrt(Math.random())*(RAIN_SPLASH_RADIUS-1.4);
+ const x=px+Math.cos(a)*r,z=pz+Math.sin(a)*r;
+ const y=sampleZombieGroundY(x,z,playerGroundY)+.025;
+ rainSplashX[i]=x;rainSplashY[i]=y;rainSplashZ[i]=z;
+ rainSplashAge[i]=0;rainSplashLife[i]=.16+Math.random()*.12;
+ rainSplashSize[i]=.055+Math.random()*.075;
+ rainSplashActive[i]=1;
+}
+function updateRainSplashes(dt){
+ if(!rainCovered){
+   rainSplashSpawnAcc+=dt*24;
+   while(rainSplashSpawnAcc>=1){spawnRainSplash();rainSplashSpawnAcc-=1}
+ }else rainSplashSpawnAcc=Math.min(rainSplashSpawnAcc,.25);
+
+ for(let i=0;i<RAIN_SPLASH_COUNT;i++){
+   if(!rainSplashActive[i])continue;
+   rainSplashAge[i]+=dt;
+   const life=rainSplashLife[i];
+   if(rainSplashAge[i]>=life){hideRainSplash(i);continue}
+   const p=rainSplashAge[i]/life;
+   const spread=rainSplashSize[i]*(.28+p*1.15);
+   const rise=Math.sin(p*Math.PI)*rainSplashSize[i]*.72;
+   const x=rainSplashX[i],y=rainSplashY[i],z=rainSplashZ[i],j=i*24;
+   const verts=[
+     x,y,z, x+spread,y+rise,z,
+     x,y,z, x-spread,y+rise,z,
+     x,y,z, x,y+rise,z+spread,
+     x,y,z, x,y+rise,z-spread
+   ];
+   for(let k=0;k<24;k++)rainSplashPositions[j+k]=verts[k];
+ }
+ rainSplashAttr.needsUpdate=true;
+ rainSplashMaterial.opacity=rainOpacity*.76;
+}
 
 function updateRainCover(t){
  if(t-rainCoverCheckAt<240)return;
@@ -206,7 +281,7 @@ function updateRainCover(t){
 function updateRainEffect(dt,t){
  if(!rainLines)return;
  updateRainCover(t);
- const targetOpacity=rainCovered?.018:.34;
+ const targetOpacity=rainCovered?.02:.39;
  rainOpacity=THREE.MathUtils.lerp(rainOpacity,targetOpacity,Math.min(1,dt*7));
  rainMaterial.opacity=rainOpacity;
  if(paused||shopLowPower)return;
@@ -230,9 +305,49 @@ function updateRainEffect(dt,t){
    rainPositions[j+5]=rainZ[i]-leanZ;
  }
  rainPositionAttr.needsUpdate=true;
+ updateRainSplashes(dt);
 }
-document.documentElement.dataset.rainEffect="world-space";
+document.documentElement.dataset.rainEffect="world-space-heavy-wet";
 document.documentElement.dataset.rainDropCount=String(RAIN_DROP_COUNT);
+document.documentElement.dataset.rainSplashCount=String(RAIN_SPLASH_COUNT);
+
+// Wet road/ground treatment: clone only ground-family materials so buildings,
+// props and the approved street lamps are not altered.
+function applyWetCityMaterials(map){
+ map.updateMatrixWorld(true);
+ const wetMaterialCache=new Map(),box=new THREE.Box3(),size=new THREE.Vector3();
+ let wetMeshes=0;
+ map.traverse(o=>{
+   if(!o.isMesh||o.isSkinnedMesh)return;
+   let p=o,mode="";
+   while(p&&p!==map){
+     const name=p.name||"";
+     if(/^Road_\d/i.test(name)||/^ParkingBG_/i.test(name)){mode="road";break}
+     if(/^BG_/i.test(name)){mode="ground"}
+     p=p.parent;
+   }
+   if(!mode)return;
+   if(mode==="ground"){
+     box.setFromObject(o);box.getSize(size);
+     if(size.y>.42)return;
+   }
+   const wetOne=mat=>{
+     if(!mat||!mat.clone)return mat;
+     const key=mat.uuid+"|"+mode;
+     let wet=wetMaterialCache.get(key);
+     if(wet)return wet;
+     wet=mat.clone();
+     if(wet.color)wet.color.multiplyScalar(mode==="road"?.78:.90);
+     if("roughness" in wet)wet.roughness=Math.min(wet.roughness??1,mode==="road"?.24:.36);
+     if("metalness" in wet)wet.metalness=Math.min(Math.max(wet.metalness??0,.015),.05);
+     wet.needsUpdate=true;wetMaterialCache.set(key,wet);return wet;
+   };
+   o.material=Array.isArray(o.material)?o.material.map(wetOne):wetOne(o.material);
+   wetMeshes++;
+ });
+ document.documentElement.dataset.wetSurfaceMeshes=String(wetMeshes);
+ console.log("CITY OUTBREAK: wet road/ground materials applied",{wetMeshes});
+}
 
 const materialCache=new Map(),emissiveMaterialCache=new Map(),zombieMaterialCache=new Map();
 const M=(c,r=.82)=>{const k=c+"|"+r;let m=materialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,roughness:r});materialCache.set(k,m)}return m};
@@ -927,6 +1042,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
    }
  });
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
+ applyWetCityMaterials(map);
  buildNewCitySpawnZones(map);
  const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
