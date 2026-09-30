@@ -3412,15 +3412,15 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    targetX:z.g.rotation.x+forward*(isBlast?1.35:.78+rnd()*.22),
    targetZ:z.g.rotation.z+sideFall*(isBlast?1.35:1),
    targetY:z.g.rotation.y+(rnd()-.5)*(isBlast?1.35:.58),
-   vx:awayX*(isBlast?(2.00+1.30*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.62:.24),
-   vz:awayZ*(isBlast?(2.00+1.30*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.62:.24),
-   vy:isBlast?(2.40+1.55*rnd())*power:(.32+.34*rnd())*power,
+   vx:awayX*(isBlast?(2.38+1.48*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.72:.24),
+   vz:awayZ*(isBlast?(2.38+1.48*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.72:.24),
+   vy:isBlast?(2.62+1.68*rnd())*power:(.32+.34*rnd())*power,
    hips:null,hipsStartY:0,hipsTargetY:0
  };
 
  const add=(o,dx,dy,dz,delay=.08,duration=.72,wob=.12)=>{
    if(!o||!o.parent)return;
-   const loose=rag.blast?1.08+.06*rag.power:1.24;
+   const loose=rag.blast?1.14+.07*rag.power:1.24;
    rag.bones.push({
      o,
      sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
@@ -3483,7 +3483,7 @@ function updateRagdoll(z,dt){
  z.g.rotation.y=r.baseY+(r.targetY-r.baseY)*smooth((r.t-.20)/1.05);
 
  z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
- const drag=Math.exp(-dt*(r.blast?1.35:3.2));r.vx*=drag;r.vz*=drag;
+ const drag=Math.exp(-dt*(r.blast?1.02:3.2));r.vx*=drag;r.vz*=drag;
  r.vy-=(r.blast?6.35:5.4)*dt;
  z.g.position.y+=r.vy*dt;
  r.floorY=sampleRagdollGroundY(z.g.position.x,z.g.position.z,r.floorY,z.g.position.y);
@@ -3511,7 +3511,7 @@ function updateRagdoll(z,dt){
  for(const b of r.bones){
    const t=smooth((r.t-b.delay)/b.duration);
    const baseLoose=(1-t)*Math.exp(-Math.max(0,r.t-b.delay)*(r.blast?.58:1.85))*b.wob;
-   const airborneFlop=r.blast&&!r.grounded?(.58+.12*r.power)*Math.exp(-r.t*.32):0;
+   const airborneFlop=r.blast&&!r.grounded?(.70+.14*r.power)*Math.exp(-r.t*.29):0;
    b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*b.flopX+b.phase)*(baseLoose+airborneFlop);
    b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*b.flopY+b.phase+1.4)*(baseLoose*.72+airborneFlop*.78);
    b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*b.flopZ+b.phase+2.2)*(baseLoose*.88+airborneFlop*.92);
@@ -3938,7 +3938,7 @@ function explodeLauncherRound(g){
      const blast=Math.max(2,Math.ceil((7-d)*1.55))*damageLevel;
      const force=Math.max(.35,1-d/6.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),2.05+force*2.15,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),2.30+force*2.45,p);
      else blastReact(z,p,.70+force*1.15)
    }
  }
@@ -3961,7 +3961,7 @@ function explodeGrenade(g){
    if(d<7.5){
      const blast=Math.max(1,Math.ceil((8-d)/2))*damageLevel,force=Math.max(.25,1-d/7.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),1.85+force*1.95,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),2.08+force*2.20,p);
      else blastReact(z,p,.55+force*.95)
    }
  }
