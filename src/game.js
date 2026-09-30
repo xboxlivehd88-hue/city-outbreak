@@ -1528,7 +1528,7 @@ new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
  });
  if(weapon==="smg")rebuildGun();
 },undefined,err=>console.warn("MP5 GLB load failed; MP5 viewmodel unavailable",err));
-let m240ModelTemplate=null,m240ViewRoot=null,m240ViewModel=null,m240ViewBasePos=null,m240ViewBaseQuat=null;
+let m240ModelTemplate=null,m240ViewRoot=null,m240ViewModel=null,m240ViewBasePos=null,m240ViewBaseQuat=null,m240BarrelKick=0;
 const m240RecoilAxis=new THREE.Vector3(1,0,0),m240RecoilPoint=new THREE.Vector3(0,0,-1.82),m240RecoilQuat=new THREE.Quaternion();
 new GLTFLoader().load("assets/m240b_machine_gun.glb",gltf=>{
  m240ModelTemplate=gltf.scene;
@@ -1909,7 +1909,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -4407,9 +4407,14 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,.050,aimBlend);
  }
  if(weapon==="m240"&&m240ViewModel&&m240ViewBasePos&&m240ViewBaseQuat){
-   // Keep recoil around the rear stock point; do not move the complete gun rig.
-   const kick=-recoil*.20;
-   m240RecoilQuat.setFromAxisAngle(m240RecoilAxis,kick);
+   // v381: heavy-machine-gun recoil stays at the barrel/front only. Smooth the
+   // per-shot sawtooth so ADS remains readable while sustained fire still has
+   // a noticeable, weighty muzzle rise.
+   const recoilStrength=THREE.MathUtils.lerp(.11,.060,aimBlend);
+   const targetKick=-recoil*recoilStrength;
+   const follow=1-Math.exp(-dt*10.5);
+   m240BarrelKick=THREE.MathUtils.lerp(m240BarrelKick,targetKick,follow);
+   m240RecoilQuat.setFromAxisAngle(m240RecoilAxis,m240BarrelKick);
    m240ViewModel.quaternion.copy(m240RecoilQuat).multiply(m240ViewBaseQuat);
    m240ViewModel.position.copy(m240ViewBasePos).sub(m240RecoilPoint).applyQuaternion(m240RecoilQuat).add(m240RecoilPoint);
  }
