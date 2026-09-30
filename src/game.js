@@ -992,8 +992,10 @@ function addStreetLampColliders(placements){
  });
 }
 
-// v343: real street-lamp illumination. Keep only a small pool of dynamic
-// spotlights active and move them to the nearest lamp heads as the player moves.
+// v366: every street-lamp head now carries a cheap always-on emissive glow so
+// lamps no longer appear to switch on just because the 4 real spotlights moved.
+// The small spotlight pool is preserved for performance and follows the nearest
+// lamps, while each lamp gets its own rare, unsynchronized horror flicker.
 const STREET_LAMP_HEAD_LOCAL_X=2.607625;
 const STREET_LAMP_HEAD_LOCAL_Y=5.785485;
 const STREET_LAMP_LIGHT_POOL_SIZE=4;
@@ -1002,8 +1004,91 @@ const STREET_LAMP_LIGHT_INTENSITY=220;
 const streetLampLightHeads=[];
 const streetLampLightPool=[];
 const streetLampLightTargets=[];
+const streetLampFlickerStates=[];
+let streetLampGlowPoints=null;
+let streetLampGlowBrightness=null;
 let streetLampLightLastUpdate=-1e9;
 
+function nextStreetLampFlickerTime(t){
+ return t+14000+Math.random()*76000;
+}
+function setupStreetLampGlow(){
+ if(streetLampGlowPoints||!streetLampLightHeads.length)return;
+ const pos=new Float32Array(streetLampLightHeads.length*3);
+ streetLampGlowBrightness=new Float32Array(streetLampLightHeads.length);
+ for(let i=0;i<streetLampLightHeads.length;i++){
+   const h=streetLampLightHeads[i],j=i*3;
+   pos[j]=h.x;pos[j+1]=h.y;pos[j+2]=h.z;
+   streetLampGlowBrightness[i]=1;
+   streetLampFlickerStates.push({
+     next:nextStreetLampFlickerTime(performance.now()+Math.random()*12000),
+     until:0,seed:Math.random()*1000
+   });
+ }
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute("position",new THREE.BufferAttribute(pos,3));
+ geo.setAttribute("brightness",new THREE.BufferAttribute(streetLampGlowBrightness,1));
+ const mat=new THREE.ShaderMaterial({
+   transparent:true,
+   depthWrite:false,
+   depthTest:true,
+   blending:THREE.AdditiveBlending,
+   uniforms:{uColor:{value:new THREE.Color(0xffd27a)}},
+   vertexShader:`
+     attribute float brightness;
+     varying float vBrightness;
+     void main(){
+       vBrightness=brightness;
+       vec4 mv=modelViewMatrix*vec4(position,1.0);
+       gl_PointSize=clamp(78.0/max(1.0,-mv.z),3.2,14.0);
+       gl_Position=projectionMatrix*mv;
+     }`,
+   fragmentShader:`
+     uniform vec3 uColor;
+     varying float vBrightness;
+     void main(){
+       float d=length(gl_PointCoord-vec2(.5));
+       float halo=1.0-smoothstep(.10,.50,d);
+       float core=1.0-smoothstep(.02,.16,d);
+       float a=(halo*.42+core*.58)*vBrightness;
+       if(a<.01)discard;
+       gl_FragColor=vec4(uColor,a);
+     }`
+ });
+ streetLampGlowPoints=new THREE.Points(geo,mat);
+ streetLampGlowPoints.name="StreetLampAlwaysOnGlow";
+ streetLampGlowPoints.frustumCulled=false;
+ streetLampGlowPoints.renderOrder=120;
+ scene.add(streetLampGlowPoints);
+}
+function updateStreetLampFlicker(t){
+ if(!streetLampGlowBrightness)return;
+ let changed=false;
+ for(let i=0;i<streetLampFlickerStates.length;i++){
+   const s=streetLampFlickerStates[i];
+   if(!s.until&&t>=s.next){
+     s.until=t+90+Math.random()*330;
+     s.seed=Math.random()*1000;
+   }
+   let brightness=1;
+   if(s.until){
+     if(t>=s.until){
+       s.until=0;
+       s.next=nextStreetLampFlickerTime(t);
+     }else{
+       const chaos=Math.sin((t+s.seed)*.082)+Math.sin((t+s.seed*7.1)*.193);
+       brightness=chaos>1.0?.08:chaos>.30?.34:.72;
+     }
+   }
+   if(Math.abs(streetLampGlowBrightness[i]-brightness)>.001){
+     streetLampGlowBrightness[i]=brightness;
+     changed=true;
+   }
+ }
+ if(changed&&streetLampGlowPoints){
+   streetLampGlowPoints.geometry.attributes.brightness.needsUpdate=true;
+ }
+}
 function setupStreetLampLighting(placements){
  if(streetLampLightPool.length||!placements.length)return;
  for(const p of placements){
@@ -1012,6 +1097,7 @@ function setupStreetLampLighting(placements){
    const headY=p.y+STREET_LAMP_HEAD_LOCAL_Y*STREET_LAMP_HEIGHT_SCALE;
    streetLampLightHeads.push({x:headX,y:headY,z:headZ,groundY:p.y});
  }
+ setupStreetLampGlow();
  for(let i=0;i<Math.min(STREET_LAMP_LIGHT_POOL_SIZE,streetLampLightHeads.length);i++){
    const target=new THREE.Object3D();
    scene.add(target);
@@ -1024,29 +1110,46 @@ function setupStreetLampLighting(placements){
      1.65
    );
    light.castShadow=false;
-   light.visible=false;
+   light.visible=true;
    light.target=target;
+   light.userData.streetLampHeadIndex=-1;
    scene.add(light);
    streetLampLightTargets.push(target);
    streetLampLightPool.push(light);
  }
  document.documentElement.dataset.streetLampRealLights=String(streetLampLightPool.length);
+ document.documentElement.dataset.streetLampAlwaysOnGlow=String(streetLampLightHeads.length);
  updateStreetLampLighting(performance.now(),true);
 }
 function updateStreetLampLighting(t,force=false){
  if(!streetLampLightPool.length)return;
- if(!force&&t-streetLampLightLastUpdate<220)return;
- streetLampLightLastUpdate=t;
- const nearest=streetLampLightHeads
-   .map((h,i)=>({i,d:(h.x-px)*(h.x-px)+(h.z-pz)*(h.z-pz)}))
-   .sort((a,b)=>a.d-b.d)
-   .slice(0,streetLampLightPool.length);
- for(let i=0;i<streetLampLightPool.length;i++){
-   const light=streetLampLightPool[i],target=streetLampLightTargets[i],pick=nearest[i];
-   if(!pick){light.visible=false;continue}
-   const h=streetLampLightHeads[pick.i];
-   light.position.set(h.x,h.y,h.z);
-   target.position.set(h.x,h.groundY+.05,h.z);
+ updateStreetLampFlicker(t);
+
+ // Reassign the expensive real spotlights only at the old low frequency.
+ // Their on/off state is no longer used for the normal lamp appearance.
+ if(force||t-streetLampLightLastUpdate>=220){
+   streetLampLightLastUpdate=t;
+   const nearest=streetLampLightHeads
+     .map((h,i)=>({i,d:(h.x-px)*(h.x-px)+(h.z-pz)*(h.z-pz)}))
+     .sort((a,b)=>a.d-b.d)
+     .slice(0,streetLampLightPool.length);
+   for(let i=0;i<streetLampLightPool.length;i++){
+     const light=streetLampLightPool[i],target=streetLampLightTargets[i],pick=nearest[i];
+     if(!pick)continue;
+     const h=streetLampLightHeads[pick.i];
+     light.position.set(h.x,h.y,h.z);
+     target.position.set(h.x,h.groundY+.05,h.z);
+     light.userData.streetLampHeadIndex=pick.i;
+     light.visible=true;
+   }
+ }
+
+ // Normally the real lights stay at full power. Only the rare per-lamp flicker
+ // above is allowed to dip the matching spotlight intensity.
+ for(const light of streetLampLightPool){
+   const i=light.userData.streetLampHeadIndex;
+   const brightness=i>=0&&streetLampGlowBrightness?streetLampGlowBrightness[i]:1;
+   light.intensity=STREET_LAMP_LIGHT_INTENSITY*brightness;
    light.visible=true;
  }
 }
