@@ -1594,7 +1594,7 @@ const ADS={
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:.045},
  dmr:{x:-.36,y:.010,z:-1.00,fov:48,rx:0},
  grenadeLauncher:{x:-.36,y:.040,z:-.45,fov:56,rx:0},
- m240:{x:-.36,y:-.08,z:1.20,fov:56,rx:0},
+ m240:{x:-.36,y:.08,z:1.20,fov:56,rx:0},
  awm:{x:-.36,y:.005,z:-.62,fov:28,rx:0}
 };
 function ads(){return ADS[weapon]||ADS.rifle}
@@ -4401,9 +4401,13 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    // the rear of the receiver, giving a small muzzle rise without whole-gun bounce.
    if(mp5RecoilPivot)mp5RecoilPivot.rotation.x=recoil*.28;
  }
+ if(weapon==="m240"&&m240ViewRoot){
+   // v377: hip-fire keeps the shouldered pitch, ADS levels the complete M240
+   // so the iron-sight channel can line up with screen center.
+   m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,0,aimBlend);
+ }
  if(weapon==="m240"&&m240ViewModel&&m240ViewBasePos&&m240ViewBaseQuat){
-   // v376: no hierarchy change. Rotate the imported M240 rigidly around a rear
-   // stock point in its existing v374 parent space, so only the muzzle rises.
+   // Keep recoil around the rear stock point; do not move the complete gun rig.
    const kick=-recoil*.20;
    m240RecoilQuat.setFromAxisAngle(m240RecoilAxis,kick);
    m240ViewModel.quaternion.copy(m240RecoilQuat).multiply(m240ViewBaseQuat);
