@@ -3434,7 +3434,8 @@ function ragdollBoneGroundRadius(role){
 }
 function resolveRagdollGroundImpact(r){
  r.grounded=true;
- if(r.blast&&r.vy<-.52&&r.bounceCount<3){
+ const canBounce=(r.impactCooldown||0)<=0;
+ if(r.blast&&canBounce&&r.vy<-.52&&r.bounceCount<3){
    const bounce=[.34,.20,.10][r.bounceCount]||.08;
    r.vy=-r.vy*bounce;
    r.vx*=r.bounceCount===0?.68:.52;
@@ -3450,10 +3451,11 @@ function resolveRagdollGroundImpact(r){
      b.avz+=(rnd()-.5)*jolt*5.5*impact;
    }
    r.bounceCount++;
+   r.impactCooldown=.10;
    r.grounded=false;
  }else if(!r.blast&&r.vy<-.22){
    r.vy*=-.10;r.vx*=.78;r.vz*=.78;
- }else{
+ }else if(r.vy<=0){
    r.vy=0;
    r.vx*=r.blast?.72:.78;
    r.vz*=r.blast?.72:.78;
@@ -3463,29 +3465,30 @@ function resolveRagdollGroundImpact(r){
 function resolveRagdollBodyGroundContact(z,r){
  if(!r.blast)return;
  z.g.updateMatrixWorld(true);
- let lift=0,bestSurface=null;
+ let targetRootY=z.g.position.y,bestSurface=null,hasPenetration=false;
  for(const b of r.bones){
    b.o.getWorldPosition(ragdollProbeWorld);
    const radius=ragdollBoneGroundRadius(b.role);
-   const prevY=Number.isFinite(b.prevWorldY)?b.prevWorldY:ragdollProbeWorld.y;
-   const maxSurfaceY=Math.max(prevY,ragdollProbeWorld.y)+radius+.18;
-   const surface=findRagdollSurfaceY(ragdollProbeWorld.x,ragdollProbeWorld.z,maxSurfaceY);
+   const surface=findRagdollSurfaceY(
+     ragdollProbeWorld.x,
+     ragdollProbeWorld.z,
+     Math.max(z.g.position.y,r.floorY)+1.35
+   );
    if(surface===null)continue;
    const penetration=surface-(ragdollProbeWorld.y-radius);
-   if(penetration>lift){
-     lift=penetration;
+   if(penetration<=.002)continue;
+   hasPenetration=true;
+   const absoluteTarget=z.g.position.y+penetration+.010;
+   const cappedTarget=Math.min(absoluteTarget,surface+.78);
+   if(cappedTarget>targetRootY){
+     targetRootY=cappedTarget;
      bestSurface=surface;
    }
  }
- if(r.vy<=0&&lift>.002){
-   z.g.position.y+=lift+.012;
+ if(hasPenetration&&r.vy<=0){
+   z.g.position.y=targetRootY;
    if(bestSurface!==null)r.floorY=Math.max(r.floorY,bestSurface);
    resolveRagdollGroundImpact(r);
- }
- z.g.updateMatrixWorld(true);
- for(const b of r.bones){
-   b.o.getWorldPosition(ragdollProbeWorld);
-   b.prevWorldY=ragdollProbeWorld.y;
  }
 }
 
@@ -3508,7 +3511,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  const power=Math.max(.65,Math.min(isBlast?4.6:2.6,force));
 
  const rag=z.ragdoll={
-   t:0,bones:[],blast:isBlast,power,settleT:0,grounded:false,bounceCount:0,
+   t:0,bones:[],blast:isBlast,power,settleT:0,grounded:false,bounceCount:0,impactCooldown:0,
    floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
    baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
    targetX:z.g.rotation.x+forward*(isBlast?0:.78+rnd()*.22),
@@ -3584,15 +3587,11 @@ function beginRagdoll(z,force=1,blastOrigin=null){
      b.parentState=byObject.get(p)||null;
    }
    z.g.updateMatrixWorld(true);
-   for(const b of rag.bones){
-     b.o.getWorldPosition(ragdollProbeWorld);
-     b.prevWorldY=ragdollProbeWorld.y;
-   }
  }
 }
 function updateRagdoll(z,dt){
  if(!z.ragdoll)beginRagdoll(z);
- const r=z.ragdoll;r.t+=dt;
+ const r=z.ragdoll;r.t+=dt;r.impactCooldown=Math.max(0,(r.impactCooldown||0)-dt);
 
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
 
@@ -3687,9 +3686,8 @@ function updateRagdoll(z,dt){
    }
  }
 
- // v360: the zombie root is at its standing ground pivot, so clamping only
- // that pivot still lets a tumbling torso/head/limb rotate below the pavement.
- // Probe the actual simulated bones and resolve the first real body-surface hit.
+ // v361: body contact resolves to a bounded absolute root height. Never add
+ // penetration repeatedly frame after frame; that can launch the corpse upward.
  resolveRagdollBodyGroundContact(z,r);
 
  if(r.blast){
