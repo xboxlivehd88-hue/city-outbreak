@@ -3419,7 +3419,6 @@ function blastBoneProfile(role){
 const ragdollSurfaceRaycaster=new THREE.Raycaster();
 const ragdollSurfaceNormal=new THREE.Vector3();
 const ragdollSurfaceNormalMatrix=new THREE.Matrix3();
-const ragdollVisualBounds=new THREE.Box3();
 function sampleRagdollCitySurfaceY(x,z,topY){
  if(!newCityRoot)return null;
  ragdollSurfaceRaycaster.ray.origin.set(x,topY+.70,z);
@@ -3437,28 +3436,30 @@ function sampleRagdollCitySurfaceY(x,z,topY){
  }
  return null;
 }
-function ragdollRootSupportHeight(z){
- // z.g is authored at the zombie's standing foot pivot. When the root tumbles
- // upside-down, most of the body extends below that pivot. Keep enough vertical
- // clearance for the body's local +Y axis instead of treating the pivot itself
- // as the corpse's center of mass.
- const upY=Math.cos(z.g.rotation.x)*Math.cos(z.g.rotation.z);
- const scaleY=Math.max(.7,z.g.scale?.y||1);
- const bodyLength=(z.kind==="crawler"?.95:1.72)*scaleY;
- return .24+Math.max(0,-upY)*bodyLength;
-}
-function keepRagdollVisualAboveSurface(z,r,surfaceY){
- if(!r.blast||surfaceY===null||!Number.isFinite(surfaceY))return;
- z.g.updateMatrixWorld(true);
- const visual=z.rigVisual||z.g;
- ragdollVisualBounds.setFromObject(visual,true);
- if(!Number.isFinite(ragdollVisualBounds.min.y))return;
- const penetration=(surfaceY+.018)-ragdollVisualBounds.min.y;
- if(penetration<=.001)return;
- // Safety clamp only: correct the visible mesh into contact without creating
- // another bounce impulse or allowing a single frame to teleport the corpse.
- z.g.position.y+=Math.min(penetration,.55);
- if(r.vy<0&&r.grounded)r.vy=0;
+function createBlastRagdollPivot(z){
+ const g=z.g;
+ if(!g)return null;
+ const pivot=new THREE.Group();
+ pivot.name="BlastRagdollBodyPivot";
+ pivot.rotation.order="YXZ";
+ const pivotY=z.kind==="crawler"?.56:
+   Math.max(.68,Math.min(1.08,Number.isFinite(z.rigHipsBaseY)?z.rigHipsBaseY:.90));
+ const children=[...g.children];
+ pivot.position.set(0,pivotY,0);
+ g.add(pivot);
+ for(const child of children){
+   pivot.add(child);
+   child.position.y-=pivotY;
+ }
+ // Keep the gameplay/ground root upright. Transfer any tiny pre-death lean to
+ // the body pivot, then all explosive tumble happens around the body center.
+ pivot.rotation.x=g.rotation.x;
+ pivot.rotation.z=g.rotation.z;
+ g.rotation.x=0;
+ g.rotation.z=0;
+ if(z.rigVisual)z.rigVisual.traverse(o=>{if(o.isMesh)o.frustumCulled=false});
+ z.ragdollBodyPivot=pivot;
+ return pivot;
 }
 function resolveRagdollGroundImpact(r){
  r.grounded=true;
@@ -3501,6 +3502,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  z.g.rotation.order="YXZ";z.falling=true;
 
  const side=z.fallDir||((rnd()>.5)?1:-1),isBlast=!!blastOrigin;
+ const tumbleRoot=isBlast?createBlastRagdollPivot(z):z.g;
  const collapse=rnd();
  const forward=isBlast?(rnd()>.5?1:-1)*(1.08+rnd()*.38):(collapse<.40?1.02+rnd()*.28:collapse<.70?-(.82+rnd()*.24):(rnd()>.5?1:-1)*(.42+rnd()*.28));
  const sideFall=isBlast?side*(1.02+rnd()*.52):(collapse>.62?side*(.82+rnd()*.34):side*(.30+rnd()*.26));
@@ -3510,12 +3512,12 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  const power=Math.max(.65,Math.min(isBlast?4.6:2.6,force));
 
  const rag=z.ragdoll={
-   t:0,bones:[],blast:isBlast,power,settleT:0,grounded:false,bounceCount:0,impactCooldown:0,
+   t:0,bones:[],blast:isBlast,power,settleT:0,grounded:false,bounceCount:0,impactCooldown:0,tumbleRoot,
    floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
-   baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
-   targetX:z.g.rotation.x+forward*(isBlast?0:.78+rnd()*.22),
-   targetZ:z.g.rotation.z+sideFall*(isBlast?0:1),
-   targetY:z.g.rotation.y+(rnd()-.5)*(isBlast?0:.58),
+   baseX:tumbleRoot.rotation.x,baseY:tumbleRoot.rotation.y,baseZ:tumbleRoot.rotation.z,
+   targetX:tumbleRoot.rotation.x+forward*(isBlast?0:.78+rnd()*.22),
+   targetZ:tumbleRoot.rotation.z+sideFall*(isBlast?0:1),
+   targetY:tumbleRoot.rotation.y+(rnd()-.5)*(isBlast?0:.58),
    ravx:isBlast?(rnd()-.5)*(5.2+power*1.4):0,
    ravy:isBlast?(rnd()-.5)*(4.0+power*1.0):0,
    ravz:isBlast?(rnd()-.5)*(5.8+power*1.5):0,
@@ -3605,9 +3607,10 @@ function updateRagdoll(z,dt){
    r.ravx+=Math.sin(r.t*2.7+r.rootPhase)*gust*1.15*dt;
    r.ravy+=Math.sin(r.t*2.2+r.rootPhase+2.1)*gust*.90*dt;
    r.ravz+=Math.sin(r.t*3.1+r.rootPhase+4.0)*gust*1.30*dt;
-   z.g.rotation.x+=r.ravx*dt;
-   z.g.rotation.y+=r.ravy*dt;
-   z.g.rotation.z+=r.ravz*dt;
+   const tumble=r.tumbleRoot||z.g;
+   tumble.rotation.x+=r.ravx*dt;
+   tumble.rotation.y+=r.ravy*dt;
+   tumble.rotation.z+=r.ravz*dt;
    r.ravx*=rootDamp;r.ravy*=rootDamp;r.ravz*=rootDamp;
  }else{
    const root=smooth((r.t-.18)/.82);
@@ -3623,8 +3626,8 @@ function updateRagdoll(z,dt){
  z.g.position.y+=r.vy*dt;
  let hasRagdollSurface=true,ragdollSurfaceY=null;
  if(r.blast){
-   // v363: use the real city mesh, but account for the zombie root being a
-   // standing-foot pivot rather than the ragdoll's center of mass.
+   // v364: the gameplay root stays upright and represents the bottom of the
+   // centered ragdoll body pivot, so real city-surface contact is stable.
    ragdollSurfaceY=sampleRagdollCitySurfaceY(
      z.g.position.x,z.g.position.z,
      Math.max(prevRagdollY,z.g.position.y)
@@ -3637,7 +3640,7 @@ function updateRagdoll(z,dt){
      Math.max(prevRagdollY,z.g.position.y)
    );
  }
- const floorContact=r.floorY+(r.blast?ragdollRootSupportHeight(z):-.08);
+ const floorContact=r.floorY+(r.blast?.015:-.08);
  r.grounded=false;
  if(hasRagdollSurface&&z.g.position.y<=floorContact+.018&&r.vy<=0){
    z.g.position.y=floorContact;
@@ -3693,11 +3696,6 @@ function updateRagdoll(z,dt){
    }
  }
 
- // v363 safety: after the bone simulation updates the rendered pose, use its
- // actual world-space bounds only to prevent visible geometry from ending below
- // the city surface. This does not add force or trigger another bounce.
- if(r.blast&&hasRagdollSurface)keepRagdollVisualAboveSurface(z,r,ragdollSurfaceY);
-
  if(r.blast){
    let maxBoneSpin=0;
    for(const b of r.bones)maxBoneSpin=Math.max(maxBoneSpin,Math.abs(b.avx||0),Math.abs(b.avy||0),Math.abs(b.avz||0));
@@ -3709,7 +3707,7 @@ function updateRagdoll(z,dt){
 }
 function killZ(z,hs,p,ragForce=1,ragOrigin=null){
  if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
- if(hs){heads++;headS();burst(p,true);if(z.head&&z.head.parent)z.g.remove(z.head)}
+ if(hs){heads++;headS();burst(p,true);if(z.head&&z.head.parent)z.head.parent.remove(z.head)}
  else{noise(.12,.16,260)}
  // Dead bodies keep the silhouette but stop expensive shadow work immediately.
  z.g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}}); z.g.rotation.order="YXZ";
