@@ -3419,6 +3419,7 @@ function blastBoneProfile(role){
 const ragdollSurfaceRaycaster=new THREE.Raycaster();
 const ragdollSurfaceNormal=new THREE.Vector3();
 const ragdollSurfaceNormalMatrix=new THREE.Matrix3();
+const ragdollVisualBounds=new THREE.Box3();
 function sampleRagdollCitySurfaceY(x,z,topY){
  if(!newCityRoot)return null;
  ragdollSurfaceRaycaster.ray.origin.set(x,topY+.70,z);
@@ -3435,6 +3436,29 @@ function sampleRagdollCitySurfaceY(x,z,topY){
    return hit.point.y;
  }
  return null;
+}
+function ragdollRootSupportHeight(z){
+ // z.g is authored at the zombie's standing foot pivot. When the root tumbles
+ // upside-down, most of the body extends below that pivot. Keep enough vertical
+ // clearance for the body's local +Y axis instead of treating the pivot itself
+ // as the corpse's center of mass.
+ const upY=Math.cos(z.g.rotation.x)*Math.cos(z.g.rotation.z);
+ const scaleY=Math.max(.7,z.g.scale?.y||1);
+ const bodyLength=(z.kind==="crawler"?.95:1.72)*scaleY;
+ return .24+Math.max(0,-upY)*bodyLength;
+}
+function keepRagdollVisualAboveSurface(z,r,surfaceY){
+ if(!r.blast||surfaceY===null||!Number.isFinite(surfaceY))return;
+ z.g.updateMatrixWorld(true);
+ const visual=z.rigVisual||z.g;
+ ragdollVisualBounds.setFromObject(visual,true);
+ if(!Number.isFinite(ragdollVisualBounds.min.y))return;
+ const penetration=(surfaceY+.018)-ragdollVisualBounds.min.y;
+ if(penetration<=.001)return;
+ // Safety clamp only: correct the visible mesh into contact without creating
+ // another bounce impulse or allowing a single frame to teleport the corpse.
+ z.g.position.y+=Math.min(penetration,.55);
+ if(r.vy<0&&r.grounded)r.vy=0;
 }
 function resolveRagdollGroundImpact(r){
  r.grounded=true;
@@ -3597,25 +3621,23 @@ function updateRagdoll(z,dt){
  const prevRagdollY=z.g.position.y;
  r.vy-=(r.blast?6.35:5.4)*dt;
  z.g.position.y+=r.vy*dt;
- let hasRagdollSurface=true;
+ let hasRagdollSurface=true,ragdollSurfaceY=null;
  if(r.blast){
-   // v362: explosive corpses use the actual uploaded city mesh for ground
-   // contact instead of skeleton probes or a stale cached floor height.
-   const surfaceY=sampleRagdollCitySurfaceY(
+   // v363: use the real city mesh, but account for the zombie root being a
+   // standing-foot pivot rather than the ragdoll's center of mass.
+   ragdollSurfaceY=sampleRagdollCitySurfaceY(
      z.g.position.x,z.g.position.z,
      Math.max(prevRagdollY,z.g.position.y)
    );
-   hasRagdollSurface=surfaceY!==null;
-   if(hasRagdollSurface)r.floorY=surfaceY;
+   hasRagdollSurface=ragdollSurfaceY!==null;
+   if(hasRagdollSurface)r.floorY=ragdollSurfaceY;
  }else{
    r.floorY=sampleRagdollGroundY(
      z.g.position.x,z.g.position.z,r.floorY,
      Math.max(prevRagdollY,z.g.position.y)
    );
  }
- // The zombie root is at the standing foot pivot. A fallen body needs a small
- // clearance above the visual surface or its torso/limbs visibly cut through it.
- const floorContact=r.floorY+(r.blast?.26:-.08);
+ const floorContact=r.floorY+(r.blast?ragdollRootSupportHeight(z):-.08);
  r.grounded=false;
  if(hasRagdollSurface&&z.g.position.y<=floorContact+.018&&r.vy<=0){
    z.g.position.y=floorContact;
@@ -3670,6 +3692,11 @@ function updateRagdoll(z,dt){
      b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*6.7+b.phase+2.2)*baseLoose*.80;
    }
  }
+
+ // v363 safety: after the bone simulation updates the rendered pose, use its
+ // actual world-space bounds only to prevent visible geometry from ending below
+ // the city surface. This does not add force or trigger another bounce.
+ if(r.blast&&hasRagdollSurface)keepRagdollVisualAboveSurface(z,r,ragdollSurfaceY);
 
  if(r.blast){
    let maxBoneSpin=0;
