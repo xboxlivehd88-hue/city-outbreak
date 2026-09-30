@@ -4402,9 +4402,9 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    if(mp5RecoilPivot)mp5RecoilPivot.rotation.x=recoil*.28;
  }
  if(weapon==="m240"&&m240ViewRoot){
-   // v377: hip-fire keeps the shouldered pitch, ADS levels the complete M240
-   // so the iron-sight channel can line up with screen center.
-   m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,-.025,aimBlend);
+   // v379: lower the butt in ADS by pitching the complete M240 the opposite
+   // direction from v378; keep the current ADS height/depth unchanged.
+   m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,.035,aimBlend);
  }
  if(weapon==="m240"&&m240ViewModel&&m240ViewBasePos&&m240ViewBaseQuat){
    // Keep recoil around the rear stock point; do not move the complete gun rig.
