@@ -3539,9 +3539,16 @@ function updateRagdoll(z,dt){
 
  z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
  const drag=Math.exp(-dt*(r.blast?1.02:3.2));r.vx*=drag;r.vz*=drag;
+ // v359: sweep ragdoll ground sampling from the previous root height so a
+ // fast downward frame cannot tunnel completely through a road, stair, roof,
+ // sidewalk, or other indexed upward-facing city surface before impact resolves.
+ const prevRagdollY=z.g.position.y;
  r.vy-=(r.blast?6.35:5.4)*dt;
  z.g.position.y+=r.vy*dt;
- r.floorY=sampleRagdollGroundY(z.g.position.x,z.g.position.z,r.floorY,z.g.position.y);
+ r.floorY=sampleRagdollGroundY(
+   z.g.position.x,z.g.position.z,r.floorY,
+   Math.max(prevRagdollY,z.g.position.y)
+ );
  const floorContact=r.floorY-.08;
  r.grounded=false;
  if(z.g.position.y<=floorContact+.018&&r.vy<=0){
