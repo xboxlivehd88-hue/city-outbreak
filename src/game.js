@@ -1528,6 +1528,12 @@ new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
  });
  if(weapon==="smg")rebuildGun();
 },undefined,err=>console.warn("MP5 GLB load failed; MP5 viewmodel unavailable",err));
+let m240ModelTemplate=null;
+new GLTFLoader().load("assets/m240b_machine_gun.glb",gltf=>{
+ m240ModelTemplate=gltf.scene;
+ m240ModelTemplate.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ if(weapon==="m240")rebuildGun();
+});
 let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
@@ -2088,32 +2094,19 @@ function rebuildGun(){
    for(let zz=-1.72;zz>-2.55;zz-=.17){for(const sx of [-.15,.15])box(.025,.075,.10,dark,x+sx,-.27,zz,gun)}
    box(.018,.12,.36,dark,x+.20,-.28,-1.17,gun);box(.20,.045,.08,dark,x,-.14,-.56,gun);
  }else if(weapon==='m240'){
-   // M240-style belt-fed silhouette: narrow fixed stock, long receiver, top cover, perforated heat shield and bipod.
-   // Tapered shoulder stock grows toward the camera so ADS feels shouldered instead of floating.
-   let mStockNeck=bevelBox(.23,.20,.34,poly,x,-.36,-.78,gun);mStockNeck.rotation.x=-.06;
-   let mStockMid=bevelBox(.30,.30,.42,poly,x,-.45,-.48,gun);mStockMid.rotation.x=-.10;
-   let mStockRear=bevelBox(.36,.44,.26,poly,x,-.57,-.20,gun);mStockRear.rotation.x=-.12;
-   box(.39,.50,.085,rubber,x,-.60,-.075,gun);
-   part(.40,.27,1.42,metal,-.34,-1.40);part(.34,.22,1.10,dark,-.33,-2.30);
-   // Smaller angled pistol grip; the old full-height block made the gun look suspended in space.
-   let mGrip=bevelBox(.20,.42,.26,rubber,x,-.61,-.94,gun);mGrip.rotation.x=-.22;
-   for(let yy=-.12;yy<.13;yy+=.075)box(.175,.016,.275,dark,x,-.61+yy,-.945,gun);
-   // Low top cover / rail leaves the iron-sight channel open.
-   box(.42,.10,.88,M(0x303638,.30),x,-.13,-1.34,gun);rail(-1.47,1.22,-.055);
-   cyl(.074,1.82,steel,x,-.255,-3.34);muzzleBrake(-4.25,.118);
-   // Perforated forward heat shield.
-   box(.31,.17,1.22,M(0x1a1d1f,.34),x,-.29,-2.52,gun);
-   for(let zz=-2.04;zz>-3.00;zz-=.16)for(const sx of [-.135,.135])box(.022,.055,.075,dark,x+sx,-.27,zz,gun);
-   // Side-hung ammo box, kept clear of the centerline like the real gun.
-   let can=bevelBox(.32,.38,.34,M(0x4f5a43,.72),x+.30,-.66,-1.48,gun);can.rotation.x=.03;
-   can.userData.reloadHome=can.position.clone();can.userData.reloadHomeQuat=can.quaternion.clone();playerReloadPart=can;
-   box(.34,.040,.36,dark,0,.21,0,can);
-   // Compact carry handle offset to the right so it never blocks ADS.
-   box(.035,.25,.035,dark,x+.20,-.005,-1.74,gun);
-   box(.18,.035,.035,dark,x+.12,.105,-1.74,gun);
-   // bipod legs
-   for(const sx of [-.19,.19]){let leg=cyl(.026,.82,steel,x+sx,-.52,-3.22,gun,"y");leg.rotation.z=sx<0?-.34:.34}
-   rearIron(-.82,.060,.95);frontIron(-3.67,.060,.90);
+   if(m240ModelTemplate){
+     const root=new THREE.Group(),model=m240ModelTemplate.clone(true);
+     root.add(model);root.traverse(o=>o.userData.externalWeaponAsset=true);
+     model.updateMatrixWorld(true);
+     let bx=new THREE.Box3().setFromObject(model),sz=new THREE.Vector3();bx.getSize(sz);
+     if(sz.x>=sz.y&&sz.x>=sz.z)model.rotation.y=Math.PI/2;
+     else if(sz.y>=sz.x&&sz.y>=sz.z)model.rotation.x=-Math.PI/2;
+     else model.rotation.y=Math.PI;
+     model.updateMatrixWorld(true);
+     bx=new THREE.Box3().setFromObject(model);const ctr=new THREE.Vector3();bx.getCenter(ctr);bx.getSize(sz);
+     model.position.sub(ctr);model.scale.setScalar(4.28/Math.max(.001,sz.z));
+     root.position.set(x,-.34,-2.14);gun.add(root);
+   }
  }else if(weapon==='awm'){
    // AWM Ultimate: long precision rifle, skeletal stock, oversized scope and heavy fluted barrel.
    stock(-.35,M(0x38404a,.58));part(.34,.30,1.12,metal,-.29,-1.25);part(.29,.25,1.35,M(0x2f3a43,.60),-.27,-2.20);
