@@ -3387,6 +3387,31 @@ function limbDamage(z,part,amount){
  if(part==="rightLeg"&&!z.rightLegDetached){z.rightLegHP-=amount;z.legDamage=Math.min(3,z.legDamage+amount*.55);z.stagger=Math.max(z.stagger,.32);if(z.rightLegHP<=0)detachLeg(z,"right")}
 }
 
+// v358: Hairibar-inspired joint-space ragdoll for explosive deaths.
+// Hairibar.Ragdoll uses independent simulated bones, soft spring matching,
+// damping and joint limits. CITY OUTBREAK mirrors those principles directly in
+// Three.js without a Unity rigidbody dependency.
+function ragSpringAcceleration(offset,velocity,alpha,dampingRatio,dt,maxAccel){
+ const h=Math.max(1/120,Math.min(1/30,dt));
+ const k=alpha/(h*h);
+ const d=dampingRatio*(2*Math.sqrt(k));
+ return THREE.MathUtils.clamp(-k*offset-d*velocity,-maxAccel,maxAccel);
+}
+function blastBoneProfile(role){
+ switch(role){
+   case "hips": return{lx:.72,ly:.58,lz:.68,airA:.0014,airD:.11,groundA:.010,groundD:.90,maxA:42,gust:.70,inertia:.62,couple:.58,root:.42,impact:.72};
+   case "spine":return{lx:.82,ly:.66,lz:.78,airA:.0012,airD:.10,groundA:.009,groundD:.88,maxA:46,gust:.82,inertia:.72,couple:.62,root:.45,impact:.78};
+   case "chest":return{lx:.92,ly:.76,lz:.88,airA:.0010,airD:.09,groundA:.008,groundD:.86,maxA:50,gust:.95,inertia:.82,couple:.64,root:.48,impact:.84};
+   case "upperLeg":return{lx:1.34,ly:.88,lz:1.08,airA:.00065,airD:.075,groundA:.0065,groundD:.84,maxA:58,gust:1.15,inertia:1.00,couple:.48,root:.36,impact:1.00};
+   case "lowerLeg":return{lx:1.62,ly:.72,lz:.82,airA:.00042,airD:.060,groundA:.0055,groundD:.82,maxA:64,gust:1.38,inertia:1.32,couple:.38,root:.30,impact:1.18};
+   case "upperArm":return{lx:1.72,ly:1.34,lz:1.62,airA:.00036,airD:.052,groundA:.0048,groundD:.80,maxA:70,gust:1.62,inertia:1.52,couple:.34,root:.28,impact:1.30};
+   case "lowerArm":return{lx:1.92,ly:1.18,lz:1.48,airA:.00028,airD:.045,groundA:.0042,groundD:.78,maxA:76,gust:1.88,inertia:1.78,couple:.26,root:.22,impact:1.48};
+   case "neck":return{lx:.76,ly:.68,lz:.74,airA:.00075,airD:.070,groundA:.0070,groundD:.86,maxA:58,gust:1.18,inertia:.92,couple:.48,root:.34,impact:.96};
+   case "head":return{lx:1.00,ly:.92,lz:1.00,airA:.00052,airD:.060,groundA:.0060,groundD:.84,maxA:64,gust:1.48,inertia:1.18,couple:.40,root:.30,impact:1.12};
+   case "torso":return{lx:1.02,ly:.82,lz:.96,airA:.00090,airD:.085,groundA:.0075,groundD:.86,maxA:54,gust:1.05,inertia:.88,couple:.56,root:.42,impact:.90};
+   default:return{lx:1.40,ly:1.00,lz:1.18,airA:.00050,airD:.060,groundA:.0055,groundD:.82,maxA:62,gust:1.30,inertia:1.12,couple:.40,root:.30,impact:1.00};
+ }
+}
 function beginRagdoll(z,force=1,blastOrigin=null){
  if(z.ragdoll)return;
  if(z.mixer)z.mixer.stopAllAction();
@@ -3422,25 +3447,25 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    hips:null,hipsStartY:0,hipsTargetY:0
  };
 
- const add=(o,dx,dy,dz,delay=.08,duration=.72,wob=.12)=>{
+ const add=(o,role,dx,dy,dz,delay=.08,duration=.72,wob=.12)=>{
    if(!o||!o.parent)return;
    const loose=rag.blast?1:1.24;
-   const blastSpin=.72+.12*rag.power;
+   const p=blastBoneProfile(role);
+   const spin=(2.55+.52*rag.power)*p.inertia;
    rag.bones.push({
-     o,
+     o,role,p,
      sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
      tx:rag.blast?o.rotation.x:o.rotation.x+dx*loose,
      ty:rag.blast?o.rotation.y:o.rotation.y+dy*loose,
      tz:rag.blast?o.rotation.z:o.rotation.z+dz*loose,
-     delay:rag.blast?0:delay,
-     duration:rag.blast?duration:duration,
-     wob:wob*loose,phase:rnd()*6.283,
-     flopX:7+rnd()*7,flopY:6+rnd()*6,flopZ:8+rnd()*8,
-     avx:rag.blast?((rnd()-.5)*11+dx*1.15)*blastSpin:0,
-     avy:rag.blast?((rnd()-.5)*9+dy*1.10)*blastSpin:0,
-     avz:rag.blast?((rnd()-.5)*12+dz*1.15)*blastSpin:0,
-     gustX:3.2+rnd()*5.8,gustY:2.8+rnd()*5.0,gustZ:3.5+rnd()*6.2,
-     gustPhaseX:rnd()*6.283,gustPhaseY:rnd()*6.283,gustPhaseZ:rnd()*6.283
+     delay:rag.blast?0:delay,duration,wob:wob*loose,phase:rnd()*6.283,
+     ox:0,oy:0,oz:0,
+     avx:rag.blast?((rnd()-.5)*2+dx*.05)*spin:0,
+     avy:rag.blast?((rnd()-.5)*2+dy*.05)*spin:0,
+     avz:rag.blast?((rnd()-.5)*2+dz*.05)*spin:0,
+     gustX:2.0+rnd()*4.8,gustY:1.8+rnd()*4.4,gustZ:2.2+rnd()*5.0,
+     gustPhaseX:rnd()*6.283,gustPhaseY:rnd()*6.283,gustPhaseZ:rnd()*6.283,
+     parentState:null
    });
  };
 
@@ -3449,31 +3474,38 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    rag.hips=hips;
    if(hips){rag.hipsStartY=hips.position.y;rag.hipsTargetY=Math.max(.20,hips.position.y-(rag.blast?.24:.62)-rnd()*(rag.blast?.05:.10))}
 
-   // Knees give way first, then the pelvis and torso fold, with head/arms arriving late.
-   add(rigBone(z,"L_UpperLeg"), .65+(rnd()-.5)*.30,(rnd()-.5)*.14,-.20-rnd()*.18,.00,.40,.07);
-   add(rigBone(z,"R_UpperLeg"), .25+(rnd()-.5)*.55,(rnd()-.5)*.14, .20+rnd()*.18,.00,.43,.07);
-   add(rigBone(z,"L_LowerLeg"),-1.15-rnd()*.35,0,-.10-rnd()*.10,.02,.42,.08);
-   add(rigBone(z,"R_LowerLeg"),-1.05-rnd()*.40,0, .10+rnd()*.10,.03,.45,.08);
+   add(rigBone(z,"L_UpperLeg"),"upperLeg", .65+(rnd()-.5)*.30,(rnd()-.5)*.14,-.20-rnd()*.18,.00,.40,.07);
+   add(rigBone(z,"R_UpperLeg"),"upperLeg", .25+(rnd()-.5)*.55,(rnd()-.5)*.14, .20+rnd()*.18,.00,.43,.07);
+   add(rigBone(z,"L_LowerLeg"),"lowerLeg",-1.15-rnd()*.35,0,-.10-rnd()*.10,.02,.42,.08);
+   add(rigBone(z,"R_LowerLeg"),"lowerLeg",-1.05-rnd()*.40,0, .10+rnd()*.10,.03,.45,.08);
 
-   add(hips,forward*.25,(rnd()-.5)*.18,side*.24,.08,.55,.06);
-   add(rigBone(z,"Spine"),forward*.52,(rnd()-.5)*.26,side*.30,.12,.62,.10);
-   add(rigBone(z,"Chest"),forward*.68,(rnd()-.5)*.34,side*.38,.15,.68,.12);
+   add(hips,"hips",forward*.25,(rnd()-.5)*.18,side*.24,.08,.55,.06);
+   add(rigBone(z,"Spine"),"spine",forward*.52,(rnd()-.5)*.26,side*.30,.12,.62,.10);
+   add(rigBone(z,"Chest"),"chest",forward*.68,(rnd()-.5)*.34,side*.38,.15,.68,.12);
 
-   add(rigBone(z,"L_UpperArm"),1.02+rnd()*.62,(rnd()-.5)*.42,-.92-rnd()*.46,.06,.82,.25);
-   add(rigBone(z,"L_LowerArm"),1.22+rnd()*.62,(rnd()-.5)*.36,-.48-rnd()*.34,.11,.78,.28);
-   add(rigBone(z,"R_UpperArm"),1.02+rnd()*.62,(rnd()-.5)*.42, .92+rnd()*.46,.07,.82,.25);
-   add(rigBone(z,"R_LowerArm"),1.22+rnd()*.62,(rnd()-.5)*.36, .48+rnd()*.34,.12,.78,.28);
+   add(rigBone(z,"L_UpperArm"),"upperArm",1.02+rnd()*.62,(rnd()-.5)*.42,-.92-rnd()*.46,.06,.82,.25);
+   add(rigBone(z,"L_LowerArm"),"lowerArm",1.22+rnd()*.62,(rnd()-.5)*.36,-.48-rnd()*.34,.11,.78,.28);
+   add(rigBone(z,"R_UpperArm"),"upperArm",1.02+rnd()*.62,(rnd()-.5)*.42, .92+rnd()*.46,.07,.82,.25);
+   add(rigBone(z,"R_LowerArm"),"lowerArm",1.22+rnd()*.62,(rnd()-.5)*.36, .48+rnd()*.34,.12,.78,.28);
 
-   add(rigBone(z,"Neck"),-forward*.52,(rnd()-.5)*.42,-side*.34,.18,.68,.20);
-   add(rigBone(z,"Head"),-forward*.88,(rnd()-.5)*.60,-side*.62,.22,.74,.28);
+   add(rigBone(z,"Neck"),"neck",-forward*.52,(rnd()-.5)*.42,-side*.34,.18,.68,.20);
+   add(rigBone(z,"Head"),"head",-forward*.88,(rnd()-.5)*.60,-side*.62,.22,.74,.28);
  }else{
-   // Crawlers/procedural fallback get the same looser whole-body death response.
-   add(z.legL,.78,0,-.34,.00,.48,.13);add(z.kneeL,-1.30,0,-.18,.02,.50,.14);
-   add(z.legR,.42,0,.34,.00,.50,.13);add(z.kneeR,-1.22,0,.18,.03,.52,.14);
-   add(z.torso,forward*.88,(rnd()-.5)*.38,side*.50,.09,.78,.21);
-   add(z.armL,1.18,0,-.88,.06,.82,.27);add(z.elbowL,1.28,0,-.42,.11,.78,.28);
-   add(z.armR,1.18,0,.88,.07,.82,.27);add(z.elbowR,1.28,0,.42,.12,.78,.28);
-   add(z.head,-forward*.86,(rnd()-.5)*.52,-side*.58,.18,.72,.27);
+   add(z.legL,"upperLeg",.78,0,-.34,.00,.48,.13);add(z.kneeL,"lowerLeg",-1.30,0,-.18,.02,.50,.14);
+   add(z.legR,"upperLeg",.42,0,.34,.00,.50,.13);add(z.kneeR,"lowerLeg",-1.22,0,.18,.03,.52,.14);
+   add(z.torso,"torso",forward*.88,(rnd()-.5)*.38,side*.50,.09,.78,.21);
+   add(z.armL,"upperArm",1.18,0,-.88,.06,.82,.27);add(z.elbowL,"lowerArm",1.28,0,-.42,.11,.78,.28);
+   add(z.armR,"upperArm",1.18,0,.88,.07,.82,.27);add(z.elbowR,"lowerArm",1.28,0,.42,.12,.78,.28);
+   add(z.head,"head",-forward*.86,(rnd()-.5)*.52,-side*.58,.18,.72,.27);
+ }
+
+ if(rag.blast){
+   const byObject=new Map(rag.bones.map(b=>[b.o,b]));
+   for(const b of rag.bones){
+     let p=b.o.parent;
+     while(p&&p!==z.g&&!byObject.has(p))p=p.parent;
+     b.parentState=byObject.get(p)||null;
+   }
  }
 }
 function updateRagdoll(z,dt){
@@ -3482,21 +3514,18 @@ function updateRagdoll(z,dt){
 
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
 
- // Hips physically drop before the whole body finishes going over.
  if(r.hips&&!r.blast){
    const h=smooth(r.t/.48);
    r.hips.position.y=r.hipsStartY+(r.hipsTargetY-r.hipsStartY)*h;
  }
 
- // Explosive deaths free-tumble instead of converging toward a fixed pose.
- // Normal bullet deaths keep the original controlled fall.
  if(r.blast){
    const air=!r.grounded;
-   const rootDamp=Math.exp(-dt*(air?.42:6.4));
-   const gust=(air?1:0)*Math.exp(-r.t*.24);
-   r.ravx+=Math.sin(r.t*3.7+r.rootPhase)*gust*1.8*dt;
-   r.ravy+=Math.sin(r.t*3.1+r.rootPhase+2.1)*gust*1.4*dt;
-   r.ravz+=Math.sin(r.t*4.2+r.rootPhase+4.0)*gust*2.0*dt;
+   const rootDamp=Math.exp(-dt*(air?.40:6.8));
+   const gust=(air?1:0)*Math.exp(-r.t*.28);
+   r.ravx+=Math.sin(r.t*2.7+r.rootPhase)*gust*1.15*dt;
+   r.ravy+=Math.sin(r.t*2.2+r.rootPhase+2.1)*gust*.90*dt;
+   r.ravz+=Math.sin(r.t*3.1+r.rootPhase+4.0)*gust*1.30*dt;
    z.g.rotation.x+=r.ravx*dt;
    z.g.rotation.y+=r.ravy*dt;
    z.g.rotation.z+=r.ravz*dt;
@@ -3527,9 +3556,10 @@ function updateRagdoll(z,dt){
      r.ravy+=(rnd()-.5)*jolt*3.0;
      r.ravz+=(rnd()-.5)*jolt*4.5;
      for(const b of r.bones){
-       b.avx+=(rnd()-.5)*jolt*5.0;
-       b.avy+=(rnd()-.5)*jolt*4.0;
-       b.avz+=(rnd()-.5)*jolt*5.5;
+       const impact=b.p?.impact||1;
+       b.avx+=(rnd()-.5)*jolt*5.0*impact;
+       b.avy+=(rnd()-.5)*jolt*4.0*impact;
+       b.avz+=(rnd()-.5)*jolt*5.5*impact;
      }
      r.bounceCount++;
      r.grounded=false;
@@ -3545,22 +3575,50 @@ function updateRagdoll(z,dt){
 
  for(const b of r.bones){
    if(r.blast){
-     const air=!r.grounded;
-     const damp=Math.exp(-dt*(air?.72:7.2));
-     const gustAmp=(air?(3.2+.48*r.power):.18)*Math.exp(-r.t*.26);
-     b.avx+=Math.sin(r.t*b.gustX+b.gustPhaseX)*gustAmp*dt;
-     b.avy+=Math.sin(r.t*b.gustY+b.gustPhaseY)*gustAmp*.82*dt;
-     b.avz+=Math.sin(r.t*b.gustZ+b.gustPhaseZ)*gustAmp*1.08*dt;
-     b.o.rotation.x+=b.avx*dt;
-     b.o.rotation.y+=b.avy*dt;
-     b.o.rotation.z+=b.avz*dt;
-     b.avx*=damp;b.avy*=damp;b.avz*=damp;
+     const p=b.p,air=!r.grounded;
+     const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60))));
+     const h=dt/steps;
+     for(let step=0;step<steps;step++){
+       const alpha=air?p.airA:p.groundA;
+       const damp=air?p.airD:p.groundD;
+       const wind=(air?p.gust:0)*Math.exp(-r.t*.24);
+       const parent=b.parentState;
+       const parentX=parent?parent.avx:r.ravx;
+       const parentY=parent?parent.avy:r.ravy;
+       const parentZ=parent?parent.avz:r.ravz;
+
+       const ax=ragSpringAcceleration(b.ox,b.avx,alpha,damp,h,p.maxA)
+         +Math.sin(r.t*b.gustX+b.gustPhaseX)*wind
+         +(parentX-b.avx)*p.couple*.42
+         +r.ravx*p.root*.10;
+       const ay=ragSpringAcceleration(b.oy,b.avy,alpha,damp,h,p.maxA)
+         +Math.sin(r.t*b.gustY+b.gustPhaseY)*wind*.84
+         +(parentY-b.avy)*p.couple*.36
+         +r.ravy*p.root*.08;
+       const az=ragSpringAcceleration(b.oz,b.avz,alpha,damp,h,p.maxA)
+         +Math.sin(r.t*b.gustZ+b.gustPhaseZ)*wind*1.08
+         +(parentZ-b.avz)*p.couple*.46
+         +r.ravz*p.root*.12;
+
+       b.avx+=ax*h;b.avy+=ay*h;b.avz+=az*h;
+       b.ox+=b.avx*h;b.oy+=b.avy*h;b.oz+=b.avz*h;
+
+       if(b.ox>p.lx){b.ox=p.lx;b.avx=-Math.abs(b.avx)*.18}
+       else if(b.ox<-p.lx){b.ox=-p.lx;b.avx=Math.abs(b.avx)*.18}
+       if(b.oy>p.ly){b.oy=p.ly;b.avy=-Math.abs(b.avy)*.16}
+       else if(b.oy<-p.ly){b.oy=-p.ly;b.avy=Math.abs(b.avy)*.16}
+       if(b.oz>p.lz){b.oz=p.lz;b.avz=-Math.abs(b.avz)*.18}
+       else if(b.oz<-p.lz){b.oz=-p.lz;b.avz=Math.abs(b.avz)*.18}
+     }
+     b.o.rotation.x=b.sx+b.ox;
+     b.o.rotation.y=b.sy+b.oy;
+     b.o.rotation.z=b.sz+b.oz;
    }else{
      const t=smooth((r.t-b.delay)/b.duration);
      const baseLoose=(1-t)*Math.exp(-Math.max(0,r.t-b.delay)*1.85)*b.wob;
-     b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*b.flopX+b.phase)*baseLoose;
-     b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*b.flopY+b.phase+1.4)*baseLoose*.65;
-     b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*b.flopZ+b.phase+2.2)*baseLoose*.80;
+     b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*7.1+b.phase)*baseLoose;
+     b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*6.2+b.phase+1.4)*baseLoose*.65;
+     b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*6.7+b.phase+2.2)*baseLoose*.80;
    }
  }
 
