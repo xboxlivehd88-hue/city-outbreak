@@ -736,6 +736,24 @@ function sampleZombieGroundY(x,z,currentY){
  }
  return found?best:currentY;
 }
+function sampleRagdollGroundY(x,z,currentFloor,bodyY){
+ const bucket=cityGroundBuckets.get(cityGroundKey(Math.floor(x/NEW_CITY_GROUND_BUCKET),Math.floor(z/NEW_CITY_GROUND_BUCKET)));
+ if(!bucket)return currentFloor;
+ let found=false,best=-Infinity;
+ for(const t of bucket){
+   if(x<t.minX-.001||x>t.maxX+.001||z<t.minZ-.001||z>t.maxZ+.001)continue;
+   const den=(t.bz-t.cz)*(t.ax-t.cx)+(t.cx-t.bx)*(t.az-t.cz);
+   if(Math.abs(den)<1e-8)continue;
+   const wa=((t.bz-t.cz)*(x-t.cx)+(t.cx-t.bx)*(z-t.cz))/den;
+   const wb=((t.cz-t.az)*(x-t.cx)+(t.ax-t.cx)*(z-t.cz))/den;
+   const wc=1-wa-wb;
+   if(wa<-.002||wb<-.002||wc<-.002)continue;
+   const y=wa*t.ay+wb*t.by+wc*t.cy;
+   if(y>bodyY+.55)continue;
+   if(y>best){best=y;found=true}
+ }
+ return found?best:currentFloor;
+}
 function buildNewCityCollision(map){
  buildingColliders.length=0;cityCollisionBuckets.clear();cityGroundBuckets.clear();
  map.updateMatrixWorld(true);
@@ -833,6 +851,32 @@ function buildNewCityCollision(map){
  console.log("CITY OUTBREAK: new city selective collision built",{
    meshCount,triangleCount,blockingTriangles,cells:used.size,colliderCount
  });
+}
+
+// v353: exact blockers for the two solid side walls flanking the broad church
+// staircase shown in the player's screenshot. These are authored from the GLB's
+// real Church_01 geometry and do not widen collision anywhere else.
+function addChurchStairSideWallColliders(map){
+ const walls=[
+   {x:-5.290,z1:-8.987,z2:-6.852},
+   {x:-0.463,z1:-8.987,z2:-6.852}
+ ];
+ const a=new THREE.Vector3(),b=new THREE.Vector3();
+ let added=0;
+ for(const w of walls){
+   a.set(w.x,-17.45,w.z1);b.set(w.x,-17.45,w.z2);
+   map.localToWorld(a);map.localToWorld(b);
+   const hit={
+     x:(a.x+b.x)*.5,z:(a.z+b.z)*.5,
+     hx:Math.max(.11,Math.abs(a.x-b.x)*.5+.07),
+     hz:Math.max(.11,Math.abs(a.z-b.z)*.5+.07),
+     source:"churchStairSideWall"
+   };
+   buildingColliders.push(hit);indexCityCollider(hit);added++;
+ }
+ ZNAV_BLOCK_CACHE.clear();
+ document.documentElement.dataset.churchStairWallColliders=String(added);
+ console.log("CITY OUTBREAK: church stair side-wall collision added",{added});
 }
 
 // v336: true one-for-one replacement of the city's 15 authored Light_01 lamps.
@@ -1050,6 +1094,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  buildNewCitySpawnZones(map);
  const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
+ addChurchStairSideWallColliders(map);
  const additionalStreetLampPlacements=buildManualAdditionalStreetLamps(map);
  const allStreetLampPlacements=streetLampPlacements.concat(additionalStreetLampPlacements);
  addStreetLampColliders(allStreetLampPlacements);
@@ -3346,28 +3391,32 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  const ox=isBlast?blastOrigin.x:px,oz=isBlast?blastOrigin.z:pz;
  const d=Math.hypot(z.g.position.x-ox,z.g.position.z-oz)||1;
  const awayX=(z.g.position.x-ox)/d,awayZ=(z.g.position.z-oz)/d;
- const power=Math.max(.65,Math.min(isBlast?3.6:2.6,force));
+ const power=Math.max(.65,Math.min(isBlast?4.6:2.6,force));
 
  const rag=z.ragdoll={
-   t:0,bones:[],blast:isBlast,power,
+   t:0,bones:[],blast:isBlast,power,settleT:0,grounded:false,
+   floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
    baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
-   targetX:z.g.rotation.x+forward*(isBlast?.98:.78+rnd()*.22),
-   targetZ:z.g.rotation.z+sideFall,
-   targetY:z.g.rotation.y+(rnd()-.5)*(isBlast?.88:.58),
-   vx:awayX*(isBlast?(1.62+1.02*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.48:.24),
-   vz:awayZ*(isBlast?(1.62+1.02*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.48:.24),
-   vy:isBlast?(2.05+1.28*rnd())*power:(.32+.34*rnd())*power,
+   targetX:z.g.rotation.x+forward*(isBlast?1.35:.78+rnd()*.22),
+   targetZ:z.g.rotation.z+sideFall*(isBlast?1.35:1),
+   targetY:z.g.rotation.y+(rnd()-.5)*(isBlast?1.35:.58),
+   vx:awayX*(isBlast?(2.00+1.30*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.62:.24),
+   vz:awayZ*(isBlast?(2.00+1.30*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.62:.24),
+   vy:isBlast?(2.40+1.55*rnd())*power:(.32+.34*rnd())*power,
    hips:null,hipsStartY:0,hipsTargetY:0
  };
 
  const add=(o,dx,dy,dz,delay=.08,duration=.72,wob=.12)=>{
    if(!o||!o.parent)return;
-   const loose=rag.blast?1.34+.18*rag.power:1.24;
+   const loose=rag.blast?2.15+.30*rag.power:1.24;
    rag.bones.push({
      o,
      sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
      tx:o.rotation.x+dx*loose,ty:o.rotation.y+dy*loose,tz:o.rotation.z+dz*loose,
-     delay:rag.blast?delay*.55:delay,duration:rag.blast?duration*.82:duration,wob:wob*loose,phase:rnd()*6.28
+     delay:rag.blast?delay*.25:delay,
+     duration:rag.blast?duration*1.38:duration,
+     wob:wob*loose,phase:rnd()*6.28,
+     flopX:7+rnd()*7,flopY:6+rnd()*6,flopZ:8+rnd()*8
    });
  };
 
@@ -3422,26 +3471,34 @@ function updateRagdoll(z,dt){
  z.g.rotation.y=r.baseY+(r.targetY-r.baseY)*smooth((r.t-.20)/1.05);
 
  z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
- const drag=Math.exp(-dt*(r.blast?1.72:3.2));r.vx*=drag;r.vz*=drag;
- r.vy-=(r.blast?6.8:5.4)*dt;
+ const drag=Math.exp(-dt*(r.blast?1.35:3.2));r.vx*=drag;r.vz*=drag;
+ r.vy-=(r.blast?6.35:5.4)*dt;
  z.g.position.y+=r.vy*dt;
- if(z.g.position.y<-.08){
-   z.g.position.y=-.08;
-   if(r.vy<-(r.blast?.30:.22)){
-     r.vy*=r.blast?-.16:-.10;
-     r.vx*=r.blast?.72:.78;r.vz*=r.blast?.72:.78;
+ r.floorY=sampleRagdollGroundY(z.g.position.x,z.g.position.z,r.floorY,z.g.position.y);
+ const floorContact=r.floorY-.08;
+ r.grounded=false;
+ if(z.g.position.y<floorContact){
+   z.g.position.y=floorContact;r.grounded=true;
+   if(r.vy<-(r.blast?.24:.22)){
+     r.vy*=r.blast?-.24:-.10;
+     r.vx*=r.blast?.78:.78;r.vz*=r.blast?.78:.78;
    }else r.vy=0;
  }
 
  for(const b of r.bones){
    const t=smooth((r.t-b.delay)/b.duration);
-   const loose=(1-t)*Math.exp(-Math.max(0,r.t-b.delay)*(r.blast?1.75:1.85))*b.wob;
-   b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*13.0+b.phase)*loose;
-   b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*10.2+b.phase+1.4)*loose*.65;
-   b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*11.6+b.phase+2.2)*loose*.80;
+   const baseLoose=(1-t)*Math.exp(-Math.max(0,r.t-b.delay)*(r.blast?.58:1.85))*b.wob;
+   const airborneFlop=r.blast&&!r.grounded?(.48+.11*r.power)*Math.exp(-r.t*.12):0;
+   b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*b.flopX+b.phase)*(baseLoose+airborneFlop);
+   b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*b.flopY+b.phase+1.4)*(baseLoose*.72+airborneFlop*.78);
+   b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*b.flopZ+b.phase+2.2)*(baseLoose*.88+airborneFlop*.92);
  }
 
- if(r.t>(r.blast?3.35:1.90)&&z.g.position.y<=-.079)z.falling=false;
+ if(r.blast){
+   const settled=r.grounded&&Math.abs(r.vy)<.20&&Math.hypot(r.vx,r.vz)<.42;
+   r.settleT=settled?r.settleT+dt:0;
+   if(r.settleT>.58)z.falling=false;
+ }else if(r.t>1.90&&r.grounded)z.falling=false;
 }
 function killZ(z,hs,p,ragForce=1,ragOrigin=null){
  if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
@@ -3857,7 +3914,7 @@ function explodeLauncherRound(g){
      const blast=Math.max(2,Math.ceil((7-d)*1.55))*damageLevel;
      const force=Math.max(.35,1-d/6.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),1.70+force*1.75,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),2.05+force*2.15,p);
      else blastReact(z,p,.70+force*1.15)
    }
  }
@@ -3880,7 +3937,7 @@ function explodeGrenade(g){
    if(d<7.5){
      const blast=Math.max(1,Math.ceil((8-d)/2))*damageLevel,force=Math.max(.25,1-d/7.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),1.55+force*1.55,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),1.85+force*1.95,p);
      else blastReact(z,p,.55+force*.95)
    }
  }
