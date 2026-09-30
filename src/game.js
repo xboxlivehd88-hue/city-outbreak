@@ -736,9 +736,9 @@ function sampleZombieGroundY(x,z,currentY){
  }
  return found?best:currentY;
 }
-function sampleRagdollGroundY(x,z,currentFloor,bodyY){
+function findRagdollSurfaceY(x,z,maxSurfaceY){
  const bucket=cityGroundBuckets.get(cityGroundKey(Math.floor(x/NEW_CITY_GROUND_BUCKET),Math.floor(z/NEW_CITY_GROUND_BUCKET)));
- if(!bucket)return currentFloor;
+ if(!bucket)return null;
  let found=false,best=-Infinity;
  for(const t of bucket){
    if(x<t.minX-.001||x>t.maxX+.001||z<t.minZ-.001||z>t.maxZ+.001)continue;
@@ -749,10 +749,14 @@ function sampleRagdollGroundY(x,z,currentFloor,bodyY){
    const wc=1-wa-wb;
    if(wa<-.002||wb<-.002||wc<-.002)continue;
    const y=wa*t.ay+wb*t.by+wc*t.cy;
-   if(y>bodyY+.55)continue;
+   if(y>maxSurfaceY)continue;
    if(y>best){best=y;found=true}
  }
- return found?best:currentFloor;
+ return found?best:null;
+}
+function sampleRagdollGroundY(x,z,currentFloor,bodyY){
+ const found=findRagdollSurfaceY(x,z,bodyY+.55);
+ return found===null?currentFloor:found;
 }
 function buildNewCityCollision(map){
  buildingColliders.length=0;cityCollisionBuckets.clear();cityGroundBuckets.clear();
@@ -3412,6 +3416,79 @@ function blastBoneProfile(role){
    default:return{lx:1.40,ly:1.00,lz:1.18,airA:.00050,airD:.060,groundA:.0055,groundD:.82,maxA:62,gust:1.30,inertia:1.12,couple:.40,root:.30,impact:1.00};
  }
 }
+const ragdollProbeWorld=new THREE.Vector3();
+function ragdollBoneGroundRadius(role){
+ switch(role){
+   case "hips":return .22;
+   case "spine":return .20;
+   case "chest":return .26;
+   case "head":return .21;
+   case "neck":return .12;
+   case "upperLeg":return .16;
+   case "lowerLeg":return .14;
+   case "upperArm":return .15;
+   case "lowerArm":return .13;
+   case "torso":return .26;
+   default:return .15;
+ }
+}
+function resolveRagdollGroundImpact(r){
+ r.grounded=true;
+ if(r.blast&&r.vy<-.52&&r.bounceCount<3){
+   const bounce=[.34,.20,.10][r.bounceCount]||.08;
+   r.vy=-r.vy*bounce;
+   r.vx*=r.bounceCount===0?.68:.52;
+   r.vz*=r.bounceCount===0?.68:.52;
+   const jolt=(.72-r.bounce*.75)/(1+r.bounceCount*.55);
+   r.ravx+=(rnd()-.5)*jolt*4.0;
+   r.ravy+=(rnd()-.5)*jolt*3.0;
+   r.ravz+=(rnd()-.5)*jolt*4.5;
+   for(const b of r.bones){
+     const impact=b.p?.impact||1;
+     b.avx+=(rnd()-.5)*jolt*5.0*impact;
+     b.avy+=(rnd()-.5)*jolt*4.0*impact;
+     b.avz+=(rnd()-.5)*jolt*5.5*impact;
+   }
+   r.bounceCount++;
+   r.grounded=false;
+ }else if(!r.blast&&r.vy<-.22){
+   r.vy*=-.10;r.vx*=.78;r.vz*=.78;
+ }else{
+   r.vy=0;
+   r.vx*=r.blast?.72:.78;
+   r.vz*=r.blast?.72:.78;
+   r.grounded=true;
+ }
+}
+function resolveRagdollBodyGroundContact(z,r){
+ if(!r.blast)return;
+ z.g.updateMatrixWorld(true);
+ let lift=0,bestSurface=null;
+ for(const b of r.bones){
+   b.o.getWorldPosition(ragdollProbeWorld);
+   const radius=ragdollBoneGroundRadius(b.role);
+   const prevY=Number.isFinite(b.prevWorldY)?b.prevWorldY:ragdollProbeWorld.y;
+   const maxSurfaceY=Math.max(prevY,ragdollProbeWorld.y)+radius+.18;
+   const surface=findRagdollSurfaceY(ragdollProbeWorld.x,ragdollProbeWorld.z,maxSurfaceY);
+   if(surface===null)continue;
+   const penetration=surface-(ragdollProbeWorld.y-radius);
+   if(penetration>lift){
+     lift=penetration;
+     bestSurface=surface;
+   }
+ }
+ if(r.vy<=0&&lift>.002){
+   z.g.position.y+=lift+.012;
+   if(bestSurface!==null)r.floorY=Math.max(r.floorY,bestSurface);
+   resolveRagdollGroundImpact(r);
+ }
+ z.g.updateMatrixWorld(true);
+ for(const b of r.bones){
+   b.o.getWorldPosition(ragdollProbeWorld);
+   b.prevWorldY=ragdollProbeWorld.y;
+ }
+}
+
 function beginRagdoll(z,force=1,blastOrigin=null){
  if(z.ragdoll)return;
  if(z.mixer)z.mixer.stopAllAction();
@@ -3506,6 +3583,11 @@ function beginRagdoll(z,force=1,blastOrigin=null){
      while(p&&p!==z.g&&!byObject.has(p))p=p.parent;
      b.parentState=byObject.get(p)||null;
    }
+   z.g.updateMatrixWorld(true);
+   for(const b of rag.bones){
+     b.o.getWorldPosition(ragdollProbeWorld);
+     b.prevWorldY=ragdollProbeWorld.y;
+   }
  }
 }
 function updateRagdoll(z,dt){
@@ -3552,32 +3634,8 @@ function updateRagdoll(z,dt){
  const floorContact=r.floorY-.08;
  r.grounded=false;
  if(z.g.position.y<=floorContact+.018&&r.vy<=0){
-   z.g.position.y=floorContact;r.grounded=true;
-   if(r.blast&&r.vy<-.52&&r.bounceCount<3){
-     const bounce=[.34,.20,.10][r.bounceCount]||.08;
-     r.vy=-r.vy*bounce;
-     r.vx*=r.bounceCount===0?.68:.52;
-     r.vz*=r.bounceCount===0?.68:.52;
-     const jolt=(.72-r.bounce*.75)/(1+r.bounceCount*.55);
-     r.ravx+=(rnd()-.5)*jolt*4.0;
-     r.ravy+=(rnd()-.5)*jolt*3.0;
-     r.ravz+=(rnd()-.5)*jolt*4.5;
-     for(const b of r.bones){
-       const impact=b.p?.impact||1;
-       b.avx+=(rnd()-.5)*jolt*5.0*impact;
-       b.avy+=(rnd()-.5)*jolt*4.0*impact;
-       b.avz+=(rnd()-.5)*jolt*5.5*impact;
-     }
-     r.bounceCount++;
-     r.grounded=false;
-   }else if(!r.blast&&r.vy<-.22){
-     r.vy*=-.10;r.vx*=.78;r.vz*=.78;
-   }else{
-     r.vy=0;
-     r.vx*=r.blast?.72:.78;
-     r.vz*=r.blast?.72:.78;
-     r.grounded=true;
-   }
+   z.g.position.y=floorContact;
+   resolveRagdollGroundImpact(r);
  }
 
  for(const b of r.bones){
@@ -3628,6 +3686,11 @@ function updateRagdoll(z,dt){
      b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*6.7+b.phase+2.2)*baseLoose*.80;
    }
  }
+
+ // v360: the zombie root is at its standing ground pivot, so clamping only
+ // that pivot still lets a tumbling torso/head/limb rotate below the pavement.
+ // Probe the actual simulated bones and resolve the first real body-surface hit.
+ resolveRagdollBodyGroundContact(z,r);
 
  if(r.blast){
    let maxBoneSpin=0;
