@@ -2985,7 +2985,10 @@ function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
 const MAX_ACTIVE_ZOMBIES=30;
 const RECENT_ZOMBIE_SPAWN_LIMIT=12;
 const recentZombieSpawnPoints=[];
+let zombieSpawnAngleOffset=0;
+const ZOMBIE_SPAWN_GOLDEN_ANGLE=Math.PI*(3-Math.sqrt(5));
 const waveRemainingCount=()=>livingCount()+Math.max(0,waveTarget-waveSpawned);
+function spawnAngleDiff(a,b){return Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)))}
 function clearRecentZombieSpawns(){recentZombieSpawnPoints.length=0}
 function rememberZombieSpawn(p){
  recentZombieSpawnPoints.push({x:p.x,z:p.z});
@@ -3018,16 +3021,18 @@ function reachableZombieSpawn(x,z,allowRoute=true){
  const route=buildZombieRoute(x,z,px,pz);
  return route!==null&&route.length>0;
 }
-function findReachableZombieSpawn(minDist,maxDist,spread=true){
- // Try progressively relaxed spacing. The first passes favor genuinely different
- // approach angles; later passes preserve reliability on constrained road layouts.
+function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
  const spreadPasses=spread?[
-   {sep:10.5,angle:.34},
-   {sep:8.5,angle:.20},
-   {sep:6.0,angle:0},
-   {sep:0,angle:0}
- ]:[{sep:0,angle:0}];
-
+   {sep:10.5,tol:.48},
+   {sep:8.5,tol:.72},
+   {sep:6.5,tol:1.00},
+   {sep:5.0,tol:1.40},
+   {sep:3.5,tol:Math.PI}
+ ]:[{sep:0,tol:Math.PI}];
+ const angleOk=(x,z,tol)=>{
+   if(targetAngle===null||tol>=Math.PI)return true;
+   return spawnAngleDiff(Math.atan2(z-pz,x-px),targetAngle)<=tol;
+ };
  for(const spreadRule of spreadPasses){
    // Sample the GLB's real road surfaces first. This prevents enclosed building
    // interiors from becoming valid spawn locations just because they are empty.
@@ -3039,7 +3044,8 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true){
        const x=zone.minX+pad+rnd()*usableX,z=zone.minZ+pad+rnd()*usableZ;
        const dist=Math.hypot(x-px,z-pz);
        if(dist<minDist||dist>maxDist)continue;
-       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.angle))continue;
+       if(!angleOk(x,z,spreadRule.tol))continue;
+       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,0))continue;
        if(reachableZombieSpawn(x,z,false))return{x,z};
      }
      for(let tries=0;tries<34;tries++){
@@ -3049,7 +3055,8 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true){
        const x=zone.minX+pad+rnd()*usableX,z=zone.minZ+pad+rnd()*usableZ;
        const dist=Math.hypot(x-px,z-pz);
        if(dist<minDist||dist>maxDist)continue;
-       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.angle))continue;
+       if(!angleOk(x,z,spreadRule.tol))continue;
+       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,0))continue;
        if(reachableZombieSpawn(x,z,true))return{x,z};
      }
    }
@@ -3058,7 +3065,8 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true){
    for(let ring=minDist+2;ring<=maxDist;ring+=4){
      for(let k=0;k<24;k++){
        const a=startA+k*(Math.PI*2/24),x=px+Math.sin(a)*ring,z=pz+Math.cos(a)*ring;
-       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.angle))continue;
+       if(!angleOk(x,z,spreadRule.tol))continue;
+       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,0))continue;
        if(reachableZombieSpawn(x,z,true))return{x,z};
      }
    }
@@ -3067,7 +3075,8 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true){
 }
 function spawnOneZombie(i){
  if(!newCityCollisionReady)return false;
- const p=findReachableZombieSpawn(24,42,true);
+ const targetAngle=zombieSpawnAngleOffset+i*ZOMBIE_SPAWN_GOLDEN_ANGLE;
+ const p=findReachableZombieSpawn(24,42,true,targetAngle);
  if(!p)return false;
  rememberZombieSpawn(p);
  makeZombie(p.x,p.z,i);
@@ -3082,11 +3091,11 @@ function spawnQueuedZombies(){
  }
 }
 function spawnWave(){
- let d=diff(wave);currentBoss=null;clearRecentZombieSpawns();
+ let d=diff(wave);currentBoss=null;clearRecentZombieSpawns();zombieSpawnAngleOffset=rnd()*Math.PI*2;
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=findReachableZombieSpawn(28,46,false);
+   const bossSpawn=findReachableZombieSpawn(28,46,false,null);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
      // Extremely defensive fallback: keep boss-wave behavior intact even if the
