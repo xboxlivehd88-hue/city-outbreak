@@ -559,7 +559,7 @@ function buildNewCityCollision(map){
 
      // Build a cheap walkable-surface index for zombies. This mirrors the player's
      // upward-facing ground rule but avoids full-city raycasts during gameplay.
-     if(ny>=.42&&maxY>=NEW_CITY_GROUND_MIN_Y&&minY<=NEW_CITY_GROUND_MAX_Y){
+     if(ny>=.42&&minY>=NEW_CITY_GROUND_MIN_Y&&maxY<=NEW_CITY_GROUND_MAX_Y){
        const minX=Math.min(a.x,b.x,cc.x),maxX=Math.max(a.x,b.x,cc.x);
        const minZ=Math.min(a.z,b.z,cc.z),maxZ=Math.max(a.z,b.z,cc.z);
        const areaXZ=Math.abs((b.x-a.x)*(cc.z-a.z)-(b.z-a.z)*(cc.x-a.x));
