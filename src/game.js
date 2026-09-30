@@ -3170,7 +3170,7 @@ const living=()=>zombies.filter(z=>!z.dead);
 const activeFrame=[];
 function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
 const MAX_ACTIVE_ZOMBIES=30;
-const RECENT_ZOMBIE_SPAWN_LIMIT=12;
+const RECENT_ZOMBIE_SPAWN_LIMIT=18;
 const recentZombieSpawnPoints=[];
 let zombieSpawnAngleOffset=0;
 const ZOMBIE_SPAWN_GOLDEN_ANGLE=Math.PI*(3-Math.sqrt(5));
@@ -3199,7 +3199,7 @@ function validZombieSpawn(x,z){
  if(!pointOnNewCitySpawnZone(x,z,.55))return false;
  if(insideBuilding(x,z,.8))return false;
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
- return Math.hypot(x-px,z-pz)>22;
+ return Math.hypot(x-px,z-pz)>28;
 }
 function reachableZombieSpawn(x,z,allowRoute=true){
  if(!validZombieSpawn(x,z))return false;
@@ -3210,11 +3210,11 @@ function reachableZombieSpawn(x,z,allowRoute=true){
 }
 function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
  const spreadPasses=spread?[
-   {sep:10.5,tol:.48},
-   {sep:8.5,tol:.72},
-   {sep:6.5,tol:1.00},
-   {sep:5.0,tol:1.40},
-   {sep:3.5,tol:Math.PI}
+   {sep:13.0,tol:.48},
+   {sep:10.5,tol:.72},
+   {sep:8.0,tol:1.00},
+   {sep:6.0,tol:1.40},
+   {sep:4.5,tol:Math.PI}
  ]:[{sep:0,tol:Math.PI}];
  const angleOk=(x,z,tol)=>{
    if(targetAngle===null||tol>=Math.PI)return true;
@@ -3224,7 +3224,7 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
    // Sample the GLB's real road surfaces first. This prevents enclosed building
    // interiors from becoming valid spawn locations just because they are empty.
    if(newCitySpawnZones.length){
-     for(let tries=0;tries<44;tries++){
+     for(let tries=0;tries<60;tries++){
        const zone=newCitySpawnZones[Math.floor(rnd()*newCitySpawnZones.length)];
        const pad=.65,usableX=zone.maxX-zone.minX-pad*2,usableZ=zone.maxZ-zone.minZ-pad*2;
        if(usableX<=0||usableZ<=0)continue;
@@ -3235,7 +3235,7 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
        if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,0))continue;
        if(reachableZombieSpawn(x,z,false))return{x,z};
      }
-     for(let tries=0;tries<34;tries++){
+     for(let tries=0;tries<48;tries++){
        const zone=newCitySpawnZones[Math.floor(rnd()*newCitySpawnZones.length)];
        const pad=.65,usableX=zone.maxX-zone.minX-pad*2,usableZ=zone.maxZ-zone.minZ-pad*2;
        if(usableX<=0||usableZ<=0)continue;
@@ -3265,7 +3265,7 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
 function spawnOneZombie(i){
  if(!newCityCollisionReady)return false;
  const targetAngle=zombieSpawnAngleOffset+i*ZOMBIE_SPAWN_GOLDEN_ANGLE;
- const p=findReachableZombieSpawn(24,42,true,targetAngle);
+ const p=findReachableZombieSpawn(30,54,true,targetAngle);
  if(!p)return false;
  rememberZombieSpawn(p);
  makeZombie(p.x,p.z,i);
@@ -3284,15 +3284,15 @@ function spawnWave(){
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=findReachableZombieSpawn(28,46,false,null);
+   const bossSpawn=findReachableZombieSpawn(34,58,false,null);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
      // Extremely defensive fallback: keep boss-wave behavior intact even if the
      // route search cannot find a candidate during this frame. The expanded A*
      // will still take over immediately after spawn.
-     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=28+rnd()*18;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
+     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=34+rnd()*24;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
    }
-   if(!ok){const a=rnd()*Math.PI*2,dist=30+rnd()*16;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
+   if(!ok){const a=rnd()*Math.PI*2,dist=36+rnd()*22;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
@@ -4404,7 +4404,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  if(weapon==="m240"&&m240ViewRoot){
    // v379: lower the butt in ADS by pitching the complete M240 the opposite
    // direction from v378; keep the current ADS height/depth unchanged.
-   m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,.035,aimBlend);
+   m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,.050,aimBlend);
  }
  if(weapon==="m240"&&m240ViewModel&&m240ViewBasePos&&m240ViewBaseQuat){
    // Keep recoil around the rear stock point; do not move the complete gun rig.
