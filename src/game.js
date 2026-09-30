@@ -1528,7 +1528,8 @@ new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
  });
  if(weapon==="smg")rebuildGun();
 },undefined,err=>console.warn("MP5 GLB load failed; MP5 viewmodel unavailable",err));
-let m240ModelTemplate=null,m240RecoilPivot=null;
+let m240ModelTemplate=null,m240ViewRoot=null,m240ViewModel=null,m240ViewBasePos=null,m240ViewBaseQuat=null;
+const m240RecoilAxis=new THREE.Vector3(1,0,0),m240RecoilPoint=new THREE.Vector3(0,0,-1.82),m240RecoilQuat=new THREE.Quaternion();
 new GLTFLoader().load("assets/m240b_machine_gun.glb",gltf=>{
  m240ModelTemplate=gltf.scene;
  m240ModelTemplate.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
@@ -1908,7 +1909,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240RecoilPivot=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -2109,12 +2110,13 @@ function rebuildGun(){
      const m240Scale=4.28/Math.max(.001,sz.z);
      model.scale.setScalar(m240Scale);
      model.position.copy(ctr).multiplyScalar(-m240Scale);
-     const recoilPivot=new THREE.Group();recoilPivot.name="M240RearRecoilPivot";
-     recoilPivot.position.set(0,0,-1.82);
-     model.position.z+=1.82;
-     recoilPivot.add(model);m240RecoilPivot=recoilPivot;
-     recoilPivot.rotation.x=.07;
-     root.position.set(x,-.62,-2.14);root.rotation.y=Math.PI;gun.add(root);
+     root.position.set(x,-.62,-2.14);
+     root.rotation.y=Math.PI;
+     root.rotation.x=.055;
+     gun.add(root);
+     m240ViewRoot=root;m240ViewModel=model;
+     m240ViewBasePos=model.position.clone();
+     m240ViewBaseQuat=model.quaternion.clone();
    }
  }else if(weapon==='awm'){
    // AWM Ultimate: long precision rifle, skeletal stock, oversized scope and heavy fluted barrel.
@@ -4399,10 +4401,13 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    // the rear of the receiver, giving a small muzzle rise without whole-gun bounce.
    if(mp5RecoilPivot)mp5RecoilPivot.rotation.x=recoil*.28;
  }
- if(weapon==="m240"&&m240RecoilPivot){
-   // v375: M240 stock stays shouldered. Recoil is a restrained barrel/muzzle rise
-   // around the rear pivot instead of translating/rotating the complete gun rig.
-   m240RecoilPivot.rotation.x=.07-recoil*.24;
+ if(weapon==="m240"&&m240ViewModel&&m240ViewBasePos&&m240ViewBaseQuat){
+   // v376: no hierarchy change. Rotate the imported M240 rigidly around a rear
+   // stock point in its existing v374 parent space, so only the muzzle rises.
+   const kick=-recoil*.20;
+   m240RecoilQuat.setFromAxisAngle(m240RecoilAxis,kick);
+   m240ViewModel.quaternion.copy(m240RecoilQuat).multiply(m240ViewBaseQuat);
+   m240ViewModel.position.copy(m240ViewBasePos).sub(m240RecoilPoint).applyQuaternion(m240RecoilQuat).add(m240RecoilPoint);
  }
  if(playerHandRig){
    // The imported M4 is much more realistic than the old block rifle. In ADS,
