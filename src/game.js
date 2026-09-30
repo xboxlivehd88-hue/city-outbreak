@@ -1389,7 +1389,7 @@ function capFX(){
  while(impacts.length>24){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
  while(casings.length>18){const c=casings.shift();if(c&&c.q&&c.q.parent)scene.remove(c.q)}
 }
-let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="rifle",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}},grenades=2,nukes=0,nukeInProgress=false,waveTarget=0,waveSpawned=0,currentBoss=null,bossWaveName="",usedBossNames=[],running=false,dying=false,reloading=false,between=false,paused=false,pauseStartedAt=0,pausedAccumulatedMs=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null,sprintEnergy=100,sprintLocked=false,aiming=false,aimBlend=0,awmReadyAt=0,runStartTime=0;
+let zombies=[],kits=[],drops=[],parts=[],casings=[],impacts=[],px=0,pz=-15,yaw=0,pitch=0,health=100,kills=0,heads=0,cash=0,wave=1,weapon="pistol",magSize=12,damageLevel=1,reloadLevel=0,unlocked={rifle:false,smg:false,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false},ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}},grenades=2,nukes=0,nukeInProgress=false,waveTarget=0,waveSpawned=0,currentBoss=null,bossWaveName="",usedBossNames=[],running=false,dying=false,reloading=false,between=false,paused=false,pauseStartedAt=0,pausedAccumulatedMs=0,recoil=0,stepTimer=0,aimX=0,aimY=0,last=performance.now(),playerVX=0,playerVZ=0,lastPX=0,lastPZ=-15,lookSensitivity=.0024,keys={w:false,a:false,s:false,d:false,shift:false},hitTimer,triggerHeld=false,autoDelay=null,autoTimer=null,sprintEnergy=100,sprintLocked=false,aiming=false,aimBlend=0,awmReadyAt=0,runStartTime=0;
 let shopLowPower=false,shopPauseStartedAt=0,shopPausedAccumulatedMs=0,lastShopRenderAt=0;
 const PLAYER_HEALTH_REGEN_DELAY=5,PLAYER_HEALTH_REGEN_RATE=10;
 let healthRegenCooldown=0,healthRegenShown=100;
@@ -1413,7 +1413,7 @@ function gameTimeout(fn,ms){
 const weaponDefs={
  rifle:{name:"M4 CARBINE",rate:105,hold:190,spread:.004,pellets:1,body:1,recoil:.105,baseMag:12},
  smg:{name:"MP5",rate:72,hold:150,spread:.012,pellets:1,body:.75,recoil:.065,baseMag:30},
- shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.055,pellets:7,body:.72,recoil:.22,baseMag:8},
+ shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.090,pellets:8,body:.72,recoil:.22,baseMag:8},
  pistol:{name:"M17 SIG",rate:240,hold:9999,spread:.007,pellets:1,body:.82,recoil:.09,baseMag:16},
  dmr:{name:"DMR",rate:330,hold:9999,spread:.0025,pellets:1,body:2.15,recoil:.16,baseMag:10},
  grenadeLauncher:{name:"GRENADE LAUNCHER",rate:900,hold:9999,spread:0,pellets:1,body:0,recoil:.28,baseMag:6},
@@ -1435,7 +1435,7 @@ function wd(){return weaponDefs[weapon]}
 function maxMag(w=weapon){
  if(w==="grenadeLauncher")return 6;
  const base=weaponDefs[w].baseMag;
- return base+(w==="shotgun"?Math.floor((magSize-12)/4):Math.max(0,magSize-12));
+ return base+(w==="shotgun"?Math.floor((magSize-12)/5):Math.max(0,magSize-12));
 }
 function A(){return ammoState[weapon]}
 
@@ -2004,7 +2004,23 @@ function setAim(v){
  scopeOverlay.classList.toggle("m4Scope",aiming&&weapon==="rifle");
  cross.style.opacity=aiming?"0":"1";
 }
+const WEAPON_CYCLE_ORDER=["pistol","rifle","smg","shotgun","dmr","grenadeLauncher","m240","awm"];
 function setWeapon(w){if(reloading||!unlocked[w])return;stopAuto();setAim(false);weapon=w;rebuildGun();weaponNameEl.textContent=wd().name;show(wd().name);ui()}
+function cycleWeapon(dir){
+ if(reloading)return;
+ const available=WEAPON_CYCLE_ORDER.filter(w=>unlocked[w]);
+ if(available.length<2)return;
+ let i=available.indexOf(weapon);
+ if(i<0)i=0;else i=(i+(dir>0?1:-1)+available.length)%available.length;
+ setWeapon(available[i]);
+}
+function shotgunDamageScale(distance){
+ if(distance<=3.5)return 1.45;
+ if(distance<=8)return THREE.MathUtils.lerp(1.45,1.05,(distance-3.5)/4.5);
+ if(distance<=16)return THREE.MathUtils.lerp(1.05,.68,(distance-8)/8);
+ if(distance<=28)return THREE.MathUtils.lerp(.68,.38,(distance-16)/12);
+ return .26;
+}
 function weaponSound(){
  if(weapon==="pistol"){noise(.075,.38,1100);tone(125,.055,"square",.13);return}
  if(weapon==="dmr"){noise(.13,.62,1450);tone(78,.10,"square",.19);return}
@@ -3327,7 +3343,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  const ox=isBlast?blastOrigin.x:px,oz=isBlast?blastOrigin.z:pz;
  const d=Math.hypot(z.g.position.x-ox,z.g.position.z-oz)||1;
  const awayX=(z.g.position.x-ox)/d,awayZ=(z.g.position.z-oz)/d;
- const power=Math.max(.65,Math.min(2.6,force));
+ const power=Math.max(.65,Math.min(isBlast?3.6:2.6,force));
 
  const rag=z.ragdoll={
    t:0,bones:[],blast:isBlast,power,
@@ -3335,9 +3351,9 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    targetX:z.g.rotation.x+forward*(isBlast?.98:.78+rnd()*.22),
    targetZ:z.g.rotation.z+sideFall,
    targetY:z.g.rotation.y+(rnd()-.5)*(isBlast?.88:.58),
-   vx:awayX*(isBlast?(1.18+.78*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.36:.24),
-   vz:awayZ*(isBlast?(1.18+.78*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.36:.24),
-   vy:isBlast?(1.72+1.12*rnd())*power:(.32+.34*rnd())*power,
+   vx:awayX*(isBlast?(1.62+1.02*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.48:.24),
+   vz:awayZ*(isBlast?(1.62+1.02*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.48:.24),
+   vy:isBlast?(2.05+1.28*rnd())*power:(.32+.34*rnd())*power,
    hips:null,hipsStartY:0,hipsTargetY:0
  };
 
@@ -3403,7 +3419,7 @@ function updateRagdoll(z,dt){
  z.g.rotation.y=r.baseY+(r.targetY-r.baseY)*smooth((r.t-.20)/1.05);
 
  z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
- const drag=Math.exp(-dt*(r.blast?2.4:3.2));r.vx*=drag;r.vz*=drag;
+ const drag=Math.exp(-dt*(r.blast?1.72:3.2));r.vx*=drag;r.vz*=drag;
  r.vy-=(r.blast?6.8:5.4)*dt;
  z.g.position.y+=r.vy*dt;
  if(z.g.position.y<-.08){
@@ -3422,7 +3438,7 @@ function updateRagdoll(z,dt){
    b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*11.6+b.phase+2.2)*loose*.80;
  }
 
- if(r.t>(r.blast?2.00:1.90)&&z.g.position.y<=-.079)z.falling=false;
+ if(r.t>(r.blast?3.35:1.90)&&z.g.position.y<=-.079)z.falling=false;
 }
 function killZ(z,hs,p,ragForce=1,ragOrigin=null){
  if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
@@ -3532,7 +3548,7 @@ function fire(){
  let didHit=false,headHit=false;rayTargets.length=0;
  for(const z of zombies){if(z.dead)continue;if(z.hitMeshes)rayTargets.push(...z.hitMeshes)}
  for(let pellet=0;pellet<wd().pellets;pellet++){
-   const adsSpread=aiming?(weapon==="awm"?.08:.38):1;
+   const adsSpread=aiming?(weapon==="awm"?.08:weapon==="shotgun"?.62:.38):1;
    // M17 ADS fires through true screen center. The ADS rig itself is pitched
    // so the aligned front/rear iron sights sit on this same point.
    const pistolAdsZero=0;
@@ -3554,7 +3570,7 @@ function fire(){
    if(hit&&zombieHitDistance<80){
      let z=hit.object.userData.zombie;if(!z)continue;
      let hs=hit.object.userData.isHead===true,part=hit.object.userData.part||"body";
-     let shotDamage=wd().body*damageLevel;
+     let shotDamage=wd().body*damageLevel;if(weapon==="shotgun")shotDamage*=shotgunDamageScale(zombieHitDistance);
      const limbHit=part==="leftArm"||part==="rightArm"||part==="leftLeg"||part==="rightLeg";
      const healthDamage=part==="leftArm"||part==="rightArm"?shotDamage*.15:
                         part==="leftLeg"||part==="rightLeg"?shotDamage*.18:shotDamage;
@@ -3599,7 +3615,7 @@ function buy(type){
  if(type==="grenadeLauncherAmmo"){price=225;if(launcherAmmoTotal()>=10){show("GRENADE LAUNCHER AMMO FULL");ok=true}else if(cash>=price){const n=addGrenadeLauncherAmmo(3);cash-=price;show("+"+n+" GRENADE LAUNCHER ROUNDS");ok=true}}
  if(type==="m240Ammo"){price=275;if(cash>=price){cash-=price;ammoState.m240.reserve+=100;show("+100 M240 AMMO");ok=true}}
  if(type==="awmAmmo"){price=300;if(cash>=price){cash-=price;ammoState.awm.reserve+=10;show("+10 AWM ROUNDS");ok=true}}
- if(type==="mag"){price=250;if(cash>=price){cash-=price;magSize+=4;show("MAGAZINE UPGRADED");ok=true}}
+ if(type==="mag"){price=250;if(cash>=price){cash-=price;magSize+=5;show("MAGAZINE +5");ok=true}}
  if(type==="damage"){price=350;if(cash>=price){cash-=price;damageLevel++;show("DAMAGE LEVEL "+damageLevel);ok=true}}
  if(type==="reload"){price=300;if(cash>=price){cash-=price;reloadLevel++;show("FASTER RELOAD");ok=true}}
  if(type==="smg"){price=1;if(unlocked.smg){show("MP5 ALREADY UNLOCKED");ok=true}else if(cash>=price){cash-=price;unlocked.smg=true;show("MP5 UNLOCKED");ok=true}}
@@ -3838,7 +3854,7 @@ function explodeLauncherRound(g){
      const blast=Math.max(2,Math.ceil((7-d)*1.55))*damageLevel;
      const force=Math.max(.35,1-d/6.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),1.25+force*1.25,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),1.70+force*1.75,p);
      else blastReact(z,p,.70+force*1.15)
    }
  }
@@ -3861,7 +3877,7 @@ function explodeGrenade(g){
    if(d<7.5){
      const blast=Math.max(1,Math.ceil((8-d)/2))*damageLevel,force=Math.max(.25,1-d/7.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),1.10+force*1.05,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),1.55+force*1.55,p);
      else blastReact(z,p,.55+force*.95)
    }
  }
@@ -4506,11 +4522,19 @@ function frame(t){
  requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame);
-function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="rifle";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:true,smg:true,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="pistol";magSize=12;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();setupResetButtons(reset);
 setupControlsModal();
-const onKeyDown=e=>{let k=e.key.toLowerCase(),gameKey=["w","a","s","d","r","g","n","1","2","3","4","5","6","7","8","shift"].includes(k);if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(k==="1")setWeapon("rifle");if(k==="2")setWeapon("smg");if(k==="3")setWeapon("shotgun");if(k==="4")setWeapon("pistol");if(k==="5")setWeapon("dmr");if(k==="6")setWeapon("grenadeLauncher");if(k==="7")setWeapon("m240");if(k==="8")setWeapon("awm");if(gameKey)e.preventDefault()};
+const weaponHotkeys={Digit1:"rifle",Digit2:"smg",Digit3:"shotgun",Digit4:"pistol",Digit5:"dmr",Digit6:"grenadeLauncher",Digit7:"m240",Digit8:"awm"};
+const onKeyDown=e=>{let k=e.key.toLowerCase(),hotWeapon=weaponHotkeys[e.code],gameKey=["w","a","s","d","r","g","n","shift"].includes(k)||!!hotWeapon;if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(hotWeapon&&!e.repeat)setWeapon(hotWeapon);if(gameKey)e.preventDefault()};
 setupKeyDown(onKeyDown);
+const onWeaponWheel=e=>{
+ if(!running||paused||dying||between||document.pointerLockElement!==cv)return;
+ if(Math.abs(e.deltaY)<1)return;
+ e.preventDefault();
+ cycleWeapon(e.deltaY>0?1:-1);
+};
+document.addEventListener("wheel",onWeaponWheel,{passive:false});
 const onKeyUp=e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false};
 setupKeyUp(onKeyUp);
 const onInputFocusLost=()=>{clearKeys();stopAuto();setAim(false);if(running&&!dying&&!between&&!paused)setGamePaused(true)};
