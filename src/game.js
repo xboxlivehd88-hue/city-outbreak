@@ -3409,9 +3409,13 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    t:0,bones:[],blast:isBlast,power,settleT:0,grounded:false,bounceCount:0,
    floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
    baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
-   targetX:z.g.rotation.x+forward*(isBlast?1.35:.78+rnd()*.22),
-   targetZ:z.g.rotation.z+sideFall*(isBlast?1.35:1),
-   targetY:z.g.rotation.y+(rnd()-.5)*(isBlast?1.35:.58),
+   targetX:z.g.rotation.x+forward*(isBlast?0:.78+rnd()*.22),
+   targetZ:z.g.rotation.z+sideFall*(isBlast?0:1),
+   targetY:z.g.rotation.y+(rnd()-.5)*(isBlast?0:.58),
+   ravx:isBlast?(rnd()-.5)*(5.2+power*1.4):0,
+   ravy:isBlast?(rnd()-.5)*(4.0+power*1.0):0,
+   ravz:isBlast?(rnd()-.5)*(5.8+power*1.5):0,
+   rootPhase:rnd()*6.283,
    vx:awayX*(isBlast?(2.38+1.48*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.72:.24),
    vz:awayZ*(isBlast?(2.38+1.48*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.72:.24),
    vy:isBlast?(2.62+1.68*rnd())*power:(.32+.34*rnd())*power,
@@ -3420,15 +3424,23 @@ function beginRagdoll(z,force=1,blastOrigin=null){
 
  const add=(o,dx,dy,dz,delay=.08,duration=.72,wob=.12)=>{
    if(!o||!o.parent)return;
-   const loose=rag.blast?1.14+.07*rag.power:1.24;
+   const loose=rag.blast?1:1.24;
+   const blastSpin=.72+.12*rag.power;
    rag.bones.push({
      o,
      sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
-     tx:o.rotation.x+dx*loose,ty:o.rotation.y+dy*loose,tz:o.rotation.z+dz*loose,
-     delay:rag.blast?delay*.25:delay,
-     duration:rag.blast?duration*1.38:duration,
-     wob:wob*loose,phase:rnd()*6.28,
-     flopX:7+rnd()*7,flopY:6+rnd()*6,flopZ:8+rnd()*8
+     tx:rag.blast?o.rotation.x:o.rotation.x+dx*loose,
+     ty:rag.blast?o.rotation.y:o.rotation.y+dy*loose,
+     tz:rag.blast?o.rotation.z:o.rotation.z+dz*loose,
+     delay:rag.blast?0:delay,
+     duration:rag.blast?duration:duration,
+     wob:wob*loose,phase:rnd()*6.283,
+     flopX:7+rnd()*7,flopY:6+rnd()*6,flopZ:8+rnd()*8,
+     avx:rag.blast?((rnd()-.5)*11+dx*1.15)*blastSpin:0,
+     avy:rag.blast?((rnd()-.5)*9+dy*1.10)*blastSpin:0,
+     avz:rag.blast?((rnd()-.5)*12+dz*1.15)*blastSpin:0,
+     gustX:3.2+rnd()*5.8,gustY:2.8+rnd()*5.0,gustZ:3.5+rnd()*6.2,
+     gustPhaseX:rnd()*6.283,gustPhaseY:rnd()*6.283,gustPhaseZ:rnd()*6.283
    });
  };
 
@@ -3471,16 +3483,30 @@ function updateRagdoll(z,dt){
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
 
  // Hips physically drop before the whole body finishes going over.
- if(r.hips){
+ if(r.hips&&!r.blast){
    const h=smooth(r.t/.48);
    r.hips.position.y=r.hipsStartY+(r.hipsTargetY-r.hipsStartY)*h;
  }
 
- // Root tilt comes in later, after knees/hips have already started collapsing.
- const root=smooth((r.t-.18)/.82);
- z.g.rotation.x=r.baseX+(r.targetX-r.baseX)*root;
- z.g.rotation.z=r.baseZ+(r.targetZ-r.baseZ)*root;
- z.g.rotation.y=r.baseY+(r.targetY-r.baseY)*smooth((r.t-.20)/1.05);
+ // Explosive deaths free-tumble instead of converging toward a fixed pose.
+ // Normal bullet deaths keep the original controlled fall.
+ if(r.blast){
+   const air=!r.grounded;
+   const rootDamp=Math.exp(-dt*(air?.42:6.4));
+   const gust=(air?1:0)*Math.exp(-r.t*.24);
+   r.ravx+=Math.sin(r.t*3.7+r.rootPhase)*gust*1.8*dt;
+   r.ravy+=Math.sin(r.t*3.1+r.rootPhase+2.1)*gust*1.4*dt;
+   r.ravz+=Math.sin(r.t*4.2+r.rootPhase+4.0)*gust*2.0*dt;
+   z.g.rotation.x+=r.ravx*dt;
+   z.g.rotation.y+=r.ravy*dt;
+   z.g.rotation.z+=r.ravz*dt;
+   r.ravx*=rootDamp;r.ravy*=rootDamp;r.ravz*=rootDamp;
+ }else{
+   const root=smooth((r.t-.18)/.82);
+   z.g.rotation.x=r.baseX+(r.targetX-r.baseX)*root;
+   z.g.rotation.z=r.baseZ+(r.targetZ-r.baseZ)*root;
+   z.g.rotation.y=r.baseY+(r.targetY-r.baseY)*smooth((r.t-.20)/1.05);
+ }
 
  z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
  const drag=Math.exp(-dt*(r.blast?1.02:3.2));r.vx*=drag;r.vz*=drag;
@@ -3496,6 +3522,15 @@ function updateRagdoll(z,dt){
      r.vy=-r.vy*bounce;
      r.vx*=r.bounceCount===0?.68:.52;
      r.vz*=r.bounceCount===0?.68:.52;
+     const jolt=(.72-r.bounce*.75)/(1+r.bounceCount*.55);
+     r.ravx+=(rnd()-.5)*jolt*4.0;
+     r.ravy+=(rnd()-.5)*jolt*3.0;
+     r.ravz+=(rnd()-.5)*jolt*4.5;
+     for(const b of r.bones){
+       b.avx+=(rnd()-.5)*jolt*5.0;
+       b.avy+=(rnd()-.5)*jolt*4.0;
+       b.avz+=(rnd()-.5)*jolt*5.5;
+     }
      r.bounceCount++;
      r.grounded=false;
    }else if(!r.blast&&r.vy<-.22){
@@ -3509,16 +3544,31 @@ function updateRagdoll(z,dt){
  }
 
  for(const b of r.bones){
-   const t=smooth((r.t-b.delay)/b.duration);
-   const baseLoose=(1-t)*Math.exp(-Math.max(0,r.t-b.delay)*(r.blast?.58:1.85))*b.wob;
-   const airborneFlop=r.blast&&!r.grounded?(.70+.14*r.power)*Math.exp(-r.t*.29):0;
-   b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*b.flopX+b.phase)*(baseLoose+airborneFlop);
-   b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*b.flopY+b.phase+1.4)*(baseLoose*.72+airborneFlop*.78);
-   b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*b.flopZ+b.phase+2.2)*(baseLoose*.88+airborneFlop*.92);
+   if(r.blast){
+     const air=!r.grounded;
+     const damp=Math.exp(-dt*(air?.72:7.2));
+     const gustAmp=(air?(3.2+.48*r.power):.18)*Math.exp(-r.t*.26);
+     b.avx+=Math.sin(r.t*b.gustX+b.gustPhaseX)*gustAmp*dt;
+     b.avy+=Math.sin(r.t*b.gustY+b.gustPhaseY)*gustAmp*.82*dt;
+     b.avz+=Math.sin(r.t*b.gustZ+b.gustPhaseZ)*gustAmp*1.08*dt;
+     b.o.rotation.x+=b.avx*dt;
+     b.o.rotation.y+=b.avy*dt;
+     b.o.rotation.z+=b.avz*dt;
+     b.avx*=damp;b.avy*=damp;b.avz*=damp;
+   }else{
+     const t=smooth((r.t-b.delay)/b.duration);
+     const baseLoose=(1-t)*Math.exp(-Math.max(0,r.t-b.delay)*1.85)*b.wob;
+     b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*b.flopX+b.phase)*baseLoose;
+     b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*b.flopY+b.phase+1.4)*baseLoose*.65;
+     b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*b.flopZ+b.phase+2.2)*baseLoose*.80;
+   }
  }
 
  if(r.blast){
-   const settled=r.grounded&&Math.abs(r.vy)<.08&&Math.hypot(r.vx,r.vz)<.24;
+   let maxBoneSpin=0;
+   for(const b of r.bones)maxBoneSpin=Math.max(maxBoneSpin,Math.abs(b.avx||0),Math.abs(b.avy||0),Math.abs(b.avz||0));
+   const rootSpin=Math.max(Math.abs(r.ravx||0),Math.abs(r.ravy||0),Math.abs(r.ravz||0));
+   const settled=r.grounded&&Math.abs(r.vy)<.08&&Math.hypot(r.vx,r.vz)<.24&&rootSpin<.18&&maxBoneSpin<.22;
    r.settleT=settled?r.settleT+dt:0;
    if(r.settleT>.45)z.falling=false;
  }else if(r.t>1.90&&r.grounded)z.falling=false;
