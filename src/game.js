@@ -2892,7 +2892,7 @@ function randomAmmoWeapon(){
  // the hard 10-round total cap. This prevents unusable launcher drops from
  // being selected while full, and makes them eligible again after any round is fired.
  const pool=Object.keys(unlocked).filter(w=>unlocked[w]&&w!=="pistol"&&(w!=="grenadeLauncher"||launcherAmmoTotal()<10));
- return pool[Math.floor(rnd()*pool.length)]||weapon;
+ return pool.length?pool[Math.floor(rnd()*pool.length)]:null;
 }
 const dropLabelCache=new Map();
 function makeDropLabel(text,color=0xffffff){
@@ -2911,20 +2911,23 @@ function spawnZombieDrop(pos){
  if(drops.length>=MAX_ACTIVE_DROPS){
    const old=drops.shift();if(old&&old.g.parent)scene.remove(old.g);
  }
- const type=rnd()<.625?"ammo":"money";let amount=randomDropAmount(type);
+ let type=rnd()<.625?"ammo":"money";let amount=randomDropAmount(type);if(type==="ammo"&&!randomAmmoWeapon())type="money";
  const g=new THREE.Group(),body=new THREE.Mesh(dropGeo[type],dropMat[type]);
  body.castShadow=true;body.receiveShadow=true;body.position.y=.24;g.add(body);
 
  let labelText="",labelColor=0xffffff,ammoWeapon=null;
  if(type==="ammo"){
    ammoWeapon=randomAmmoWeapon();
-   if(ammoWeapon==="grenadeLauncher")amount=weightedTier(rnd(),[[1,55],[2,32],[3,13]]);
+   if(!ammoWeapon){type="money";amount=randomDropAmount("money");labelText="$"+amount;labelColor=0x76e27e}
+   else if(ammoWeapon==="grenadeLauncher")amount=weightedTier(rnd(),[[1,55],[2,32],[3,13]]);
+   if(type==="ammo"){
    labelText=weaponDefs[ammoWeapon].name+" +"+amount;
    labelColor=0xf0c467;
    // visible brass rounds on the ammo box
    for(let k=-1;k<=1;k++){
      const round=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.23,7),M(0xc29742,.38));
      round.rotation.z=Math.PI/2;round.position.set(k*.13,.43,0);g.add(round);
+   }
    }
  }else{
    labelText="$"+amount;labelColor=0x76e27e;
