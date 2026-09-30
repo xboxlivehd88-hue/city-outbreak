@@ -1593,7 +1593,7 @@ const ADS={
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:.045},
  dmr:{x:-.36,y:.010,z:-1.00,fov:48,rx:0},
  grenadeLauncher:{x:-.36,y:.040,z:-.45,fov:56,rx:0},
- m240:{x:-.36,y:-.065,z:-1.38,fov:56,rx:0},
+ m240:{x:-.36,y:.40,z:1.20,fov:56,rx:0},
  awm:{x:-.36,y:.005,z:-.62,fov:28,rx:0}
 };
 function ads(){return ADS[weapon]||ADS.rifle}
@@ -2107,7 +2107,7 @@ function rebuildGun(){
      const m240Scale=4.28/Math.max(.001,sz.z);
      model.scale.setScalar(m240Scale);
      model.position.copy(ctr).multiplyScalar(-m240Scale);
-     root.position.set(x,-.34,-2.14);root.rotation.y=Math.PI;gun.add(root);
+     root.position.set(x,-.62,-2.14);root.rotation.y=Math.PI;gun.add(root);
    }
  }else if(weapon==='awm'){
    // AWM Ultimate: long precision rifle, skeletal stock, oversized scope and heavy fluted barrel.
