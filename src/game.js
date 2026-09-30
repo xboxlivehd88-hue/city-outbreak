@@ -1512,7 +1512,7 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
  if(weapon==="pistol")rebuildGun();
 },undefined,err=>console.warn("M17 GLB load failed; M17 viewmodel unavailable",err));
 // Supplied animated MP5 GLB. Use it as the SMG viewmodel while preserving existing MP5 gameplay.
-let mp5ModelTemplate=null,mp5Animations=[],mp5ViewRoot=null;
+let mp5ModelTemplate=null,mp5Animations=[],mp5ViewRoot=null,mp5RecoilPivot=null;
 new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
  mp5ModelTemplate=gltf.scene;
  mp5Animations=gltf.animations||[];
@@ -1528,7 +1528,7 @@ new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
  });
  if(weapon==="smg")rebuildGun();
 },undefined,err=>console.warn("MP5 GLB load failed; MP5 viewmodel unavailable",err));
-let m240ModelTemplate=null;
+let m240ModelTemplate=null,m240RecoilPivot=null;
 new GLTFLoader().load("assets/m240b_machine_gun.glb",gltf=>{
  m240ModelTemplate=gltf.scene;
  m240ModelTemplate.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
@@ -1908,7 +1908,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;mp5ViewRoot=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240RecoilPivot=null;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -1964,7 +1964,9 @@ function rebuildGun(){
      // Bake the exact corrective transforms into those meshes so they become a normal,
      // compact MP5 centered around the origin before we place it in first person.
      const mp5Root=new THREE.Group();mp5Root.name="ExternalAnimatedMP5";
-     const mp5Geo=new THREE.Group();mp5Geo.name="ExternalAnimatedMP5Geometry";mp5Root.add(mp5Geo);
+     const recoilPivot=new THREE.Group();recoilPivot.name="MP5RearRecoilPivot";recoilPivot.position.set(0,.08,.45);mp5Root.add(recoilPivot);
+     const mp5Geo=new THREE.Group();mp5Geo.name="ExternalAnimatedMP5Geometry";mp5Geo.position.set(0,-.08,-.45);recoilPivot.add(mp5Geo);
+     mp5RecoilPivot=recoilPivot;
      const mp5Bake=[
        ["Object_126",[
         -0.000034095201,0,0,-0.014564577587,
@@ -2107,6 +2109,11 @@ function rebuildGun(){
      const m240Scale=4.28/Math.max(.001,sz.z);
      model.scale.setScalar(m240Scale);
      model.position.copy(ctr).multiplyScalar(-m240Scale);
+     const recoilPivot=new THREE.Group();recoilPivot.name="M240RearRecoilPivot";
+     recoilPivot.position.set(0,0,-1.82);
+     model.position.z+=1.82;
+     recoilPivot.add(model);m240RecoilPivot=recoilPivot;
+     recoilPivot.rotation.x=.07;
      root.position.set(x,-.62,-2.14);root.rotation.y=Math.PI;gun.add(root);
    }
  }else if(weapon==='awm'){
@@ -4354,7 +4361,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
- const wholeGunRecoil=weapon==="smg"?0:recoil;
+ const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil;
  gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+rp.arch*.09;
  gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08-rp.arch*(weapon==="m240"?.12:.18);
  gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt;
@@ -4388,17 +4395,14 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    mp5ViewRoot.position.y=THREE.MathUtils.lerp(-.70,-.40,a);
    mp5ViewRoot.position.z=THREE.MathUtils.lerp(-1.12,-1.55+adsPivotZ,a);
 
-   // MP5 recoil pivots around the rear of the receiver/stock instead of kicking the
-   // entire player weapon rig. The rear stays nearly planted while the barrel rises.
-   const kick=recoil*1.65;
-   mp5ViewRoot.rotation.x=kick;
-   const recoilPivotY=.08,recoilPivotZ=.45;
-   const kc=Math.cos(kick),ks=Math.sin(kick);
-   const recoilDY=recoilPivotY-(recoilPivotY*kc-recoilPivotZ*ks);
-   const recoilDZ=recoilPivotZ-(recoilPivotY*ks+recoilPivotZ*kc);
-   mp5ViewRoot.position.x+=Math.sin(yawNow)*recoilDZ;
-   mp5ViewRoot.position.y+=recoilDY;
-   mp5ViewRoot.position.z+=Math.cos(yawNow)*recoilDZ;
+   // v375: keep the MP5 stock/root planted. Only the geometry pivots around
+   // the rear of the receiver, giving a small muzzle rise without whole-gun bounce.
+   if(mp5RecoilPivot)mp5RecoilPivot.rotation.x=recoil*.28;
+ }
+ if(weapon==="m240"&&m240RecoilPivot){
+   // v375: M240 stock stays shouldered. Recoil is a restrained barrel/muzzle rise
+   // around the rear pivot instead of translating/rotating the complete gun rig.
+   m240RecoilPivot.rotation.x=.07-recoil*.24;
  }
  if(playerHandRig){
    // The imported M4 is much more realistic than the old block rifle. In ADS,
