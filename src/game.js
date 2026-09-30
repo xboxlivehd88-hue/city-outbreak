@@ -3416,21 +3416,25 @@ function blastBoneProfile(role){
    default:return{lx:1.40,ly:1.00,lz:1.18,airA:.00050,airD:.060,groundA:.0055,groundD:.82,maxA:62,gust:1.30,inertia:1.12,couple:.40,root:.30,impact:1.00};
  }
 }
-const ragdollProbeWorld=new THREE.Vector3();
-function ragdollBoneGroundRadius(role){
- switch(role){
-   case "hips":return .22;
-   case "spine":return .20;
-   case "chest":return .26;
-   case "head":return .21;
-   case "neck":return .12;
-   case "upperLeg":return .16;
-   case "lowerLeg":return .14;
-   case "upperArm":return .15;
-   case "lowerArm":return .13;
-   case "torso":return .26;
-   default:return .15;
+const ragdollSurfaceRaycaster=new THREE.Raycaster();
+const ragdollSurfaceNormal=new THREE.Vector3();
+const ragdollSurfaceNormalMatrix=new THREE.Matrix3();
+function sampleRagdollCitySurfaceY(x,z,topY){
+ if(!newCityRoot)return null;
+ ragdollSurfaceRaycaster.ray.origin.set(x,topY+.70,z);
+ ragdollSurfaceRaycaster.ray.direction.set(0,-1,0);
+ ragdollSurfaceRaycaster.near=0;
+ ragdollSurfaceRaycaster.far=5.5;
+ const hits=ragdollSurfaceRaycaster.intersectObject(newCityRoot,true);
+ for(const hit of hits){
+   if(!hit.face||!hit.object||!hit.object.isMesh)continue;
+   ragdollSurfaceNormalMatrix.getNormalMatrix(hit.object.matrixWorld);
+   ragdollSurfaceNormal.copy(hit.face.normal).applyMatrix3(ragdollSurfaceNormalMatrix).normalize();
+   if(ragdollSurfaceNormal.y<.32)continue;
+   if(hit.point.y>topY+.34)continue;
+   return hit.point.y;
  }
+ return null;
 }
 function resolveRagdollGroundImpact(r){
  r.grounded=true;
@@ -3460,35 +3464,6 @@ function resolveRagdollGroundImpact(r){
    r.vx*=r.blast?.72:.78;
    r.vz*=r.blast?.72:.78;
    r.grounded=true;
- }
-}
-function resolveRagdollBodyGroundContact(z,r){
- if(!r.blast)return;
- z.g.updateMatrixWorld(true);
- let targetRootY=z.g.position.y,bestSurface=null,hasPenetration=false;
- for(const b of r.bones){
-   b.o.getWorldPosition(ragdollProbeWorld);
-   const radius=ragdollBoneGroundRadius(b.role);
-   const surface=findRagdollSurfaceY(
-     ragdollProbeWorld.x,
-     ragdollProbeWorld.z,
-     Math.max(z.g.position.y,r.floorY)+1.35
-   );
-   if(surface===null)continue;
-   const penetration=surface-(ragdollProbeWorld.y-radius);
-   if(penetration<=.002)continue;
-   hasPenetration=true;
-   const absoluteTarget=z.g.position.y+penetration+.010;
-   const cappedTarget=Math.min(absoluteTarget,surface+.78);
-   if(cappedTarget>targetRootY){
-     targetRootY=cappedTarget;
-     bestSurface=surface;
-   }
- }
- if(hasPenetration&&r.vy<=0){
-   z.g.position.y=targetRootY;
-   if(bestSurface!==null)r.floorY=Math.max(r.floorY,bestSurface);
-   resolveRagdollGroundImpact(r);
  }
 }
 
@@ -3586,7 +3561,6 @@ function beginRagdoll(z,force=1,blastOrigin=null){
      while(p&&p!==z.g&&!byObject.has(p))p=p.parent;
      b.parentState=byObject.get(p)||null;
    }
-   z.g.updateMatrixWorld(true);
  }
 }
 function updateRagdoll(z,dt){
@@ -3620,19 +3594,30 @@ function updateRagdoll(z,dt){
 
  z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
  const drag=Math.exp(-dt*(r.blast?1.02:3.2));r.vx*=drag;r.vz*=drag;
- // v359: sweep ragdoll ground sampling from the previous root height so a
- // fast downward frame cannot tunnel completely through a road, stair, roof,
- // sidewalk, or other indexed upward-facing city surface before impact resolves.
  const prevRagdollY=z.g.position.y;
  r.vy-=(r.blast?6.35:5.4)*dt;
  z.g.position.y+=r.vy*dt;
- r.floorY=sampleRagdollGroundY(
-   z.g.position.x,z.g.position.z,r.floorY,
-   Math.max(prevRagdollY,z.g.position.y)
- );
- const floorContact=r.floorY-.08;
+ let hasRagdollSurface=true;
+ if(r.blast){
+   // v362: explosive corpses use the actual uploaded city mesh for ground
+   // contact instead of skeleton probes or a stale cached floor height.
+   const surfaceY=sampleRagdollCitySurfaceY(
+     z.g.position.x,z.g.position.z,
+     Math.max(prevRagdollY,z.g.position.y)
+   );
+   hasRagdollSurface=surfaceY!==null;
+   if(hasRagdollSurface)r.floorY=surfaceY;
+ }else{
+   r.floorY=sampleRagdollGroundY(
+     z.g.position.x,z.g.position.z,r.floorY,
+     Math.max(prevRagdollY,z.g.position.y)
+   );
+ }
+ // The zombie root is at the standing foot pivot. A fallen body needs a small
+ // clearance above the visual surface or its torso/limbs visibly cut through it.
+ const floorContact=r.floorY+(r.blast?.26:-.08);
  r.grounded=false;
- if(z.g.position.y<=floorContact+.018&&r.vy<=0){
+ if(hasRagdollSurface&&z.g.position.y<=floorContact+.018&&r.vy<=0){
    z.g.position.y=floorContact;
    resolveRagdollGroundImpact(r);
  }
@@ -3685,10 +3670,6 @@ function updateRagdoll(z,dt){
      b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*6.7+b.phase+2.2)*baseLoose*.80;
    }
  }
-
- // v361: body contact resolves to a bounded absolute root height. Never add
- // penetration repeatedly frame after frame; that can launch the corpse upward.
- resolveRagdollBodyGroundContact(z,r);
 
  if(r.blast){
    let maxBoneSpin=0;
@@ -4468,9 +4449,10 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
  if(!z.dead)continue;
  z.corpseAge+=dt;
  if(z.falling)updateRagdoll(z,dt);
- if(z.corpseAge>10&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
+ // v362: keep corpses visible through the current wave so ragdoll settling can
+ // be observed. clearRoundCorpses() already removes them before the next wave.
 }
-if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
+
 spawnQueuedZombies();
 activeFrame.length=0;for(const z of zombies)if(!z.dead)activeFrame.push(z);
 const active=activeFrame;
