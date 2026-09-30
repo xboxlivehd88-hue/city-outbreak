@@ -580,6 +580,65 @@ function addStreetLampColliders(placements){
  });
 }
 
+// v343: real street-lamp illumination. Keep only a small pool of dynamic
+// spotlights active and move them to the nearest lamp heads as the player moves.
+const STREET_LAMP_HEAD_LOCAL_X=2.607625;
+const STREET_LAMP_HEAD_LOCAL_Y=5.785485;
+const STREET_LAMP_LIGHT_POOL_SIZE=4;
+const STREET_LAMP_LIGHT_RANGE=17;
+const STREET_LAMP_LIGHT_INTENSITY=220;
+const streetLampLightHeads=[];
+const streetLampLightPool=[];
+const streetLampLightTargets=[];
+let streetLampLightLastUpdate=-1e9;
+
+function setupStreetLampLighting(placements){
+ if(streetLampLightPool.length||!placements.length)return;
+ for(const p of placements){
+   const headX=p.x+Math.cos(p.rotY)*STREET_LAMP_HEAD_LOCAL_X;
+   const headZ=p.z-Math.sin(p.rotY)*STREET_LAMP_HEAD_LOCAL_X;
+   const headY=p.y+STREET_LAMP_HEAD_LOCAL_Y*STREET_LAMP_HEIGHT_SCALE;
+   streetLampLightHeads.push({x:headX,y:headY,z:headZ,groundY:p.y});
+ }
+ for(let i=0;i<Math.min(STREET_LAMP_LIGHT_POOL_SIZE,streetLampLightHeads.length);i++){
+   const target=new THREE.Object3D();
+   scene.add(target);
+   const light=new THREE.SpotLight(
+     0xffd27a,
+     STREET_LAMP_LIGHT_INTENSITY,
+     STREET_LAMP_LIGHT_RANGE,
+     Math.PI/3.25,
+     .58,
+     1.65
+   );
+   light.castShadow=false;
+   light.visible=false;
+   light.target=target;
+   scene.add(light);
+   streetLampLightTargets.push(target);
+   streetLampLightPool.push(light);
+ }
+ document.documentElement.dataset.streetLampRealLights=String(streetLampLightPool.length);
+ updateStreetLampLighting(performance.now(),true);
+}
+function updateStreetLampLighting(t,force=false){
+ if(!streetLampLightPool.length)return;
+ if(!force&&t-streetLampLightLastUpdate<220)return;
+ streetLampLightLastUpdate=t;
+ const nearest=streetLampLightHeads
+   .map((h,i)=>({i,d:(h.x-px)*(h.x-px)+(h.z-pz)*(h.z-pz)}))
+   .sort((a,b)=>a.d-b.d)
+   .slice(0,streetLampLightPool.length);
+ for(let i=0;i<streetLampLightPool.length;i++){
+   const light=streetLampLightPool[i],target=streetLampLightTargets[i],pick=nearest[i];
+   if(!pick){light.visible=false;continue}
+   const h=streetLampLightHeads[pick.i];
+   light.position.set(h.x,h.y,h.z);
+   target.position.set(h.x,h.groundY+.05,h.z);
+   light.visible=true;
+ }
+}
+
 function addStreetLamps(placements){
  if(streetLampInstances.length||!placements.length)return;
  new GLTFLoader().load(STREET_LAMP_URL,gltf=>{
@@ -588,6 +647,11 @@ function addStreetLamps(placements){
    const base=new THREE.Matrix4(),instanceMatrix=new THREE.Matrix4();
    const pos=new THREE.Vector3(),quat=new THREE.Quaternion(),scale=new THREE.Vector3(1,STREET_LAMP_HEIGHT_SCALE,1),yAxis=new THREE.Vector3(0,1,0);
    for(const src of sourceMeshes){
+     const mats=Array.isArray(src.material)?src.material:[src.material];
+     for(const mat of mats)if(mat&&mat.emissive&&mat.emissive.getHex()!==0){
+       mat.emissiveIntensity=Math.max(mat.emissiveIntensity||1,2.35);
+       mat.needsUpdate=true;
+     }
      const inst=new THREE.InstancedMesh(src.geometry,src.material,placements.length);
      inst.name="StreetLampBatch";inst.castShadow=false;inst.receiveShadow=false;inst.userData.streetLampBatch=true;
      for(let i=0;i<placements.length;i++){
@@ -632,6 +696,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  const additionalStreetLampPlacements=buildManualAdditionalStreetLamps(map);
  const allStreetLampPlacements=streetLampPlacements.concat(additionalStreetLampPlacements);
  addStreetLampColliders(allStreetLampPlacements);
+ setupStreetLampLighting(allStreetLampPlacements);
  addStreetLamps(allStreetLampPlacements);
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.newCityLoaded="1";
@@ -3973,6 +4038,7 @@ function frame(t){
    setTimeout(()=>requestAnimationFrame(frame),250);return;
  }
  if(!paused)update(dt);
+ updateStreetLampLighting(t);
  ren.render(scene,cam);
  requestAnimationFrame(frame)
 }
