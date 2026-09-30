@@ -853,30 +853,42 @@ function buildNewCityCollision(map){
  });
 }
 
-// v353: exact blockers for the two solid side walls flanking the broad church
-// staircase shown in the player's screenshot. These are authored from the GLB's
-// real Church_01 geometry and do not widen collision anywhere else.
-function addChurchStairSideWallColliders(map){
- const walls=[
-   {x:-5.290,z1:-8.987,z2:-6.852},
-   {x:-0.463,z1:-8.987,z2:-6.852}
+// v354: exact blockers for the broad City Hall staircase side walls shown in
+// the player's screenshot. The v353 church guess was the wrong landmark.
+// These four AABBs match the two stair-side walls on both CityHall instances.
+function addCityHallStairSideWallColliders(map){
+ const boxes=[
+   // CityHall_01: staircase runs outward along Z.
+   {minX:-18.096,maxX:-17.832,minZ:-43.100,maxZ:-36.698},
+   {minX:-9.699,maxX:-9.434,minZ:-43.100,maxZ:-36.698},
+   // CityHall_01__1: same staircase rotated 90 degrees in the authored map.
+   {minX:35.663,maxX:42.065,minZ:-49.921,maxZ:-49.656},
+   {minX:35.663,maxX:42.065,minZ:-41.523,maxZ:-41.259}
  ];
- const a=new THREE.Vector3(),b=new THREE.Vector3();
+ const corners=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
  let added=0;
- for(const w of walls){
-   a.set(w.x,-17.45,w.z1);b.set(w.x,-17.45,w.z2);
-   map.localToWorld(a);map.localToWorld(b);
+ for(const b of boxes){
+   corners[0].set(b.minX,-17.45,b.minZ);
+   corners[1].set(b.maxX,-17.45,b.minZ);
+   corners[2].set(b.minX,-17.45,b.maxZ);
+   corners[3].set(b.maxX,-17.45,b.maxZ);
+   for(const p of corners)map.localToWorld(p);
+   let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
+   for(const p of corners){
+     minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);
+     minZ=Math.min(minZ,p.z);maxZ=Math.max(maxZ,p.z);
+   }
    const hit={
-     x:(a.x+b.x)*.5,z:(a.z+b.z)*.5,
-     hx:Math.max(.11,Math.abs(a.x-b.x)*.5+.07),
-     hz:Math.max(.11,Math.abs(a.z-b.z)*.5+.07),
-     source:"churchStairSideWall"
+     x:(minX+maxX)*.5,z:(minZ+maxZ)*.5,
+     hx:(maxX-minX)*.5+.025,
+     hz:(maxZ-minZ)*.5+.025,
+     source:"cityHallStairSideWall"
    };
    buildingColliders.push(hit);indexCityCollider(hit);added++;
  }
  ZNAV_BLOCK_CACHE.clear();
- document.documentElement.dataset.churchStairWallColliders=String(added);
- console.log("CITY OUTBREAK: church stair side-wall collision added",{added});
+ document.documentElement.dataset.cityHallStairWallColliders=String(added);
+ console.log("CITY OUTBREAK: City Hall stair side-wall collision added",{added});
 }
 
 // v336: true one-for-one replacement of the city's 15 authored Light_01 lamps.
@@ -1094,7 +1106,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  buildNewCitySpawnZones(map);
  const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
- addChurchStairSideWallColliders(map);
+ addCityHallStairSideWallColliders(map);
  const additionalStreetLampPlacements=buildManualAdditionalStreetLamps(map);
  const allStreetLampPlacements=streetLampPlacements.concat(additionalStreetLampPlacements);
  addStreetLampColliders(allStreetLampPlacements);
