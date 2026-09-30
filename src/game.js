@@ -52,7 +52,7 @@ const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new
 // and enough exposure left for the warm street lamps to visibly light the road.
 scene.add(new THREE.HemisphereLight(0x73879a,0x4b4036,.92));
 let sun=new THREE.DirectionalLight(0xb9c9d6,1.35);
-sun.position.set(18,28,-92);sun.castShadow=true;sun.shadow.mapSize.set(768,768);sun.shadow.camera.left=-62;sun.shadow.camera.right=62;sun.shadow.camera.top=62;sun.shadow.camera.bottom=-62;scene.add(sun);
+sun.position.set(18,35,-92);sun.castShadow=true;sun.shadow.mapSize.set(768,768);sun.shadow.camera.left=-62;sun.shadow.camera.right=62;sun.shadow.camera.top=62;sun.shadow.camera.bottom=-62;scene.add(sun);
 
 const earlyNightSkyUniforms={uTime:{value:0}};
 const earlyNightSkyMaterial=new THREE.ShaderMaterial({
@@ -114,10 +114,10 @@ const earlyNightSkyMaterial=new THREE.ShaderMaterial({
    vec3 cloudCol=mix(darkCloud,tanCloud,smoothstep(.48,.75,cloudNoise));
 
    // Small full moon, low over the skyline and slightly off-center from spawn.
-   vec3 moonDir=normalize(vec3(.18,.20,-.963));
+   vec3 moonDir=normalize(vec3(.18,.25,-.963));
    float md=dot(d,moonDir);
-   float moon=smoothstep(cos(.024),cos(.018),md);
-   float halo=smoothstep(cos(.070),cos(.025),md);
+   float moon=smoothstep(cos(.0264),cos(.0198),md);
+   float halo=smoothstep(cos(.077),cos(.0275),md);
    vec3 moonUp=normalize(vec3(-moonDir.x*moonDir.y,1.0-moonDir.y*moonDir.y,-moonDir.z*moonDir.y));
    float moonY=dot(d,moonUp);
    float moonTexture=.88+.12*noise3(d*95.0);
@@ -489,9 +489,42 @@ const NEW_CITY_COLLISION_CELL=.34;
 const NEW_CITY_COLLISION_MIN_Y=.10;
 const NEW_CITY_COLLISION_MAX_Y=2.25;
 const NEW_CITY_COLLISION_MIN_VERTICAL_SPAN=.55;
+const NEW_CITY_GROUND_BUCKET=3.0;
+const NEW_CITY_GROUND_MIN_Y=-.35;
+const NEW_CITY_GROUND_MAX_Y=7.5;
+const ZOMBIE_STEP_UP=.62;
+const ZOMBIE_STEP_DOWN=1.35;
+const cityGroundBuckets=new Map();
 let newCityCollisionReady=false;
+function cityGroundKey(ix,iz){return ix+","+iz}
+function indexCityGroundTriangle(t){
+ const minX=Math.floor(t.minX/NEW_CITY_GROUND_BUCKET),maxX=Math.floor(t.maxX/NEW_CITY_GROUND_BUCKET);
+ const minZ=Math.floor(t.minZ/NEW_CITY_GROUND_BUCKET),maxZ=Math.floor(t.maxZ/NEW_CITY_GROUND_BUCKET);
+ for(let iz=minZ;iz<=maxZ;iz++)for(let ix=minX;ix<=maxX;ix++){
+   const key=cityGroundKey(ix,iz);let bucket=cityGroundBuckets.get(key);
+   if(!bucket){bucket=[];cityGroundBuckets.set(key,bucket)}bucket.push(t);
+ }
+}
+function sampleZombieGroundY(x,z,currentY){
+ const bucket=cityGroundBuckets.get(cityGroundKey(Math.floor(x/NEW_CITY_GROUND_BUCKET),Math.floor(z/NEW_CITY_GROUND_BUCKET)));
+ if(!bucket)return currentY;
+ let found=false,best=-Infinity;
+ for(const t of bucket){
+   if(x<t.minX-.001||x>t.maxX+.001||z<t.minZ-.001||z>t.maxZ+.001)continue;
+   const den=(t.bz-t.cz)*(t.ax-t.cx)+(t.cx-t.bx)*(t.az-t.cz);
+   if(Math.abs(den)<1e-8)continue;
+   const wa=((t.bz-t.cz)*(x-t.cx)+(t.cx-t.bx)*(z-t.cz))/den;
+   const wb=((t.cz-t.az)*(x-t.cx)+(t.ax-t.cx)*(z-t.cz))/den;
+   const wc=1-wa-wb;
+   if(wa<-.002||wb<-.002||wc<-.002)continue;
+   const y=wa*t.ay+wb*t.by+wc*t.cy;
+   if(y>currentY+ZOMBIE_STEP_UP||y<currentY-ZOMBIE_STEP_DOWN)continue;
+   if(y>best){best=y;found=true}
+ }
+ return found?best:currentY;
+}
 function buildNewCityCollision(map){
- buildingColliders.length=0;cityCollisionBuckets.clear();
+ buildingColliders.length=0;cityCollisionBuckets.clear();cityGroundBuckets.clear();
  map.updateMatrixWorld(true);
 
  const used=new Set(),a=new THREE.Vector3(),b=new THREE.Vector3(),cc=new THREE.Vector3();
@@ -520,14 +553,32 @@ function buildNewCityCollision(map){
      const j=t*3,ia=idx?idx.getX(j):j,ib=idx?idx.getX(j+1):j+1,ic=idx?idx.getX(j+2):j+2;
      read(a,ia);read(b,ib);read(cc,ic);triangleCount++;
      const minY=Math.min(a.y,b.y,cc.y),maxY=Math.max(a.y,b.y,cc.y);
-     if(maxY<NEW_CITY_COLLISION_MIN_Y||minY>NEW_CITY_COLLISION_MAX_Y||maxY-minY<NEW_CITY_COLLISION_MIN_VERTICAL_SPAN)continue;
      ab.subVectors(b,a);ac.subVectors(cc,a);normal.crossVectors(ab,ac);
      const nl=normal.length();if(nl<1e-6)continue;
-     // Ignore floors, roofs, stairs and strong slopes; retain wall-like faces.
-     if(Math.abs(normal.y)/nl>.38)continue;
+     const ny=normal.y/nl;
+
+     // Build a cheap walkable-surface index for zombies. This mirrors the player's
+     // upward-facing ground rule but avoids full-city raycasts during gameplay.
+     if(ny>=.42&&maxY>=NEW_CITY_GROUND_MIN_Y&&minY<=NEW_CITY_GROUND_MAX_Y){
+       const minX=Math.min(a.x,b.x,cc.x),maxX=Math.max(a.x,b.x,cc.x);
+       const minZ=Math.min(a.z,b.z,cc.z),maxZ=Math.max(a.z,b.z,cc.z);
+       const areaXZ=Math.abs((b.x-a.x)*(cc.z-a.z)-(b.z-a.z)*(cc.x-a.x));
+       if(areaXZ>.0008)indexCityGroundTriangle({
+         ax:a.x,ay:a.y,az:a.z,bx:b.x,by:b.y,bz:b.z,cx:cc.x,cy:cc.y,cz:cc.z,
+         minX,maxX,minZ,maxZ
+       });
+     }
+
+     if(maxY<NEW_CITY_COLLISION_MIN_Y||minY>NEW_CITY_COLLISION_MAX_Y||maxY-minY<NEW_CITY_COLLISION_MIN_VERTICAL_SPAN)continue;
+     // Ignore floors, roofs and strong slopes for horizontal blocking; stair height
+     // is handled by the walkable-ground index above.
+     if(Math.abs(ny)>.38)continue;
      const spanX=Math.max(a.x,b.x,cc.x)-Math.min(a.x,b.x,cc.x);
      const spanZ=Math.max(a.z,b.z,cc.z)-Math.min(a.z,b.z,cc.z);
-     if(Math.max(spanX,spanZ)<.12)continue;
+     const horizontalSpan=Math.max(spanX,spanZ),verticalSpan=maxY-minY;
+     // Keep the old .12 threshold for short detail, but retain tall slender faces
+     // (columns/pillars) down to .035 so they become solid without fattening walls.
+     if(horizontalSpan<.035||(horizontalSpan<.12&&verticalSpan<1.10))continue;
      blockingTriangles++;
      sampleEdge(a,b);sampleEdge(b,cc);sampleEdge(cc,a);
    }
@@ -565,7 +616,7 @@ function buildNewCityCollision(map){
  ZNAV_BLOCK_CACHE.clear();
  newCityCollisionReady=true;
  document.documentElement.dataset.newCityCollision="1";
- document.documentElement.dataset.newCityColliderCount=String(colliderCount);
+ document.documentElement.dataset.newCityColliderCount=String(colliderCount);document.documentElement.dataset.newCityGroundBuckets=String(cityGroundBuckets.size);
  console.log("CITY OUTBREAK: new city selective collision built",{
    meshCount,triangleCount,blockingTriangles,cells:used.size,colliderCount
  });
@@ -3174,6 +3225,36 @@ function autoReloadIfEmpty(w=weapon){
  if(a&&a.mag<=0&&(w==="pistol"||a.reserve>0)&&!reloading&&!dying)reload(w)
 }
 const ray=new THREE.Raycaster(),rayAim=new THREE.Vector2(),rayTargets=[];
+const cityProjectileRay=new THREE.Raycaster(),cityProjectileDir=new THREE.Vector3();
+const cityProjectileNormal=new THREE.Vector3(),cityProjectileNormalMatrix=new THREE.Matrix3();
+function validCityProjectileHit(hit){
+ let o=hit&&hit.object;
+ while(o&&o!==newCityRoot){
+   if(o.visible===false||o.userData?.replacedStreetLamp)return false;
+   o=o.parent;
+ }
+ return !!hit&&o===newCityRoot;
+}
+function firstCityProjectileHit(origin,direction,maxDistance){
+ if(!newCityRoot||maxDistance<=.001)return null;
+ cityProjectileRay.set(origin,direction);
+ cityProjectileRay.near=.002;cityProjectileRay.far=maxDistance;
+ const hits=cityProjectileRay.intersectObject(newCityRoot,true);
+ for(const hit of hits)if(validCityProjectileHit(hit))return hit;
+ return null;
+}
+function cityProjectileSegmentHit(from,to){
+ cityProjectileDir.subVectors(to,from);
+ const dist=cityProjectileDir.length();
+ if(dist<=.001)return null;
+ cityProjectileDir.multiplyScalar(1/dist);
+ return firstCityProjectileHit(from,cityProjectileDir,dist+.01);
+}
+function cityProjectileHitNormal(hit){
+ if(!hit?.face||!hit.object)return null;
+ cityProjectileNormalMatrix.getNormalMatrix(hit.object.matrixWorld);
+ return cityProjectileNormal.copy(hit.face.normal).applyMatrix3(cityProjectileNormalMatrix).normalize();
+}
 function fire(){
  if(!running||paused||reloading||dying||between)return;
  if(weapon==="awm"&&gameTimeNow()<awmReadyAt){show("CYCLING BOLT");return}
@@ -3203,9 +3284,15 @@ function fire(){
    const sx=aimX+smgAdsZeroX+(Math.random()-.5)*wd().spread*adsSpread,
          sy=aimY+pistolAdsZero+smgAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
+   const cityHit=firstCityProjectileHit(ray.ray.origin,ray.ray.direction,80);
    let hit=ray.intersectObjects(rayTargets,false)[0];
    if(!hit)hit=pointBlankWeaponHit();
-   if(hit&&hit.distance<80){
+   const zombieHitDistance=hit?.point?ray.ray.origin.distanceTo(hit.point):Infinity;
+   if(cityHit&&cityHit.distance<=zombieHitDistance+.01){
+     impactFX(cityHit.point);
+     continue;
+   }
+   if(hit&&zombieHitDistance<80){
      let z=hit.object.userData.zombie;if(!z)continue;
      let hs=hit.object.userData.isHead===true,part=hit.object.userData.part||"body";
      let shotDamage=wd().body*damageLevel;
@@ -3797,9 +3884,13 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.visible=!fullScopeAim;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
-for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
+for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;
+ const grenadeOldPos=g.q.position.clone();
+ g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
+ const cityImpact=cityProjectileSegmentHit(grenadeOldPos,g.q.position);
  if(g.launcher){
    let impact=g.q.position.y<.10||insideBuilding(g.q.position.x,g.q.position.z,.05);
+   if(cityImpact){g.q.position.copy(cityImpact.point);impact=true}
    if(!impact){for(const c of parkedCars){if(carPointCollision(c,g.q.position.x,g.q.position.z,.10)){impact=true;break}}}
    if(!impact){for(const z of zombies){
      if(z.dead)continue;
@@ -3816,7 +3907,18 @@ for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;g.v.y-=8.5*dt;g.q
    }}
    if(impact||g.fuse<=0){explodeLauncherRound(g);thrown.splice(i,1);continue}
  }else{
-   if(g.q.position.y<.12){g.q.position.y=.12;g.v.y*=-.38;g.v.x*=.76;g.v.z*=.76}
+   if(cityImpact){
+     const n=cityProjectileHitNormal(cityImpact);
+     g.q.position.copy(cityImpact.point);
+     if(n){
+       g.q.position.addScaledVector(n,.035);
+       g.v.reflect(n).multiplyScalar(.46);
+     }else{
+       g.v.multiplyScalar(-.34);
+     }
+   }else if(g.q.position.y<.12){
+     g.q.position.y=.12;g.v.y*=-.38;g.v.x*=.76;g.v.z*=.76
+   }
    if(g.fuse<=0){explodeGrenade(g);thrown.splice(i,1)}
  }
 }
@@ -3842,7 +3944,13 @@ const highlightLast=(active.length+Math.max(0,waveTarget-waveSpawned))<=5&&!curr
 for(let z of active){
  if(!Number.isFinite(z.g.position.x)||!Number.isFinite(z.g.position.y)||!Number.isFinite(z.g.position.z)){
    const a=rnd()*Math.PI*2,dist=16+rnd()*8;let safe=pushOutsideBuilding(px+Math.sin(a)*dist,pz+Math.cos(a)*dist,.85);
-   z.g.position.set(safe.x,0,safe.z);z.targetX=px;z.targetZ=pz;z.stagger=.25;z.navPath=null;z.navIndex=0;z.navCheckT=0;
+   z.g.position.set(safe.x,0,safe.z);z.groundY=0;z.targetX=px;z.targetZ=pz;z.stagger=.25;z.navPath=null;z.navIndex=0;z.navCheckT=0;
+ }
+ z.groundCheckT=(z.groundCheckT||0)-dt;
+ if(z.groundCheckT<=0&&!z.knockdown){
+   z.groundCheckT=.07+(z.phase%1)*.035;
+   const targetGround=sampleZombieGroundY(z.g.position.x,z.g.position.z,z.groundY||0);
+   z.groundY=THREE.MathUtils.lerp(z.groundY||0,targetGround,.72);
  }
  if(highlightLast&&!z.marker){
    z.marker=createLastZombieMarker();
