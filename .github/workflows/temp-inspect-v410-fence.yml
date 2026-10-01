@@ -1,0 +1,32 @@
+name: inspect v410 fence pivot
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-inspect-v410-fence.yml'
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect Fence_01__22 pivot
+        run: |
+          python3 - <<'PY'
+          import json,struct
+          from pathlib import Path
+          b=Path('assets/chicken_gun_fruzer_-_city.glb').read_bytes()
+          n,t=struct.unpack_from('<II',b,12)
+          g=json.loads(b[20:20+n].decode('utf-8').rstrip('\x00 '))
+          nodes=g['nodes']; parents={}
+          for i,node in enumerate(nodes):
+            for ch in node.get('children',[]): parents[ch]=i
+          def chain(i):
+            out=[]
+            while i is not None:
+              out.append(i); i=parents.get(i)
+            return out
+          for i in [618,619,620,621,630,631,375,376]:
+            if i>=len(nodes):continue
+            node=nodes[i]
+            print('NODE',i,node.get('name'),'parent',parents.get(i),'children',node.get('children'),'mesh',node.get('mesh'),'T',node.get('translation'),'R',node.get('rotation'),'S',node.get('scale'),'M',node.get('matrix'))
+            print('CHAIN',chain(i))
+          PY
