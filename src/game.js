@@ -955,14 +955,17 @@ function addCityHallStairSideWallColliders(map){
  console.log("CITY OUTBREAK: City Hall stair side-wall collision added",{added});
 }
 
-// v410: one photo-matched fence panel in the user-identified alley.
-// Reference panel: the standard Fence_01 section shown in the user's first photo
-// (about 1.58m wide x 1.89m high). Target: the ~1.73m opening between
-// House_06 and House_03__3, centered at game X=38.595, at the street-facing
-// House_03 edge (Z=26.65). Scale is copied exactly; only yaw/position change.
+// v411: exact photo-matched fence placement.
+// The user's photos correspond to the real player-width alley between
+// House_03__1_ and House_04__2_. Ground-wall measurement:
+//   House_03__1_ ends at Z ~= 75.47
+//   House_04__2_ begins at Z ~= 76.98
+//   open width ~= 1.50m, center Z ~= 76.226
+// The two street-facing wall planes are X ~= -9.748 and -9.531, so the
+// reference Fence_01 panel is centered at X=-9.64 and left at its exact scale.
 function addPhotoMatchedHouseGapFence(map){
  const source=map.getObjectByName("Fence_01__22_")||map.getObjectByName("Fence_01__28_")||map.getObjectByName("Fence_01");
- if(!source){console.warn("CITY OUTBREAK: v410 photo fence source not found");return}
+ if(!source){console.warn("CITY OUTBREAK: v411 photo fence source not found");return}
 
  map.updateMatrixWorld(true);source.updateMatrixWorld(true);
  const mapInv=new THREE.Matrix4().copy(map.matrixWorld).invert();
@@ -970,43 +973,48 @@ function addPhotoMatchedHouseGapFence(map){
  const basePos=new THREE.Vector3(),baseQuat=new THREE.Quaternion(),baseScale=new THREE.Vector3();
  rel.decompose(basePos,baseQuat,baseScale);
 
+ // Clone the exact panel at its authored world orientation/scale first.
  const fence=source.clone(true);
- fence.name="PhotoMatchedHouseGapFence_v410";
+ fence.name="PhotoMatchedHouseGapFence_v411";
  fence.matrixAutoUpdate=true;
- fence.position.set(
-   (38.595-NEW_CITY_X_OFFSET)/NEW_CITY_SCALE,
-   basePos.y,
-   (26.65-NEW_CITY_Z_OFFSET)/NEW_CITY_SCALE
- );
+ fence.position.copy(basePos);
  fence.quaternion.copy(baseQuat);
- fence.rotateY(Math.PI*.5);
  fence.scale.copy(baseScale);
- fence.visible=true;
  fence.traverse(o=>{
+   o.visible=true;
    o.userData.externalMapAsset=true;
-   o.userData.v410PhotoGapFence=true;
+   o.userData.v411PhotoGapFence=true;
    if(o.isMesh){o.castShadow=false;o.receiveShadow=false}
  });
  map.add(fence);
- fence.updateMatrixWorld(true);
+ map.updateMatrixWorld(true);fence.updateMatrixWorld(true);
 
+ // The GLB fence root has a large internal pivot offset. Align the visible
+ // geometry center itself to the photographed alley rather than moving its root.
  const box=new THREE.Box3().setFromObject(fence),size=new THREE.Vector3(),center=new THREE.Vector3();
  box.getSize(size);box.getCenter(center);
+ const targetWorld=new THREE.Vector3(-9.64,center.y,76.226);
+ const currentLocal=map.worldToLocal(center.clone());
+ const targetLocal=map.worldToLocal(targetWorld.clone());
+ fence.position.add(targetLocal.sub(currentLocal));
+ fence.updateMatrixWorld(true);
+
+ box.setFromObject(fence);box.getSize(size);box.getCenter(center);
  const hit={
    x:center.x,z:center.z,
    hx:size.x*.5+.045,
    hz:size.z*.5+.045,
-   source:"v410PhotoGapFence"
+   source:"v411PhotoGapFence"
  };
  buildingColliders.push(hit);indexCityCollider(hit);
  ZNAV_BLOCK_CACHE.clear();
  zombieSpawnPlayableCellsReady=false;
  zombieSpawnPlayableCells.clear();
- document.documentElement.dataset.v410PhotoGapFence="1";
- console.log("CITY OUTBREAK: v410 photo-matched alley fence added",{
+ document.documentElement.dataset.v411PhotoGapFence="1";
+ console.log("CITY OUTBREAK: v411 exact photographed alley fence added",{
    gameCenter:[center.x,center.y,center.z],
    size:[size.x,size.y,size.z],
-   targetGap:{left:"House_06",right:"House_03__3_",width:1.732}
+   targetGap:{left:"House_03__1_",right:"House_04__2_",width:1.502,centerZ:76.226,facadeX:-9.64}
  });
 }
 
