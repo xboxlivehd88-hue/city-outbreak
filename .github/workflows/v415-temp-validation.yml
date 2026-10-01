@@ -1,0 +1,34 @@
+name: v415 temporary validation
+on:
+  push:
+    paths:
+      - '.github/workflows/v415-temp-validation.yml'
+      - 'src/game.js'
+      - 'index.html'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate v415
+        run: |
+          git diff --check HEAD^ HEAD
+          cp src/game.js /tmp/game.mjs
+          node --check /tmp/game.mjs
+          grep -Fq './src/game.js?v=415' index.html
+          ! grep -Fq 'free?.18:3.6' src/game.js
+          ! grep -Fq 'free?.10:2.25' src/game.js
+          ! grep -Fq 'r.hips.position.y=r.hipsStartY' src/game.js
+          grep -Fq 'allDown:coreDown&&contacts>=5' src/game.js
+          grep -Fq 'contact.contacts>r.maxContactCount' src/game.js
+          grep -Fq 'r.settleT>1.25' src/game.js
+          grep -Fq 'if(z.dead&&syncCustomVisualFromRagdoll(z,bones,holder' src/game.js
+          grep -Fq 'PhotoMatchedHouseGapFence_v412' src/game.js
+          grep -Fq 'm240:{x:-.36,y:.01,z:1.20,fov:56,rx:0}' src/game.js
+          grep -Fq 'RECENT_ZOMBIE_SPAWN_LIMIT=96' src/game.js
+          grep -Fq 'if(!zombieSpawnConnectedToPlayer(x,z))return false;' src/game.js
