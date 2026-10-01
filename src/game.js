@@ -3011,10 +3011,19 @@ function syncBasicWalkerVisual(z,dt=0){
    lerpRot(chest,"Chest",.38,side*.10,-side*.25,-wob*.07,wob2*.03,-wob3*.05);
    lerpRot(neck,"Neck",-.08,0,side*.06,wob*.02,0,wob2*.02);
    lerpRot(head,"Head",-.20,side*.18,-side*.20,wob*.08,wob2*.05,-wob3*.07);
-   lerpRot(lua,"L_UpperArm",.82,0,.30,wob*.30,wob2*.10,wob3*.13);
-   lerpRot(rua,"R_UpperArm",.68,0,-.32,-wob2*.30,wob*.10,-wob3*.13);
-   lerpRot(lla,"L_LowerArm",.72,0,.12,wob2*.27,0,wob*.10);
-   lerpRot(rla,"R_LowerArm",.58,0,-.14,-wob*.27,0,-wob2*.10);
+   // v408: the hidden approved zombie rig already owns the real ragdoll.
+   // Drive the visible walker shoulder/elbow joints from those simulated bones
+   // instead of running a second fake arm-collapse animation.
+   const copyRagdollArm=(dst,key,zBias)=>{
+     const src=rigBone(z,key);
+     if(!dst||!src)return false;
+     dst.rotation.set(src.rotation.x,src.rotation.y,src.rotation.z+zBias);
+     return true;
+   };
+   if(!copyRagdollArm(lua,"L_UpperArm", .34))lerpRot(lua,"L_UpperArm",.82,0,.30,wob*.30,wob2*.10,wob3*.13);
+   if(!copyRagdollArm(rua,"R_UpperArm",-.34))lerpRot(rua,"R_UpperArm",.68,0,-.32,-wob2*.30,wob*.10,-wob3*.13);
+   if(!copyRagdollArm(lla,"L_LowerArm", .06))lerpRot(lla,"L_LowerArm",.72,0,.12,wob2*.27,0,wob*.10);
+   if(!copyRagdollArm(rla,"R_LowerArm",-.06))lerpRot(rla,"R_LowerArm",.58,0,-.14,-wob*.27,0,-wob2*.10);
    lerpRot(lul,"L_UpperLeg",-.58,0,-.12,wob3*.20,wob*.075,0);
    lerpRot(rul,"R_UpperLeg",.44,0,.14,-wob*.20,wob2*.075,0);
    lerpRot(lll,"L_LowerLeg",-.94,0,0,wob*.32,0,0);
@@ -3069,13 +3078,27 @@ function syncBasicWalkerVisual(z,dt=0){
  if(neck)neck.rotation.set(.018*walk,0,0);
  if(head)head.rotation.set(.028*walk,-s*(.045+.020*run)*walk,s*(.012+.010*run)*walk+stagger*.025);
 
- // Make the arm motion visually obvious on this A-pose model.
- // The source is an A-pose. Rotate inward around Z so the arms hang beside
- // the torso, then swing them fore/aft around X from those real shoulder joints.
- if(lua)lua.rotation.set(armBase-s*armAmp-attack*.42,0,.34);
- if(rua)rua.rotation.set(armBase+s*armAmp-attack*.42,0,-.34);
- if(lla)lla.rotation.set(.12+Math.max(0,s)*(.20+.12*run)+attack*.24,0,.06);
- if(rla)rla.rotation.set(.12+Math.max(0,-s)*(.20+.12*run)+attack*.24,0,-.06);
+ // v408: use the same real skeleton that drives Shambler locomotion,
+ // attacks and hit reactions. The Z biases only convert its down-arm rest pose
+ // to the uploaded walker's authored A-pose shoulder orientation.
+ const supportLua=rigBone(z,"L_UpperArm"),supportRua=rigBone(z,"R_UpperArm"),
+       supportLla=rigBone(z,"L_LowerArm"),supportRla=rigBone(z,"R_LowerArm");
+ if(lua){
+   if(supportLua)lua.rotation.set(supportLua.rotation.x,supportLua.rotation.y*.65,.34+supportLua.rotation.z*.65);
+   else lua.rotation.set(armBase-s*armAmp-attack*.42,0,.34);
+ }
+ if(rua){
+   if(supportRua)rua.rotation.set(supportRua.rotation.x,supportRua.rotation.y*.65,-.34+supportRua.rotation.z*.65);
+   else rua.rotation.set(armBase+s*armAmp-attack*.42,0,-.34);
+ }
+ if(lla){
+   if(supportLla)lla.rotation.set(supportLla.rotation.x,supportLla.rotation.y*.65,.06+supportLla.rotation.z*.65);
+   else lla.rotation.set(.12+Math.max(0,s)*(.20+.12*run)+attack*.24,0,.06);
+ }
+ if(rla){
+   if(supportRla)rla.rotation.set(supportRla.rotation.x,supportRla.rotation.y*.65,-.06+supportRla.rotation.z*.65);
+   else rla.rotation.set(.12+Math.max(0,-s)*(.20+.12*run)+attack*.24,0,-.06);
+ }
 
  if(lul)lul.rotation.set(s*thighAmp,0,0);
  if(rul)rul.rotation.set(-s*thighAmp,0,0);
