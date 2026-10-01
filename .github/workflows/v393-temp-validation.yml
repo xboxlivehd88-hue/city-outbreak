@@ -1,0 +1,38 @@
+name: v393 temporary validation
+on:
+  push:
+    paths:
+      - '.github/workflows/v393-temp-validation.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check game.js
+        run: |
+          cp src/game.js /tmp/game.mjs
+          node --check /tmp/game.mjs
+      - name: Inspect green guy GLB
+        run: |
+          python3 - <<'PY'
+          import json, struct
+          from pathlib import Path
+          p=Path('assets/green guy.glb')
+          b=p.read_bytes()
+          magic,version,total=struct.unpack_from('<4sII',b,0)
+          assert magic==b'glTF' and version==2 and total==len(b)
+          n,typ=struct.unpack_from('<II',b,12)
+          assert typ==0x4E4F534A
+          g=json.loads(b[20:20+n].decode('utf-8').rstrip('\x00 '))
+          nodes=g.get('nodes',[])
+          skins=g.get('skins',[])
+          anims=g.get('animations',[])
+          print('GLB bytes',len(b),'nodes',len(nodes),'meshes',len(g.get('meshes',[])),'skins',len(skins),'animations',len(anims))
+          print('animations',[a.get('name','') for a in anims])
+          bone_names=[n.get('name','') for n in nodes if n.get('name')]
+          print('node names',bone_names[:250])
+          print('skin joint counts',[len(s.get('joints',[])) for s in skins])
+          PY
