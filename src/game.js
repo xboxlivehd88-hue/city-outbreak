@@ -1247,6 +1247,8 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  const additionalStreetLampPlacements=buildManualAdditionalStreetLamps(map);
  const allStreetLampPlacements=streetLampPlacements.concat(additionalStreetLampPlacements);
  addStreetLampColliders(allStreetLampPlacements);
+ // Finalize spawn connectivity after every late-added blocker is installed.
+ zombieSpawnPlayableCellsReady=false;zombieSpawnPlayableCells.clear();
  setupStreetLampLighting(allStreetLampPlacements);
  addStreetLamps(allStreetLampPlacements);
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
@@ -1357,8 +1359,11 @@ function buildConnectedZombieSpawnCells(){
    for(const d of dirs){
      const nx=cx+d[0],nz=cz+d[1],key=zombieSpawnCellKey(nx,nz);
      if(zombieSpawnPlayableCells.has(key)||!zombieSpawnCellOpen(nx,nz))continue;
-     // Do not let diagonal flood-fill squeeze through a closed corner that a
-     // zombie body could not actually pass through.
+     // v389: neighboring grid cells only connect when a full zombie-width path
+     // between their centers is clear. This stops the 1 m flood grid from
+     // hopping across thin authored boundary walls.
+     if(!zombieRouteClear(cx*ZNAV_CELL,cz*ZNAV_CELL,nx*ZNAV_CELL,nz*ZNAV_CELL,.46))continue;
+     // Keep the diagonal no-corner-squeeze rule as a second guard.
      if(d[0]&&d[1]&&(!zombieSpawnCellOpen(cx+d[0],cz)||!zombieSpawnCellOpen(cx,cz+d[1])))continue;
      zombieSpawnPlayableCells.add(key);qx.push(nx);qz.push(nz);
    }
