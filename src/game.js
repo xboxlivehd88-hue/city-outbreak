@@ -1630,9 +1630,10 @@ new GLTFLoader().load("assets/m240b_machine_gun.glb",gltf=>{
  if(weapon==="m240")rebuildGun();
 });
 
-// v390: user-supplied GLB fully replaces the old procedural hand-grenade sphere.
+// v391: user-supplied grenade GLB pivots from its bottom center so the throw
+// reads as an end-over-end X-axis spin instead of tumbling around its middle.
 let grenadeModelTemplate=null;
-new GLTFLoader().load("assets/spintop.glb?v=390",gltf=>{
+new GLTFLoader().load("assets/spintop.glb?v=391",gltf=>{
  const holder=new THREE.Group(),model=gltf.scene;
  model.traverse(o=>{
    o.userData.externalGrenadeAsset=true;
@@ -1642,11 +1643,15 @@ new GLTFLoader().load("assets/spintop.glb?v=390",gltf=>{
  const box=new THREE.Box3().setFromObject(model);
  const center=new THREE.Vector3(),size=new THREE.Vector3();
  box.getCenter(center);box.getSize(size);
- model.position.sub(center);
+ // X/Z stay centered, but Y uses the model's lowest point as the rotation pivot.
+ model.position.x-=center.x;
+ model.position.z-=center.z;
+ model.position.y-=box.min.y;
  holder.add(model);
  const maxDim=Math.max(size.x,size.y,size.z,.001);
  holder.scale.setScalar(.30/maxDim);
  holder.name="GrenadeGLBTemplate";
+ holder.userData.bottomXPivot=true;
  grenadeModelTemplate=holder;
 },undefined,err=>console.warn("Grenade GLB load failed; grenade unavailable",err));
 let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
@@ -4316,7 +4321,7 @@ function throwGrenade(){
  const start=new THREE.Vector3();cam.getWorldPosition(start);q.position.copy(start);
  const dir=new THREE.Vector3();cam.getWorldDirection(dir);
  const vel=dir.multiplyScalar(11);vel.y+=4.8;scene.add(q);
- thrown.push({q,v:vel,fuse:2.15});show("GRENADE!");
+ thrown.push({q,v:vel,fuse:2.15,bottomXPivot:true});show("GRENADE!");
 }
 function explodeGrenade(g){
  noise(.42,.95,900);tone(48,.45,"sine",.42);
@@ -4619,7 +4624,14 @@ function update(dt){
 perfGuard(dt);capFX();
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;
  const grenadeOldPos=g.q.position.clone();
- g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
+ g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);
+ if(g.bottomXPivot){
+   // Hand grenade: bottom-pivot end-over-end spin on X only.
+   g.q.rotation.x+=dt*8;
+ }else{
+   // Preserve grenade-launcher projectile tumble.
+   g.q.rotation.x+=dt*8;g.q.rotation.z+=dt*6;
+ }
  const cityImpact=cityProjectileSegmentHit(grenadeOldPos,g.q.position);
  if(g.launcher){
    let impact=g.q.position.y<.10||insideBuilding(g.q.position.x,g.q.position.z,.05);
