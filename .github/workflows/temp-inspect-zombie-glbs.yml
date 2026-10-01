@@ -67,13 +67,13 @@ jobs:
                       cc.append((len(comp),min(p[0] for p in pts),max(p[0] for p in pts),min(p[1] for p in pts),max(p[1] for p in pts),min(p[2] for p in pts),max(p[2] for p in pts)))
                     cc.sort(reverse=True)
                     print('  components',len(cc),'largest',[(c[0],)+tuple(round(x,4) for x in c[1:]) for c in cc[:20]])
-          for ai,a in enumerate(g.get('animations',[])):
-            chans=a.get('channels',[])
-            targets=[]
-            for ch in chans[:40]:
-              tg=ch.get('target',{});targets.append((tg.get('node'),tg.get('path')))
-            print(' anim',ai,a.get('name'),'channels',len(chans),'targets',targets[:40])
-          for si,s in enumerate(g.get('skins',[])):
-            print(' skin joints names',si,[g['nodes'][j].get('name') for j in s.get('joints',[])[:120]])
+            for ai,a in enumerate(g.get('animations',[])):
+              chans=a.get('channels',[])
+              targets=[]
+              for ch in chans[:40]:
+                tg=ch.get('target',{});targets.append((tg.get('node'),tg.get('path')))
+              print(' anim',ai,a.get('name'),'channels',len(chans),'targets',targets[:40])
+            for si,s in enumerate(g.get('skins',[])):
+              print(' skin joints names',si,[g['nodes'][j].get('name') for j in s.get('joints',[])[:120]])
           for p in ['assets/green guy.glb','assets/walkers.glb']: parse(p)
           PY
