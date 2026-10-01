@@ -1,3 +1,121 @@
+# CURRENT NEXT-CHAT STATE — 2026-10-01 — v392 — READ THIS FIRST
+
+This section supersedes older "current live state" notes below. **Do not change the protected recovery identity** unless the user explicitly approves a new recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Gameplay commit before this handoff-doc update: `6bd953d95e27202e829dbf18573932b69e08f845`
+- Loader: `./src/game.js?v=392`
+- Latest v392 Pages deployment run: `36895349980` — success
+- Live game: https://xboxlivehd88-hue.github.io/city-outbreak/
+- Protected recovery remains **v324**. Do not redefine it automatically.
+
+## Immediate current task — grenade GLB / spin
+
+The user uploaded a new GLB and wants it to **completely replace the old hand-grenade visual**.
+
+Current grenade asset:
+- `assets/spintop.glb`
+- Current loader cache tag: `assets/spintop.glb?v=391`
+- The procedural hand-grenade visual is no longer used for thrown hand grenades.
+- `throwGrenade()` clones `grenadeModelTemplate` and refuses to throw until the GLB is loaded.
+
+Current v392 pivot/orientation:
+- GLB is recentered in X/Z.
+- Its **lowest Y point is moved to local Y=0**, making the bottom-center the pivot.
+- Holder scale is normalized to roughly `.30 / maxDimension`.
+- Thrown hand grenade is tagged `bottomYPivot:true`.
+- In `update(dt)`, hand grenade rotation is:
+  ```js
+  g.q.rotation.y += dt * 8;
+  ```
+- This means a full continuous 360-degree spin around the vertical Y axis **through the bottom-center of the model**, like a top rotating on its base.
+- Grenade-launcher projectiles keep their old X/Z tumble and are not affected.
+- **User has not yet visually confirmed v392 in live gameplay.** The next chat should ask for/accept the user's live test result before changing the grenade again.
+
+## Zombie spawning — latest playable-area protections
+
+The user wanted zombies to use much more of the playable city, including passable doorway-connected areas, while never spawning outside the playable map and avoiding late-wave clumps.
+
+Current spawn system includes:
+- `MAX_ACTIVE_ZOMBIES=30`
+- `RECENT_ZOMBIE_SPAWN_LIMIT=96`
+- normal spawn search around `30–64` units from player
+- boss spawn search around `36–70`
+- spawn separation checks against recent spawn points **and living zombies**
+- stronger angular distribution to prevent late-wave clumps
+- full reachable-ground sampling instead of only Road/Parking rectangles
+- ground-floor / stoop / doorway surfaces can be eligible
+- wall-clearance check uses near-body clearance `.46`
+- `pointNearNewCitySpawnZone(x,z,12)` keeps candidates near the authored city footprint
+- v389 connected-playable-cell flood fill:
+  - `zombieSpawnPlayableCells`
+  - seeded from the player's connected walkable nav cell
+  - each neighboring cell must have a full zombie-width clear path between centers
+  - diagonal no-corner-squeeze rule remains
+  - `validZombieSpawn()` requires `zombieSpawnConnectedToPlayer(x,z)`
+- This was added specifically after screenshots showed zombies outside the playable boundary.
+- If an outside spawn is reported again, **fix the connected-area / boundary validation**, do not simply shrink all spawn ranges back to the old central road-only system.
+
+## M240 current approved/tuned state
+
+Preserve unless the user specifically asks:
+- Asset: `assets/m240b_machine_gun.glb`
+- ADS config:
+  ```js
+  m240:{x:-.36,y:.01,z:1.20,fov:56,rx:0}
+  ```
+- Butt/shoulder ADS pitch:
+  ```js
+  m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,.060,aimBlend);
+  ```
+- Whole-gun recoil is disabled for M240:
+  ```js
+  const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil;
+  ```
+- Barrel/front-only recoil around rear stock point:
+  ```js
+  const recoilStrength=THREE.MathUtils.lerp(.20,.125,aimBlend);
+  const targetKick=-recoil*recoilStrength;
+  const follow=1-Math.exp(-dt*6.5);
+  ```
+- User said ADS was fine, then tuned sight height down through v385 to `y:.01`.
+- Do not disturb this while working on grenade/spawns.
+
+## Other protected current systems
+
+Preserve unless explicitly requested:
+- M17 is the only starting weapon, 16-round mag, effectively unlimited reserve.
+- M4/MP5 existing transforms, reloads, damage/ammo behavior.
+- MP5 rear-pivot recoil system.
+- v358 Hairibar-inspired ragdoll motion and 10-second corpse cleanup.
+- v354 City Hall stair-side collision.
+- rain/wet-ground system.
+- street-lamp performance setup: only 4 real spotlights + cheap all-lamp glow/flicker.
+- start screen, sound, store low-power freeze, Ready, pause, death/restart.
+- health/sprint restore at new round.
+- full-city zombie navigation and reachable spawn checks.
+
+## Required workflow for next chat
+
+Before **any** code change:
+1. Fetch/read `CITY_OUTBREAK_HANDOFF.md`.
+2. Fetch/read `NEXT_CHAT_HANDOFF.md`.
+3. Fetch/read `CURRENT_RECOVERY_CHECKPOINT.md`.
+4. Fetch current `main:index.html`.
+5. Fetch current `main:src/game.js`.
+6. Fetch any directly relevant module/assets.
+7. Treat current GitHub `main` as source of truth, not copied chat snippets.
+8. Make one controlled change at a time.
+9. Commit directly to `main`.
+10. Verify exact diff, syntax, and protected values.
+11. Wait for GitHub Pages deployment success.
+12. Give a fresh cache-busted playable link.
+13. Never claim a visual/gameplay fix is approved until the user tests it.
+
+
 # CITY OUTBREAK — NEXT CHAT HANDOFF
 
 # CURRENT NEXT-CHAT STATE — 2026-09-29 — v324 RECOVERY — READ THIS FIRST
