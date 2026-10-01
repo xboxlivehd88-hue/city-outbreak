@@ -1,4 +1,4 @@
-name: inspect city fence world positions
+name: inspect city object prefixes
 on:
   push:
     paths:
@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect city hierarchy
+      - name: List root object names
         run: |
           python3 - <<'PY'
-          import json,struct,re,math
+          import json,struct,re,collections
           from pathlib import Path
           b=Path('assets/chicken_gun_fruzer_-_city.glb').read_bytes()
           n,t=struct.unpack_from('<II',b,12)
@@ -20,38 +20,8 @@ jobs:
           parents={}
           for i,node in enumerate(nodes):
             for ch in node.get('children',[]):parents[ch]=i
-          def mm(a,b):
-            r=[0.0]*16
-            for c in range(4):
-              for row in range(4):
-                r[c*4+row]=sum(a[k*4+row]*b[c*4+k] for k in range(4))
-            return r
-          I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
-          def trs(n):
-            if 'matrix' in n:return n['matrix']
-            t=n.get('translation',[0,0,0]);s=n.get('scale',[1,1,1]);q=n.get('rotation',[0,0,0,1]);x,y,z,w=q
-            r=[
-              1-2*y*y-2*z*z,2*x*y+2*w*z,2*x*z-2*w*y,0,
-              2*x*y-2*w*z,1-2*x*x-2*z*z,2*y*z+2*w*x,0,
-              2*x*z+2*w*y,2*y*z-2*w*x,1-2*x*x-2*y*y,0,
-              0,0,0,1]
-            r[0]*=s[0];r[1]*=s[0];r[2]*=s[0]
-            r[4]*=s[1];r[5]*=s[1];r[6]*=s[1]
-            r[8]*=s[2];r[9]*=s[2];r[10]*=s[2]
-            r[12],r[13],r[14]=t
-            return r
-          world={}
-          def wm(i):
-            if i in world:return world[i]
-            m=trs(nodes[i]);p=parents.get(i)
-            world[i]=mm(wm(p),m) if p is not None else m
-            return world[i]
-          pats=re.compile(r'fence|house|building|apartment|brown|cityhall|road|parking|shop|hotel|church|garage',re.I)
-          for i,node in enumerate(nodes):
-            name=node.get('name','')
-            if not pats.search(name):continue
-            m=wm(i);x,y,z=m[12],m[13],m[14]
-            # game root scale+offset
-            gx=21.33575+x*1.55;gy=28.68275+y*1.55;gz=8.25+z*1.55
-            print('NODE',i,name,'ROOT',round(x,3),round(y,3),round(z,3),'GAME',round(gx,3),round(gy,3),round(gz,3),'mesh',node.get('mesh'))
+          roots=[(i,n.get('name','')) for i,n in enumerate(nodes) if i not in parents]
+          print('ROOTS',len(roots))
+          for i,name in roots:
+            print(i,name)
           PY
