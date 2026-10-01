@@ -3222,7 +3222,8 @@ function zombieSpawnSpreadOk(x,z,minSeparation,minAngle){
 function validZombieSpawn(x,z){
  if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
  if(zombieSpawnGroundY(x,z)===null)return false;
- if(insideBuilding(x,z,.8))return false;
+ // Use near-body clearance so real passable doorways/entrances stay eligible.
+ if(insideBuilding(x,z,.46))return false;
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
  return Math.hypot(x-px,z-pz)>28;
 }
