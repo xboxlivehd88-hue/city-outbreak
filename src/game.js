@@ -2795,6 +2795,74 @@ function buildRadiatedGreenHitboxes(z){
  document.documentElement.dataset.radiatedGreenHitboxes=String(hitboxes.length);
  return hitboxes.length>0;
 }
+// v413: Hairibar-style visible-rig bridge.
+// The v358 hidden support skeleton already owns the real joint-space ragdoll.
+// New GLB zombies now inherit the SUPPORT RIG'S ACTUAL RELATIVE JOINT MOTION
+// after physics/collisions/bounces instead of running a second fake death pose.
+// Using relative angular deltas avoids the raw-rest-axis retarget distortion
+// that broke the walker in v400.
+const CUSTOM_VISIBLE_RAGDOLL_KEYS=Object.freeze([
+ "Hips","Spine","Chest","Neck","Head",
+ "L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm",
+ "L_UpperLeg","L_LowerLeg","R_UpperLeg","R_LowerLeg"
+]);
+function customRagdollAngleDelta(a){return Math.atan2(Math.sin(a),Math.cos(a))}
+function syncCustomVisualFromRagdoll(z,bones,holder,storeKey){
+ if(!z?.dead||!z?.ragdoll||!bones?.size||!holder)return false;
+ const rag=z.ragdoll;
+ if(!Array.isArray(rag.bones)||!rag.bones.length)return false;
+
+ let base=z[storeKey];
+ if(!base){
+   const rotations=new Map();
+   for(const key of CUSTOM_VISIBLE_RAGDOLL_KEYS){
+     const b=bones.get(key);if(b)rotations.set(key,b.rotation.clone());
+   }
+   base=z[storeKey]={
+     holderY:holder.position.y,
+     holderX:holder.rotation.x,
+     holderZ:holder.rotation.z,
+     rotations
+   };
+ }
+
+ const bySupportBone=new Map();
+ for(const state of rag.bones)if(state?.o)bySupportBone.set(state.o,state);
+
+ // Remove only leftover locomotion bob/lean. The parent zombie group z.g already
+ // receives the true Hairibar-style root launch, tumble, bounce and ground settle.
+ const settle=Math.min(1,Math.max(0,(z.corpseAge||0)/.18));
+ const smooth=settle*settle*(3-2*settle);
+ holder.position.y=THREE.MathUtils.lerp(base.holderY,0,smooth);
+ holder.rotation.x=THREE.MathUtils.lerp(base.holderX,0,smooth);
+ holder.rotation.z=THREE.MathUtils.lerp(base.holderZ,0,smooth);
+
+ const apply=(key,amount=1)=>{
+   const dst=bones.get(key),support=rigBone(z,key),state=support?bySupportBone.get(support):null,rest=base.rotations.get(key);
+   if(!dst||!support||!state||!rest)return 0;
+   const dx=customRagdollAngleDelta(state.o.rotation.x-state.sx);
+   const dy=customRagdollAngleDelta(state.o.rotation.y-state.sy);
+   const dz=customRagdollAngleDelta(state.o.rotation.z-state.sz);
+   dst.rotation.set(rest.x+dx*amount,rest.y+dy*amount,rest.z+dz*amount);
+   return 1;
+ };
+
+ let applied=0;
+ applied+=apply("Hips",.78);
+ applied+=apply("Spine",.90);
+ applied+=apply("Chest",.94);
+ applied+=apply("Neck",.90);
+ applied+=apply("Head",1.00);
+ applied+=apply("L_UpperArm",1.00);
+ applied+=apply("L_LowerArm",1.00);
+ applied+=apply("R_UpperArm",1.00);
+ applied+=apply("R_LowerArm",1.00);
+ applied+=apply("L_UpperLeg",.96);
+ applied+=apply("L_LowerLeg",1.00);
+ applied+=apply("R_UpperLeg",.96);
+ applied+=apply("R_LowerLeg",1.00);
+ return applied>=8;
+}
 function syncRadiatedGreenGuy(z,dt=0){
  const h=z?.radiatedGreenVisual,bones=z?.radiatedGreenBones;if(!h||!bones?.size)return;
  const g=z.g,gx=g.position.x,gz=g.position.z,lastX=Number.isFinite(z.radiatedGreenLastX)?z.radiatedGreenLastX:gx,lastZ=Number.isFinite(z.radiatedGreenLastZ)?z.radiatedGreenLastZ:gz;
@@ -2804,6 +2872,7 @@ function syncRadiatedGreenGuy(z,dt=0){
  z.radiatedGreenMoveBlend=THREE.MathUtils.lerp(z.radiatedGreenMoveBlend||0,targetMove,Math.min(1,dt*7));
  const blend=z.radiatedGreenMoveBlend,p=z.rigPolishPhase||z.phase||0,step=Math.sin(p),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
  h.rotation.y=Math.PI;
+ if(z.dead&&syncCustomVisualFromRagdoll(z,bones,h,"radiatedVisibleRagdollBase"))return;
  if(z.leglessCrawler){
    h.position.y=-.43;h.rotation.x=-.72;h.rotation.z=step*.018*blend;
  }else{
@@ -2990,7 +3059,11 @@ function buildBasicWalkerHitboxes(z){
 function syncBasicWalkerVisual(z,dt=0){
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
  holder.rotation.y=Math.PI;
+ if(z.dead&&syncCustomVisualFromRagdoll(z,bones,holder,"walkerVisibleRagdollBase"))return;
 
+ // Legacy fallback only: if the hidden support ragdoll is unavailable, keep the
+ // previous no-stretch death pose rather than leaving the custom mesh frozen.
+ // Normal custom-model deaths now take the v413 Hairibar-style bridge above.
  // v402: never feed the custom GLB raw ragdoll quaternions. On death,
  // let the approved root ragdoll move/tumble the whole zombie while this model's
  // own joints fold and settle. Rotations only = no mesh stretching.
