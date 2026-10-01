@@ -134,6 +134,16 @@ jobs:
           for target in [118,587,564,569,375]:
             n=nodes[target];m=wm(target)
             print(target,n.get('name'),'LOCAL_T',n.get('translation'),'LOCAL_R',n.get('rotation'),'WORLD_T',tuple(round(v,4) for v in (m[12],m[13],m[14])))
+          print('=== TARGET FACADE CHILDREN ===')
+          for target in [118,587]:
+            print('TARGET',target,nodes[target].get('name'))
+            for di in descendants(target):
+              name=nodes[di].get('name','')
+              if re.search(r'Door|Stair|Step|Window|Porch|Entrance',name,re.I):
+                bb=bbox(di)
+                if bb:
+                  gb=gamebb(bb)
+                  print(di,name,'BBOX',tuple(round(v,3) for v in (gb[0],gb[1],gb[4],gb[5])))
           print('=== FENCES ===')
           for i,name,gb,cx,cz in objs:
             if name.startswith('Fence_01'):
