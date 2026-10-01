@@ -2816,11 +2816,15 @@ function buildBasicWalkerTemplate(source){
    const yf=y/h,ax=Math.abs(x),left=x<0;
    if(yf>.84)return[bi.head,1,bi.neck,0];
    if(yf>.77)return[bi.neck,1,bi.chest,0];
-   // A-pose arms sweep from ~.72h at the shoulder to ~.36h at the hands.
-   if(yf>.32&&yf<.76&&ax>h*.09){
-     const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla;
-     const t=THREE.MathUtils.clamp((.57-yf)/.07,0,1);
-     return[up,1-t,lo,t];
+   // v402: measured arm envelope. The old constant x threshold reached
+   // into the shirt/back and made those torso vertices flare like wings.
+   if(yf>.32&&yf<.74){
+     const armMinFrac=.12+THREE.MathUtils.clamp((.70-yf)/.34,0,1)*.04;
+     if(ax>h*armMinFrac){
+       const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla;
+       const t=THREE.MathUtils.clamp((.57-yf)/.07,0,1);
+       return[up,1-t,lo,t];
+     }
    }
    if(yf<.46){
      const up=left?bi.lul:bi.rul,lo=left?bi.lll:bi.rll;
@@ -2900,11 +2904,38 @@ function syncBasicWalkerVisual(z,dt=0){
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
  holder.rotation.y=Math.PI;
 
- // v401: do not feed the custom GLB raw ragdoll/retarget quaternions.
- // That skeleton mismatch distorted the body and caused death stretching.
- if(z.dead||z.knockdown){
+ // v402: never feed the custom GLB raw ragdoll quaternions. On death,
+ // let the approved root ragdoll move/tumble the whole zombie while this model's
+ // own joints fold and settle. Rotations only = no mesh stretching.
+ if(z.dead){
+   const age=Math.max(0,z.corpseAge||0),t=Math.max(0,Math.min(1,age/1.15));
+   const ease=t*t*(3-2*t),wob=Math.sin(age*8.1+(z.phase||0))*Math.exp(-age*2.2);
+   const side=(Math.sin((z.phase||0)*1.71)>=0?1:-1);
+   const hips=bones.get("Hips"),spine=bones.get("Spine"),chest=bones.get("Chest"),neck=bones.get("Neck"),head=bones.get("Head"),
+         lua=bones.get("L_UpperArm"),lla=bones.get("L_LowerArm"),rua=bones.get("R_UpperArm"),rla=bones.get("R_LowerArm"),
+         lul=bones.get("L_UpperLeg"),lll=bones.get("L_LowerLeg"),rul=bones.get("R_UpperLeg"),rll=bones.get("R_LowerLeg"),
+         lfoot=bones.get("L_Foot"),rfoot=bones.get("R_Foot");
+   holder.position.y=THREE.MathUtils.lerp(holder.position.y,-.06,ease);
+   holder.rotation.x=THREE.MathUtils.lerp(holder.rotation.x,.18,ease);
+   holder.rotation.z=THREE.MathUtils.lerp(holder.rotation.z,side*.10,ease)+wob*.025;
+   if(hips)hips.rotation.set(.22*ease+wob*.04,side*.08*ease,side*.18*ease);
+   if(spine)spine.rotation.set(.42*ease+wob*.05,-side*.10*ease,side*.25*ease);
+   if(chest)chest.rotation.set(.34*ease-wob*.04,side*.08*ease,-side*.22*ease);
+   if(neck)neck.rotation.set(-.14*ease,0,side*.10*ease);
+   if(head)head.rotation.set(-.18*ease+wob*.04,side*.16*ease,-side*.18*ease);
+   if(lua)lua.rotation.set(.72*ease+wob*.08,0,-.32*ease);
+   if(rua)rua.rotation.set(.60*ease-wob*.08,0,.34*ease);
+   if(lla)lla.rotation.set(.62*ease,0,-.12*ease);
+   if(rla)rla.rotation.set(.48*ease,0,.14*ease);
+   if(lul)lul.rotation.set(-.52*ease+wob*.04,0,-.10*ease);
+   if(rul)rul.rotation.set(.38*ease-wob*.04,0,.12*ease);
+   if(lll)lll.rotation.set(-.88*ease,0,0);
+   if(rll)rll.rotation.set(-.72*ease,0,0);
+   if(lfoot)lfoot.rotation.set(.34*ease,0,0);
+   if(rfoot)rfoot.rotation.set(.28*ease,0,0);
    return;
  }
+ if(z.knockdown)return;
 
  const gx=z.g.position.x,gz=z.g.position.z,lastX=Number.isFinite(z.walkerLastX)?z.walkerLastX:gx,lastZ=Number.isFinite(z.walkerLastZ)?z.walkerLastZ:gz;
  const moved=Math.hypot(gx-lastX,gz-lastZ);z.walkerLastX=gx;z.walkerLastZ=gz;
@@ -2936,9 +2967,9 @@ function syncBasicWalkerVisual(z,dt=0){
    return;
  }
 
- const thighAmp=(.30+(.62-.30)*run)*walk;
- const kneeBase=.05+.04*run,kneeAmp=.38+.46*run;
- const armBase=.12+.05*run,armAmp=(.34+.28*run)*walk;
+ const thighAmp=(.38+(.72-.38)*run)*walk;
+ const kneeBase=.10+.05*run,kneeAmp=.62+.54*run;
+ const armBase=.12+.05*run,armAmp=(.38+.34*run)*walk;
 
  holder.position.y=(.010+.020*run)*(1-Math.cos(phase*2))*.5*walk;
  holder.rotation.x=-.018*walk-attack*.018;
