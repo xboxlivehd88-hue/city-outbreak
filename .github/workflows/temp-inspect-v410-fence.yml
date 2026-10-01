@@ -1,4 +1,4 @@
-name: verify photographed alley cluster
+name: measure target facade planes
 on:
   push:
     paths:
@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: List neighbors of 1.50m House_03 House_04 alley
+      - name: Extract street-facing X wall planes
         run: |
           python3 - <<'PY'
-          import json,struct,math,re
+          import json,struct,math
           from pathlib import Path
           b=Path('assets/chicken_gun_fruzer_-_city.glb').read_bytes()
           pos=12;n,t=struct.unpack_from('<II',b,pos);pos+=8
@@ -48,30 +48,33 @@ jobs:
               i=stack.pop();out.append(i);stack.extend(nodes[i].get('children',[]))
             return out
           def gamep(p):return(21.33575+p[0]*1.55,28.68275+p[1]*1.55,8.25+p[2]*1.55)
-          cache={}
-          def bbox(root):
-            if root in cache:return cache[root]
-            pts=[]
-            for i in descendants(root):
-              mi=nodes[i].get('mesh')
+          for root in [60,84]:
+            rows=[]
+            for ni in descendants(root):
+              mi=nodes[ni].get('mesh')
               if mi is None:continue
-              M=wm(i)
+              M=wm(ni)
               for pr in g['meshes'][mi].get('primitives',[]):
                 pa=pr.get('attributes',{}).get('POSITION')
-                if pa is not None:pts += [gamep(tp(M,p)) for p in acc(pa)]
-            if not pts:return None
-            bb=(min(p[0] for p in pts),max(p[0] for p in pts),min(p[2] for p in pts),max(p[2] for p in pts));cache[root]=bb;return bb
-          tx,tz=-13.104,76.226
-          rows=[]
-          for i,nod in enumerate(nodes):
-            name=nod.get('name','')
-            if not name or 'LowPolyFPS' in name:continue
-            if not re.search(r'House_|Road_|ParkingBG_|Office|BG_|Bank|Mall|Hotel|Shop|Store|Gas_|Church|CityHall|Fence_01|PowerLines',name,re.I):continue
-            bb=bbox(i)
-            if not bb:continue
-            x0,x1,z0,z1=bb;cx=(x0+x1)/2;cz=(z0+z1)/2;d=math.hypot(cx-tx,cz-tz)
-            if d<42:rows.append((d,i,name,bb))
-          print('=== CANDIDATE 3 NEIGHBORS ===')
-          for d,i,name,bb in sorted(rows):
-            print(round(d,2),i,name,'BBOX',tuple(round(v,2) for v in bb))
+                if pa is None:continue
+                P=acc(pa);idx=acc(pr['indices']) if 'indices' in pr else None;inds=[v[0] for v in idx] if idx else list(range(len(P)))
+                for j in range(0,len(inds)-2,3):
+                  a=gamep(tp(M,P[inds[j]]));b=gamep(tp(M,P[inds[j+1]]));c=gamep(tp(M,P[inds[j+2]]))
+                  miny,maxy=min(a[1],b[1],c[1]),max(a[1],b[1],c[1])
+                  if maxy<.1 or miny>2.3 or maxy-miny<.6:continue
+                  ux,uy,uz=b[0]-a[0],b[1]-a[1],b[2]-a[2];vx,vy,vz=c[0]-a[0],c[1]-a[1],c[2]-a[2]
+                  nx=uy*vz-uz*vy;ny=uz*vx-ux*vz;nz=ux*vy-uy*vx;ln=(nx*nx+ny*ny+nz*nz)**.5
+                  if ln<1e-6:continue
+                  nx,ny,nz=nx/ln,ny/ln,nz/ln
+                  cx=(a[0]+b[0]+c[0])/3;cz=(a[2]+b[2]+c[2])/3
+                  if abs(nx)>.82 and -10<=cx<=-7 and 60<=cz<=90:
+                    rows.append((cx,cz,min(a[2],b[2],c[2]),max(a[2],b[2],c[2]),ni))
+            rows.sort();clusters=[]
+            for row in rows:
+              if not clusters or abs(row[0]-clusters[-1][0][0])>.055:clusters.append([row])
+              else:clusters[-1].append(row)
+            print('===',root,nodes[root].get('name'),'===')
+            for cl in clusters:
+              x=sum(r[0] for r in cl)/len(cl);z0=min(r[2] for r in cl);z1=max(r[3] for r in cl)
+              if z1-z0>.5:print('XWALL',round(x,4),'ZSPAN',round(z0,3),round(z1,3),'N',len(cl))
           PY
