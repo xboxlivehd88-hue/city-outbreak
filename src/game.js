@@ -736,6 +736,25 @@ function sampleZombieGroundY(x,z,currentY){
  }
  return found?best:currentY;
 }
+function zombieSpawnGroundY(x,z){
+ const bucket=cityGroundBuckets.get(cityGroundKey(Math.floor(x/NEW_CITY_GROUND_BUCKET),Math.floor(z/NEW_CITY_GROUND_BUCKET)));
+ if(!bucket)return null;
+ let found=false,best=-Infinity;
+ for(const t of bucket){
+   if(x<t.minX-.001||x>t.maxX+.001||z<t.minZ-.001||z>t.maxZ+.001)continue;
+   const den=(t.bz-t.cz)*(t.ax-t.cx)+(t.cx-t.bx)*(t.az-t.cz);
+   if(Math.abs(den)<1e-8)continue;
+   const wa=((t.bz-t.cz)*(x-t.cx)+(t.cx-t.bx)*(z-t.cz))/den;
+   const wb=((t.cz-t.az)*(x-t.cx)+(t.ax-t.cx)*(z-t.cz))/den;
+   const wc=1-wa-wb;
+   if(wa<-.002||wb<-.002||wc<-.002)continue;
+   const y=wa*t.ay+wb*t.by+wc*t.cy;
+   // Ground-floor / stoop / doorway surfaces only. Roofs and upper floors remain invalid.
+   if(y<NEW_CITY_GROUND_MIN_Y-.02||y>.64)continue;
+   if(y>best){best=y;found=true}
+ }
+ return found?best:null;
+}
 function sampleRagdollGroundY(x,z,currentFloor,bodyY){
  const bucket=cityGroundBuckets.get(cityGroundKey(Math.floor(x/NEW_CITY_GROUND_BUCKET),Math.floor(z/NEW_CITY_GROUND_BUCKET)));
  if(!bucket)return currentFloor;
@@ -3170,7 +3189,7 @@ const living=()=>zombies.filter(z=>!z.dead);
 const activeFrame=[];
 function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
 const MAX_ACTIVE_ZOMBIES=30;
-const RECENT_ZOMBIE_SPAWN_LIMIT=18;
+const RECENT_ZOMBIE_SPAWN_LIMIT=96;
 const recentZombieSpawnPoints=[];
 let zombieSpawnAngleOffset=0;
 const ZOMBIE_SPAWN_GOLDEN_ANGLE=Math.PI*(3-Math.sqrt(5));
@@ -3182,7 +3201,6 @@ function rememberZombieSpawn(p){
  if(recentZombieSpawnPoints.length>RECENT_ZOMBIE_SPAWN_LIMIT)recentZombieSpawnPoints.shift();
 }
 function zombieSpawnSpreadOk(x,z,minSeparation,minAngle){
- if(!recentZombieSpawnPoints.length)return true;
  const a=Math.atan2(z-pz,x-px);
  for(const p of recentZombieSpawnPoints){
    if(Math.hypot(x-p.x,z-p.z)<minSeparation)return false;
@@ -3192,11 +3210,18 @@ function zombieSpawnSpreadOk(x,z,minSeparation,minAngle){
      if(da<minAngle)return false;
    }
  }
+ // Late waves continually refill the 30-active cap. Keep new arrivals away from
+ // living zombies too, so replacement spawns do not reform a large clump.
+ const liveSep=Math.max(3.4,minSeparation*.72);
+ for(const z of zombies){
+   if(z.dead)continue;
+   if(Math.hypot(x-z.g.position.x,z-z.g.position.z)<liveSep)return false;
+ }
  return true;
 }
 function validZombieSpawn(x,z){
  if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
- if(!pointOnNewCitySpawnZone(x,z,.55))return false;
+ if(zombieSpawnGroundY(x,z)===null)return false;
  if(insideBuilding(x,z,.8))return false;
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
  return Math.hypot(x-px,z-pz)>28;
@@ -3210,19 +3235,43 @@ function reachableZombieSpawn(x,z,allowRoute=true){
 }
 function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
  const spreadPasses=spread?[
-   {sep:13.0,tol:.48},
-   {sep:10.5,tol:.72},
-   {sep:8.0,tol:1.00},
-   {sep:6.0,tol:1.40},
-   {sep:4.5,tol:Math.PI}
- ]:[{sep:0,tol:Math.PI}];
+   {sep:14.0,tol:.52,ang:.22},
+   {sep:11.5,tol:.78,ang:.16},
+   {sep:9.0,tol:1.08,ang:.11},
+   {sep:6.5,tol:1.50,ang:.06},
+   {sep:4.5,tol:Math.PI,ang:0}
+ ]:[{sep:0,tol:Math.PI,ang:0}];
  const angleOk=(x,z,tol)=>{
    if(targetAngle===null||tol>=Math.PI)return true;
    return spawnAngleDiff(Math.atan2(z-pz,x-px),targetAngle)<=tol;
  };
  for(const spreadRule of spreadPasses){
-   // Sample the GLB's real road surfaces first. This prevents enclosed building
-   // interiors from becoming valid spawn locations just because they are empty.
+   // v386: sample the full reachable ground ring first, not just Road_/ParkingBG_.
+   // Closed interiors fail routing; interiors connected by a genuine passable door
+   // are valid because the same collision/nav rules can route a zombie through it.
+   for(let tries=0;tries<84;tries++){
+     const a=targetAngle===null
+       ?rnd()*Math.PI*2
+       :targetAngle+(rnd()-.5)*Math.min(Math.PI*2,spreadRule.tol*2);
+     const d2=minDist*minDist+rnd()*(maxDist*maxDist-minDist*minDist);
+     const dist=Math.sqrt(d2),x=px+Math.cos(a)*dist,z=pz+Math.sin(a)*dist;
+     if(!angleOk(x,z,spreadRule.tol))continue;
+     if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.ang))continue;
+     if(reachableZombieSpawn(x,z,false))return{x,z};
+   }
+   for(let tries=0;tries<36;tries++){
+     const a=targetAngle===null
+       ?rnd()*Math.PI*2
+       :targetAngle+(rnd()-.5)*Math.min(Math.PI*2,spreadRule.tol*2);
+     const d2=minDist*minDist+rnd()*(maxDist*maxDist-minDist*minDist);
+     const dist=Math.sqrt(d2),x=px+Math.cos(a)*dist,z=pz+Math.sin(a)*dist;
+     if(!angleOk(x,z,spreadRule.tol))continue;
+     if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.ang))continue;
+     if(reachableZombieSpawn(x,z,true))return{x,z};
+   }
+
+   // Keep authored road/parking rectangles as a fallback, but they are no longer
+   // the only legal spawn surfaces.
    if(newCitySpawnZones.length){
      for(let tries=0;tries<60;tries++){
        const zone=newCitySpawnZones[Math.floor(rnd()*newCitySpawnZones.length)];
@@ -3232,7 +3281,7 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
        const dist=Math.hypot(x-px,z-pz);
        if(dist<minDist||dist>maxDist)continue;
        if(!angleOk(x,z,spreadRule.tol))continue;
-       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,0))continue;
+       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.ang))continue;
        if(reachableZombieSpawn(x,z,false))return{x,z};
      }
      for(let tries=0;tries<48;tries++){
@@ -3243,7 +3292,7 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
        const dist=Math.hypot(x-px,z-pz);
        if(dist<minDist||dist>maxDist)continue;
        if(!angleOk(x,z,spreadRule.tol))continue;
-       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,0))continue;
+       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.ang))continue;
        if(reachableZombieSpawn(x,z,true))return{x,z};
      }
    }
@@ -3255,7 +3304,7 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
        const step=(k===0?0:Math.ceil(k/2)*(k%2?1:-1))*(Math.PI*2/24);
        const a=center+step,x=px+Math.cos(a)*ring,z=pz+Math.sin(a)*ring;
        if(!angleOk(x,z,spreadRule.tol))continue;
-       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,0))continue;
+       if(!zombieSpawnSpreadOk(x,z,spreadRule.sep,spreadRule.ang))continue;
        if(reachableZombieSpawn(x,z,true))return{x,z};
      }
    }
@@ -3265,7 +3314,7 @@ function findReachableZombieSpawn(minDist,maxDist,spread=true,targetAngle=null){
 function spawnOneZombie(i){
  if(!newCityCollisionReady)return false;
  const targetAngle=zombieSpawnAngleOffset+i*ZOMBIE_SPAWN_GOLDEN_ANGLE;
- const p=findReachableZombieSpawn(30,54,true,targetAngle);
+ const p=findReachableZombieSpawn(30,64,true,targetAngle);
  if(!p)return false;
  rememberZombieSpawn(p);
  makeZombie(p.x,p.z,i);
@@ -3284,15 +3333,15 @@ function spawnWave(){
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=findReachableZombieSpawn(34,58,false,null);
+   const bossSpawn=findReachableZombieSpawn(36,70,false,null);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
      // Extremely defensive fallback: keep boss-wave behavior intact even if the
      // route search cannot find a candidate during this frame. The expanded A*
      // will still take over immediately after spawn.
-     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=34+rnd()*24;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
+     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=36+rnd()*34;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
    }
-   if(!ok){const a=rnd()*Math.PI*2,dist=36+rnd()*22;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
+   if(!ok){const a=rnd()*Math.PI*2,dist=38+rnd()*30;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
