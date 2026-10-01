@@ -115,6 +115,21 @@ jobs:
             if dist<32:rows.append((dist,i,name,gb))
           for dist,i,name,gb in sorted(rows)[:80]:
             print(round(dist,2),i,name,'BBOX',tuple(round(v,2) for v in (gb[0],gb[1],gb[4],gb[5])))
+          print('=== OBJECTS NEAR 1.73M GAP ===')
+          tx,tz=38.595,22.0
+          rows=[]
+          for i,nod in enumerate(nodes):
+            name=nod.get('name','')
+            if not name or 'LowPolyFPS' in name:continue
+            bb=bbox(i)
+            if not bb:continue
+            gb=gamebb(bb);w=gb[1]-gb[0];dpth=gb[5]-gb[4]
+            if w<2 or dpth<2:continue
+            cx=(gb[0]+gb[1])/2;cz=(gb[4]+gb[5])/2
+            dist=math.hypot(cx-tx,cz-tz)
+            if dist<32:rows.append((dist,i,name,gb))
+          for dist,i,name,gb in sorted(rows)[:90]:
+            print(round(dist,2),i,name,'BBOX',tuple(round(v,2) for v in (gb[0],gb[1],gb[4],gb[5])))
           print('=== TARGET MATERIALS ===')
           for target in [118,587,564,569,116]:
             mats=[]
