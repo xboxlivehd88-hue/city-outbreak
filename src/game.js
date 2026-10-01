@@ -1513,7 +1513,7 @@ function buildZombieRoute(sx,sz,gx,gz){
  if(zombieRouteClear(last.x,last.z,gx,gz,ZNAV_PAD))smooth.push({x:gx,z:gz});
  return smooth;
 }
-function updateZombieRoute(z,dt,huntMode){
+function updateZombieRoute(z,dt,huntMode,goalX=px,goalZ=pz){
  z.navCheckT=Math.max(0,(z.navCheckT||0)-dt);
  if(z.navPath&&z.navPath.length){
    while(z.navIndex<z.navPath.length){
@@ -1528,23 +1528,23 @@ function updateZombieRoute(z,dt,huntMode){
  // Stagger route checks per zombie and run them less often; movement/avoidance still runs every frame.
  z.navCheckT=(huntMode?.46:.78)+((z.g.id%7)*.035);
 
- const goalMoved=Math.hypot(px-(z.navGoalX??px),pz-(z.navGoalZ??pz))>(huntMode?3.2:4.8);
+ const goalMoved=Math.hypot(goalX-(z.navGoalX??goalX),goalZ-(z.navGoalZ??goalZ))>(huntMode?3.2:4.8);
  // Direct pursuit should use the zombie's real physical clearance. A* keeps
  // its slightly larger conservative padding for routing around obstacles.
- // This prevents tight but genuinely passable alleys from forcing long detours.
- const directClear=zombieRouteClear(z.g.position.x,z.g.position.z,px,pz,ZOMBIE_COLLISION_RADIUS);
+ // This also lets a Radiated Green Guy route toward a thrown spin-top grenade.
+ const directClear=zombieRouteClear(z.g.position.x,z.g.position.z,goalX,goalZ,ZOMBIE_COLLISION_RADIUS);
  if(directClear){
-   z.navPath=null;z.navIndex=0;z.navGoalX=px;z.navGoalZ=pz;
+   z.navPath=null;z.navIndex=0;z.navGoalX=goalX;z.navGoalZ=goalZ;
    return;
  }
  if(!z.navPath||goalMoved||z.navForceRepath){
-   const route=buildZombieRoute(z.g.position.x,z.g.position.z,px,pz);
+   const route=buildZombieRoute(z.g.position.x,z.g.position.z,goalX,goalZ);
    z.navForceRepath=false;
-   z.navGoalX=px;z.navGoalZ=pz;
+   z.navGoalX=goalX;z.navGoalZ=goalZ;
    if(route&&route.length){z.navPath=route;z.navIndex=0;z.avoidT=0}
    else{
      z.navPath=null;z.navIndex=0;
-     const dx=px-z.g.position.x,dz=pz-z.g.position.z,dl=Math.hypot(dx,dz)||1;
+     const dx=goalX-z.g.position.x,dz=goalZ-z.g.position.z,dl=Math.hypot(dx,dz)||1;
      z.avoidSide=chooseZombieAvoidSide(z,dx/dl,dz/dl,.52);
      z.avoidT=Math.max(z.avoidT||0,.90);
      z.navCheckT=.24;
@@ -2590,10 +2590,10 @@ function buildRadiatedGreenGuyTemplate(source){
        chest=bone("Chest",0,h*.105,0),
        neck=bone("Neck",0,h*.095,0),
        head=bone("Head",0,h*.075,0),
-       lua=bone("L_UpperArm",-h*.16,h*.035,0),
-       lla=bone("L_LowerArm",-h*.17,0,0),
-       rua=bone("R_UpperArm", h*.16,h*.035,0),
-       rla=bone("R_LowerArm", h*.17,0,0),
+       lua=bone("L_UpperArm",-h*.19,h*.035,0),
+       lla=bone("L_LowerArm",-h*.18,0,0),
+       rua=bone("R_UpperArm", h*.19,h*.035,0),
+       rla=bone("R_LowerArm", h*.18,0,0),
        lul=bone("L_UpperLeg",-h*.065,-h*.02,0),
        lll=bone("L_LowerLeg",0,-h*.245,0),
        rul=bone("R_UpperLeg", h*.065,-h*.02,0),
@@ -2606,8 +2606,11 @@ function buildRadiatedGreenGuyTemplate(source){
    const ax=Math.abs(x),left=x<0;
    if(y>h*.845)return[bi.head,1,bi.neck,0];
    if(y>h*.795)return[bi.neck,1,bi.chest,0];
-   if(y>h*.58&&y<h*.82&&ax>h*.145){
-     const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla,elbow=h*.325,blend=h*.035;
+   if(y>h*.56&&y<h*.83&&ax>h*.105){
+     // v397: include the inner shoulder/upper-arm vertices in the arm bones.
+     // The previous threshold left too much of each arm weighted to the chest,
+     // which visually pulled the arms inside the torso.
+     const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla,elbow=h*.325,blend=h*.045;
      if(ax<=elbow-blend)return[up,1,lo,0];
      if(ax>=elbow+blend)return[lo,1,up,0];
      const t=(ax-(elbow-blend))/(blend*2);return[up,1-t,lo,t];
@@ -2684,10 +2687,10 @@ function buildRadiatedGreenHitboxes(z){
  add("Chest",new THREE.BoxGeometry(.54,.66,.36),0,-.11,0,"torso");
  add("Hips",new THREE.BoxGeometry(.38,.32,.30),0,-.07,0,"torso");
 
- add("L_UpperArm",new THREE.BoxGeometry(.34,.17,.18),-.17,0,0,"leftArm");
- add("L_LowerArm",new THREE.BoxGeometry(.31,.15,.17),-.155,0,0,"leftArm");
- add("R_UpperArm",new THREE.BoxGeometry(.34,.17,.18), .17,0,0,"rightArm");
- add("R_LowerArm",new THREE.BoxGeometry(.31,.15,.17), .155,0,0,"rightArm");
+ add("L_UpperArm",new THREE.BoxGeometry(.42,.24,.28),-.19,0,0,"leftArm");
+ add("L_LowerArm",new THREE.BoxGeometry(.40,.22,.26),-.18,0,0,"leftArm");
+ add("R_UpperArm",new THREE.BoxGeometry(.42,.24,.28), .19,0,0,"rightArm");
+ add("R_LowerArm",new THREE.BoxGeometry(.40,.22,.26), .18,0,0,"rightArm");
 
  add("L_UpperLeg",new THREE.BoxGeometry(.20,.44,.22),0,-.21,0,"leftLeg");
  add("L_LowerLeg",new THREE.BoxGeometry(.18,.43,.20),0,-.205,0,"leftLeg");
@@ -2724,12 +2727,20 @@ function syncRadiatedGreenGuy(z,dt=0){
  if(neck)neck.rotation.set(.025*blend,0,-step*.018*blend);
  if(head)head.rotation.set(.035*blend,-step*.055*blend,step*.020*blend);
  const armSwing=step*.24*blend,attackReach=attack*.28;
- // v396: keep both arms visibly outside the torso. The previous near-vertical
- // target pulled the static T-pose mesh inward until the arms looked fused to the body.
- if(lua){radiatedArmTarget.set(-.34,-.90,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
- if(rua){radiatedArmTarget.set(.34,-.90,-armSwing-attackReach).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
- if(lla)lla.rotation.set(0,0,-.06-attack*.08);
- if(rla)rla.rotation.set(0,0,.06+attack*.08);
+ if(z.leglessCrawler){
+   // v397: crawler pulls itself forward with alternating arms instead of freezing.
+   const crawlL=Math.sin(p),crawlR=Math.sin(p+Math.PI);
+   if(lua){radiatedArmTarget.set(-.30,-.36,-.88+crawlL*.20).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
+   if(rua){radiatedArmTarget.set(.30,-.36,-.88+crawlR*.20).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
+   if(lla)lla.rotation.set(.34+Math.max(0,crawlL)*.34,0,-.08);
+   if(rla)rla.rotation.set(.34+Math.max(0,crawlR)*.34,0,.08);
+ }else{
+   // Keep both arms clearly outside the torso while walking upright.
+   if(lua){radiatedArmTarget.set(-.45,-.88,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
+   if(rua){radiatedArmTarget.set(.45,-.88,-armSwing-attackReach).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
+   if(lla)lla.rotation.set(0,0,-.05-attack*.08);
+   if(rla)rla.rotation.set(0,0,.05+attack*.08);
+ }
  if(lul)lul.rotation.set(step*.36*blend,0,0);
  if(rul)rul.rotation.set(-step*.36*blend,0,0);
  if(lll)lll.rotation.set(Math.max(0,-step)*.48*blend,0,0);
@@ -3747,6 +3758,17 @@ function launchDetachedLimb(z,limb,side,leg=false){
 function detachArm(z,side){
  const key=side==="left"?"leftArmDetached":"rightArmDetached";
  if(z[key])return;
+ if(z.radiatedGreenVisual){
+   const bone=z.radiatedGreenBones?.get(side==="left"?"L_UpperArm":"R_UpperArm");
+   const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.35:.35,1.35,0));
+   z[key]=true;hideRigLimb(z,side==="left"?"L_UpperArm":"R_UpperArm");
+   if(z.hitMeshes){
+     for(const o of z.hitMeshes)if(o?.userData?.part===(side==="left"?"leftArm":"rightArm"))o.raycast=()=>{};
+     z.hitMeshes=z.hitMeshes.filter(o=>o.userData.part!==(side==="left"?"leftArm":"rightArm"));
+   }
+   if(side==="left")z.armL=new THREE.Group();else z.armR=new THREE.Group();
+   burst(p,true);noise(.12,.22,350);show(side==="left"?"LEFT ARM OFF":"RIGHT ARM OFF");return;
+ }
  const arm=side==="left"?z.armL:z.armR;
  if(!launchDetachedLimb(z,arm,side,false))return;
  z[key]=true;
@@ -3818,7 +3840,13 @@ function convertLeglessToCrawler(z){
  z.rigBase=null;z.rigTransient=null;z.rigTransientT=0;
  hideRigLimb(z,"L_UpperLeg");hideRigLimb(z,"R_UpperLeg");
  poseLeglessCrawlerRig(z,0,0,0);
- buildLeglessCrawlerHitboxes(z);
+ if(z.radiatedGreenVisual){
+   // The Green Guy's head/torso/arm hitboxes are already bone-attached and
+   // remain accurate after the visible body pitches into the crawler pose.
+   z.crawlerHitboxes=z.hitMeshes?z.hitMeshes.slice():[];
+ }else{
+   buildLeglessCrawlerHitboxes(z);
+ }
 
  z.navForceRepath=true;z.navCheckT=0;z.think=0;
  show("CRIPPLED — CRAWLER");
@@ -3826,6 +3854,19 @@ function convertLeglessToCrawler(z){
 function detachLeg(z,side){
  const key=side==="left"?"leftLegDetached":"rightLegDetached";
  if(z[key])return;
+ if(z.radiatedGreenVisual){
+   const bone=z.radiatedGreenBones?.get(side==="left"?"L_UpperLeg":"R_UpperLeg");
+   const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.15:.15,.72,0));
+   z[key]=true;hideRigLimb(z,side==="left"?"L_UpperLeg":"R_UpperLeg");
+   if(z.hitMeshes){
+     for(const o of z.hitMeshes)if(o?.userData?.part===(side==="left"?"leftLeg":"rightLeg"))o.raycast=()=>{};
+     z.hitMeshes=z.hitMeshes.filter(o=>o.userData.part!==(side==="left"?"leftLeg":"rightLeg"));
+   }
+   if(side==="left")z.legL=new THREE.Group();else z.legR=new THREE.Group();
+   z.legDamage=3;burst(p,true);noise(.15,.25,280);show(side==="left"?"LEFT LEG OFF":"RIGHT LEG OFF");
+   if(z.leftLegDetached&&z.rightLegDetached&&z.hp>0)convertLeglessToCrawler(z);
+   return;
+ }
  const leg=side==="left"?z.legL:z.legR;
  if(!launchDetachedLimb(z,leg,side,true))return;
  z[key]=true;
@@ -4518,6 +4559,15 @@ function throwGrenade(){
  const vel=dir.multiplyScalar(11);vel.y+=4.8;scene.add(q);
  thrown.push({q,v:vel,fuse:2.15,bottomYPivot:true});show("GRENADE!");
 }
+function radiatedSpinTopTarget(z){
+ let best=null,bestD=Infinity;
+ for(const g of thrown){
+   if(!g||g.launcher||!g.bottomYPivot||g.fuse<=0||!g.q?.parent)continue;
+   const dx=g.q.position.x-z.g.position.x,dz=g.q.position.z-z.g.position.z,d2=dx*dx+dz*dz;
+   if(d2<bestD){bestD=d2;best=g}
+ }
+ return best;
+}
 function explodeGrenade(g){
  noise(.42,.95,900);tone(48,.45,"sine",.42);
  const p=g.q.position.clone();scene.remove(g.q);
@@ -4929,36 +4979,42 @@ let animRate=0;
 if(z.pauseClock<=0){z.pauseClock=1.1+rnd()*3.2;if(rnd()<.22)z.stagger=Math.max(z.stagger,.10+rnd()*.12)}
 if(z.surgeT<=0){z.surgeT=.65+rnd()*1.7;z.zig*=-1}z.think-=dt;
 z.avoidT=Math.max(0,(z.avoidT||0)-dt);z.navFlipCooldown=Math.max(0,(z.navFlipCooldown||0)-dt);
-if(z.kind!=="boss")updateZombieRoute(z,dt,huntMode);
+const spinTopDecoy=z.radiatedGreenVisual?radiatedSpinTopTarget(z):null;
+const pursuitX=spinTopDecoy?spinTopDecoy.q.position.x:px,pursuitZ=spinTopDecoy?spinTopDecoy.q.position.z:pz;
+if(z.kind!=="boss")updateZombieRoute(z,dt,huntMode,pursuitX,pursuitZ);
 if(z.kind==="boss")tickBossSpecial(z,dt,playerDistToZombie);
 if(z.think<=0){
  z.think=huntMode?.025+rnd()*.025:.08+rnd()*.10;
  const speed=Math.hypot(playerVX,playerVZ),lead=Math.min(1.5,speed*.14);
- let tx=px, tz=pz;
+ let tx=pursuitX, tz=pursuitZ;
 
- // Roles now modify pursuit instead of replacing interest in the player.
- if(z.role==="interceptor"){
+ // While a spin-top grenade is live, Green Guys ignore role offsets and commit
+ // directly to the grenade. Otherwise preserve the approved player-pursuit logic.
+ if(!spinTopDecoy&&z.role==="interceptor"){
    tx=px+playerVX*lead*.75;tz=pz+playerVZ*lead*.75;
  }
- if(z.role==="flanker"&&playerDistToZombie>5){
+ if(!spinTopDecoy&&z.role==="flanker"&&playerDistToZombie>5){
    const pd=playerDistToZombie||1;
    const nx=(px-z.g.position.x)/pd,nz=(pz-z.g.position.z)/pd;
    const off=Math.min(2.8,1.4+playerDistToZombie*.055);
    tx=px+(-nz)*z.side*off;
    tz=pz+(nx)*z.side*off;
  }
- if(z.role==="stalker"){
+ if(!spinTopDecoy&&z.role==="stalker"){
    // stalkers still close distance and never park in place while the player is nearby
    tx=px+playerVX*lead*.28;tz=pz+playerVZ*lead*.28;
  }
- if(z.role==="charger"){
+ if(!spinTopDecoy&&z.role==="charger"){
    tx=px+playerVX*lead*.18;tz=pz+playerVZ*lead*.18;
  }
 
- // Keep every role strongly biased toward the player.
- tx=px+(tx-px)*.42;
- tz=pz+(tz-pz)*.42;
- if(huntMode||playerDistToZombie<6||active.length<=2){tx=px;tz=pz;}
+ // Keep every normal role strongly biased toward the player. A Green Guy
+ // following the spin-top stays fully committed to that grenade until it explodes.
+ if(!spinTopDecoy){
+   tx=px+(tx-px)*.42;
+   tz=pz+(tz-pz)*.42;
+   if(huntMode||playerDistToZombie<6||active.length<=2){tx=px;tz=pz}
+ }
 
  // If direct pursuit is blocked, follow the A* corner route until line of sight opens again.
  const wp=zombieRouteWaypoint(z);
@@ -4966,12 +5022,13 @@ if(z.think<=0){
 
  z.targetX=tx;z.targetZ=tz;
 }
-let dx=z.targetX-z.g.position.x,dz=z.targetZ-z.g.position.z,d=playerDistToZombie||.001;
-let td=Math.hypot(dx,dz)||.001;
+let dx=z.targetX-z.g.position.x,dz=z.targetZ-z.g.position.z;
+let td=Math.hypot(dx,dz)||.001,d=(spinTopDecoy?td:playerDistToZombie)||.001;
 const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  const turnDelta=Math.atan2(Math.sin(wantedYaw-z.g.rotation.y),Math.cos(wantedYaw-z.g.rotation.y));
  z.g.rotation.y+=turnDelta*Math.min(1,dt*z.turnRate);
- const playerYaw=Math.atan2(px-z.g.position.x,pz-z.g.position.z)+Math.PI;
+ const lookX=spinTopDecoy?pursuitX:px,lookZ=spinTopDecoy?pursuitZ:pz;
+ const playerYaw=Math.atan2(lookX-z.g.position.x,lookZ-z.g.position.z)+Math.PI;
  const lookDelta=Math.atan2(Math.sin(playerYaw-z.g.rotation.y),Math.cos(playerYaw-z.g.rotation.y));
  const playerLook=Math.max(-.42,Math.min(.42,lookDelta));
 
@@ -5137,7 +5194,7 @@ resolveZombiePlayerContact(z,ox,oz);
    z.avoidT=.85;
    z.stuckT=0;
    z.think=0;
- }if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else{
+ }if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else if(!spinTopDecoy){
  if(z.attackAnim>0&&d>.001){
    const ax=(px-z.g.position.x)/d,az=(pz-z.g.position.z)/d;
    const ox=z.g.position.x,oz=z.g.position.z,lunge=(z.kind==="boss"?.38:z.kind==="crawler"?.16:.28)*dt;
