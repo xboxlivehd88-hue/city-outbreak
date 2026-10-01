@@ -2814,28 +2814,30 @@ function buildBasicWalkerTemplate(source){
  const bones=[hips,spine,chest,neck,head,lua,lla,rua,rla,lul,lll,rul,rll,lhand,rhand,lfoot,rfoot],bi=Object.freeze({
    hips:0,spine:1,chest:2,neck:3,head:4,lua:5,lla:6,rua:7,rla:8,lul:9,lll:10,rul:11,rll:12,lhand:13,rhand:14,lfoot:15,rfoot:16
  });
- const chooseWeights=(x,y)=>{
+ const chooseRigidBone=(x,y,z)=>{
    const yf=y/h,ax=Math.abs(x),left=x<0;
-   if(yf>.84)return[bi.head,1,bi.neck,0];
-   if(yf>.77)return[bi.neck,1,bi.chest,0];
-   // v402: measured arm envelope. The old constant x threshold reached
-   // into the shirt/back and made those torso vertices flare like wings.
-   if(yf>.32&&yf<.74){
-     const armMinFrac=.12+THREE.MathUtils.clamp((.70-yf)/.34,0,1)*.04;
+   if(yf>.84)return bi.head;
+   if(yf>.77)return bi.neck;
+
+   // v404: rigid anatomical segmentation. Each triangle belongs to exactly one
+   // body part, so clothing/body vertices cannot stretch between torso and limbs.
+   if(yf>.31&&yf<.74){
+     const armMinFrac=.105+THREE.MathUtils.clamp((.68-yf)/.36,0,1)*.075;
      if(ax>h*armMinFrac){
-       const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla;
-       const t=THREE.MathUtils.clamp((.57-yf)/.07,0,1);
-       return[up,1-t,lo,t];
+       if(yf>.56)return left?bi.lua:bi.rua;
+       if(yf>.39)return left?bi.lla:bi.rla;
+       return left?bi.lhand:bi.rhand;
      }
    }
+
    if(yf<.46){
-     const up=left?bi.lul:bi.rul,lo=left?bi.lll:bi.rll;
-     const t=THREE.MathUtils.clamp((.25-yf)/.06,0,1);
-     return[up,1-t,lo,t];
+     if(yf<.095)return left?bi.lfoot:bi.rfoot;
+     if(yf<.245)return left?bi.lll:bi.rll;
+     return left?bi.lul:bi.rul;
    }
-   if(yf<.53)return[bi.hips,1,bi.spine,0];
-   if(yf<.64)return[bi.spine,1,bi.chest,0];
-   return[bi.chest,1,bi.spine,0];
+   if(yf<.53)return bi.hips;
+   if(yf<.64)return bi.spine;
+   return bi.chest;
  };
  const skinned=[];
  for(const p of pieces){
