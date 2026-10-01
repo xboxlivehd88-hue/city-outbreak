@@ -4351,7 +4351,8 @@ function limbDamage(z,part,amount){
  if(part==="rightLeg"&&!z.rightLegDetached){z.rightLegHP-=amount;z.legDamage=Math.min(3,z.legDamage+amount*.55);z.stagger=Math.max(z.stagger,.32);if(z.rightLegHP<=0)detachLeg(z,"right")}
 }
 
-// v414: Hairibar-style UNPOWERED death ragdoll for every zombie death.
+// v415: Hairibar-style UNPOWERED death ragdoll for every zombie death.
+// Do not stiffen on first contact; stay loose until the entire corpse is down.
 // Hairibar.Ragdoll keeps a simulated skeleton separate from the visible/target
 // skeleton, then maps the simulated result back to the visible character.
 // Its Unpowered state applies no animation-matching drive: gravity, momentum,
@@ -4374,24 +4375,33 @@ function ragSoftLimitAcceleration(offset,velocity,limit,dt,maxAccel){
 }
 const ragContactPos=new THREE.Vector3();
 function ragdollBodyContactState(z,r){
- // Root contact alone is not enough: z.g can already be on the pavement while
- // the zombie is still upright in mid-collapse. Hairibar keeps simulating the
- // rigid bodies, so we require actual torso/limb bone contact before settling.
- if(!z?.rigVisual)return{contacts:r.rootGrounded?3:0,torso:!!r.rootGrounded};
+ // v415: touching the floor is NOT the same as "finished ragdoll".
+ // Hairibar Unpowered bodies stay dynamic after contact; we only permit sleep
+ // once the central mass is genuinely down and the limbs have nearly stopped.
+ if(!z?.rigVisual){
+   const down=!!r.rootGrounded;
+   return{contacts:down?7:0,hips:down,chest:down,head:down,coreDown:down,allDown:down};
+ }
  z.g.updateMatrixWorld(true);
- let contacts=0,torso=false;
+ let contacts=0,hips=false,chest=false,head=false;
  const probes=[
-   ["Hips",true,.24],["Chest",true,.26],["Head",true,.24],
-   ["L_LowerArm",false,.18],["R_LowerArm",false,.18],
-   ["L_LowerLeg",false,.18],["R_LowerLeg",false,.18]
+   ["Hips","hips",.24],["Chest","chest",.26],["Head","head",.24],
+   ["L_LowerArm","limb",.18],["R_LowerArm","limb",.18],
+   ["L_LowerLeg","limb",.18],["R_LowerLeg","limb",.18]
  ];
- for(const [key,isTorso,pad] of probes){
+ for(const [key,role,pad] of probes){
    const b=rigBone(z,key);if(!b)continue;
    b.getWorldPosition(ragContactPos);
    const gy=sampleRagdollGroundY(ragContactPos.x,ragContactPos.z,r.floorY,ragContactPos.y);
-   if(ragContactPos.y<=gy+pad){contacts++;if(isTorso)torso=true}
+   const hit=ragContactPos.y<=gy+pad;
+   if(!hit)continue;
+   contacts++;
+   if(role==="hips")hips=true;
+   else if(role==="chest")chest=true;
+   else if(role==="head")head=true;
  }
- return{contacts,torso};
+ const coreDown=hips&&chest&&head;
+ return{contacts,hips,chest,head,coreDown,allDown:coreDown&&contacts>=5};
 }
 function blastBoneProfile(role){
  switch(role){
@@ -4428,7 +4438,8 @@ function beginRagdoll(z,force=1,blastOrigin=null){
 
  const rag=z.ragdoll={
    t:0,bones:[],blast:isBlast,unpowered:true,active:true,power,settleT:0,
-   grounded:false,rootGrounded:false,bodyGrounded:false,wasBodyGrounded:false,bounceCount:0,
+   grounded:false,rootGrounded:false,bodyGrounded:false,fullBodyDown:false,
+   contactCount:0,maxContactCount:0,bounceCount:0,
    floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
    baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
    // Root is a free Hairibar-style rigid body in death. Non-explosive deaths
@@ -4506,16 +4517,11 @@ function updateRagdoll(z,dt){
 
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
 
- if(r.hips&&!r.blast){
-   const h=smooth(r.t/.48);
-   r.hips.position.y=r.hipsStartY+(r.hipsTargetY-r.hipsStartY)*h;
- }
-
  if(r.unpowered){
-   // Hairibar Unpowered: no animation target. Keep integrating real momentum
-   // until the body, not merely the root origin, is on the ground and settled.
-   const free=!r.bodyGrounded;
-   const rootDamp=Math.exp(-dt*(free?.18:3.6));
+   // v415 / Hairibar Unpowered: zero animation drive. Ground contact does not
+   // suddenly stiffen the body. Only light passive angular drag is applied;
+   // once the WHOLE body is already down we allow slightly more friction-like drag.
+   const rootDamp=Math.exp(-dt*(r.fullBodyDown?.55:.08));
    z.g.rotation.x+=r.ravx*dt;
    z.g.rotation.y+=r.ravy*dt;
    z.g.rotation.z+=r.ravz*dt;
@@ -4523,7 +4529,8 @@ function updateRagdoll(z,dt){
  }
 
  z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
- const drag=Math.exp(-dt*(r.blast?1.02:3.2));r.vx*=drag;r.vz*=drag;
+ const drag=Math.exp(-dt*(r.fullBodyDown?(r.blast?.95:.80):(r.blast?.28:.16)));
+ r.vx*=drag;r.vz*=drag;
  r.vy-=(r.blast?6.35:5.4)*dt;
  z.g.position.y+=r.vy*dt;
  r.floorY=sampleRagdollGroundY(z.g.position.x,z.g.position.z,r.floorY,z.g.position.y);
@@ -4547,7 +4554,7 @@ function updateRagdoll(z,dt){
  }
 
  for(const b of r.bones){
-   const p=b.p,free=!r.bodyGrounded;
+   const p=b.p;
    const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60)))),h=dt/steps;
    for(let step=0;step<steps;step++){
      const parent=b.parentState;
@@ -4558,7 +4565,7 @@ function updateRagdoll(z,dt){
      const ay=ragSoftLimitAcceleration(b.oy,b.avy,p.ly,h,p.maxA*1.25)+(parentY-b.avy)*p.couple*.13+r.ravy*p.root*.040;
      const az=ragSoftLimitAcceleration(b.oz,b.avz,p.lz,h,p.maxA*1.25)+(parentZ-b.avz)*p.couple*.17+r.ravz*p.root*.050;
      b.avx+=ax*h;b.avy+=ay*h;b.avz+=az*h;
-     const angularDrag=Math.exp(-h*(free?.10:2.25));
+     const angularDrag=Math.exp(-h*(r.fullBodyDown?.42:.055));
      b.avx*=angularDrag;b.avy*=angularDrag;b.avz*=angularDrag;
      b.ox+=b.avx*h;b.oy+=b.avy*h;b.oz+=b.avz*h;
 
@@ -4575,29 +4582,37 @@ function updateRagdoll(z,dt){
  }
 
  const contact=ragdollBodyContactState(z,r);
- r.bodyGrounded=contact.torso&&contact.contacts>=2;
- r.grounded=r.bodyGrounded;
+ r.contactCount=contact.contacts;
+ r.bodyGrounded=contact.contacts>0;
+ r.fullBodyDown=contact.allDown;
+ r.grounded=r.fullBodyDown;
 
- // The first real body-to-ground contact sends a small collision impulse through
- // the unpowered chain, so arms/legs can slap and bounce instead of freezing.
- if(r.bodyGrounded&&!r.wasBodyGrounded){
-   const jolt=r.blast?.48:.28;
-   r.ravx+=(rnd()-.5)*jolt;r.ravy+=(rnd()-.5)*jolt*.65;r.ravz+=(rnd()-.5)*jolt;
+ // Every NEW body contact gets a small collision response. This approximates the
+ // separate rigidbody contacts Hairibar/PhysX would generate and keeps hands,
+ // elbows, knees and head flopping after the first thing touches the pavement.
+ if(contact.contacts>r.maxContactCount){
+   const newHits=contact.contacts-r.maxContactCount;
+   const jolt=(r.blast?.20:.13)*Math.max(1,newHits);
+   r.ravx+=(rnd()-.5)*jolt;r.ravy+=(rnd()-.5)*jolt*.55;r.ravz+=(rnd()-.5)*jolt;
    for(const b of r.bones){
      const impact=b.p?.impact||1;
-     b.avx+=(rnd()-.5)*jolt*1.8*impact;
-     b.avy+=(rnd()-.5)*jolt*1.5*impact;
-     b.avz+=(rnd()-.5)*jolt*2.0*impact;
+     b.avx+=(rnd()-.5)*jolt*1.45*impact;
+     b.avy+=(rnd()-.5)*jolt*1.15*impact;
+     b.avz+=(rnd()-.5)*jolt*1.60*impact;
    }
+   r.maxContactCount=contact.contacts;
  }
- r.wasBodyGrounded=r.bodyGrounded;
 
  let maxBoneSpin=0;
  for(const b of r.bones)maxBoneSpin=Math.max(maxBoneSpin,Math.abs(b.avx||0),Math.abs(b.avy||0),Math.abs(b.avz||0));
  const rootSpin=Math.max(Math.abs(r.ravx||0),Math.abs(r.ravy||0),Math.abs(r.ravz||0));
- const settled=r.bodyGrounded&&contact.contacts>=3&&Math.abs(r.vy)<.06&&Math.hypot(r.vx,r.vz)<.14&&rootSpin<.11&&maxBoneSpin<.14;
+
+ // "Sleep" is allowed only after the corpse is genuinely lying down:
+ // hips + chest + head on the ground, at least five body probes touching,
+ // and both root and every joint staying nearly motionless for 1.25 seconds.
+ const settled=contact.allDown&&Math.abs(r.vy)<.035&&Math.hypot(r.vx,r.vz)<.07&&rootSpin<.055&&maxBoneSpin<.070;
  r.settleT=settled?r.settleT+dt:0;
- if(r.settleT>.60){r.active=false;z.falling=false}else z.falling=true;
+ if(r.settleT>1.25){r.active=false;z.falling=false}else z.falling=true;
 }
 function killZ(z,hs,p,ragForce=1,ragOrigin=null){
  if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
