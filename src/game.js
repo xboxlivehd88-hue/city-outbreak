@@ -1629,6 +1629,26 @@ new GLTFLoader().load("assets/m240b_machine_gun.glb",gltf=>{
  m240ModelTemplate.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
  if(weapon==="m240")rebuildGun();
 });
+
+// v390: user-supplied GLB fully replaces the old procedural hand-grenade sphere.
+let grenadeModelTemplate=null;
+new GLTFLoader().load("assets/spintop.glb?v=390",gltf=>{
+ const holder=new THREE.Group(),model=gltf.scene;
+ model.traverse(o=>{
+   o.userData.externalGrenadeAsset=true;
+   if(o.isMesh){o.castShadow=false;o.receiveShadow=false}
+ });
+ model.updateMatrixWorld(true);
+ const box=new THREE.Box3().setFromObject(model);
+ const center=new THREE.Vector3(),size=new THREE.Vector3();
+ box.getCenter(center);box.getSize(size);
+ model.position.sub(center);
+ holder.add(model);
+ const maxDim=Math.max(size.x,size.y,size.z,.001);
+ holder.scale.setScalar(.30/maxDim);
+ holder.name="GrenadeGLBTemplate";
+ grenadeModelTemplate=holder;
+},undefined,err=>console.warn("Grenade GLB load failed; grenade unavailable",err));
 let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
 const FX={
  bloodGeoSmall:new THREE.SphereGeometry(.04,5,4),
@@ -4289,8 +4309,10 @@ function explodeLauncherRound(g){
 }
 function throwGrenade(){
  if(!running||paused||dying||between||grenades<=0)return;
+ if(!grenadeModelTemplate){show("GRENADE MODEL LOADING");return}
  grenades--;ui();tone(260,.04,"square",.06);
- const q=new THREE.Mesh(new THREE.SphereGeometry(.12,8,6),M(0x34412f,.55));
+ const q=grenadeModelTemplate.clone(true);
+ q.name="ThrownGrenadeGLB";
  const start=new THREE.Vector3();cam.getWorldPosition(start);q.position.copy(start);
  const dir=new THREE.Vector3();cam.getWorldDirection(dir);
  const vel=dir.multiplyScalar(11);vel.y+=4.8;scene.add(q);
