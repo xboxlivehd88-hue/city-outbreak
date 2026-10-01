@@ -82,6 +82,21 @@ jobs:
               if d<28:rows.append((d,i,name,gb))
             for d,i,name,gb in sorted(rows)[:60]:
               print(round(d,2),i,name,'BBOX',tuple(round(v,2) for v in (gb[0],gb[1],gb[4],gb[5])))
+          print('=== HOUSE X-GAPS ===')
+          houses=[o for o in objs if o[1].startswith('House_')]
+          for ai,a in enumerate(houses):
+            for b in houses[ai+1:]:
+              ia,na,ga,acx,acz=a;ib,nb,gb,bcx,bcz=b
+              ax0,ax1,az0,az1=ga[0],ga[1],ga[4],ga[5]
+              bx0,bx1,bz0,bz1=gb[0],gb[1],gb[4],gb[5]
+              zov=max(0,min(az1,bz1)-max(az0,bz0))
+              if zov<5:continue
+              if ax1<=bx0:gap=bx0-ax1;mid=(ax1+bx0)/2
+              elif bx1<=ax0:gap=ax0-bx1;mid=(bx1+ax0)/2
+              else:continue
+              if gap<=3.0:
+                midz=(max(az0,bz0)+min(az1,bz1))/2
+                print('XGAP',round(gap,3),'MID',round(mid,3),round(midz,3),ia,na,tuple(round(v,2) for v in (ax0,ax1,az0,az1)),ib,nb,tuple(round(v,2) for v in (bx0,bx1,bz0,bz1)))
           print('=== FENCES ===')
           for i,name,gb,cx,cz in objs:
             if name.startswith('Fence_01'):
