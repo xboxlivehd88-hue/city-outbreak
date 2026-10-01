@@ -77,13 +77,13 @@ jobs:
               xov=max(0,min(ax1,bx1)-max(ax0,bx0));zov=max(0,min(az1,bz1)-max(az0,bz0))
               # gap along Z
               zgap=max(bz0-az1,az0-bz1,0)
-              if 1.0<=zgap<=6.0 and xov>=min(ax1-ax0,bx1-bx0)*.55:
+              if 0.15<=zgap<=1.2 and xov>=min(ax1-ax0,bx1-bx0)*.55:
                 midx=(max(ax0,bx0)+min(ax1,bx1))/2
                 midz=(az1+bz0)/2 if az1<bz0 else (bz1+az0)/2
                 print('ZGAP',round(zgap,2),'MID',round(midx,2),round(midz,2),ai,an,tuple(round(v,2) for v in a[2:]),bi,bn,tuple(round(v,2) for v in b[2:]))
               # gap along X
               xgap=max(bx0-ax1,ax0-bx1,0)
-              if 1.0<=xgap<=6.0 and zov>=min(az1-az0,bz1-bz0)*.55:
+              if 0.15<=xgap<=1.2 and zov>=min(az1-az0,bz1-bz0)*.55:
                 midx=(ax1+bx0)/2 if ax1<bx0 else (bx1+ax0)/2
                 midz=(max(az0,bz0)+min(az1,bz1))/2
                 print('XGAP',round(xgap,2),'MID',round(midx,2),round(midz,2),ai,an,tuple(round(v,2) for v in a[2:]),bi,bn,tuple(round(v,2) for v in b[2:]))
