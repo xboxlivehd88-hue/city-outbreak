@@ -2859,17 +2859,26 @@ function attachBasicWalkerVisual(z,g){
  holder.scale.setScalar(1.92/sourceHeight);
  holder.rotation.y=Math.PI;
  holder.add(model);g.add(holder);
- z.walkerVisual=holder;z.walkerModel=model;z.walkerSourceHeight=sourceHeight;z.walkerBones=new Map();z.walkerRagdollLinks=[];
+ z.walkerVisual=holder;z.walkerModel=model;z.walkerSourceHeight=sourceHeight;z.walkerBones=new Map();z.walkerRigLinks=[];
  for(const key of BASIC_WALKER_BONE_KEYS){
    const b=model.getObjectByName("Walker"+key);if(b)z.walkerBones.set(key,b);
  }
  if(z.rigVisual){
-   for(const key of ["Hips","Spine","Chest","Neck","Head","L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm","L_UpperLeg","L_LowerLeg","R_UpperLeg","R_LowerLeg"]){
+   // v400: the approved hidden Shambler rig is the animation authority.
+   // Capture matching rest poses once, then retarget its live bone deltas to
+   // walkers.glb every frame. This preserves the walk/run/attack/hit system.
+   for(const key of BASIC_WALKER_BONE_KEYS){
      const source=z.rigVisual.getObjectByName(key),target=z.walkerBones.get(key);
-     if(source&&target)z.walkerRagdollLinks.push({source,target,sourceBase:source.quaternion.clone(),targetBase:target.quaternion.clone(),delta:new THREE.Quaternion()});
+     if(source&&target)z.walkerRigLinks.push({
+       key,source,target,
+       sourceBase:source.quaternion.clone(),targetBase:target.quaternion.clone(),
+       sourceBasePos:source.position.clone(),targetBasePos:target.position.clone(),
+       delta:new THREE.Quaternion()
+     });
    }
    z.rigVisual.traverse(o=>{if(o.isMesh)o.visible=false});
  }
+ z.walkerMotionScale=(z.rigVisual?.scale?.y||1)/(holder.scale.y||1);
  z.walkerLastX=g.position.x;z.walkerLastZ=g.position.z;z.walkerMoveBlend=0;
  console.log("CITY OUTBREAK: basic Shambler uses walkers.glb",{bones:z.walkerBones.size,facingDeg:180});
  return true;
@@ -2903,38 +2912,30 @@ function buildBasicWalkerHitboxes(z){
  return hitboxes.length>0;
 }
 function syncBasicWalkerVisual(z,dt=0){
- const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
+ const holder=z?.walkerVisual;if(!holder)return;
  holder.rotation.y=Math.PI;
- if(z.dead||z.knockdown){
-   holder.position.y=z.rigVisual?.position.y||0;holder.rotation.x=z.rigVisual?.rotation.x||0;holder.rotation.z=z.rigVisual?.rotation.z||0;
-   for(const l of z.walkerRagdollLinks||[]){
-     l.delta.copy(l.sourceBase).invert().multiply(l.source.quaternion);
-     l.target.quaternion.copy(l.targetBase).multiply(l.delta);
+ const sourceRig=z.rigVisual;
+ // Mirror root pitch/drop used by knockdowns, ragdolls and crawler conversion.
+ // Yaw stays on the holder's 180-degree model-facing correction.
+ holder.position.y=sourceRig?.position?.y||0;
+ holder.rotation.x=sourceRig?.rotation?.x||0;
+ holder.rotation.z=sourceRig?.rotation?.z||0;
+
+ // v400: walkers.glb now follows the real approved Shambler skeleton rather
+ // than a separate hand-written walk cycle. Rest-pose deltas let the uploaded
+ // A-pose keep its own proportions while inheriting all live animation.
+ for(const l of z.walkerRigLinks||[]){
+   l.delta.copy(l.sourceBase).invert().multiply(l.source.quaternion);
+   l.target.quaternion.copy(l.targetBase).multiply(l.delta);
+
+   // applyRigLocomotionPolish gives the hidden Hips a small weight-bearing rise.
+   // Scale that local translation into walkers.glb's much larger source units.
+   if(l.key==="Hips"){
+     const motionScale=Number.isFinite(z.walkerMotionScale)?z.walkerMotionScale:1;
+     l.target.position.copy(l.targetBasePos);
+     l.target.position.y+=(l.source.position.y-l.sourceBasePos.y)*motionScale;
    }
-   return;
  }
- const gx=z.g.position.x,gz=z.g.position.z,lastX=Number.isFinite(z.walkerLastX)?z.walkerLastX:gx,lastZ=Number.isFinite(z.walkerLastZ)?z.walkerLastZ:gz;
- const speedNow=Math.hypot(gx-lastX,gz-lastZ)/Math.max(dt,.001);z.walkerLastX=gx;z.walkerLastZ=gz;
- z.walkerMoveBlend=THREE.MathUtils.lerp(z.walkerMoveBlend||0,speedNow>.08?1:0,Math.min(1,dt*7));
- const b=z.walkerMoveBlend,p=z.phase||0,step=Math.sin(p),step2=Math.sin(p+Math.PI),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
- const hips=bones.get("Hips"),spine=bones.get("Spine"),chest=bones.get("Chest"),neck=bones.get("Neck"),head=bones.get("Head"),
-       lua=bones.get("L_UpperArm"),lla=bones.get("L_LowerArm"),rua=bones.get("R_UpperArm"),rla=bones.get("R_LowerArm"),
-       lul=bones.get("L_UpperLeg"),lll=bones.get("L_LowerLeg"),rul=bones.get("R_UpperLeg"),rll=bones.get("R_LowerLeg");
- if(z.leglessCrawler){
-   holder.position.y=-.50;holder.rotation.x=-.72;holder.rotation.z=step*.018*b;
-   if(hips)hips.rotation.set(-.08,0,0);if(spine)spine.rotation.set(.18,0,step*.025);if(chest)chest.rotation.set(.18+attack*.06,0,-step*.035);
-   if(neck)neck.rotation.set(-.18,0,0);if(head)head.rotation.set(-.08,0,step*.03);
-   if(lua)lua.rotation.set(.52+step*.24,0,-.28);if(rua)rua.rotation.set(.52+step2*.24,0,.28);
-   if(lla)lla.rotation.set(.34+Math.max(0,step)*.30,0,-.08);if(rla)rla.rotation.set(.34+Math.max(0,step2)*.30,0,.08);
-   return;
- }
- holder.position.y=Math.abs(step)*.018*b;holder.rotation.x=-.025*b-attack*.025;holder.rotation.z=step*.018*b;
- if(hips)hips.rotation.set(0,step*.025*b,0);if(spine)spine.rotation.set(-.018*b,0,-step*.016*b);if(chest)chest.rotation.set(-.028*b,0,step*.022*b);
- if(neck)neck.rotation.set(.018*b,0,0);if(head)head.rotation.set(.028*b,-step*.045*b,step*.018*b);
- if(lua)lua.rotation.set(step*.16*b-attack*.30,0,-.025);if(rua)rua.rotation.set(step2*.16*b-attack*.30,0,.025);
- if(lla)lla.rotation.set(Math.max(0,step)*.12+attack*.20,0,0);if(rla)rla.rotation.set(Math.max(0,step2)*.12+attack*.20,0,0);
- if(lul)lul.rotation.set(step2*.30*b,0,0);if(rul)rul.rotation.set(step*.30*b,0,0);
- if(lll)lll.rotation.set(Math.max(0,-step2)*.36*b,0,0);if(rll)rll.rotation.set(Math.max(0,-step)*.36*b,0,0);
 }
 function applyZombieRigProfile(rig,kind){
  const p=ZOMBIE_RIG_PROFILES[kind]||SHAMBLER_RIG_PROFILE;
