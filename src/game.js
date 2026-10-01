@@ -2621,28 +2621,30 @@ function buildRadiatedGreenGuyTemplate(source){
  const bones=[hips,spine,chest,neck,head,lua,lla,rua,rla,lul,lll,rul,rll],bi=Object.freeze({
    hips:0,spine:1,chest:2,neck:3,head:4,lua:5,lla:6,rua:7,rla:8,lul:9,lll:10,rul:11,rll:12
  });
- const chooseWeights=(x,y)=>{
-   const ax=Math.abs(x),left=x<0;
-   if(y>h*.845)return[bi.head,1,bi.neck,0];
-   if(y>h*.795)return[bi.neck,1,bi.chest,0];
-   if(y>h*.56&&y<h*.70&&ax>h*.13){
-     // v398: the measured arm band is ~0.56h-0.69h. Keeping arm skinning out
-     // of the higher torso/head band stops chest vertices from being sucked into the arms.
-     const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla,elbow=h*.38,blend=h*.04;
-     if(ax<=elbow-blend)return[up,1,lo,0];
-     if(ax>=elbow+blend)return[lo,1,up,0];
-     const t=(ax-(elbow-blend))/(blend*2);return[up,1-t,lo,t];
+ const chooseRigidBone=(x,y,z)=>{
+   const yf=y/h,ax=Math.abs(x),left=x<0;
+   if(yf>.84)return bi.head;
+   if(yf>.77)return bi.neck;
+
+   // v403: rigid anatomical segmentation. Each triangle belongs to exactly one
+   // body part, so clothing/body vertices can never stretch between torso and arm.
+   if(yf>.31&&yf<.74){
+     const armMinFrac=.105+THREE.MathUtils.clamp((.68-yf)/.36,0,1)*.075;
+     if(ax>h*armMinFrac){
+       if(yf>.56)return left?bi.lua:bi.rua;
+       if(yf>.39)return left?bi.lla:bi.rla;
+       return left?bi.lhand:bi.rhand;
+     }
    }
-   if(y<h*.50){
-     if(y>h*.43&&ax<h*.085)return[bi.hips,1,bi.spine,0];
-     const up=left?bi.lul:bi.rul,lo=left?bi.lll:bi.rll,knee=h*.245,blend=h*.035;
-     if(y>=knee+blend)return[up,1,lo,0];
-     if(y<=knee-blend)return[lo,1,up,0];
-     const t=(y-(knee-blend))/(blend*2);return[lo,1-t,up,t];
+
+   if(yf<.46){
+     if(yf<.095)return left?bi.lfoot:bi.rfoot;
+     if(yf<.245)return left?bi.lll:bi.rll;
+     return left?bi.lul:bi.rul;
    }
-   if(y<h*.59)return[bi.hips,1,bi.spine,0];
-   if(y<h*.69)return[bi.spine,1,bi.chest,0];
-   return[bi.chest,1,bi.spine,0];
+   if(yf<.53)return bi.hips;
+   if(yf<.64)return bi.spine;
+   return bi.chest;
  };
  const skinned=[];
  for(const p of pieces){
@@ -2837,16 +2839,25 @@ function buildBasicWalkerTemplate(source){
  };
  const skinned=[];
  for(const p of pieces){
-   const pos=p.geo.attributes.position,indices=[],weights=[];
-   for(let i=0;i<pos.count;i++){
-     const w=chooseWeights(pos.getX(i),pos.getY(i));
-     indices.push(w[0],w[2],0,0);weights.push(w[1],w[3],0,0);
+   // Make triangle vertices unique, then assign all three vertices to the same bone.
+   // This produces true hinged body sections instead of rubbery blended deformation.
+   const geo=p.geo.index?p.geo.toNonIndexed():p.geo;
+   p.geo=geo;
+   const pos=geo.attributes.position,indices=[],weights=[];
+   for(let i=0;i<pos.count;i+=3){
+     const cx=(pos.getX(i)+pos.getX(i+1)+pos.getX(i+2))/3,
+           cy=(pos.getY(i)+pos.getY(i+1)+pos.getY(i+2))/3,
+           cz=(pos.getZ(i)+pos.getZ(i+1)+pos.getZ(i+2))/3,
+           boneIndex=chooseRigidBone(cx,cy,cz);
+     for(let k=0;k<3;k++){
+       indices.push(boneIndex,0,0,0);weights.push(1,0,0,0);
+     }
    }
-   p.geo.setAttribute("skinIndex",new THREE.Uint16BufferAttribute(indices,4));
-   p.geo.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));
+   geo.setAttribute("skinIndex",new THREE.Uint16BufferAttribute(indices,4));
+   geo.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));
    const cloneMat=m=>{const c=m.clone();c.side=THREE.DoubleSide;c.needsUpdate=true;return c};
    const mat=Array.isArray(p.material)?p.material.map(cloneMat):cloneMat(p.material);
-   const mesh=new THREE.SkinnedMesh(p.geo,mat);
+   const mesh=new THREE.SkinnedMesh(geo,mat);
    mesh.name=p.name;mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;mesh.userData.visualOnly=true;mesh.raycast=()=>{};
    rig.add(mesh);skinned.push(mesh);
  }
@@ -2909,7 +2920,10 @@ function syncBasicWalkerVisual(z,dt=0){
  // own joints fold and settle. Rotations only = no mesh stretching.
  if(z.dead){
    const age=Math.max(0,z.corpseAge||0),t=Math.max(0,Math.min(1,age/1.15));
-   const ease=t*t*(3-2*t),wob=Math.sin(age*8.1+(z.phase||0))*Math.exp(-age*2.2);
+   const ease=t*t*(3-2*t),damp=Math.exp(-age*1.55),
+         wob=Math.sin(age*8.1+(z.phase||0))*damp,
+         wob2=Math.sin(age*10.7+(z.phase||0)*1.73+1.2)*damp,
+         wob3=Math.sin(age*7.3+(z.phase||0)*.81+2.1)*damp;
    const side=(Math.sin((z.phase||0)*1.71)>=0?1:-1);
    const hips=bones.get("Hips"),spine=bones.get("Spine"),chest=bones.get("Chest"),neck=bones.get("Neck"),head=bones.get("Head"),
          lua=bones.get("L_UpperArm"),lla=bones.get("L_LowerArm"),rua=bones.get("R_UpperArm"),rla=bones.get("R_LowerArm"),
@@ -2923,14 +2937,14 @@ function syncBasicWalkerVisual(z,dt=0){
    if(chest)chest.rotation.set(.34*ease-wob*.04,side*.08*ease,-side*.22*ease);
    if(neck)neck.rotation.set(-.14*ease,0,side*.10*ease);
    if(head)head.rotation.set(-.18*ease+wob*.04,side*.16*ease,-side*.18*ease);
-   if(lua)lua.rotation.set(.72*ease+wob*.08,0,-.32*ease);
-   if(rua)rua.rotation.set(.60*ease-wob*.08,0,.34*ease);
-   if(lla)lla.rotation.set(.62*ease,0,-.12*ease);
-   if(rla)rla.rotation.set(.48*ease,0,.14*ease);
-   if(lul)lul.rotation.set(-.52*ease+wob*.04,0,-.10*ease);
-   if(rul)rul.rotation.set(.38*ease-wob*.04,0,.12*ease);
-   if(lll)lll.rotation.set(-.88*ease,0,0);
-   if(rll)rll.rotation.set(-.72*ease,0,0);
+   if(lua)lua.rotation.set(.72*ease+wob*.24,wob2*.08,.28*ease+wob3*.10);
+   if(rua)rua.rotation.set(.60*ease-wob2*.24,wob*.08,-.30*ease-wob3*.10);
+   if(lla)lla.rotation.set(.62*ease+wob2*.22,0,.10*ease+wob*.08);
+   if(rla)rla.rotation.set(.48*ease-wob*.22,0,-.12*ease-wob2*.08);
+   if(lul)lul.rotation.set(-.52*ease+wob3*.16,wob*.06,-.10*ease);
+   if(rul)rul.rotation.set(.38*ease-wob*.16,wob2*.06,.12*ease);
+   if(lll)lll.rotation.set(-.88*ease+wob*.26,0,0);
+   if(rll)rll.rotation.set(-.72*ease-wob2*.26,0,0);
    if(lfoot)lfoot.rotation.set(.34*ease,0,0);
    if(rfoot)rfoot.rotation.set(.28*ease,0,0);
    return;
@@ -2960,10 +2974,10 @@ function syncBasicWalkerVisual(z,dt=0){
    if(chest)chest.rotation.set(.20+attack*.08,0,-s*.035);
    if(neck)neck.rotation.set(-.24,0,0);
    if(head)head.rotation.set(-.10+attack*.04,0,s*.035);
-   if(lua)lua.rotation.set(.98+s*.22,0,-.34);
-   if(rua)rua.rotation.set(.98-s*.22,0,.34);
-   if(lla)lla.rotation.set(.58+Math.max(0,s)*.26,0,-.10);
-   if(rla)rla.rotation.set(.58+Math.max(0,-s)*.26,0,.10);
+   if(lua)lua.rotation.set(.98+s*.22,0,.28);
+   if(rua)rua.rotation.set(.98-s*.22,0,-.28);
+   if(lla)lla.rotation.set(.58+Math.max(0,s)*.26,0,.08);
+   if(rla)rla.rotation.set(.58+Math.max(0,-s)*.26,0,-.08);
    return;
  }
 
@@ -2982,10 +2996,12 @@ function syncBasicWalkerVisual(z,dt=0){
  if(head)head.rotation.set(.028*walk,-s*(.045+.020*run)*walk,s*(.012+.010*run)*walk+stagger*.025);
 
  // Make the arm motion visually obvious on this A-pose model.
- if(lua)lua.rotation.set(armBase-s*armAmp-attack*.42,0,-.055);
- if(rua)rua.rotation.set(armBase+s*armAmp-attack*.42,0,.055);
- if(lla)lla.rotation.set(.08+Math.max(0,s)*(.16+.10*run)+attack*.24,0,-.018);
- if(rla)rla.rotation.set(.08+Math.max(0,-s)*(.16+.10*run)+attack*.24,0,.018);
+ // The source is an A-pose. Rotate inward around Z so the arms hang beside
+ // the torso, then swing them fore/aft around X from those real shoulder joints.
+ if(lua)lua.rotation.set(armBase-s*armAmp-attack*.42,0,.34);
+ if(rua)rua.rotation.set(armBase+s*armAmp-attack*.42,0,-.34);
+ if(lla)lla.rotation.set(.12+Math.max(0,s)*(.20+.12*run)+attack*.24,0,.06);
+ if(rla)rla.rotation.set(.12+Math.max(0,-s)*(.20+.12*run)+attack*.24,0,-.06);
 
  if(lul)lul.rotation.set(s*thighAmp,0,0);
  if(rul)rul.rotation.set(-s*thighAmp,0,0);
