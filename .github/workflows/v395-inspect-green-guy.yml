@@ -1,0 +1,55 @@
+name: v395 inspect green guy geometry
+on:
+  push:
+    paths:
+      - '.github/workflows/v395-inspect-green-guy.yml'
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect GLB geometry
+        run: |
+          python3 - <<'PY'
+          import json,struct,math
+          from pathlib import Path
+          p=Path('assets/green guy.glb');b=p.read_bytes()
+          magic,ver,total=struct.unpack_from('<4sII',b,0)
+          pos=12;n,typ=struct.unpack_from('<II',b,pos);pos+=8
+          g=json.loads(b[pos:pos+n].decode('utf-8').rstrip('\x00 '));pos+=n
+          if pos%4: pos+=(4-pos%4)
+          binlen,bintype=struct.unpack_from('<II',b,pos);pos+=8
+          blob=b[pos:pos+binlen]
+          cts={5120:'b',5121:'B',5122:'h',5123:'H',5125:'I',5126:'f'}
+          cs={5120:1,5121:1,5122:2,5123:2,5125:4,5126:4}
+          comps={'SCALAR':1,'VEC2':2,'VEC3':3,'VEC4':4,'MAT4':16}
+          def read_accessor(ai):
+            a=g['accessors'][ai];bv=g['bufferViews'][a['bufferView']]
+            ct=a['componentType'];fmt='<'+cts[ct]*comps[a['type']]
+            stride=bv.get('byteStride',cs[ct]*comps[a['type']])
+            off=bv.get('byteOffset',0)+a.get('byteOffset',0);out=[]
+            for i in range(a['count']):
+              out.append(struct.unpack_from(fmt,blob,off+i*stride))
+            return out
+          print('nodes')
+          for i,nod in enumerate(g.get('nodes',[])):
+            print(i,nod.get('name'), 'mesh',nod.get('mesh'),'children',nod.get('children'),'T',nod.get('translation'),'R',nod.get('rotation'),'S',nod.get('scale'),'matrix',nod.get('matrix'))
+          print('materials')
+          for i,m in enumerate(g.get('materials',[])):
+            print(i,m.get('name'),m.get('pbrMetallicRoughness',{}).get('baseColorFactor'))
+          print('meshes')
+          for mi,m in enumerate(g.get('meshes',[])):
+            print('mesh',mi,m.get('name'),'prims',len(m.get('primitives',[])))
+            for pi,pr in enumerate(m.get('primitives',[])):
+              pa=pr.get('attributes',{}).get('POSITION')
+              verts=read_accessor(pa) if pa is not None else []
+              if verts:
+                xs=[v[0] for v in verts];ys=[v[1] for v in verts];zs=[v[2] for v in verts]
+                print(' prim',pi,'mat',pr.get('material'),'count',len(verts),'bounds',min(xs),max(xs),min(ys),max(ys),min(zs),max(zs))
+                # distribution slices for rough limb/body proportions
+                H=max(ys)-min(ys); ymin=min(ys); ymax=max(ys)
+                for frac in [0.1,0.25,0.4,0.55,0.7,0.85]:
+                  yy=ymin+H*frac; band=[v for v in verts if abs(v[1]-yy)<H*.02]
+                  if band:
+                    print('  yfrac',frac,'xrange',min(v[0] for v in band),max(v[0] for v in band),'zrange',min(v[2] for v in band),max(v[2] for v in band),'n',len(band))
+          PY
