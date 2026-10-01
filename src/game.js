@@ -645,6 +645,7 @@ buildingColliders.length=0;
 
 function buildNewCitySpawnZones(map){
  newCitySpawnZones.length=0;
+ if(typeof zombieSpawnPlayableCells!=="undefined"){zombieSpawnPlayableCells.clear();zombieSpawnPlayableCellsReady=false}
  map.updateMatrixWorld(true);
  const box3=new THREE.Box3(),size3=new THREE.Vector3();
  map.traverse(o=>{
@@ -667,6 +668,14 @@ function buildNewCitySpawnZones(map){
 function pointOnNewCitySpawnZone(x,z,pad=.55){
  for(const zone of newCitySpawnZones){
    if(x>zone.minX+pad&&x<zone.maxX-pad&&z>zone.minZ+pad&&z<zone.maxZ-pad)return true;
+ }
+ return false;
+}
+function pointNearNewCitySpawnZone(x,z,maxGap=12){
+ for(const zone of newCitySpawnZones){
+   const dx=x<zone.minX?zone.minX-x:x>zone.maxX?x-zone.maxX:0;
+   const dz=z<zone.minZ?zone.minZ-z:z>zone.maxZ?z-zone.maxZ:0;
+   if(dx*dx+dz*dz<=maxGap*maxGap)return true;
  }
  return false;
 }
@@ -1323,6 +1332,7 @@ function zombieSpawnCellKey(ix,iz){return ix+","+iz}
 function zombieSpawnCellOpen(ix,iz){
  const x=ix*ZNAV_CELL,z=iz*ZNAV_CELL;
  if(x<ZNAV_MIN_X+1||x>ZNAV_MAX_X-1||z<ZNAV_MIN_Z+1||z>ZNAV_MAX_Z-1)return false;
+ if(!pointNearNewCitySpawnZone(x,z,12))return false;
  if(zombieSpawnGroundY(x,z)===null)return false;
  return !zombiePointBlocked(x,z,.46);
 }
@@ -3281,6 +3291,9 @@ function zombieSpawnSpreadOk(x,z,minSeparation,minAngle){
 }
 function validZombieSpawn(x,z){
  if(x<ZNAV_MIN_X+2||x>ZNAV_MAX_X-2||z<ZNAV_MIN_Z+2||z>ZNAV_MAX_Z-2)return false;
+ // v388: stay within the authored city footprint. Nearby sidewalks/plazas and
+ // doorway-connected interiors are still allowed; detached exterior ground is not.
+ if(!pointNearNewCitySpawnZone(x,z,12))return false;
  if(zombieSpawnGroundY(x,z)===null)return false;
  // Use near-body clearance so real passable doorways/entrances stay eligible.
  if(insideBuilding(x,z,.46))return false;
