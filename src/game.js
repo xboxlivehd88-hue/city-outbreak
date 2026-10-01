@@ -2661,6 +2661,44 @@ function attachRadiatedGreenGuy(z,g){
  console.log("CITY OUTBREAK: Radiated uses auto-rigged green guy.glb",{bones:z.radiatedGreenBones.size,facingDeg:180});
  return true;
 }
+function buildRadiatedGreenHitboxes(z){
+ if(!z?.radiatedGreenBones?.size)return false;
+ // Retire the old procedural body's ray targets for this zombie only. Those meshes
+ // remain hidden support geometry for legacy limb/ragdoll bookkeeping.
+ if(z.hitMeshes)for(const o of z.hitMeshes)if(o)o.raycast=()=>{};
+
+ const mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false});
+ const hitboxes=[];
+ const add=(boneName,geo,x,y,zz,part,isHead=false)=>{
+   const bone=z.radiatedGreenBones.get(boneName);if(!bone)return null;
+   const q=new THREE.Mesh(geo,mat);q.position.set(x,y,zz);q.name="RadiatedGreenHit_"+part+"_"+boneName;
+   q.castShadow=false;q.receiveShadow=false;q.userData.zombie=z;q.userData.part=part;
+   if(isHead)q.userData.isHead=true;
+   bone.add(q);hitboxes.push(q);
+   if(z.ownedGeometries)z.ownedGeometries.push(geo);
+   return q;
+ };
+ // These volumes follow the auto-rig bones, so the hit zones stay on the visible
+ // Green Guy while walking, attacking, staggering and losing limbs.
+ add("Head",new THREE.SphereGeometry(.245,10,8),0,.055,0,"head",true);
+ add("Chest",new THREE.BoxGeometry(.54,.66,.36),0,-.11,0,"torso");
+ add("Hips",new THREE.BoxGeometry(.38,.32,.30),0,-.07,0,"torso");
+
+ add("L_UpperArm",new THREE.BoxGeometry(.34,.17,.18),-.17,0,0,"leftArm");
+ add("L_LowerArm",new THREE.BoxGeometry(.31,.15,.17),-.155,0,0,"leftArm");
+ add("R_UpperArm",new THREE.BoxGeometry(.34,.17,.18), .17,0,0,"rightArm");
+ add("R_LowerArm",new THREE.BoxGeometry(.31,.15,.17), .155,0,0,"rightArm");
+
+ add("L_UpperLeg",new THREE.BoxGeometry(.20,.44,.22),0,-.21,0,"leftLeg");
+ add("L_LowerLeg",new THREE.BoxGeometry(.18,.43,.20),0,-.205,0,"leftLeg");
+ add("R_UpperLeg",new THREE.BoxGeometry(.20,.44,.22),0,-.21,0,"rightLeg");
+ add("R_LowerLeg",new THREE.BoxGeometry(.18,.43,.20),0,-.205,0,"rightLeg");
+
+ if(z.ownedMaterials)z.ownedMaterials.push(mat);
+ z.radiatedHitboxes=hitboxes;z.hitMeshes=hitboxes;
+ document.documentElement.dataset.radiatedGreenHitboxes=String(hitboxes.length);
+ return hitboxes.length>0;
+}
 function syncRadiatedGreenGuy(z,dt=0){
  const h=z?.radiatedGreenVisual,bones=z?.radiatedGreenBones;if(!h||!bones?.size)return;
  const g=z.g,gx=g.position.x,gz=g.position.z,lastX=Number.isFinite(z.radiatedGreenLastX)?z.radiatedGreenLastX:gx,lastZ=Number.isFinite(z.radiatedGreenLastZ)?z.radiatedGreenLastZ:gz;
@@ -2670,9 +2708,13 @@ function syncRadiatedGreenGuy(z,dt=0){
  z.radiatedGreenMoveBlend=THREE.MathUtils.lerp(z.radiatedGreenMoveBlend||0,targetMove,Math.min(1,dt*7));
  const blend=z.radiatedGreenMoveBlend,p=z.rigPolishPhase||z.phase||0,step=Math.sin(p),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
  h.rotation.y=Math.PI;
- h.position.y=Math.abs(step)*.028*blend;
- h.rotation.x=-.035*blend-attack*.025;
- h.rotation.z=step*.025*blend+(z.staggerDir||1)*(z.stagger||0)*.045;
+ if(z.leglessCrawler){
+   h.position.y=-.43;h.rotation.x=-.72;h.rotation.z=step*.018*blend;
+ }else{
+   h.position.y=Math.abs(step)*.028*blend;
+   h.rotation.x=-.035*blend-attack*.025;
+   h.rotation.z=step*.025*blend+(z.staggerDir||1)*(z.stagger||0)*.045;
+ }
  const hips=bones.get("Hips"),spine=bones.get("Spine"),chest=bones.get("Chest"),neck=bones.get("Neck"),head=bones.get("Head"),
        lua=bones.get("L_UpperArm"),lla=bones.get("L_LowerArm"),rua=bones.get("R_UpperArm"),rla=bones.get("R_LowerArm"),
        lul=bones.get("L_UpperLeg"),lll=bones.get("L_LowerLeg"),rul=bones.get("R_UpperLeg"),rll=bones.get("R_LowerLeg");
@@ -2681,11 +2723,13 @@ function syncRadiatedGreenGuy(z,dt=0){
  if(chest)chest.rotation.set(-.035*blend,0,step*.030*blend);
  if(neck)neck.rotation.set(.025*blend,0,-step*.018*blend);
  if(head)head.rotation.set(.035*blend,-step*.055*blend,step*.020*blend);
- const armSwing=step*.28*blend,attackReach=attack*.32;
- if(lua){radiatedArmTarget.set(-.10,-.94,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
- if(rua){radiatedArmTarget.set(.10,-.94,-armSwing-attackReach).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
- if(lla)lla.rotation.set(0,0,-.10-attack*.10);
- if(rla)rla.rotation.set(0,0,.10+attack*.10);
+ const armSwing=step*.24*blend,attackReach=attack*.28;
+ // v396: keep both arms visibly outside the torso. The previous near-vertical
+ // target pulled the static T-pose mesh inward until the arms looked fused to the body.
+ if(lua){radiatedArmTarget.set(-.34,-.90,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
+ if(rua){radiatedArmTarget.set(.34,-.90,-armSwing-attackReach).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
+ if(lla)lla.rotation.set(0,0,-.06-attack*.08);
+ if(rla)rla.rotation.set(0,0,.06+attack*.08);
  if(lul)lul.rotation.set(step*.36*blend,0,0);
  if(rul)rul.rotation.set(-step*.36*blend,0,0);
  if(lll)lll.rotation.set(Math.max(0,-step)*.48*blend,0,0);
@@ -3292,6 +3336,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    hitMeshes.push(o)
  });
  zz.hitMeshes=hitMeshes;
+ if(kind==="radiated")buildRadiatedGreenHitboxes(zz);
  zombies.push(zz);if(kind==="boss")currentBoss=zz
 }
 
