@@ -35,3 +35,5 @@ jobs:
           assert len(g.get('meshes',[]))==3
           print('PASS static source GLB: runtime auto-rig required')
           PY
+
+# trigger v395 validation
