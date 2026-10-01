@@ -955,14 +955,11 @@ function addCityHallStairSideWallColliders(map){
  console.log("CITY OUTBREAK: City Hall stair side-wall collision added",{added});
 }
 
-// v411: exact photo-matched fence placement.
-// The user's photos correspond to the real player-width alley between
-// House_03__1_ and House_04__2_. Ground-wall measurement:
-//   House_03__1_ ends at Z ~= 75.47
-//   House_04__2_ begins at Z ~= 76.98
-//   open width ~= 1.50m, center Z ~= 76.226
-// The two street-facing wall planes are X ~= -9.748 and -9.531, so the
-// reference Fence_01 panel is centered at X=-9.64 and left at its exact scale.
+// v412: refine the approved photo-matched fence placement.
+// Keep the exact alley between House_03__1_ and House_04__2_, but move the
+// visible panel 15% of its original ~1.58m width deeper into the alley
+// (~0.24m toward -X) and widen it slightly so each end overlaps the building
+// edges instead of reading as a freestanding panel.
 function addPhotoMatchedHouseGapFence(map){
  const source=map.getObjectByName("Fence_01__22_")||map.getObjectByName("Fence_01__28_")||map.getObjectByName("Fence_01");
  if(!source){console.warn("CITY OUTBREAK: v411 photo fence source not found");return}
@@ -975,7 +972,7 @@ function addPhotoMatchedHouseGapFence(map){
 
  // Clone the exact panel at its authored world orientation/scale first.
  const fence=source.clone(true);
- fence.name="PhotoMatchedHouseGapFence_v411";
+ fence.name="PhotoMatchedHouseGapFence_v412";
  fence.matrixAutoUpdate=true;
  fence.position.copy(basePos);
  fence.quaternion.copy(baseQuat);
@@ -983,17 +980,29 @@ function addPhotoMatchedHouseGapFence(map){
  fence.traverse(o=>{
    o.visible=true;
    o.userData.externalMapAsset=true;
-   o.userData.v411PhotoGapFence=true;
+   o.userData.v412PhotoGapFence=true;
    if(o.isMesh){o.castShadow=false;o.receiveShadow=false}
  });
  map.add(fence);
  map.updateMatrixWorld(true);fence.updateMatrixWorld(true);
 
- // The GLB fence root has a large internal pivot offset. Align the visible
- // geometry center itself to the photographed alley rather than moving its root.
+ // The GLB fence root has a large internal pivot offset. Work from the
+ // visible geometry itself, widen along its actual long axis, then re-center
+ // the visible panel in the photographed opening.
  const box=new THREE.Box3().setFromObject(fence),size=new THREE.Vector3(),center=new THREE.Vector3();
  box.getSize(size);box.getCenter(center);
- const targetWorld=new THREE.Vector3(-9.64,center.y,76.226);
+
+ // Target ~1.72m visible width: enough to overlap the ~1.50m opening by
+ // roughly 11cm per side without making the panel look oversized.
+ const currentLong=Math.max(size.x,size.z),targetLong=1.72,widen=targetLong/Math.max(.001,currentLong);
+ if(size.z>=size.x)fence.scale.z*=widen;
+ else fence.scale.x*=widen;
+ fence.updateMatrixWorld(true);
+
+ // "Back 15%" = 15% of the original ~1.58m panel width ~= 0.24m deeper
+ // into the alley. The houses extend toward -X; the street is on +X.
+ box.setFromObject(fence);box.getSize(size);box.getCenter(center);
+ const targetWorld=new THREE.Vector3(-9.64-(1.58*.15),center.y,76.226);
  const currentLocal=map.worldToLocal(center.clone());
  const targetLocal=map.worldToLocal(targetWorld.clone());
  fence.position.add(targetLocal.sub(currentLocal));
@@ -1004,14 +1013,14 @@ function addPhotoMatchedHouseGapFence(map){
    x:center.x,z:center.z,
    hx:size.x*.5+.045,
    hz:size.z*.5+.045,
-   source:"v411PhotoGapFence"
+   source:"v412PhotoGapFence"
  };
  buildingColliders.push(hit);indexCityCollider(hit);
  ZNAV_BLOCK_CACHE.clear();
  zombieSpawnPlayableCellsReady=false;
  zombieSpawnPlayableCells.clear();
- document.documentElement.dataset.v411PhotoGapFence="1";
- console.log("CITY OUTBREAK: v411 exact photographed alley fence added",{
+ document.documentElement.dataset.v412PhotoGapFence="1";
+ console.log("CITY OUTBREAK: v412 widened/recessed photographed alley fence added",{
    gameCenter:[center.x,center.y,center.z],
    size:[size.x,size.y,size.z],
    targetGap:{left:"House_03__1_",right:"House_04__2_",width:1.502,centerZ:76.226,facadeX:-9.64}
