@@ -15,12 +15,18 @@ try{
  console.log("CITY OUTBREAK: custom rigged zombie loaded",zombieRigAsset.animations.map(a=>a.name));
 }catch(e){zombieRigError=e;console.error("CITY OUTBREAK: zombie rig failed to load",e)}
 
-// v393: user-supplied Radiated zombie visual. Gameplay still uses the existing
-// invisible zombie rig/hitboxes; this GLB is visual-only and normalized at runtime.
-let radiatedGreenGuyAsset=null,radiatedGreenGuyError=null;
-new GLTFLoader().load("assets/green%20guy.glb?v=393",gltf=>{
+// v395: user-supplied Radiated zombie visual. The source GLB is a static T-pose,
+ // so it is auto-rigged at runtime while the existing invisible zombie rig/hitboxes
+ // continue to own gameplay, damage, navigation and ragdoll bookkeeping.
+let radiatedGreenGuyAsset=null,radiatedGreenGuyTemplate=null,radiatedGreenGuyError=null;
+new GLTFLoader().load("assets/green%20guy.glb?v=395",gltf=>{
  radiatedGreenGuyAsset=gltf;
- console.log("CITY OUTBREAK: green guy radiated model loaded",{animations:gltf.animations?.map(a=>a.name)||[]});
+ radiatedGreenGuyTemplate=buildRadiatedGreenGuyTemplate(gltf.scene);
+ console.log("CITY OUTBREAK: green guy radiated model loaded",{
+   animations:gltf.animations?.map(a=>a.name)||[],
+   autoRig:!!radiatedGreenGuyTemplate,
+   height:radiatedGreenGuyTemplate?.userData?.sourceHeight||0
+ });
  for(const z of zombies){if(z.kind==="radiated"&&!z.radiatedGreenVisual)attachRadiatedGreenGuy(z,z.g)}
 },undefined,e=>{radiatedGreenGuyError=e;console.error("CITY OUTBREAK: green guy radiated model failed to load",e)});
 
@@ -2552,86 +2558,138 @@ const ZOMBIE_RIG_PROFILES=Object.freeze({
 function cloneShamblerRig(){
  return zombieRigAsset?SkeletonUtils.clone(zombieRigAsset.scene):null;
 }
-const RADIATED_GREEN_BONE_ALIASES=Object.freeze({
- Hips:["hips","pelvis","root"],
- Spine:["spine","spine1"],
- Chest:["chest","upperchest","spine2","spine1"],
- Neck:["neck"],Head:["head"],
- L_UpperArm:["leftupperarm","leftarm","lupperarm","upperarml"],
- L_LowerArm:["leftforearm","leftlowerarm","llowerarm","forearml"],
- R_UpperArm:["rightupperarm","rightarm","rupperarm","upperarmr"],
- R_LowerArm:["rightforearm","rightlowerarm","rlowerarm","forearmr"],
- L_UpperLeg:["leftupleg","leftupperleg","lupperleg","leftthigh"],
- L_LowerLeg:["leftleg","leftlowerleg","llowerleg","leftcalf"],
- R_UpperLeg:["rightupleg","rightupperleg","rupperleg","rightthigh"],
- R_LowerLeg:["rightleg","rightlowerleg","rlowerleg","rightcalf"]
-});
-function radiatedBoneKey(name=""){return name.toLowerCase().replace(/mixamorig/g,"").replace(/[^a-z0-9]/g,"")}
-function findRadiatedGreenBone(root,aliases){
- const wanted=new Set(aliases.map(radiatedBoneKey)),bones=[];root.traverse(o=>{if(o.isBone)bones.push(o)});
- return bones.find(b=>wanted.has(radiatedBoneKey(b.name)))||null;
+const RADIATED_GREEN_BONE_KEYS=Object.freeze([
+ "Hips","Spine","Chest","Neck","Head",
+ "L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm",
+ "L_UpperLeg","L_LowerLeg","R_UpperLeg","R_LowerLeg"
+]);
+const radiatedArmRestL=new THREE.Vector3(-1,0,0),radiatedArmRestR=new THREE.Vector3(1,0,0),radiatedArmTarget=new THREE.Vector3();
+function buildRadiatedGreenGuyTemplate(source){
+ if(!source)return null;
+ source.updateMatrixWorld(true);
+ const invRoot=new THREE.Matrix4().copy(source.matrixWorld).invert(),pieces=[];
+ source.traverse(o=>{
+   if(!o.isMesh||!o.geometry)return;
+   const geo=o.geometry.clone();
+   const rel=new THREE.Matrix4().multiplyMatrices(invRoot,o.matrixWorld);
+   geo.applyMatrix4(rel);geo.computeBoundingBox();
+   pieces.push({geo,material:o.material,name:o.name||"GreenGuyMesh"});
+ });
+ if(!pieces.length)return null;
+ const box=new THREE.Box3().makeEmpty();
+ for(const p of pieces)box.union(p.geo.boundingBox);
+ const size=new THREE.Vector3(),center=new THREE.Vector3();box.getSize(size);box.getCenter(center);
+ const h=size.y;
+ if(!Number.isFinite(h)||h<.25)return null;
+ const shift=new THREE.Matrix4().makeTranslation(-center.x,-box.min.y,-center.z);
+ for(const p of pieces){p.geo.applyMatrix4(shift);p.geo.computeBoundingBox()}
+ const rig=new THREE.Group();rig.name="RadiatedGreenGuyAutoRig";rig.userData.sourceHeight=h;
+ const bone=(name,x,y,z)=>{const b=new THREE.Bone();b.name="Green"+name;b.position.set(x,y,z);return b};
+ const hips=bone("Hips",0,h*.50,0),
+       spine=bone("Spine",0,h*.105,0),
+       chest=bone("Chest",0,h*.105,0),
+       neck=bone("Neck",0,h*.095,0),
+       head=bone("Head",0,h*.075,0),
+       lua=bone("L_UpperArm",-h*.16,h*.035,0),
+       lla=bone("L_LowerArm",-h*.17,0,0),
+       rua=bone("R_UpperArm", h*.16,h*.035,0),
+       rla=bone("R_LowerArm", h*.17,0,0),
+       lul=bone("L_UpperLeg",-h*.065,-h*.02,0),
+       lll=bone("L_LowerLeg",0,-h*.245,0),
+       rul=bone("R_UpperLeg", h*.065,-h*.02,0),
+       rll=bone("R_LowerLeg",0,-h*.245,0);
+ hips.add(spine,lul,rul);spine.add(chest);chest.add(neck,lua,rua);neck.add(head);lua.add(lla);rua.add(rla);lul.add(lll);rul.add(rll);rig.add(hips);
+ const bones=[hips,spine,chest,neck,head,lua,lla,rua,rla,lul,lll,rul,rll],bi=Object.freeze({
+   hips:0,spine:1,chest:2,neck:3,head:4,lua:5,lla:6,rua:7,rla:8,lul:9,lll:10,rul:11,rll:12
+ });
+ const chooseWeights=(x,y)=>{
+   const ax=Math.abs(x),left=x<0;
+   if(y>h*.845)return[bi.head,1,bi.neck,0];
+   if(y>h*.795)return[bi.neck,1,bi.chest,0];
+   if(y>h*.58&&y<h*.82&&ax>h*.145){
+     const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla,elbow=h*.325,blend=h*.035;
+     if(ax<=elbow-blend)return[up,1,lo,0];
+     if(ax>=elbow+blend)return[lo,1,up,0];
+     const t=(ax-(elbow-blend))/(blend*2);return[up,1-t,lo,t];
+   }
+   if(y<h*.50){
+     if(y>h*.43&&ax<h*.085)return[bi.hips,1,bi.spine,0];
+     const up=left?bi.lul:bi.rul,lo=left?bi.lll:bi.rll,knee=h*.245,blend=h*.035;
+     if(y>=knee+blend)return[up,1,lo,0];
+     if(y<=knee-blend)return[lo,1,up,0];
+     const t=(y-(knee-blend))/(blend*2);return[lo,1-t,up,t];
+   }
+   if(y<h*.59)return[bi.hips,1,bi.spine,0];
+   if(y<h*.69)return[bi.spine,1,bi.chest,0];
+   return[bi.chest,1,bi.spine,0];
+ };
+ const skinned=[];
+ for(const p of pieces){
+   const pos=p.geo.attributes.position,indices=[],weights=[];
+   for(let i=0;i<pos.count;i++){
+     const w=chooseWeights(pos.getX(i),pos.getY(i)),i0=w[0],w0=w[1],i1=w[2],w1=w[3];
+     indices.push(i0,i1,0,0);weights.push(w0,w1,0,0);
+   }
+   p.geo.setAttribute("skinIndex",new THREE.Uint16BufferAttribute(indices,4));
+   p.geo.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));
+   const cloneMat=m=>{const c=m.clone();c.side=THREE.DoubleSide;c.needsUpdate=true;return c};
+   const mat=Array.isArray(p.material)?p.material.map(cloneMat):cloneMat(p.material);
+   const mesh=new THREE.SkinnedMesh(p.geo,mat);
+   mesh.name=p.name;mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;mesh.userData.visualOnly=true;mesh.raycast=()=>{};
+   rig.add(mesh);skinned.push(mesh);
+ }
+ rig.updateMatrixWorld(true);
+ const skeleton=new THREE.Skeleton(bones);skeleton.calculateInverses();
+ for(const mesh of skinned)mesh.bind(skeleton,mesh.matrixWorld);
+ return rig;
 }
 function attachRadiatedGreenGuy(z,g){
- if(!z||z.kind!=="radiated"||z.radiatedGreenVisual||!radiatedGreenGuyAsset?.scene)return false;
- const holder=new THREE.Group(),model=SkeletonUtils.clone(radiatedGreenGuyAsset.scene);
+ if(!z||z.kind!=="radiated"||z.radiatedGreenVisual||!radiatedGreenGuyTemplate)return false;
+ const holder=new THREE.Group(),model=SkeletonUtils.clone(radiatedGreenGuyTemplate);
  holder.name="RadiatedGreenGuyVisual";model.name="RadiatedGreenGuyModel";
- model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;o.userData.visualOnly=true;o.raycast=()=>{}}});
- model.updateMatrixWorld(true);
- const box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3(),center=new THREE.Vector3();box.getSize(size);box.getCenter(center);
- if(!Number.isFinite(size.y)||size.y<.001)return false;
- model.position.x-=center.x;model.position.z-=center.z;model.position.y-=box.min.y;
- holder.add(model);holder.scale.setScalar(1.98/size.y);g.add(holder);
- z.radiatedGreenVisual=holder;z.radiatedGreenModel=model;z.radiatedGreenLinks=[];z.radiatedGreenBones=new Map();
- if(z.rigVisual){
-   const usedTargets=new Set();
-   for(const [sourceName,aliases] of Object.entries(RADIATED_GREEN_BONE_ALIASES)){
-     const source=z.rigVisual.getObjectByName(sourceName),target=findRadiatedGreenBone(model,aliases);
-     if(!source||!target||usedTargets.has(target))continue;
-     usedTargets.add(target);z.radiatedGreenBones.set(sourceName,target);
-     z.radiatedGreenLinks.push({source,target,sourceBase:source.quaternion.clone(),targetBase:target.quaternion.clone(),delta:new THREE.Quaternion()});
-   }
-   z.rigVisual.traverse(o=>{if(o.isMesh)o.visible=false});
+ const sourceHeight=radiatedGreenGuyTemplate.userData.sourceHeight||1.98;
+ holder.scale.setScalar(1.98/sourceHeight);
+ // The uploaded GLB's authored forward axis is opposite the live zombie rig.
+ holder.rotation.y=Math.PI;
+ holder.add(model);g.add(holder);
+ z.radiatedGreenVisual=holder;z.radiatedGreenModel=model;z.radiatedGreenBones=new Map();
+ for(const key of RADIATED_GREEN_BONE_KEYS){
+   const b=model.getObjectByName("Green"+key);if(b)z.radiatedGreenBones.set(key,b);
  }
- if(!z.radiatedGreenLinks.length&&radiatedGreenGuyAsset.animations?.length){
-   const clips=radiatedGreenGuyAsset.animations;
-   const clip=clips.find(c=>/walk|run|move|shamble|locomotion/i.test(c.name))||clips.find(c=>/idle/i.test(c.name))||clips[0];
-   if(clip){z.radiatedGreenMixer=new THREE.AnimationMixer(model);z.radiatedGreenAction=z.radiatedGreenMixer.clipAction(clip);z.radiatedGreenAction.setLoop(THREE.LoopRepeat,Infinity).play()}
- }
- console.log("CITY OUTBREAK: Radiated uses green guy.glb",{retargetedBones:z.radiatedGreenLinks.length,animation:z.radiatedGreenAction?._clip?.name||""});
+ if(z.rigVisual)z.rigVisual.traverse(o=>{if(o.isMesh)o.visible=false});
+ z.radiatedGreenLastX=g.position.x;z.radiatedGreenLastZ=g.position.z;z.radiatedGreenMoveBlend=0;
+ console.log("CITY OUTBREAK: Radiated uses auto-rigged green guy.glb",{bones:z.radiatedGreenBones.size,facingDeg:180});
  return true;
 }
 function syncRadiatedGreenGuy(z,dt=0){
- if(!z?.radiatedGreenVisual)return;
- if(z.radiatedGreenMixer&&!z.dead&&!z.knockdown){
-   if(z.radiatedGreenAction)z.radiatedGreenAction.timeScale=Math.max(.65,Math.min(1.8,z.speed*.58));
-   z.radiatedGreenMixer.update(dt);
- }
- if(z.radiatedGreenLinks?.length){
-   for(const l of z.radiatedGreenLinks){
-     l.delta.copy(l.sourceBase).invert().multiply(l.source.quaternion);
-     l.target.quaternion.copy(l.targetBase).multiply(l.delta);
-   }
-   return;
- }
- // v394: green guy.glb is a static mesh (no skin/animations). Preserve the
- // existing invisible gameplay rig, but give the visible GLB a subtle whole-body
- // shamble driven by the same locomotion phase so it does not glide rigidly.
- const h=z.radiatedGreenVisual,g=z.g;
- if(z.dead||z.knockdown){
-   h.position.y=THREE.MathUtils.lerp(h.position.y,0,Math.min(1,dt*12));
-   h.rotation.x=THREE.MathUtils.lerp(h.rotation.x,0,Math.min(1,dt*12));
-   h.rotation.z=THREE.MathUtils.lerp(h.rotation.z,0,Math.min(1,dt*12));
-   return;
- }
- const gx=g.position.x,gz=g.position.z,lastX=Number.isFinite(z.radiatedGreenLastX)?z.radiatedGreenLastX:gx,lastZ=Number.isFinite(z.radiatedGreenLastZ)?z.radiatedGreenLastZ:gz;
+ const h=z?.radiatedGreenVisual,bones=z?.radiatedGreenBones;if(!h||!bones?.size)return;
+ const g=z.g,gx=g.position.x,gz=g.position.z,lastX=Number.isFinite(z.radiatedGreenLastX)?z.radiatedGreenLastX:gx,lastZ=Number.isFinite(z.radiatedGreenLastZ)?z.radiatedGreenLastZ:gz;
  const speedNow=Math.hypot(gx-lastX,gz-lastZ)/Math.max(dt,.001);
  z.radiatedGreenLastX=gx;z.radiatedGreenLastZ=gz;
- const targetMove=speedNow>.08?1:0;
+ const canWalk=!z.dead&&!z.knockdown,targetMove=canWalk&&speedNow>.08?1:0;
  z.radiatedGreenMoveBlend=THREE.MathUtils.lerp(z.radiatedGreenMoveBlend||0,targetMove,Math.min(1,dt*7));
- const b=z.radiatedGreenMoveBlend,p=z.rigPolishPhase||z.phase||0,attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
- h.position.y=Math.abs(Math.sin(p))*0.035*b;
- h.rotation.x=-.040*b+Math.sin(p*2)*.012*b-attack*.055;
- h.rotation.z=Math.sin(p)*.045*b+(z.staggerDir||1)*(z.stagger||0)*.06;
+ const blend=z.radiatedGreenMoveBlend,p=z.rigPolishPhase||z.phase||0,step=Math.sin(p),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
+ h.rotation.y=Math.PI;
+ h.position.y=Math.abs(step)*.028*blend;
+ h.rotation.x=-.035*blend-attack*.025;
+ h.rotation.z=step*.025*blend+(z.staggerDir||1)*(z.stagger||0)*.045;
+ const hips=bones.get("Hips"),spine=bones.get("Spine"),chest=bones.get("Chest"),neck=bones.get("Neck"),head=bones.get("Head"),
+       lua=bones.get("L_UpperArm"),lla=bones.get("L_LowerArm"),rua=bones.get("R_UpperArm"),rla=bones.get("R_LowerArm"),
+       lul=bones.get("L_UpperLeg"),lll=bones.get("L_LowerLeg"),rul=bones.get("R_UpperLeg"),rll=bones.get("R_LowerLeg");
+ if(hips)hips.rotation.set(0,step*.035*blend,0);
+ if(spine)spine.rotation.set(-.025*blend,0,-step*.020*blend);
+ if(chest)chest.rotation.set(-.035*blend,0,step*.030*blend);
+ if(neck)neck.rotation.set(.025*blend,0,-step*.018*blend);
+ if(head)head.rotation.set(.035*blend,-step*.055*blend,step*.020*blend);
+ const armSwing=step*.28*blend,attackReach=attack*.32;
+ if(lua){radiatedArmTarget.set(-.10,-.94,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
+ if(rua){radiatedArmTarget.set(.10,-.94,-armSwing-attackReach).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
+ if(lla)lla.rotation.set(0,0,-.10-attack*.10);
+ if(rla)rla.rotation.set(0,0,.10+attack*.10);
+ if(lul)lul.rotation.set(step*.36*blend,0,0);
+ if(rul)rul.rotation.set(-step*.36*blend,0,0);
+ if(lll)lll.rotation.set(Math.max(0,-step)*.48*blend,0,0);
+ if(rll)rll.rotation.set(Math.max(0,step)*.48*blend,0,0);
 }
 function applyZombieRigProfile(rig,kind){
  const p=ZOMBIE_RIG_PROFILES[kind]||SHAMBLER_RIG_PROFILE;
