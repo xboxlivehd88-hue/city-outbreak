@@ -2863,8 +2863,9 @@ function buildBasicWalkerTemplate(source){
  });
  const chooseRigidBone=(x,y,z)=>{
    const yf=y/h,ax=Math.abs(x),left=x<0;
-   if(yf>.84)return bi.head;
-   if(yf>.77)return bi.neck;
+   // v406: keep the full head/neck visual shell rigidly together. Splitting
+   // these triangles between Head and Neck made the face tear apart on death.
+   if(yf>.745)return bi.head;
 
    // v404: rigid anatomical segmentation. Each triangle belongs to exactly one
    // body part, so clothing/body vertices cannot stretch between torso and limbs.
@@ -2968,8 +2969,8 @@ function syncBasicWalkerVisual(z,dt=0){
  // let the approved root ragdoll move/tumble the whole zombie while this model's
  // own joints fold and settle. Rotations only = no mesh stretching.
  if(z.dead){
-   const age=Math.max(0,z.corpseAge||0),t=Math.max(0,Math.min(1,age/1.15));
-   const ease=t*t*(3-2*t),damp=Math.exp(-age*1.55),
+   const age=Math.max(0,z.corpseAge||0),t=Math.max(0,Math.min(1,age/1.25));
+   const ease=t*t*(3-2*t),damp=Math.exp(-age*1.45),
          wob=Math.sin(age*8.1+(z.phase||0))*damp,
          wob2=Math.sin(age*10.7+(z.phase||0)*1.73+1.2)*damp,
          wob3=Math.sin(age*7.3+(z.phase||0)*.81+2.1)*damp;
@@ -2978,24 +2979,48 @@ function syncBasicWalkerVisual(z,dt=0){
          lua=bones.get("L_UpperArm"),lla=bones.get("L_LowerArm"),rua=bones.get("R_UpperArm"),rla=bones.get("R_LowerArm"),
          lul=bones.get("L_UpperLeg"),lll=bones.get("L_LowerLeg"),rul=bones.get("R_UpperLeg"),rll=bones.get("R_LowerLeg"),
          lfoot=bones.get("L_Foot"),rfoot=bones.get("R_Foot");
-   holder.position.y=THREE.MathUtils.lerp(holder.position.y,-.06,ease);
-   holder.rotation.x=THREE.MathUtils.lerp(holder.rotation.x,.18,ease);
-   holder.rotation.z=THREE.MathUtils.lerp(holder.rotation.z,side*.10,ease)+wob*.025;
-   if(hips)hips.rotation.set(.22*ease+wob*.04,side*.08*ease,side*.18*ease);
-   if(spine)spine.rotation.set(.42*ease+wob*.05,-side*.10*ease,side*.25*ease);
-   if(chest)chest.rotation.set(.34*ease-wob*.04,side*.08*ease,-side*.22*ease);
-   if(neck)neck.rotation.set(-.14*ease,0,side*.10*ease);
-   if(head)head.rotation.set(-.18*ease+wob*.04,side*.16*ease,-side*.18*ease);
-   if(lua)lua.rotation.set(.72*ease+wob*.24,wob2*.08,.28*ease+wob3*.10);
-   if(rua)rua.rotation.set(.60*ease-wob2*.24,wob*.08,-.30*ease-wob3*.10);
-   if(lla)lla.rotation.set(.62*ease+wob2*.22,0,.10*ease+wob*.08);
-   if(rla)rla.rotation.set(.48*ease-wob*.22,0,-.12*ease-wob2*.08);
-   if(lul)lul.rotation.set(-.52*ease+wob3*.16,wob*.06,-.10*ease);
-   if(rul)rul.rotation.set(.38*ease-wob*.16,wob2*.06,.12*ease);
-   if(lll)lll.rotation.set(-.88*ease+wob*.26,0,0);
-   if(rll)rll.rotation.set(-.72*ease-wob2*.26,0,0);
-   if(lfoot)lfoot.rotation.set(.34*ease,0,0);
-   if(rfoot)rfoot.rotation.set(.28*ease,0,0);
+
+   // Capture the exact live walk/run/attack pose once. Death starts from here,
+   // so the walker never snaps back to its authored A/T pose before falling.
+   if(!z.walkerDeathPose){
+     const bonePose=new Map();
+     for(const key of BASIC_WALKER_BONE_KEYS){
+       const b=bones.get(key);if(b)bonePose.set(key,b.rotation.clone());
+     }
+     z.walkerDeathPose={
+       holderY:holder.position.y,holderX:holder.rotation.x,holderZ:holder.rotation.z,
+       bones:bonePose
+     };
+   }
+   const base=z.walkerDeathPose,lerpRot=(bone,key,tx,ty,tz,wx=0,wy=0,wz=0)=>{
+     if(!bone)return;
+     const r=base.bones.get(key)||{x:0,y:0,z:0};
+     bone.rotation.set(
+       THREE.MathUtils.lerp(r.x,tx,ease)+wx,
+       THREE.MathUtils.lerp(r.y,ty,ease)+wy,
+       THREE.MathUtils.lerp(r.z,tz,ease)+wz
+     );
+   };
+
+   holder.position.y=THREE.MathUtils.lerp(base.holderY,-.035,ease);
+   holder.rotation.x=THREE.MathUtils.lerp(base.holderX,.16,ease)+wob3*.025;
+   holder.rotation.z=THREE.MathUtils.lerp(base.holderZ,side*.12,ease)+wob*.05;
+
+   lerpRot(hips,"Hips",.24,side*.10,side*.20,wob*.07,wob2*.025,wob3*.04);
+   lerpRot(spine,"Spine",.48,-side*.12,side*.28,wob2*.09,wob*.035,wob3*.055);
+   lerpRot(chest,"Chest",.38,side*.10,-side*.25,-wob*.07,wob2*.03,-wob3*.05);
+   lerpRot(neck,"Neck",-.08,0,side*.06,wob*.02,0,wob2*.02);
+   lerpRot(head,"Head",-.20,side*.18,-side*.20,wob*.08,wob2*.05,-wob3*.07);
+   lerpRot(lua,"L_UpperArm",.82,0,.30,wob*.30,wob2*.10,wob3*.13);
+   lerpRot(rua,"R_UpperArm",.68,0,-.32,-wob2*.30,wob*.10,-wob3*.13);
+   lerpRot(lla,"L_LowerArm",.72,0,.12,wob2*.27,0,wob*.10);
+   lerpRot(rla,"R_LowerArm",.58,0,-.14,-wob*.27,0,-wob2*.10);
+   lerpRot(lul,"L_UpperLeg",-.58,0,-.12,wob3*.20,wob*.075,0);
+   lerpRot(rul,"R_UpperLeg",.44,0,.14,-wob*.20,wob2*.075,0);
+   lerpRot(lll,"L_LowerLeg",-.94,0,0,wob*.32,0,0);
+   lerpRot(rll,"R_LowerLeg",-.78,0,0,-wob2*.32,0,0);
+   lerpRot(lfoot,"L_Foot",.38,0,0,wob3*.10,0,0);
+   lerpRot(rfoot,"R_Foot",.32,0,0,-wob*.10,0,0);
    return;
  }
  if(z.knockdown)return;
