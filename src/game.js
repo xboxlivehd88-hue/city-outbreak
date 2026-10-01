@@ -4351,15 +4351,47 @@ function limbDamage(z,part,amount){
  if(part==="rightLeg"&&!z.rightLegDetached){z.rightLegHP-=amount;z.legDamage=Math.min(3,z.legDamage+amount*.55);z.stagger=Math.max(z.stagger,.32);if(z.rightLegHP<=0)detachLeg(z,"right")}
 }
 
-// v358: Hairibar-inspired joint-space ragdoll for explosive deaths.
-// Hairibar.Ragdoll uses independent simulated bones, soft spring matching,
-// damping and joint limits. CITY OUTBREAK mirrors those principles directly in
-// Three.js without a Unity rigidbody dependency.
+// v414: Hairibar-style UNPOWERED death ragdoll for every zombie death.
+// Hairibar.Ragdoll keeps a simulated skeleton separate from the visible/target
+// skeleton, then maps the simulated result back to the visible character.
+// Its Unpowered state applies no animation-matching drive: gravity, momentum,
+// collisions, damping and soft joint limits keep running until the body truly
+// reaches the ground and settles. CITY OUTBREAK ports that behavior to Three.js.
 function ragSpringAcceleration(offset,velocity,alpha,dampingRatio,dt,maxAccel){
  const h=Math.max(1/120,Math.min(1/30,dt));
  const k=alpha/(h*h);
  const d=dampingRatio*(2*Math.sqrt(k));
  return THREE.MathUtils.clamp(-k*offset-d*velocity,-maxAccel,maxAccel);
+}
+// Hairibar's Unpowered joints have no animation drive; only their soft angular
+// limits push back. Begin applying the limit spring in the outer 20% of travel,
+// matching Hairibar's default limitContactDistanceFactor=.2 behavior.
+function ragSoftLimitAcceleration(offset,velocity,limit,dt,maxAccel){
+ const start=limit*.80,mag=Math.abs(offset);
+ if(mag<=start)return 0;
+ const sign=offset<0?-1:1,penetration=offset-sign*start;
+ return ragSpringAcceleration(penetration,velocity,.010,.72,dt,maxAccel);
+}
+const ragContactPos=new THREE.Vector3();
+function ragdollBodyContactState(z,r){
+ // Root contact alone is not enough: z.g can already be on the pavement while
+ // the zombie is still upright in mid-collapse. Hairibar keeps simulating the
+ // rigid bodies, so we require actual torso/limb bone contact before settling.
+ if(!z?.rigVisual)return{contacts:r.rootGrounded?3:0,torso:!!r.rootGrounded};
+ z.g.updateMatrixWorld(true);
+ let contacts=0,torso=false;
+ const probes=[
+   ["Hips",true,.24],["Chest",true,.26],["Head",true,.24],
+   ["L_LowerArm",false,.18],["R_LowerArm",false,.18],
+   ["L_LowerLeg",false,.18],["R_LowerLeg",false,.18]
+ ];
+ for(const [key,isTorso,pad] of probes){
+   const b=rigBone(z,key);if(!b)continue;
+   b.getWorldPosition(ragContactPos);
+   const gy=sampleRagdollGroundY(ragContactPos.x,ragContactPos.z,r.floorY,ragContactPos.y);
+   if(ragContactPos.y<=gy+pad){contacts++;if(isTorso)torso=true}
+ }
+ return{contacts,torso};
 }
 function blastBoneProfile(role){
  switch(role){
@@ -4395,19 +4427,19 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  const power=Math.max(.65,Math.min(isBlast?4.6:2.6,force));
 
  const rag=z.ragdoll={
-   t:0,bones:[],blast:isBlast,power,settleT:0,grounded:false,bounceCount:0,
+   t:0,bones:[],blast:isBlast,unpowered:true,active:true,power,settleT:0,
+   grounded:false,rootGrounded:false,bodyGrounded:false,wasBodyGrounded:false,bounceCount:0,
    floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
    baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
-   targetX:z.g.rotation.x+forward*(isBlast?0:.78+rnd()*.22),
-   targetZ:z.g.rotation.z+sideFall*(isBlast?0:1),
-   targetY:z.g.rotation.y+(rnd()-.5)*(isBlast?0:.58),
-   ravx:isBlast?(rnd()-.5)*(5.2+power*1.4):0,
-   ravy:isBlast?(rnd()-.5)*(4.0+power*1.0):0,
-   ravz:isBlast?(rnd()-.5)*(5.8+power*1.5):0,
+   // Root is a free Hairibar-style rigid body in death. Non-explosive deaths
+   // get a smaller but real physical tip/roll impulse instead of a canned fall.
+   ravx:isBlast?(rnd()-.5)*(5.2+power*1.4):forward*(1.10+rnd()*.50)+(rnd()-.5)*.55,
+   ravy:isBlast?(rnd()-.5)*(4.0+power*1.0):(rnd()-.5)*.42,
+   ravz:isBlast?(rnd()-.5)*(5.8+power*1.5):sideFall*(1.20+rnd()*.55)+(rnd()-.5)*.58,
    rootPhase:rnd()*6.283,
-   vx:awayX*(isBlast?(2.38+1.48*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.72:.24),
-   vz:awayZ*(isBlast?(2.38+1.48*rnd())*power:(.48+.30*rnd())*power)+(rnd()-.5)*(isBlast?.72:.24),
-   vy:isBlast?(2.62+1.68*rnd())*power:(.32+.34*rnd())*power,
+   vx:awayX*(isBlast?(2.38+1.48*rnd())*power:(.18+.18*rnd())*power)+(rnd()-.5)*(isBlast?.72:.12),
+   vz:awayZ*(isBlast?(2.38+1.48*rnd())*power:(.18+.18*rnd())*power)+(rnd()-.5)*(isBlast?.72:.12),
+   vy:isBlast?(2.62+1.68*rnd())*power:(.06+.14*rnd())*power,
    hips:null,hipsStartY:0,hipsTargetY:0
  };
 
@@ -4415,20 +4447,18 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    if(!o||!o.parent)return;
    const loose=rag.blast?1:1.24;
    const p=blastBoneProfile(role);
-   const spin=(2.55+.52*rag.power)*p.inertia;
+   const spin=(rag.blast?(2.55+.52*rag.power):(1.05+.24*rag.power))*p.inertia;
    rag.bones.push({
      o,role,p,
      sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
-     tx:rag.blast?o.rotation.x:o.rotation.x+dx*loose,
-     ty:rag.blast?o.rotation.y:o.rotation.y+dy*loose,
-     tz:rag.blast?o.rotation.z:o.rotation.z+dz*loose,
-     delay:rag.blast?0:delay,duration,wob:wob*loose,phase:rnd()*6.283,
+     // Kept only as debug/reference pose data. Unpowered death does not drive
+     // toward these targets; the simulated joint is free inside its soft limits.
+     tx:o.rotation.x+dx*loose,ty:o.rotation.y+dy*loose,tz:o.rotation.z+dz*loose,
+     delay:0,duration,wob:wob*loose,phase:rnd()*6.283,
      ox:0,oy:0,oz:0,
-     avx:rag.blast?((rnd()-.5)*2+dx*.05)*spin:0,
-     avy:rag.blast?((rnd()-.5)*2+dy*.05)*spin:0,
-     avz:rag.blast?((rnd()-.5)*2+dz*.05)*spin:0,
-     gustX:2.0+rnd()*4.8,gustY:1.8+rnd()*4.4,gustZ:2.2+rnd()*5.0,
-     gustPhaseX:rnd()*6.283,gustPhaseY:rnd()*6.283,gustPhaseZ:rnd()*6.283,
+     avx:((rnd()-.5)*(rag.blast?2:1.25)+dx*(rag.blast?.05:.20))*spin,
+     avy:((rnd()-.5)*(rag.blast?2:1.10)+dy*(rag.blast?.05:.16))*spin,
+     avz:((rnd()-.5)*(rag.blast?2:1.25)+dz*(rag.blast?.05:.20))*spin,
      parentState:null
    });
  };
@@ -4463,13 +4493,11 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    add(z.head,"head",-forward*.86,(rnd()-.5)*.52,-side*.58,.18,.72,.27);
  }
 
- if(rag.blast){
-   const byObject=new Map(rag.bones.map(b=>[b.o,b]));
-   for(const b of rag.bones){
-     let p=b.o.parent;
-     while(p&&p!==z.g&&!byObject.has(p))p=p.parent;
-     b.parentState=byObject.get(p)||null;
-   }
+ const byObject=new Map(rag.bones.map(b=>[b.o,b]));
+ for(const b of rag.bones){
+   let p=b.o.parent;
+   while(p&&p!==z.g&&!byObject.has(p))p=p.parent;
+   b.parentState=byObject.get(p)||null;
  }
 }
 function updateRagdoll(z,dt){
@@ -4483,22 +4511,15 @@ function updateRagdoll(z,dt){
    r.hips.position.y=r.hipsStartY+(r.hipsTargetY-r.hipsStartY)*h;
  }
 
- if(r.blast){
-   const air=!r.grounded;
-   const rootDamp=Math.exp(-dt*(air?.40:6.8));
-   const gust=(air?1:0)*Math.exp(-r.t*.28);
-   r.ravx+=Math.sin(r.t*2.7+r.rootPhase)*gust*1.15*dt;
-   r.ravy+=Math.sin(r.t*2.2+r.rootPhase+2.1)*gust*.90*dt;
-   r.ravz+=Math.sin(r.t*3.1+r.rootPhase+4.0)*gust*1.30*dt;
+ if(r.unpowered){
+   // Hairibar Unpowered: no animation target. Keep integrating real momentum
+   // until the body, not merely the root origin, is on the ground and settled.
+   const free=!r.bodyGrounded;
+   const rootDamp=Math.exp(-dt*(free?.18:3.6));
    z.g.rotation.x+=r.ravx*dt;
    z.g.rotation.y+=r.ravy*dt;
    z.g.rotation.z+=r.ravz*dt;
    r.ravx*=rootDamp;r.ravy*=rootDamp;r.ravz*=rootDamp;
- }else{
-   const root=smooth((r.t-.18)/.82);
-   z.g.rotation.x=r.baseX+(r.targetX-r.baseX)*root;
-   z.g.rotation.z=r.baseZ+(r.targetZ-r.baseZ)*root;
-   z.g.rotation.y=r.baseY+(r.targetY-r.baseY)*smooth((r.t-.20)/1.05);
  }
 
  z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
@@ -4507,93 +4528,76 @@ function updateRagdoll(z,dt){
  z.g.position.y+=r.vy*dt;
  r.floorY=sampleRagdollGroundY(z.g.position.x,z.g.position.z,r.floorY,z.g.position.y);
  const floorContact=r.floorY-.08;
- r.grounded=false;
+ r.rootGrounded=false;
  if(z.g.position.y<=floorContact+.018&&r.vy<=0){
-   z.g.position.y=floorContact;r.grounded=true;
-   if(r.blast&&r.vy<-.52&&r.bounceCount<3){
-     const bounce=[.34,.20,.10][r.bounceCount]||.08;
+   z.g.position.y=floorContact;r.rootGrounded=true;
+   // Explosions may bounce the whole body a few times. Ordinary gunshot deaths
+   // keep only a tiny root rebound; their visible bounce comes from loose joints.
+   const maxBounces=r.blast?3:1,minImpact=r.blast?-.52:-.34;
+   if(r.vy<minImpact&&r.bounceCount<maxBounces){
+     const bounce=r.blast?([.34,.20,.10][r.bounceCount]||.08):.08;
      r.vy=-r.vy*bounce;
-     r.vx*=r.bounceCount===0?.68:.52;
-     r.vz*=r.bounceCount===0?.68:.52;
-     const jolt=(.72-r.bounce*.75)/(1+r.bounceCount*.55);
-     r.ravx+=(rnd()-.5)*jolt*4.0;
-     r.ravy+=(rnd()-.5)*jolt*3.0;
-     r.ravz+=(rnd()-.5)*jolt*4.5;
-     for(const b of r.bones){
-       const impact=b.p?.impact||1;
-       b.avx+=(rnd()-.5)*jolt*5.0*impact;
-       b.avy+=(rnd()-.5)*jolt*4.0*impact;
-       b.avz+=(rnd()-.5)*jolt*5.5*impact;
-     }
+     r.vx*=r.blast?(r.bounceCount===0?.68:.52):.72;
+     r.vz*=r.blast?(r.bounceCount===0?.68:.52):.72;
      r.bounceCount++;
-     r.grounded=false;
-   }else if(!r.blast&&r.vy<-.22){
-     r.vy*=-.10;r.vx*=.78;r.vz*=.78;
+     r.rootGrounded=false;
    }else{
-     r.vy=0;
-     r.vx*=r.blast?.72:.78;
-     r.vz*=r.blast?.72:.78;
-     r.grounded=true;
+     r.vy=0;r.vx*=r.blast?.72:.80;r.vz*=r.blast?.72:.80;
    }
  }
 
  for(const b of r.bones){
-   if(r.blast){
-     const p=b.p,air=!r.grounded;
-     const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60))));
-     const h=dt/steps;
-     for(let step=0;step<steps;step++){
-       const alpha=air?p.airA:p.groundA;
-       const damp=air?p.airD:p.groundD;
-       const wind=(air?p.gust:0)*Math.exp(-r.t*.24);
-       const parent=b.parentState;
-       const parentX=parent?parent.avx:r.ravx;
-       const parentY=parent?parent.avy:r.ravy;
-       const parentZ=parent?parent.avz:r.ravz;
+   const p=b.p,free=!r.bodyGrounded;
+   const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60)))),h=dt/steps;
+   for(let step=0;step<steps;step++){
+     const parent=b.parentState;
+     const parentX=parent?parent.avx:r.ravx,parentY=parent?parent.avy:r.ravy,parentZ=parent?parent.avz:r.ravz;
+     // No animation-matching spring in Unpowered state. Only soft joint limits,
+     // light constraint coupling and angular drag remain.
+     const ax=ragSoftLimitAcceleration(b.ox,b.avx,p.lx,h,p.maxA*1.25)+(parentX-b.avx)*p.couple*.15+r.ravx*p.root*.045;
+     const ay=ragSoftLimitAcceleration(b.oy,b.avy,p.ly,h,p.maxA*1.25)+(parentY-b.avy)*p.couple*.13+r.ravy*p.root*.040;
+     const az=ragSoftLimitAcceleration(b.oz,b.avz,p.lz,h,p.maxA*1.25)+(parentZ-b.avz)*p.couple*.17+r.ravz*p.root*.050;
+     b.avx+=ax*h;b.avy+=ay*h;b.avz+=az*h;
+     const angularDrag=Math.exp(-h*(free?.10:2.25));
+     b.avx*=angularDrag;b.avy*=angularDrag;b.avz*=angularDrag;
+     b.ox+=b.avx*h;b.oy+=b.avy*h;b.oz+=b.avz*h;
 
-       const ax=ragSpringAcceleration(b.ox,b.avx,alpha,damp,h,p.maxA)
-         +Math.sin(r.t*b.gustX+b.gustPhaseX)*wind
-         +(parentX-b.avx)*p.couple*.42
-         +r.ravx*p.root*.10;
-       const ay=ragSpringAcceleration(b.oy,b.avy,alpha,damp,h,p.maxA)
-         +Math.sin(r.t*b.gustY+b.gustPhaseY)*wind*.84
-         +(parentY-b.avy)*p.couple*.36
-         +r.ravy*p.root*.08;
-       const az=ragSpringAcceleration(b.oz,b.avz,alpha,damp,h,p.maxA)
-         +Math.sin(r.t*b.gustZ+b.gustPhaseZ)*wind*1.08
-         +(parentZ-b.avz)*p.couple*.46
-         +r.ravz*p.root*.12;
-
-       b.avx+=ax*h;b.avy+=ay*h;b.avz+=az*h;
-       b.ox+=b.avx*h;b.oy+=b.avy*h;b.oz+=b.avz*h;
-
-       if(b.ox>p.lx){b.ox=p.lx;b.avx=-Math.abs(b.avx)*.18}
-       else if(b.ox<-p.lx){b.ox=-p.lx;b.avx=Math.abs(b.avx)*.18}
-       if(b.oy>p.ly){b.oy=p.ly;b.avy=-Math.abs(b.avy)*.16}
-       else if(b.oy<-p.ly){b.oy=-p.ly;b.avy=Math.abs(b.avy)*.16}
-       if(b.oz>p.lz){b.oz=p.lz;b.avz=-Math.abs(b.avz)*.18}
-       else if(b.oz<-p.lz){b.oz=-p.lz;b.avz=Math.abs(b.avz)*.18}
-     }
-     b.o.rotation.x=b.sx+b.ox;
-     b.o.rotation.y=b.sy+b.oy;
-     b.o.rotation.z=b.sz+b.oz;
-   }else{
-     const t=smooth((r.t-b.delay)/b.duration);
-     const baseLoose=(1-t)*Math.exp(-Math.max(0,r.t-b.delay)*1.85)*b.wob;
-     b.o.rotation.x=b.sx+(b.tx-b.sx)*t+Math.sin(r.t*7.1+b.phase)*baseLoose;
-     b.o.rotation.y=b.sy+(b.ty-b.sy)*t+Math.sin(r.t*6.2+b.phase+1.4)*baseLoose*.65;
-     b.o.rotation.z=b.sz+(b.tz-b.sz)*t+Math.sin(r.t*6.7+b.phase+2.2)*baseLoose*.80;
+     // Emergency projection only beyond the soft limit, equivalent to Hairibar's
+     // joint projection safety. It prevents a huge shock from exploding the rig.
+     const project=(axis,limit,velAxis)=>{
+       const hard=limit*1.10,v=b[axis];
+       if(v>hard){b[axis]=hard;b[velAxis]=-Math.abs(b[velAxis])*.10}
+       else if(v<-hard){b[axis]=-hard;b[velAxis]=Math.abs(b[velAxis])*.10}
+     };
+     project("ox",p.lx,"avx");project("oy",p.ly,"avy");project("oz",p.lz,"avz");
    }
+   b.o.rotation.x=b.sx+b.ox;b.o.rotation.y=b.sy+b.oy;b.o.rotation.z=b.sz+b.oz;
  }
 
- if(r.blast){
-   let maxBoneSpin=0;
-   for(const b of r.bones)maxBoneSpin=Math.max(maxBoneSpin,Math.abs(b.avx||0),Math.abs(b.avy||0),Math.abs(b.avz||0));
-   const rootSpin=Math.max(Math.abs(r.ravx||0),Math.abs(r.ravy||0),Math.abs(r.ravz||0));
-   const settled=r.grounded&&Math.abs(r.vy)<.08&&Math.hypot(r.vx,r.vz)<.24&&rootSpin<.18&&maxBoneSpin<.22;
-   r.settleT=settled?r.settleT+dt:0;
-   if(r.settleT>.45)z.falling=false;
- }else if(r.t>1.90&&r.grounded)z.falling=false;
+ const contact=ragdollBodyContactState(z,r);
+ r.bodyGrounded=contact.torso&&contact.contacts>=2;
+ r.grounded=r.bodyGrounded;
+
+ // The first real body-to-ground contact sends a small collision impulse through
+ // the unpowered chain, so arms/legs can slap and bounce instead of freezing.
+ if(r.bodyGrounded&&!r.wasBodyGrounded){
+   const jolt=r.blast?.48:.28;
+   r.ravx+=(rnd()-.5)*jolt;r.ravy+=(rnd()-.5)*jolt*.65;r.ravz+=(rnd()-.5)*jolt;
+   for(const b of r.bones){
+     const impact=b.p?.impact||1;
+     b.avx+=(rnd()-.5)*jolt*1.8*impact;
+     b.avy+=(rnd()-.5)*jolt*1.5*impact;
+     b.avz+=(rnd()-.5)*jolt*2.0*impact;
+   }
+ }
+ r.wasBodyGrounded=r.bodyGrounded;
+
+ let maxBoneSpin=0;
+ for(const b of r.bones)maxBoneSpin=Math.max(maxBoneSpin,Math.abs(b.avx||0),Math.abs(b.avy||0),Math.abs(b.avz||0));
+ const rootSpin=Math.max(Math.abs(r.ravx||0),Math.abs(r.ravy||0),Math.abs(r.ravz||0));
+ const settled=r.bodyGrounded&&contact.contacts>=3&&Math.abs(r.vy)<.06&&Math.hypot(r.vx,r.vz)<.14&&rootSpin<.11&&maxBoneSpin<.14;
+ r.settleT=settled?r.settleT+dt:0;
+ if(r.settleT>.60){r.active=false;z.falling=false}else z.falling=true;
 }
 function killZ(z,hs,p,ragForce=1,ragOrigin=null){
  if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
@@ -5389,7 +5393,10 @@ if(p.limb||p.reloadMag){
 if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math.min(1.2,cam.rotation.z+dt*.5);cam.position.y=Math.max(.25,cam.position.y-dt*.55);return}if(!running)return;updateHealthRegen(dt);move(dt);updateDrops(dt);if(between){return}for(let z of zombies){
  if(!z.dead)continue;
  z.corpseAge+=dt;
- if(z.falling)updateRagdoll(z,dt);
+ // v414: keep Hairibar-style unpowered simulation alive until body-contact
+ // settlement explicitly marks rag.active=false. Never stop just because a
+ // scripted fall timer or root-ground flag says the corpse is "done."
+ if(z.ragdoll?.active!==false)updateRagdoll(z,dt);
  syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
  if(z.corpseAge>10&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
 }
