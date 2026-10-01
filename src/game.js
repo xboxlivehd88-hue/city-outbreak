@@ -864,6 +864,8 @@ function buildNewCityCollision(map){
    flush(prev);
  }
  ZNAV_BLOCK_CACHE.clear();
+ zombieSpawnPlayableCellsReady=false;
+ zombieSpawnPlayableCells.clear();
  newCityCollisionReady=true;
  document.documentElement.dataset.newCityCollision="1";
  document.documentElement.dataset.newCityColliderCount=String(colliderCount);document.documentElement.dataset.newCityGroundBuckets=String(cityGroundBuckets.size);
@@ -906,6 +908,8 @@ function addCityHallStairSideWallColliders(map){
    buildingColliders.push(hit);indexCityCollider(hit);added++;
  }
  ZNAV_BLOCK_CACHE.clear();
+ zombieSpawnPlayableCellsReady=false;
+ zombieSpawnPlayableCells.clear();
  document.documentElement.dataset.cityHallStairWallColliders=String(added);
  console.log("CITY OUTBREAK: City Hall stair side-wall collision added",{added});
 }
@@ -1005,6 +1009,8 @@ function addStreetLampColliders(placements){
    added++;
  }
  ZNAV_BLOCK_CACHE.clear();
+ zombieSpawnPlayableCellsReady=false;
+ zombieSpawnPlayableCells.clear();
  document.documentElement.dataset.streetLampCollisionCount=String(added);
  console.log("CITY OUTBREAK: street lamp pole collision added",{
    count:added,halfSize:STREET_LAMP_COLLISION_HALF
@@ -1310,6 +1316,60 @@ function navCellBlocked(ix,iz){
  if(ZNAV_BLOCK_CACHE.has(key))return ZNAV_BLOCK_CACHE.get(key);
  const blocked=zombiePointBlocked(ix*ZNAV_CELL,iz*ZNAV_CELL,ZNAV_PAD);
  ZNAV_BLOCK_CACHE.set(key,blocked);return blocked
+}
+const zombieSpawnPlayableCells=new Set();
+let zombieSpawnPlayableCellsReady=false;
+function zombieSpawnCellKey(ix,iz){return ix+","+iz}
+function zombieSpawnCellOpen(ix,iz){
+ const x=ix*ZNAV_CELL,z=iz*ZNAV_CELL;
+ if(x<ZNAV_MIN_X+1||x>ZNAV_MAX_X-1||z<ZNAV_MIN_Z+1||z>ZNAV_MAX_Z-1)return false;
+ if(zombieSpawnGroundY(x,z)===null)return false;
+ return !zombiePointBlocked(x,z,.46);
+}
+function buildConnectedZombieSpawnCells(){
+ zombieSpawnPlayableCells.clear();
+ zombieSpawnPlayableCellsReady=false;
+ let sx=Math.round(px/ZNAV_CELL),sz=Math.round(pz/ZNAV_CELL),seed=null;
+ for(let r=0;r<=5&&!seed;r++){
+   for(let dz=-r;dz<=r&&!seed;dz++)for(let dx=-r;dx<=r;dx++){
+     if(r&&Math.abs(dx)!==r&&Math.abs(dz)!==r)continue;
+     const ix=sx+dx,iz=sz+dz;
+     if(zombieSpawnCellOpen(ix,iz)){seed=[ix,iz];break}
+   }
+ }
+ if(!seed)return;
+ const qx=[seed[0]],qz=[seed[1]];
+ let qi=0;
+ zombieSpawnPlayableCells.add(zombieSpawnCellKey(seed[0],seed[1]));
+ const dirs=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+ while(qi<qx.length){
+   const cx=qx[qi],cz=qz[qi];qi++;
+   for(const d of dirs){
+     const nx=cx+d[0],nz=cz+d[1],key=zombieSpawnCellKey(nx,nz);
+     if(zombieSpawnPlayableCells.has(key)||!zombieSpawnCellOpen(nx,nz))continue;
+     // Do not let diagonal flood-fill squeeze through a closed corner that a
+     // zombie body could not actually pass through.
+     if(d[0]&&d[1]&&(!zombieSpawnCellOpen(cx+d[0],cz)||!zombieSpawnCellOpen(cx,cz+d[1])))continue;
+     zombieSpawnPlayableCells.add(key);qx.push(nx);qz.push(nz);
+   }
+ }
+ zombieSpawnPlayableCellsReady=true;
+ document.documentElement.dataset.zombieSpawnPlayableCells=String(zombieSpawnPlayableCells.size);
+ console.log("CITY OUTBREAK: connected zombie spawn area built",{cells:zombieSpawnPlayableCells.size,seed});
+}
+function zombieSpawnConnectedToPlayer(x,z){
+ if(!zombieSpawnPlayableCellsReady)buildConnectedZombieSpawnCells();
+ if(!zombieSpawnPlayableCellsReady)return false;
+ const ix=Math.round(x/ZNAV_CELL),iz=Math.round(z/ZNAV_CELL);
+ if(zombieSpawnPlayableCells.has(zombieSpawnCellKey(ix,iz)))return true;
+ // Candidate may sit near a cell edge/door threshold; accept only if an adjacent
+ // connected cell has direct body-clearance to the exact candidate point.
+ for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){
+   const nx=ix+dx,nz=iz+dz;
+   if(!zombieSpawnPlayableCells.has(zombieSpawnCellKey(nx,nz)))continue;
+   if(zombieRouteClear(x,z,nx*ZNAV_CELL,nz*ZNAV_CELL,.46))return true;
+ }
+ return false;
 }
 function zombieRouteClear(x1,z1,x2,z2,r=ZNAV_PAD){
  const d=Math.hypot(x2-x1,z2-z1),steps=Math.max(1,Math.ceil(d/.85));
@@ -3224,6 +3284,7 @@ function validZombieSpawn(x,z){
  if(zombieSpawnGroundY(x,z)===null)return false;
  // Use near-body clearance so real passable doorways/entrances stay eligible.
  if(insideBuilding(x,z,.46))return false;
+ if(!zombieSpawnConnectedToPlayer(x,z))return false;
  for(const c of parkedCars)if(carPointCollision(c,x,z,.85))return false;
  return Math.hypot(x-px,z-pz)>28;
 }
