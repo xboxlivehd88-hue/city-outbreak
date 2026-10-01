@@ -115,6 +115,25 @@ jobs:
             if dist<32:rows.append((dist,i,name,gb))
           for dist,i,name,gb in sorted(rows)[:80]:
             print(round(dist,2),i,name,'BBOX',tuple(round(v,2) for v in (gb[0],gb[1],gb[4],gb[5])))
+          print('=== TARGET MATERIALS ===')
+          for target in [118,587,564,569,116]:
+            mats=[]
+            for di in descendants(target):
+              mi=nodes[di].get('mesh')
+              if mi is None:continue
+              for pr in g['meshes'][mi].get('primitives',[]):
+                mid=pr.get('material')
+                if mid is not None and mid not in mats:mats.append(mid)
+            desc=[]
+            for mid in mats:
+              m=g.get('materials',[])[mid]
+              pbr=m.get('pbrMetallicRoughness',{})
+              desc.append((mid,m.get('name',''),pbr.get('baseColorFactor'),pbr.get('baseColorTexture',{}).get('index')))
+            print(target,nodes[target].get('name'),'MATS',desc)
+          print('=== TARGET NODE TRANSFORMS ===')
+          for target in [118,587,564,569,375]:
+            n=nodes[target];m=wm(target)
+            print(target,n.get('name'),'LOCAL_T',n.get('translation'),'LOCAL_R',n.get('rotation'),'WORLD_T',tuple(round(v,4) for v in (m[12],m[13],m[14])))
           print('=== FENCES ===')
           for i,name,gb,cx,cz in objs:
             if name.startswith('Fence_01'):
