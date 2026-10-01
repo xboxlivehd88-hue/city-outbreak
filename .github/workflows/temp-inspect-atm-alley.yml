@@ -1,0 +1,56 @@
+name: inspect ATM alley
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-inspect-atm-alley.yml'
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find ATM and nearby roots
+        run: |
+          python3 - <<'PY'
+          import json,struct,re,math
+          from pathlib import Path
+          b=Path('assets/chicken_gun_fruzer_-_city.glb').read_bytes()
+          n,t=struct.unpack_from('<II',b,12)
+          g=json.loads(b[20:20+n].decode('utf-8').rstrip('\x00 '))
+          nodes=g.get('nodes',[]);parents={}
+          for i,node in enumerate(nodes):
+            for ch in node.get('children',[]):parents[ch]=i
+          def mm(a,b):
+            r=[0.0]*16
+            for c in range(4):
+              for row in range(4):r[c*4+row]=sum(a[k*4+row]*b[c*4+k] for k in range(4))
+            return r
+          def trs(n):
+            if 'matrix' in n:return n['matrix']
+            t=n.get('translation',[0,0,0]);s=n.get('scale',[1,1,1]);q=n.get('rotation',[0,0,0,1]);x,y,z,w=q
+            r=[1-2*y*y-2*z*z,2*x*y+2*w*z,2*x*z-2*w*y,0,2*x*y-2*w*z,1-2*x*x-2*z*z,2*y*z+2*w*x,0,2*x*z+2*w*y,2*y*z-2*w*x,1-2*x*x-2*y*y,0,0,0,0,1]
+            r[0]*=s[0];r[1]*=s[0];r[2]*=s[0];r[4]*=s[1];r[5]*=s[1];r[6]*=s[1];r[8]*=s[2];r[9]*=s[2];r[10]*=s[2];r[12],r[13],r[14]=t
+            return r
+          world={}
+          def wm(i):
+            if i in world:return world[i]
+            m=trs(nodes[i]);p=parents.get(i);world[i]=mm(wm(p),m) if p is not None else m;return world[i]
+          def root_of(i):
+            while i in parents:i=parents[i]
+            return i
+          atm=[]
+          for i,n in enumerate(nodes):
+            name=n.get('name','')
+            if re.search(r'ATM|cash|bank',name,re.I):
+              m=wm(i);gx=21.33575+m[12]*1.55;gy=28.68275+m[13]*1.55;gz=8.25+m[14]*1.55
+              print('MATCH',i,name,'ROOT',root_of(i),nodes[root_of(i)].get('name',''),'GAME',round(gx,3),round(gy,3),round(gz,3))
+              atm.append((gx,gz))
+          if atm:
+            ax,az=atm[0]
+            print('--- NEARBY ROOTS ---')
+            for i,n in enumerate(nodes):
+              if i in parents:continue
+              m=wm(i);gx=21.33575+m[12]*1.55;gz=8.25+m[14]*1.55
+              d=((gx-ax)**2+(gz-az)**2)**0.5
+              if d<28:
+                print('ROOT',i,n.get('name',''),'GAME',round(gx,3),round(gz,3),'D',round(d,2))
+          PY
