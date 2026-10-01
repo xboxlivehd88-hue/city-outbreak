@@ -2590,10 +2590,12 @@ function buildRadiatedGreenGuyTemplate(source){
        chest=bone("Chest",0,h*.105,0),
        neck=bone("Neck",0,h*.095,0),
        head=bone("Head",0,h*.075,0),
-       lua=bone("L_UpperArm",-h*.19,h*.035,0),
-       lla=bone("L_LowerArm",-h*.18,0,0),
-       rua=bone("R_UpperArm", h*.19,h*.035,0),
-       rla=bone("R_LowerArm", h*.18,0,0),
+       // v398: measured from the uploaded GLB. The T-pose shoulder line is
+       // around 0.66h, not up at the chest/neck line used by the first auto-rig.
+       lua=bone("L_UpperArm",-h*.15,-h*.04,0),
+       lla=bone("L_LowerArm",-h*.23,0,0),
+       rua=bone("R_UpperArm", h*.15,-h*.04,0),
+       rla=bone("R_LowerArm", h*.23,0,0),
        lul=bone("L_UpperLeg",-h*.065,-h*.02,0),
        lll=bone("L_LowerLeg",0,-h*.245,0),
        rul=bone("R_UpperLeg", h*.065,-h*.02,0),
@@ -2606,11 +2608,10 @@ function buildRadiatedGreenGuyTemplate(source){
    const ax=Math.abs(x),left=x<0;
    if(y>h*.845)return[bi.head,1,bi.neck,0];
    if(y>h*.795)return[bi.neck,1,bi.chest,0];
-   if(y>h*.56&&y<h*.83&&ax>h*.105){
-     // v397: include the inner shoulder/upper-arm vertices in the arm bones.
-     // The previous threshold left too much of each arm weighted to the chest,
-     // which visually pulled the arms inside the torso.
-     const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla,elbow=h*.325,blend=h*.045;
+   if(y>h*.56&&y<h*.70&&ax>h*.13){
+     // v398: the measured arm band is ~0.56h-0.69h. Keeping arm skinning out
+     // of the higher torso/head band stops chest vertices from being sucked into the arms.
+     const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla,elbow=h*.38,blend=h*.04;
      if(ax<=elbow-blend)return[up,1,lo,0];
      if(ax>=elbow+blend)return[lo,1,up,0];
      const t=(ax-(elbow-blend))/(blend*2);return[up,1-t,lo,t];
@@ -2687,10 +2688,10 @@ function buildRadiatedGreenHitboxes(z){
  add("Chest",new THREE.BoxGeometry(.54,.66,.36),0,-.11,0,"torso");
  add("Hips",new THREE.BoxGeometry(.38,.32,.30),0,-.07,0,"torso");
 
- add("L_UpperArm",new THREE.BoxGeometry(.42,.24,.28),-.19,0,0,"leftArm");
- add("L_LowerArm",new THREE.BoxGeometry(.40,.22,.26),-.18,0,0,"leftArm");
- add("R_UpperArm",new THREE.BoxGeometry(.42,.24,.28), .19,0,0,"rightArm");
- add("R_LowerArm",new THREE.BoxGeometry(.40,.22,.26), .18,0,0,"rightArm");
+ add("L_UpperArm",new THREE.BoxGeometry(.44,.24,.28),-.22,0,0,"leftArm");
+ add("L_LowerArm",new THREE.BoxGeometry(.42,.22,.26),-.20,0,0,"leftArm");
+ add("R_UpperArm",new THREE.BoxGeometry(.44,.24,.28), .22,0,0,"rightArm");
+ add("R_LowerArm",new THREE.BoxGeometry(.42,.22,.26), .20,0,0,"rightArm");
 
  add("L_UpperLeg",new THREE.BoxGeometry(.20,.44,.22),0,-.21,0,"leftLeg");
  add("L_LowerLeg",new THREE.BoxGeometry(.18,.43,.20),0,-.205,0,"leftLeg");
@@ -2736,8 +2737,8 @@ function syncRadiatedGreenGuy(z,dt=0){
    if(rla)rla.rotation.set(.34+Math.max(0,crawlR)*.34,0,.08);
  }else{
    // Keep both arms clearly outside the torso while walking upright.
-   if(lua){radiatedArmTarget.set(-.45,-.88,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
-   if(rua){radiatedArmTarget.set(.45,-.88,-armSwing-attackReach).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
+   if(lua){radiatedArmTarget.set(-.36,-.93,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
+   if(rua){radiatedArmTarget.set(.36,-.93,-armSwing-attackReach).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
    if(lla)lla.rotation.set(0,0,-.05-attack*.08);
    if(rla)rla.rotation.set(0,0,.05+attack*.08);
  }
