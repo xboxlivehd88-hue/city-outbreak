@@ -1,79 +1,30 @@
-name: inspect zombie GLBs
+name: v398 temporary validation
 on:
   push:
     paths:
       - '.github/workflows/temp-inspect-zombie-glbs.yml'
+      - 'src/game.js'
+      - 'index.html'
 jobs:
-  inspect:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Profile GLB world geometry
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate v398
         run: |
-          python3 - <<'PY'
-          import json,struct,math
-          from pathlib import Path
-          def mm(a,b):
-            r=[0.0]*16
-            for c in range(4):
-              for row in range(4):
-                r[c*4+row]=sum(a[k*4+row]*b[c*4+k] for k in range(4))
-            return r
-          I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
-          def trs(n):
-            if 'matrix' in n:return n['matrix']
-            t=n.get('translation',[0,0,0]);s=n.get('scale',[1,1,1]);q=n.get('rotation',[0,0,0,1]);x,y,z,w=q
-            r=[
-              1-2*y*y-2*z*z,2*x*y+2*w*z,2*x*z-2*w*y,0,
-              2*x*y-2*w*z,1-2*x*x-2*z*z,2*y*z+2*w*x,0,
-              2*x*z+2*w*y,2*y*z-2*w*x,1-2*x*x-2*y*y,0,
-              0,0,0,1]
-            r[0]*=s[0];r[1]*=s[0];r[2]*=s[0]
-            r[4]*=s[1];r[5]*=s[1];r[6]*=s[1]
-            r[8]*=s[2];r[9]*=s[2];r[10]*=s[2]
-            r[12],r[13],r[14]=t
-            return r
-          def tp(m,p):
-            x,y,z=p
-            return (m[0]*x+m[4]*y+m[8]*z+m[12],m[1]*x+m[5]*y+m[9]*z+m[13],m[2]*x+m[6]*y+m[10]*z+m[14])
-          def parse(path):
-            b=Path(path).read_bytes();pos=12;n,t=struct.unpack_from('<II',b,pos);pos+=8
-            g=json.loads(b[pos:pos+n].decode('utf-8').rstrip('\x00 '));pos+=n
-            while pos%4:pos+=1
-            blen,btype=struct.unpack_from('<II',b,pos);pos+=8;blob=b[pos:pos+blen]
-            cts={5120:'b',5121:'B',5122:'h',5123:'H',5125:'I',5126:'f'};cs={5120:1,5121:1,5122:2,5123:2,5125:4,5126:4};comps={'SCALAR':1,'VEC2':2,'VEC3':3,'VEC4':4,'MAT4':16}
-            def acc(ai):
-              a=g['accessors'][ai];bv=g['bufferViews'][a['bufferView']];ct=a['componentType'];nc=comps[a['type']];fmt='<'+cts[ct]*nc;stride=bv.get('byteStride',cs[ct]*nc);off=bv.get('byteOffset',0)+a.get('byteOffset',0)
-              return [struct.unpack_from(fmt,blob,off+i*stride) for i in range(a['count'])]
-            parents={}
-            for i,nod in enumerate(g.get('nodes',[])):
-              for ch in nod.get('children',[]):parents[ch]=i
-            world={}
-            def wm(i):
-              if i in world:return world[i]
-              local=trs(g['nodes'][i]);p=parents.get(i);world[i]=mm(wm(p),local) if p is not None else local;return world[i]
-            pts=[]
-            for ni,nod in enumerate(g.get('nodes',[])):
-              if nod.get('mesh') is None:continue
-              M=wm(ni);mesh=g['meshes'][nod['mesh']]
-              for pr in mesh.get('primitives',[]):
-                pa=pr.get('attributes',{}).get('POSITION')
-                if pa is None:continue
-                pts.extend(tp(M,p) for p in acc(pa))
-            xs=[p[0] for p in pts];ys=[p[1] for p in pts];zs=[p[2] for p in pts]
-            mnx,mxx,mny,mxy,mnz,mxz=min(xs),max(xs),min(ys),max(ys),min(zs),max(zs);h=mxy-mny
-            print('\n===',path,'WORLD ===')
-            print('bounds',mnx,mxx,mny,mxy,mnz,mxz,'size',mxx-mnx,h,mxz-mnz,'center',((mnx+mxx)/2,(mny+mxy)/2,(mnz+mxz)/2))
-            for frac in [0.05,.12,.20,.28,.36,.44,.50,.56,.60,.64,.68,.72,.76,.80,.84,.88,.92,.96]:
-              yy=mny+h*frac;band=[p for p in pts if abs(p[1]-yy)<h*.012]
-              if band:
-                bx=[p[0] for p in band];bz=[p[2] for p in band]
-                print('frac',frac,'y',round(yy,4),'x',round(min(bx),4),round(max(bx),4),'z',round(min(bz),4),round(max(bz),4),'n',len(band))
-            # side-specific x quantiles by likely arm-height bands
-            for lo,hi in [(.55,.62),(.62,.69),(.69,.76),(.76,.83)]:
-              band=[p for p in pts if mny+h*lo<=p[1]<=mny+h*hi]
-              if band:
-                vals=sorted(abs(p[0]-(mnx+mxx)/2) for p in band);qs=[vals[int((len(vals)-1)*q)] for q in [.5,.7,.8,.9,.95,.98,.995]]
-                print('heightband',lo,hi,'absXq',list(map(lambda x:round(x,4),qs)))
-          for p in ['assets/green guy.glb','assets/walkers.glb']:parse(p)
-          PY
+          git diff --check HEAD^ HEAD
+          cp src/game.js /tmp/game.mjs
+          node --check /tmp/game.mjs
+          grep -Fq './src/game.js?v=398' index.html
+          grep -Fq 'lua=bone("L_UpperArm",-h*.15,-h*.04,0)' src/game.js
+          grep -Fq 'y>h*.56&&y<h*.70&&ax>h*.13' src/game.js
+          grep -Fq 'new THREE.BoxGeometry(.44,.24,.28)' src/game.js
+          grep -Fq 'function radiatedSpinTopTarget(z)' src/game.js
+          grep -Fq 'm240:{x:-.36,y:.01,z:1.20,fov:56,rx:0}' src/game.js
+          grep -Fq 'RECENT_ZOMBIE_SPAWN_LIMIT=96' src/game.js
+          grep -Fq 'if(!zombieSpawnConnectedToPlayer(x,z))return false;' src/game.js
