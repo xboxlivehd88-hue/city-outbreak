@@ -30,6 +30,23 @@ new GLTFLoader().load("assets/green%20guy.glb?v=395",gltf=>{
  for(const z of zombies){if(z.kind==="radiated"&&!z.radiatedGreenVisual)attachRadiatedGreenGuy(z,z.g)}
 },undefined,e=>{radiatedGreenGuyError=e;console.error("CITY OUTBREAK: green guy radiated model failed to load",e)});
 
+// v399: user-supplied replacement for the common/basic Shambler walkers.
+// The GLB is static, so CITY OUTBREAK builds a measured runtime rig while
+// retaining the approved Shambler stats, AI, spawn weighting and gameplay logic.
+let basicWalkerAsset=null,basicWalkerTemplate=null,basicWalkerError=null;
+new GLTFLoader().load("assets/walkers.glb?v=399",gltf=>{
+ basicWalkerAsset=gltf;
+ basicWalkerTemplate=buildBasicWalkerTemplate(gltf.scene);
+ console.log("CITY OUTBREAK: walkers.glb loaded",{
+   animations:gltf.animations?.map(a=>a.name)||[],
+   autoRig:!!basicWalkerTemplate,
+   height:basicWalkerTemplate?.userData?.sourceHeight||0
+ });
+ for(const z of zombies){
+   if(z.kind==="shambler"&&!z.walkerVisual&&attachBasicWalkerVisual(z,z.g))buildBasicWalkerHitboxes(z);
+ }
+},undefined,e=>{basicWalkerError=e;console.error("CITY OUTBREAK: walkers.glb failed to load",e)});
+
 const cv=document.querySelector("#cv"),cross=document.querySelector("#crosshair"),healthText=document.querySelector("#healthText"),healthBar=document.querySelector("#healthBar"),ammoEl=document.querySelector("#ammo"),killsEl=document.querySelector("#kills"),headsEl=document.querySelector("#heads"),waveEl=document.querySelector("#wave"),remainingEl=document.querySelector("#remaining"),cashEl=document.querySelector("#cash"),weaponNameEl=document.querySelector("#weaponName"),grenadeEl=document.querySelector("#grenadeCount"),nukeEl=document.querySelector("#nukeCount"),nukeFlash=document.querySelector("#nukeFlash"),nukeShock=document.querySelector("#nukeShock"),shop=document.querySelector("#shop"),shopCash=document.querySelector("#shopCash"),shopNote=document.querySelector("#shopNote"),damage=document.querySelector("#damage"),hitmarker=document.querySelector("#hitmarker"),announce=document.querySelector("#announce"),big=document.querySelector("#big"),small=document.querySelector("#small"),death=document.querySelector("#death"),msg=document.querySelector("#msg"),startScreen=document.querySelector("#startScreen"),bossHUD=document.querySelector("#bossHUD"),bossFill=document.querySelector("#bossFill"),bossNameEl=document.querySelector("#bossName"),bossSubEl=document.querySelector("#bossSub"),sprintFill=document.querySelector("#sprintFill"),sprintState=document.querySelector("#sprintState"),scopeOverlay=document.querySelector("#scopeOverlay"),pauseBtn=document.querySelector("#pauseBtn"),pauseOverlay=document.querySelector("#pauseOverlay"),resumeGameBtn=document.querySelector("#resumeGame");
 let ac,master,audioOn=false,noiseBuffer=null;
 function initAudio(){
@@ -2747,6 +2764,178 @@ function syncRadiatedGreenGuy(z,dt=0){
  if(lll)lll.rotation.set(Math.max(0,-step)*.48*blend,0,0);
  if(rll)rll.rotation.set(Math.max(0,step)*.48*blend,0,0);
 }
+const BASIC_WALKER_BONE_KEYS=Object.freeze([
+ "Hips","Spine","Chest","Neck","Head",
+ "L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm",
+ "L_UpperLeg","L_LowerLeg","R_UpperLeg","R_LowerLeg","L_Hand","R_Hand","L_Foot","R_Foot"
+]);
+function buildBasicWalkerTemplate(source){
+ if(!source)return null;
+ source.updateMatrixWorld(true);
+ const invRoot=new THREE.Matrix4().copy(source.matrixWorld).invert(),pieces=[];
+ source.traverse(o=>{
+   if(!o.isMesh||!o.geometry)return;
+   const geo=o.geometry.clone(),rel=new THREE.Matrix4().multiplyMatrices(invRoot,o.matrixWorld);
+   geo.applyMatrix4(rel);geo.computeBoundingBox();
+   pieces.push({geo,material:o.material,name:o.name||"BasicWalkerMesh"});
+ });
+ if(!pieces.length)return null;
+ const box=new THREE.Box3().makeEmpty();for(const p of pieces)box.union(p.geo.boundingBox);
+ const size=new THREE.Vector3(),center=new THREE.Vector3();box.getSize(size);box.getCenter(center);
+ const h=size.y;if(!Number.isFinite(h)||h<.25)return null;
+ const shift=new THREE.Matrix4().makeTranslation(-center.x,-box.min.y,-center.z);
+ for(const p of pieces){p.geo.applyMatrix4(shift);p.geo.computeBoundingBox()}
+ const rig=new THREE.Group();rig.name="BasicWalkerAutoRig";rig.userData.sourceHeight=h;
+ const bone=(name,x,y,z)=>{const b=new THREE.Bone();b.name="Walker"+name;b.position.set(x,y,z);return b};
+ // World-space profiling of walkers.glb: hips ~.46h, shoulders ~.70h,
+ // elbows ~.55h and hands ~.37h. Preserve its authored A-pose.
+ const hips=bone("Hips",0,h*.46,0),
+       spine=bone("Spine",0,h*.13,0),
+       chest=bone("Chest",0,h*.12,0),
+       neck=bone("Neck",0,h*.09,0),
+       head=bone("Head",0,h*.08,0),
+       lua=bone("L_UpperArm",-h*.07,-h*.01,0),
+       lla=bone("L_LowerArm",-h*.11,-h*.15,0),
+       lhand=bone("L_Hand",-h*.10,-h*.17,0),
+       rua=bone("R_UpperArm", h*.07,-h*.01,0),
+       rla=bone("R_LowerArm", h*.11,-h*.15,0),
+       rhand=bone("R_Hand", h*.10,-h*.17,0),
+       lul=bone("L_UpperLeg",-h*.055,-h*.02,0),
+       lll=bone("L_LowerLeg",0,-h*.23,0),
+       lfoot=bone("L_Foot",0,-h*.20,h*.015),
+       rul=bone("R_UpperLeg", h*.055,-h*.02,0),
+       rll=bone("R_LowerLeg",0,-h*.23,0),
+       rfoot=bone("R_Foot",0,-h*.20,h*.015);
+ hips.add(spine,lul,rul);spine.add(chest);chest.add(neck,lua,rua);neck.add(head);
+ lua.add(lla);lla.add(lhand);rua.add(rla);rla.add(rhand);
+ lul.add(lll);lll.add(lfoot);rul.add(rll);rll.add(rfoot);rig.add(hips);
+ const bones=[hips,spine,chest,neck,head,lua,lla,rua,rla,lul,lll,rul,rll,lhand,rhand,lfoot,rfoot],bi=Object.freeze({
+   hips:0,spine:1,chest:2,neck:3,head:4,lua:5,lla:6,rua:7,rla:8,lul:9,lll:10,rul:11,rll:12,lhand:13,rhand:14,lfoot:15,rfoot:16
+ });
+ const chooseWeights=(x,y)=>{
+   const yf=y/h,ax=Math.abs(x),left=x<0;
+   if(yf>.84)return[bi.head,1,bi.neck,0];
+   if(yf>.77)return[bi.neck,1,bi.chest,0];
+   // A-pose arms sweep from ~.72h at the shoulder to ~.36h at the hands.
+   if(yf>.32&&yf<.76&&ax>h*.09){
+     const up=left?bi.lua:bi.rua,lo=left?bi.lla:bi.rla;
+     const t=THREE.MathUtils.clamp((.57-yf)/.07,0,1);
+     return[up,1-t,lo,t];
+   }
+   if(yf<.46){
+     const up=left?bi.lul:bi.rul,lo=left?bi.lll:bi.rll;
+     const t=THREE.MathUtils.clamp((.25-yf)/.06,0,1);
+     return[up,1-t,lo,t];
+   }
+   if(yf<.53)return[bi.hips,1,bi.spine,0];
+   if(yf<.64)return[bi.spine,1,bi.chest,0];
+   return[bi.chest,1,bi.spine,0];
+ };
+ const skinned=[];
+ for(const p of pieces){
+   const pos=p.geo.attributes.position,indices=[],weights=[];
+   for(let i=0;i<pos.count;i++){
+     const w=chooseWeights(pos.getX(i),pos.getY(i));
+     indices.push(w[0],w[2],0,0);weights.push(w[1],w[3],0,0);
+   }
+   p.geo.setAttribute("skinIndex",new THREE.Uint16BufferAttribute(indices,4));
+   p.geo.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));
+   const cloneMat=m=>{const c=m.clone();c.side=THREE.DoubleSide;c.needsUpdate=true;return c};
+   const mat=Array.isArray(p.material)?p.material.map(cloneMat):cloneMat(p.material);
+   const mesh=new THREE.SkinnedMesh(p.geo,mat);
+   mesh.name=p.name;mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;mesh.userData.visualOnly=true;mesh.raycast=()=>{};
+   rig.add(mesh);skinned.push(mesh);
+ }
+ rig.updateMatrixWorld(true);
+ const skeleton=new THREE.Skeleton(bones);skeleton.calculateInverses();
+ for(const mesh of skinned)mesh.bind(skeleton,mesh.matrixWorld);
+ return rig;
+}
+function attachBasicWalkerVisual(z,g){
+ if(!z||z.kind!=="shambler"||z.walkerVisual||!basicWalkerTemplate)return false;
+ const holder=new THREE.Group(),model=SkeletonUtils.clone(basicWalkerTemplate);
+ holder.name="BasicWalkerVisual";model.name="BasicWalkerModel";
+ const sourceHeight=basicWalkerTemplate.userData.sourceHeight||9.46;
+ holder.scale.setScalar(1.92/sourceHeight);
+ holder.rotation.y=Math.PI;
+ holder.add(model);g.add(holder);
+ z.walkerVisual=holder;z.walkerModel=model;z.walkerSourceHeight=sourceHeight;z.walkerBones=new Map();z.walkerRagdollLinks=[];
+ for(const key of BASIC_WALKER_BONE_KEYS){
+   const b=model.getObjectByName("Walker"+key);if(b)z.walkerBones.set(key,b);
+ }
+ if(z.rigVisual){
+   for(const key of ["Hips","Spine","Chest","Neck","Head","L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm","L_UpperLeg","L_LowerLeg","R_UpperLeg","R_LowerLeg"]){
+     const source=z.rigVisual.getObjectByName(key),target=z.walkerBones.get(key);
+     if(source&&target)z.walkerRagdollLinks.push({source,target,sourceBase:source.quaternion.clone(),targetBase:target.quaternion.clone(),delta:new THREE.Quaternion()});
+   }
+   z.rigVisual.traverse(o=>{if(o.isMesh)o.visible=false});
+ }
+ z.walkerLastX=g.position.x;z.walkerLastZ=g.position.z;z.walkerMoveBlend=0;
+ console.log("CITY OUTBREAK: basic Shambler uses walkers.glb",{bones:z.walkerBones.size,facingDeg:180});
+ return true;
+}
+function buildBasicWalkerHitboxes(z){
+ if(!z?.walkerBones?.size)return false;
+ if(z.hitMeshes)for(const o of z.hitMeshes)if(o)o.raycast=()=>{};
+ const h=z.walkerSourceHeight||9.46,mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false}),hitboxes=[];
+ const add=(boneName,geo,pos,quat,part,isHead=false)=>{
+   const bone=z.walkerBones.get(boneName);if(!bone)return null;
+   const q=new THREE.Mesh(geo,mat);q.position.copy(pos||new THREE.Vector3());if(quat)q.quaternion.copy(quat);
+   q.name="BasicWalkerHit_"+part+"_"+boneName;q.castShadow=false;q.receiveShadow=false;q.userData.zombie=z;q.userData.part=part;if(isHead)q.userData.isHead=true;
+   bone.add(q);hitboxes.push(q);if(z.ownedGeometries)z.ownedGeometries.push(geo);return q;
+ };
+ const yAxis=new THREE.Vector3(0,1,0);
+ const segment=(boneName,childName,part,width,depth)=>{
+   const b=z.walkerBones.get(boneName),c=z.walkerBones.get(childName);if(!b||!c)return;
+   const dir=c.position.clone(),len=dir.length();if(len<.001)return;
+   const quat=new THREE.Quaternion().setFromUnitVectors(yAxis,dir.clone().normalize());
+   add(boneName,new THREE.BoxGeometry(width,len,depth),dir.multiplyScalar(.5),quat,part,false);
+ };
+ add("Head",new THREE.SphereGeometry(h*.115,10,8),new THREE.Vector3(0,h*.025,0),null,"head",true);
+ add("Chest",new THREE.BoxGeometry(h*.22,h*.23,h*.16),new THREE.Vector3(0,-h*.045,0),null,"torso");
+ add("Hips",new THREE.BoxGeometry(h*.18,h*.15,h*.15),new THREE.Vector3(0,-h*.035,0),null,"torso");
+ segment("L_UpperArm","L_LowerArm","leftArm",h*.09,h*.09);segment("L_LowerArm","L_Hand","leftArm",h*.085,h*.085);
+ segment("R_UpperArm","R_LowerArm","rightArm",h*.09,h*.09);segment("R_LowerArm","R_Hand","rightArm",h*.085,h*.085);
+ segment("L_UpperLeg","L_LowerLeg","leftLeg",h*.10,h*.10);segment("L_LowerLeg","L_Foot","leftLeg",h*.09,h*.09);
+ segment("R_UpperLeg","R_LowerLeg","rightLeg",h*.10,h*.10);segment("R_LowerLeg","R_Foot","rightLeg",h*.09,h*.09);
+ if(z.ownedMaterials)z.ownedMaterials.push(mat);
+ z.walkerHitboxes=hitboxes;z.hitMeshes=hitboxes;document.documentElement.dataset.basicWalkerHitboxes=String(hitboxes.length);
+ return hitboxes.length>0;
+}
+function syncBasicWalkerVisual(z,dt=0){
+ const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
+ holder.rotation.y=Math.PI;
+ if(z.dead||z.knockdown){
+   holder.position.y=z.rigVisual?.position.y||0;holder.rotation.x=z.rigVisual?.rotation.x||0;holder.rotation.z=z.rigVisual?.rotation.z||0;
+   for(const l of z.walkerRagdollLinks||[]){
+     l.delta.copy(l.sourceBase).invert().multiply(l.source.quaternion);
+     l.target.quaternion.copy(l.targetBase).multiply(l.delta);
+   }
+   return;
+ }
+ const gx=z.g.position.x,gz=z.g.position.z,lastX=Number.isFinite(z.walkerLastX)?z.walkerLastX:gx,lastZ=Number.isFinite(z.walkerLastZ)?z.walkerLastZ:gz;
+ const speedNow=Math.hypot(gx-lastX,gz-lastZ)/Math.max(dt,.001);z.walkerLastX=gx;z.walkerLastZ=gz;
+ z.walkerMoveBlend=THREE.MathUtils.lerp(z.walkerMoveBlend||0,speedNow>.08?1:0,Math.min(1,dt*7));
+ const b=z.walkerMoveBlend,p=z.phase||0,step=Math.sin(p),step2=Math.sin(p+Math.PI),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
+ const hips=bones.get("Hips"),spine=bones.get("Spine"),chest=bones.get("Chest"),neck=bones.get("Neck"),head=bones.get("Head"),
+       lua=bones.get("L_UpperArm"),lla=bones.get("L_LowerArm"),rua=bones.get("R_UpperArm"),rla=bones.get("R_LowerArm"),
+       lul=bones.get("L_UpperLeg"),lll=bones.get("L_LowerLeg"),rul=bones.get("R_UpperLeg"),rll=bones.get("R_LowerLeg");
+ if(z.leglessCrawler){
+   holder.position.y=-.50;holder.rotation.x=-.72;holder.rotation.z=step*.018*b;
+   if(hips)hips.rotation.set(-.08,0,0);if(spine)spine.rotation.set(.18,0,step*.025);if(chest)chest.rotation.set(.18+attack*.06,0,-step*.035);
+   if(neck)neck.rotation.set(-.18,0,0);if(head)head.rotation.set(-.08,0,step*.03);
+   if(lua)lua.rotation.set(.52+step*.24,0,-.28);if(rua)rua.rotation.set(.52+step2*.24,0,.28);
+   if(lla)lla.rotation.set(.34+Math.max(0,step)*.30,0,-.08);if(rla)rla.rotation.set(.34+Math.max(0,step2)*.30,0,.08);
+   return;
+ }
+ holder.position.y=Math.abs(step)*.018*b;holder.rotation.x=-.025*b-attack*.025;holder.rotation.z=step*.018*b;
+ if(hips)hips.rotation.set(0,step*.025*b,0);if(spine)spine.rotation.set(-.018*b,0,-step*.016*b);if(chest)chest.rotation.set(-.028*b,0,step*.022*b);
+ if(neck)neck.rotation.set(.018*b,0,0);if(head)head.rotation.set(.028*b,-step*.045*b,step*.018*b);
+ if(lua)lua.rotation.set(step*.16*b-attack*.30,0,-.025);if(rua)rua.rotation.set(step2*.16*b-attack*.30,0,.025);
+ if(lla)lla.rotation.set(Math.max(0,step)*.12+attack*.20,0,0);if(rla)rla.rotation.set(Math.max(0,step2)*.12+attack*.20,0,0);
+ if(lul)lul.rotation.set(step2*.30*b,0,0);if(rul)rul.rotation.set(step*.30*b,0,0);
+ if(lll)lll.rotation.set(Math.max(0,-step2)*.36*b,0,0);if(rll)rll.rotation.set(Math.max(0,-step)*.36*b,0,0);
+}
 function applyZombieRigProfile(rig,kind){
  const p=ZOMBIE_RIG_PROFILES[kind]||SHAMBLER_RIG_PROFILE;
  rig.scale.setScalar(p.rigScale);
@@ -3317,6 +3506,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  zz.ownedGeometries=[...ownedGeometrySet];
  attachRiggedZombie(zz,g,kind,i,hazardMist);
  if(kind==="radiated")attachRadiatedGreenGuy(zz,g);
+ if(kind==="shambler")attachBasicWalkerVisual(zz,g);
  if(kind==="boss"&&zz.rigVisual){
    zz.rigVisual.scale.multiplyScalar(1.10);
    const chestBone=zz.rigVisual.getObjectByName("Chest");if(chestBone)chestBone.scale.set(1.30,1.08,1.22);
@@ -3349,6 +3539,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  });
  zz.hitMeshes=hitMeshes;
  if(kind==="radiated")buildRadiatedGreenHitboxes(zz);
+ if(kind==="shambler")buildBasicWalkerHitboxes(zz);
  zombies.push(zz);if(kind==="boss")currentBoss=zz
 }
 
@@ -3734,6 +3925,8 @@ function hideRigLimb(z,name){
  if(b){b.scale.set(.001,.001,.001);b.updateMatrixWorld(true)}
  const gb=z.radiatedGreenBones?.get(name);
  if(gb){gb.scale.set(.001,.001,.001);gb.updateMatrixWorld(true)}
+ const wb=z.walkerBones?.get(name);
+ if(wb){wb.scale.set(.001,.001,.001);wb.updateMatrixWorld(true)}
 }
 function addLimbStump(z,pos,leg=false){
  const q=new THREE.Mesh(FX.bloodGeoBig,FX.bloodMat);
@@ -3759,8 +3952,9 @@ function launchDetachedLimb(z,limb,side,leg=false){
 function detachArm(z,side){
  const key=side==="left"?"leftArmDetached":"rightArmDetached";
  if(z[key])return;
- if(z.radiatedGreenVisual){
-   const bone=z.radiatedGreenBones?.get(side==="left"?"L_UpperArm":"R_UpperArm");
+ if(z.radiatedGreenVisual||z.walkerVisual){
+   const customBones=z.radiatedGreenBones||z.walkerBones;
+   const bone=customBones?.get(side==="left"?"L_UpperArm":"R_UpperArm");
    const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.35:.35,1.35,0));
    z[key]=true;hideRigLimb(z,side==="left"?"L_UpperArm":"R_UpperArm");
    if(z.hitMeshes){
@@ -3841,8 +4035,8 @@ function convertLeglessToCrawler(z){
  z.rigBase=null;z.rigTransient=null;z.rigTransientT=0;
  hideRigLimb(z,"L_UpperLeg");hideRigLimb(z,"R_UpperLeg");
  poseLeglessCrawlerRig(z,0,0,0);
- if(z.radiatedGreenVisual){
-   // The Green Guy's head/torso/arm hitboxes are already bone-attached and
+ if(z.radiatedGreenVisual||z.walkerVisual){
+   // Custom GLB head/torso/arm hitboxes are already bone-attached and
    // remain accurate after the visible body pitches into the crawler pose.
    z.crawlerHitboxes=z.hitMeshes?z.hitMeshes.slice():[];
  }else{
@@ -3855,8 +4049,9 @@ function convertLeglessToCrawler(z){
 function detachLeg(z,side){
  const key=side==="left"?"leftLegDetached":"rightLegDetached";
  if(z[key])return;
- if(z.radiatedGreenVisual){
-   const bone=z.radiatedGreenBones?.get(side==="left"?"L_UpperLeg":"R_UpperLeg");
+ if(z.radiatedGreenVisual||z.walkerVisual){
+   const customBones=z.radiatedGreenBones||z.walkerBones;
+   const bone=customBones?.get(side==="left"?"L_UpperLeg":"R_UpperLeg");
    const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.15:.15,.72,0));
    z[key]=true;hideRigLimb(z,side==="left"?"L_UpperLeg":"R_UpperLeg");
    if(z.hitMeshes){
@@ -4924,7 +5119,7 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
  if(!z.dead)continue;
  z.corpseAge+=dt;
  if(z.falling)updateRagdoll(z,dt);
- syncRadiatedGreenGuy(z,dt);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
  if(z.corpseAge>10&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
 }
 if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
@@ -4955,7 +5150,7 @@ for(let z of active){
    z.cool=Math.max(0,z.cool-dt);
    z.groan-=dt;z.step-=dt;
    updateKnockdown(z,dt);
-   syncRadiatedGreenGuy(z,dt);
+   syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
    continue;
  }
 
@@ -4980,7 +5175,7 @@ let animRate=0;
 if(z.pauseClock<=0){z.pauseClock=1.1+rnd()*3.2;if(rnd()<.22)z.stagger=Math.max(z.stagger,.10+rnd()*.12)}
 if(z.surgeT<=0){z.surgeT=.65+rnd()*1.7;z.zig*=-1}z.think-=dt;
 z.avoidT=Math.max(0,(z.avoidT||0)-dt);z.navFlipCooldown=Math.max(0,(z.navFlipCooldown||0)-dt);
-const spinTopDecoy=z.radiatedGreenVisual?radiatedSpinTopTarget(z):null;
+const spinTopDecoy=(z.radiatedGreenVisual||z.walkerVisual)?radiatedSpinTopTarget(z):null;
 const pursuitX=spinTopDecoy?spinTopDecoy.q.position.x:px,pursuitZ=spinTopDecoy?spinTopDecoy.q.position.z:pz;
 if(z.kind!=="boss")updateZombieRoute(z,dt,huntMode,pursuitX,pursuitZ);
 if(z.kind==="boss")tickBossSpecial(z,dt,playerDistToZombie);
@@ -5220,7 +5415,7 @@ resolveZombiePlayerContact(z,ox,oz);
      if(z.head)z.head.rotation.z-=lean*.65;
    }
  }
- syncRadiatedGreenGuy(z,dt);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 const perfGuard=createPerformanceGuard({
  renderer:ren,
