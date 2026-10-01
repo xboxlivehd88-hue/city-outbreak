@@ -4404,15 +4404,14 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  if(weapon==="m240"&&m240ViewRoot){
    // v379: lower the butt in ADS by pitching the complete M240 the opposite
    // direction from v378; keep the current ADS height/depth unchanged.
-   m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,.050,aimBlend);
+   m240ViewRoot.rotation.x=THREE.MathUtils.lerp(.055,.060,aimBlend);
  }
  if(weapon==="m240"&&m240ViewModel&&m240ViewBasePos&&m240ViewBaseQuat){
-   // v381: heavy-machine-gun recoil stays at the barrel/front only. Smooth the
-   // per-shot sawtooth so ADS remains readable while sustained fire still has
-   // a noticeable, weighty muzzle rise.
-   const recoilStrength=THREE.MathUtils.lerp(.11,.060,aimBlend);
+   // v382: heavy-machine-gun recoil stays at the barrel/front only. Stronger
+   // visible rise returns, but slower smoothing keeps sustained ADS from bouncing.
+   const recoilStrength=THREE.MathUtils.lerp(.20,.125,aimBlend);
    const targetKick=-recoil*recoilStrength;
-   const follow=1-Math.exp(-dt*10.5);
+   const follow=1-Math.exp(-dt*6.5);
    m240BarrelKick=THREE.MathUtils.lerp(m240BarrelKick,targetKick,follow);
    m240RecoilQuat.setFromAxisAngle(m240RecoilAxis,m240BarrelKick);
    m240ViewModel.quaternion.copy(m240RecoilQuat).multiply(m240ViewBaseQuat);
