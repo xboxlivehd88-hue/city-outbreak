@@ -1,0 +1,79 @@
+name: inspect zombie GLBs
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-inspect-zombie-glbs.yml'
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect GLBs
+        run: |
+          python3 - <<'PY'
+          import json,struct,collections,math
+          from pathlib import Path
+          def parse(path):
+            b=Path(path).read_bytes()
+            magic,ver,total=struct.unpack_from('<4sII',b,0)
+            pos=12;n,t=struct.unpack_from('<II',b,pos);pos+=8
+            g=json.loads(b[pos:pos+n].decode('utf-8').rstrip('\x00 '));pos+=n
+            while pos%4: pos+=1
+            blen,btype=struct.unpack_from('<II',b,pos);pos+=8
+            blob=b[pos:pos+blen]
+            cts={5120:'b',5121:'B',5122:'h',5123:'H',5125:'I',5126:'f'}
+            cs={5120:1,5121:1,5122:2,5123:2,5125:4,5126:4}
+            comps={'SCALAR':1,'VEC2':2,'VEC3':3,'VEC4':4,'MAT2':4,'MAT3':9,'MAT4':16}
+            def acc(ai):
+              a=g['accessors'][ai]
+              if 'bufferView' not in a:return []
+              bv=g['bufferViews'][a['bufferView']];ct=a['componentType'];ncomp=comps[a['type']]
+              fmt='<'+cts[ct]*ncomp;stride=bv.get('byteStride',cs[ct]*ncomp)
+              off=bv.get('byteOffset',0)+a.get('byteOffset',0);out=[]
+              for i in range(a['count']):out.append(struct.unpack_from(fmt,blob,off+i*stride))
+              return out
+            print('\n===',path,'===')
+            print('bytes',len(b),'scene',g.get('scene'),'scenes',len(g.get('scenes',[])),'nodes',len(g.get('nodes',[])),'meshes',len(g.get('meshes',[])),'skins',len(g.get('skins',[])),'animations',len(g.get('animations',[])))
+            print('animations',[a.get('name','') for a in g.get('animations',[])])
+            print('skins',[(s.get('name'),len(s.get('joints',[])),s.get('skeleton')) for s in g.get('skins',[])])
+            print('nodes')
+            for i,nod in enumerate(g.get('nodes',[])):
+              print(i,nod.get('name'),'mesh',nod.get('mesh'),'skin',nod.get('skin'),'children',nod.get('children'),'T',nod.get('translation'),'R',nod.get('rotation'),'S',nod.get('scale'),'M',nod.get('matrix'))
+            print('materials',[(i,m.get('name')) for i,m in enumerate(g.get('materials',[]))])
+            for mi,m in enumerate(g.get('meshes',[])):
+              print('mesh',mi,m.get('name'),'prims',len(m.get('primitives',[])))
+              for pi,pr in enumerate(m.get('primitives',[])):
+                pa=pr.get('attributes',{}).get('POSITION');ia=pr.get('indices')
+                verts=acc(pa) if pa is not None else []
+                idx=[x[0] for x in acc(ia)] if ia is not None else list(range(len(verts)))
+                if verts:
+                  xs=[v[0] for v in verts];ys=[v[1] for v in verts];zs=[v[2] for v in verts]
+                  print(' prim',pi,'mat',pr.get('material'),'verts',len(verts),'idx',len(idx),'bounds',round(min(xs),4),round(max(xs),4),round(min(ys),4),round(max(ys),4),round(min(zs),4),round(max(zs),4),'attrs',list(pr.get('attributes',{}).keys()))
+                  # connected components by shared vertex index
+                  if len(idx)>=3:
+                    adj=collections.defaultdict(set)
+                    for k in range(0,len(idx)-2,3):
+                      a,b_,c=idx[k:k+3]
+                      adj[a].update((b_,c));adj[b_].update((a,c));adj[c].update((a,b_))
+                    seen=set();cc=[]
+                    for v in adj:
+                      if v in seen:continue
+                      stack=[v];seen.add(v);comp=[]
+                      while stack:
+                        q=stack.pop();comp.append(q)
+                        for n in adj[q]:
+                          if n not in seen:seen.add(n);stack.append(n)
+                      pts=[verts[j] for j in comp]
+                      cc.append((len(comp),min(p[0] for p in pts),max(p[0] for p in pts),min(p[1] for p in pts),max(p[1] for p in pts),min(p[2] for p in pts),max(p[2] for p in pts)))
+                    cc.sort(reverse=True)
+                    print('  components',len(cc),'largest',[(c[0],)+tuple(round(x,4) for x in c[1:]) for c in cc[:20]])
+          for ai,a in enumerate(g.get('animations',[])):
+            chans=a.get('channels',[])
+            targets=[]
+            for ch in chans[:40]:
+              tg=ch.get('target',{});targets.append((tg.get('node'),tg.get('path')))
+            print(' anim',ai,a.get('name'),'channels',len(chans),'targets',targets[:40])
+          for si,s in enumerate(g.get('skins',[])):
+            print(' skin joints names',si,[g['nodes'][j].get('name') for j in s.get('joints',[])[:120]])
+          for p in ['assets/green guy.glb','assets/walkers.glb']: parse(p)
+          PY
