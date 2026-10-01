@@ -1,4 +1,4 @@
-name: inspect city object prefixes
+name: inspect target building gaps
 on:
   push:
     paths:
@@ -8,20 +8,60 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: List root object names
+      - name: Measure target houses and fence
         run: |
           python3 - <<'PY'
-          import json,struct,re,collections
+          import json,struct,math
           from pathlib import Path
           b=Path('assets/chicken_gun_fruzer_-_city.glb').read_bytes()
-          n,t=struct.unpack_from('<II',b,12)
-          g=json.loads(b[20:20+n].decode('utf-8').rstrip('\x00 '))
-          nodes=g.get('nodes',[])
-          parents={}
+          pos=12;n,t=struct.unpack_from('<II',b,pos);pos+=8
+          g=json.loads(b[pos:pos+n].decode('utf-8').rstrip('\x00 '));pos+=n
+          while pos%4:pos+=1
+          bl,bt=struct.unpack_from('<II',b,pos);pos+=8;blob=b[pos:pos+bl]
+          nodes=g['nodes'];parents={}
           for i,node in enumerate(nodes):
             for ch in node.get('children',[]):parents[ch]=i
-          roots=[(i,n.get('name','')) for i,n in enumerate(nodes) if i not in parents]
-          print('ROOTS',len(roots))
-          for i,name in roots:
-            print(i,name)
+          cts={5120:'b',5121:'B',5122:'h',5123:'H',5125:'I',5126:'f'};cs={5120:1,5121:1,5122:2,5123:2,5125:4,5126:4};comps={'SCALAR':1,'VEC2':2,'VEC3':3,'VEC4':4,'MAT4':16}
+          def acc(ai):
+            a=g['accessors'][ai];bv=g['bufferViews'][a['bufferView']];ct=a['componentType'];nc=comps[a['type']];fmt='<'+cts[ct]*nc;stride=bv.get('byteStride',cs[ct]*nc);off=bv.get('byteOffset',0)+a.get('byteOffset',0)
+            return [struct.unpack_from(fmt,blob,off+i*stride) for i in range(a['count'])]
+          def mm(a,b):
+            r=[0.0]*16
+            for c in range(4):
+              for row in range(4):r[c*4+row]=sum(a[k*4+row]*b[c*4+k] for k in range(4))
+            return r
+          def trs(n):
+            if 'matrix' in n:return n['matrix']
+            t=n.get('translation',[0,0,0]);s=n.get('scale',[1,1,1]);q=n.get('rotation',[0,0,0,1]);x,y,z,w=q
+            r=[1-2*y*y-2*z*z,2*x*y+2*w*z,2*x*z-2*w*y,0,2*x*y-2*w*z,1-2*x*x-2*z*z,2*y*z+2*w*x,0,2*x*z+2*w*y,2*y*z-2*w*x,1-2*x*x-2*y*y,0,0,0,0,1]
+            r[0]*=s[0];r[1]*=s[0];r[2]*=s[0];r[4]*=s[1];r[5]*=s[1];r[6]*=s[1];r[8]*=s[2];r[9]*=s[2];r[10]*=s[2];r[12],r[13],r[14]=t
+            return r
+          world={}
+          def wm(i):
+            if i in world:return world[i]
+            m=trs(nodes[i]);p=parents.get(i);world[i]=mm(wm(p),m) if p is not None else m;return world[i]
+          def tp(m,p):
+            x,y,z=p;return(m[0]*x+m[4]*y+m[8]*z+m[12],m[1]*x+m[5]*y+m[9]*z+m[13],m[2]*x+m[6]*y+m[10]*z+m[14])
+          def descendants(root):
+            out=[];stack=[root]
+            while stack:
+              i=stack.pop();out.append(i);stack.extend(nodes[i].get('children',[]))
+            return out
+          def bbox(root):
+            pts=[]
+            for i in descendants(root):
+              node=nodes[i];mi=node.get('mesh')
+              if mi is None:continue
+              M=wm(i)
+              for pr in g['meshes'][mi].get('primitives',[]):
+                pa=pr.get('attributes',{}).get('POSITION')
+                if pa is None:continue
+                pts.extend(tp(M,p) for p in acc(pa))
+            xs=[p[0] for p in pts];ys=[p[1] for p in pts];zs=[p[2] for p in pts]
+            return min(xs),max(xs),min(ys),max(ys),min(zs),max(zs)
+          targets=[122,124,126,307,618,720]
+          for i in targets:
+            bb=bbox(i)
+            game=(21.33575+bb[0]*1.55,21.33575+bb[1]*1.55,28.68275+bb[2]*1.55,28.68275+bb[3]*1.55,8.25+bb[4]*1.55,8.25+bb[5]*1.55)
+            print(i,nodes[i].get('name'),'ROOT_BBOX',tuple(round(v,3) for v in bb),'GAME_BBOX',tuple(round(v,3) for v in game))
           PY
