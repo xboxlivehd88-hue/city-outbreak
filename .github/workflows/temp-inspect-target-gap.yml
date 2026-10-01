@@ -82,6 +82,9 @@ jobs:
               if d<28:rows.append((d,i,name,gb))
             for d,i,name,gb in sorted(rows)[:60]:
               print(round(d,2),i,name,'BBOX',tuple(round(v,2) for v in (gb[0],gb[1],gb[4],gb[5])))
+          print('=== HOUSE ROW Z15-35 ===')
+          for i,name,gb,cx,cz in sorted([o for o in objs if o[1].startswith('House_') and o[2][5]>=12 and o[2][4]<=35], key=lambda o:o[2][0]):
+            print(i,name,'BBOX',tuple(round(v,2) for v in (gb[0],gb[1],gb[4],gb[5])))
           print('=== HOUSE X-GAPS ===')
           houses=[o for o in objs if o[1].startswith('House_')]
           for ai,a in enumerate(houses):
