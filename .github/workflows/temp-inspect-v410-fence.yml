@@ -1,4 +1,4 @@
-name: inspect positive row neighbors
+name: find real house alleys
 on:
   push:
     paths:
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect all named nodes near positive gap
+      - name: Enumerate player-width ground alleys near roads
         run: |
           python3 - <<'PY'
           import json,struct,math,re
@@ -49,7 +49,7 @@ jobs:
             return out
           def gamep(p):return(21.33575+p[0]*1.55,28.68275+p[1]*1.55,8.25+p[2]*1.55)
           cache={}
-          def bbox(root):
+          def lowbbox(root):
             if root in cache:return cache[root]
             pts=[]
             for i in descendants(root):
@@ -58,20 +58,53 @@ jobs:
               M=wm(i)
               for pr in g['meshes'][mi].get('primitives',[]):
                 pa=pr.get('attributes',{}).get('POSITION')
-                if pa is not None:pts += [gamep(tp(M,p)) for p in acc(pa)]
+                if pa is None:continue
+                for p in acc(pa):
+                  q=gamep(tp(M,p))
+                  if -.2<=q[1]<=3.2:pts.append(q)
             if not pts:return None
             bb=(min(p[0] for p in pts),max(p[0] for p in pts),min(p[2] for p in pts),max(p[2] for p in pts));cache[root]=bb;return bb
-          tx,tz=38.6,22.0
-          print('=== NEAR POSITIVE GAP ===')
-          rows=[]
+          houses=[]
+          roads=[]
           for i,nod in enumerate(nodes):
             name=nod.get('name','')
-            if not name or 'LowPolyFPS' in name:continue
-            if not re.search(r'House_|Road_|ParkingBG_|Office|BG_|Bank|Mall|Hotel|Shop|Store|Gas_|Church|CityHall|Fence_01',name,re.I):continue
-            bb=bbox(i)
-            if not bb:continue
-            x0,x1,z0,z1=bb;cx=(x0+x1)/2;cz=(z0+z1)/2;d=math.hypot(cx-tx,cz-tz)
-            if d<45:rows.append((d,i,name,bb))
-          for d,i,name,bb in sorted(rows):
-            print(round(d,2),i,name,'BBOX',tuple(round(v,2) for v in bb))
+            if 'LowPolyFPS' in name:continue
+            if name.startswith('House_'):
+              bb=lowbbox(i)
+              if bb:houses.append((i,name,bb))
+            elif re.match(r'^(Road_|ParkingBG_)',name):
+              bb=lowbbox(i)
+              if bb:roads.append((i,name,bb))
+          def rectdist(px,pz,bb):
+            x0,x1,z0,z1=bb
+            dx=0 if x0<=px<=x1 else min(abs(px-x0),abs(px-x1))
+            dz=0 if z0<=pz<=z1 else min(abs(pz-z0),abs(pz-z1))
+            return math.hypot(dx,dz)
+          out=[]
+          for ai,a in enumerate(houses):
+            ia,na,A=a;ax0,ax1,az0,az1=A
+            for b in houses[ai+1:]:
+              ib,nb,B=b;bx0,bx1,bz0,bz1=B
+              xov=max(0,min(ax1,bx1)-max(ax0,bx0));zov=max(0,min(az1,bz1)-max(az0,bz0))
+              # gap along X, buildings overlap in Z
+              xgap=max(bx0-ax1,ax0-bx1,0)
+              if .65<=xgap<=2.6 and zov>=4.0:
+                midx=(ax1+bx0)/2 if ax1<bx0 else (bx1+ax0)/2
+                midz=(max(az0,bz0)+min(az1,bz1))/2
+                nr=min((rectdist(midx,midz,r[2]),r[0],r[1],r[2]) for r in roads) if roads else (999,None,None,None)
+                out.append((nr[0],'X',xgap,midx,midz,ia,na,A,ib,nb,B,nr[1],nr[2],nr[3]))
+              # gap along Z, buildings overlap in X
+              zgap=max(bz0-az1,az0-bz1,0)
+              if .65<=zgap<=2.6 and xov>=4.0:
+                midx=(max(ax0,bx0)+min(ax1,bx1))/2
+                midz=(az1+bz0)/2 if az1<bz0 else (bz1+az0)/2
+                nr=min((rectdist(midx,midz,r[2]),r[0],r[1],r[2]) for r in roads) if roads else (999,None,None,None)
+                out.append((nr[0],'Z',zgap,midx,midz,ia,na,A,ib,nb,B,nr[1],nr[2],nr[3]))
+          out.sort(key=lambda x:(x[0],abs(x[2]-1.58)))
+          print('=== ALLEYS ===')
+          for row in out[:80]:
+            rd,axis,gap,mx,mz,ia,na,A,ib,nb,B,ri,rn,R=row
+            print('ROAD_D',round(rd,2),'AXIS',axis,'GAP',round(gap,3),'MID',round(mx,3),round(mz,3),
+                  ia,na,tuple(round(v,2) for v in A),ib,nb,tuple(round(v,2) for v in B),
+                  'ROAD',ri,rn,tuple(round(v,2) for v in R) if R else None)
           PY
