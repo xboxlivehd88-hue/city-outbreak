@@ -955,52 +955,6 @@ function addCityHallStairSideWallColliders(map){
  console.log("CITY OUTBREAK: City Hall stair side-wall collision added",{added});
 }
 
-// v407: close the exact ATM-side boundary opening from the user's screenshots.
-// The authored Fence_01 row at local X=-19.75 currently ends at Z=-3.561,
-// while House_01__3 begins near Z=.245, leaving a ~5m traversable hole.
-// Extend that same fence row three more authored 1m sections to the building.
-function addAtmAlleyFenceExtension(map){
- const source=map.getObjectByName("Fence_01__28_")||map.getObjectByName("Fence_01__22_")||map.getObjectByName("Fence_01");
- if(!source){console.warn("CITY OUTBREAK: v407 ATM alley fence source not found");return}
-
- const specs=[
-   {x:-19.75,y:-18.45,z:-2.561,name:"ATMAlleyFence_A"},
-   {x:-19.75,y:-18.45,z:-1.561,name:"ATMAlleyFence_B"},
-   {x:-19.75,y:-18.45,z:-.561,name:"ATMAlleyFence_C"}
- ];
- const box=new THREE.Box3(),size=new THREE.Vector3(),center=new THREE.Vector3();
- let added=0;
- for(const spec of specs){
-   const fence=source.clone(true);
-   fence.name=spec.name;
-   fence.position.set(spec.x,spec.y,spec.z);
-   fence.rotation.copy(source.rotation);
-   fence.scale.copy(source.scale);
-   fence.visible=true;
-   fence.traverse(o=>{
-     o.userData.externalMapAsset=true;
-     o.userData.v407AtmAlleyFence=true;
-     if(o.isMesh){o.castShadow=false;o.receiveShadow=false}
-   });
-   map.add(fence);
-   fence.updateMatrixWorld(true);
-
-   box.setFromObject(fence);box.getSize(size);box.getCenter(center);
-   const hit={
-     x:center.x,z:center.z,
-     hx:Math.max(.08,size.x*.5+.04),
-     hz:Math.max(.08,size.z*.5+.04),
-     source:"v407AtmAlleyFence"
-   };
-   buildingColliders.push(hit);indexCityCollider(hit);added++;
- }
- ZNAV_BLOCK_CACHE.clear();
- zombieSpawnPlayableCellsReady=false;
- zombieSpawnPlayableCells.clear();
- document.documentElement.dataset.v407AtmAlleyFences=String(added);
- console.log("CITY OUTBREAK: v407 ATM alley fence extension added",{added,specs});
-}
-
 // v336: true one-for-one replacement of the city's 15 authored Light_01 lamps.
 // Use each original lamp root's exact world origin and yaw. No extra lamps are
 // added in this build; power-line-side placement will be handled only after these
@@ -1322,7 +1276,6 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
  addCityHallStairSideWallColliders(map);
- addAtmAlleyFenceExtension(map);
  const additionalStreetLampPlacements=buildManualAdditionalStreetLamps(map);
  const allStreetLampPlacements=streetLampPlacements.concat(additionalStreetLampPlacements);
  addStreetLampColliders(allStreetLampPlacements);
