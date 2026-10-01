@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect candidate house gaps and neighbors
+      - name: Inspect object bounds
         run: |
           python3 - <<'PY'
           import json,struct,re,math
@@ -47,7 +47,9 @@ jobs:
             while stack:
               i=stack.pop();out.append(i);stack.extend(nodes[i].get('children',[]))
             return out
+          cache={}
           def bbox(root):
+            if root in cache:return cache[root]
             pts=[]
             for i in descendants(root):
               mi=nodes[i].get('mesh')
@@ -58,34 +60,30 @@ jobs:
                 if pa is not None:pts.extend(tp(M,p) for p in acc(pa))
             if not pts:return None
             xs=[p[0] for p in pts];ys=[p[1] for p in pts];zs=[p[2] for p in pts]
-            return min(xs),max(xs),min(ys),max(ys),min(zs),max(zs)
-          roots=[]
+            bb=(min(xs),max(xs),min(ys),max(ys),min(zs),max(zs));cache[root]=bb;return bb
+          def gamebb(bb):
+            minx,maxx,miny,maxy,minz,maxz=bb
+            return (21.33575+minx*1.55,21.33575+maxx*1.55,28.68275+miny*1.55,28.68275+maxy*1.55,8.25+minz*1.55,8.25+maxz*1.55)
+          objs=[]
+          pat=re.compile(r'House_|Fence_01|Building|Office|Tower|Skyscraper|Apartment|Hotel|Shop|Store|Mall|Bank|Garage',re.I)
           for i,nod in enumerate(nodes):
-            if i in parents:continue
+            name=nod.get('name','')
+            if not pat.search(name) or 'LowPolyFPS' in name:continue
             bb=bbox(i)
-            if bb:
-              minx,maxx,miny,maxy,minz,maxz=bb
-              gx0,gx1=21.33575+minx*1.55,21.33575+maxx*1.55
-              gz0,gz1=8.25+minz*1.55,8.25+maxz*1.55
-              roots.append((i,nod.get('name',''),gx0,gx1,gz0,gz1))
-          # Candidate narrow gaps previously observed and all neighboring roots within 18m.
+            if not bb:continue
+            gb=gamebb(bb);cx=(gb[0]+gb[1])/2;cz=(gb[4]+gb[5])/2
+            objs.append((i,name,gb,cx,cz))
           candidates=[(-47.11,-28.84),(-29.14,27.65),(-19.97,7.05)]
           for cx,cz in candidates:
             print('=== CANDIDATE',cx,cz,'===')
             rows=[]
-            for row in roots:
-              i,name,x0,x1,z0,z1=row
-              dx=0 if x0<=cx<=x1 else min(abs(cx-x0),abs(cx-x1))
-              dz=0 if z0<=cz<=z1 else min(abs(cz-z0),abs(cz-z1))
-              d=(dx*dx+dz*dz)**.5
-              if d<18:
-                rows.append((d,row))
-            for d,row in sorted(rows)[:35]:
-              i,name,x0,x1,z0,z1=row
-              print(round(d,2),i,name,'BBOX',tuple(round(v,2) for v in (x0,x1,z0,z1)))
-          # Exact authored fence panels with game-space bounds.
+            for i,name,gb,ox,oz in objs:
+              d=math.hypot(ox-cx,oz-cz)
+              if d<28:rows.append((d,i,name,gb))
+            for d,i,name,gb in sorted(rows)[:60]:
+              print(round(d,2),i,name,'BBOX',tuple(round(v,2) for v in (gb[0],gb[1],gb[4],gb[5])))
           print('=== FENCES ===')
-          for i,name,x0,x1,z0,z1 in roots:
+          for i,name,gb,cx,cz in objs:
             if name.startswith('Fence_01'):
-              print(i,name,'BBOX',tuple(round(v,3) for v in (x0,x1,z0,z1)))
+              print(i,name,'BBOX',tuple(round(v,3) for v in (gb[0],gb[1],gb[2],gb[3],gb[4],gb[5])))
           PY
