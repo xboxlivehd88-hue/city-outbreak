@@ -15,6 +15,15 @@ try{
  console.log("CITY OUTBREAK: custom rigged zombie loaded",zombieRigAsset.animations.map(a=>a.name));
 }catch(e){zombieRigError=e;console.error("CITY OUTBREAK: zombie rig failed to load",e)}
 
+// v393: user-supplied Radiated zombie visual. Gameplay still uses the existing
+// invisible zombie rig/hitboxes; this GLB is visual-only and normalized at runtime.
+let radiatedGreenGuyAsset=null,radiatedGreenGuyError=null;
+new GLTFLoader().load("assets/green%20guy.glb?v=393",gltf=>{
+ radiatedGreenGuyAsset=gltf;
+ console.log("CITY OUTBREAK: green guy radiated model loaded",{animations:gltf.animations?.map(a=>a.name)||[]});
+ for(const z of zombies){if(z.kind==="radiated"&&!z.radiatedGreenVisual)attachRadiatedGreenGuy(z,z.g)}
+},undefined,e=>{radiatedGreenGuyError=e;console.error("CITY OUTBREAK: green guy radiated model failed to load",e)});
+
 const cv=document.querySelector("#cv"),cross=document.querySelector("#crosshair"),healthText=document.querySelector("#healthText"),healthBar=document.querySelector("#healthBar"),ammoEl=document.querySelector("#ammo"),killsEl=document.querySelector("#kills"),headsEl=document.querySelector("#heads"),waveEl=document.querySelector("#wave"),remainingEl=document.querySelector("#remaining"),cashEl=document.querySelector("#cash"),weaponNameEl=document.querySelector("#weaponName"),grenadeEl=document.querySelector("#grenadeCount"),nukeEl=document.querySelector("#nukeCount"),nukeFlash=document.querySelector("#nukeFlash"),nukeShock=document.querySelector("#nukeShock"),shop=document.querySelector("#shop"),shopCash=document.querySelector("#shopCash"),shopNote=document.querySelector("#shopNote"),damage=document.querySelector("#damage"),hitmarker=document.querySelector("#hitmarker"),announce=document.querySelector("#announce"),big=document.querySelector("#big"),small=document.querySelector("#small"),death=document.querySelector("#death"),msg=document.querySelector("#msg"),startScreen=document.querySelector("#startScreen"),bossHUD=document.querySelector("#bossHUD"),bossFill=document.querySelector("#bossFill"),bossNameEl=document.querySelector("#bossName"),bossSubEl=document.querySelector("#bossSub"),sprintFill=document.querySelector("#sprintFill"),sprintState=document.querySelector("#sprintState"),scopeOverlay=document.querySelector("#scopeOverlay"),pauseBtn=document.querySelector("#pauseBtn"),pauseOverlay=document.querySelector("#pauseOverlay"),resumeGameBtn=document.querySelector("#resumeGame");
 let ac,master,audioOn=false,noiseBuffer=null;
 function initAudio(){
@@ -2543,6 +2552,65 @@ const ZOMBIE_RIG_PROFILES=Object.freeze({
 function cloneShamblerRig(){
  return zombieRigAsset?SkeletonUtils.clone(zombieRigAsset.scene):null;
 }
+const RADIATED_GREEN_BONE_ALIASES=Object.freeze({
+ Hips:["hips","pelvis","root"],
+ Spine:["spine","spine1"],
+ Chest:["chest","upperchest","spine2","spine1"],
+ Neck:["neck"],Head:["head"],
+ L_UpperArm:["leftupperarm","leftarm","lupperarm","upperarml"],
+ L_LowerArm:["leftforearm","leftlowerarm","llowerarm","forearml"],
+ R_UpperArm:["rightupperarm","rightarm","rupperarm","upperarmr"],
+ R_LowerArm:["rightforearm","rightlowerarm","rlowerarm","forearmr"],
+ L_UpperLeg:["leftupleg","leftupperleg","lupperleg","leftthigh"],
+ L_LowerLeg:["leftleg","leftlowerleg","llowerleg","leftcalf"],
+ R_UpperLeg:["rightupleg","rightupperleg","rupperleg","rightthigh"],
+ R_LowerLeg:["rightleg","rightlowerleg","rlowerleg","rightcalf"]
+});
+function radiatedBoneKey(name=""){return name.toLowerCase().replace(/mixamorig/g,"").replace(/[^a-z0-9]/g,"")}
+function findRadiatedGreenBone(root,aliases){
+ const wanted=new Set(aliases.map(radiatedBoneKey)),bones=[];root.traverse(o=>{if(o.isBone)bones.push(o)});
+ return bones.find(b=>wanted.has(radiatedBoneKey(b.name)))||null;
+}
+function attachRadiatedGreenGuy(z,g){
+ if(!z||z.kind!=="radiated"||z.radiatedGreenVisual||!radiatedGreenGuyAsset?.scene)return false;
+ const holder=new THREE.Group(),model=SkeletonUtils.clone(radiatedGreenGuyAsset.scene);
+ holder.name="RadiatedGreenGuyVisual";model.name="RadiatedGreenGuyModel";
+ model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;o.userData.visualOnly=true;o.raycast=()=>{}}});
+ model.updateMatrixWorld(true);
+ const box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3(),center=new THREE.Vector3();box.getSize(size);box.getCenter(center);
+ if(!Number.isFinite(size.y)||size.y<.001)return false;
+ model.position.x-=center.x;model.position.z-=center.z;model.position.y-=box.min.y;
+ holder.add(model);holder.scale.setScalar(1.98/size.y);g.add(holder);
+ z.radiatedGreenVisual=holder;z.radiatedGreenModel=model;z.radiatedGreenLinks=[];z.radiatedGreenBones=new Map();
+ if(z.rigVisual){
+   const usedTargets=new Set();
+   for(const [sourceName,aliases] of Object.entries(RADIATED_GREEN_BONE_ALIASES)){
+     const source=z.rigVisual.getObjectByName(sourceName),target=findRadiatedGreenBone(model,aliases);
+     if(!source||!target||usedTargets.has(target))continue;
+     usedTargets.add(target);z.radiatedGreenBones.set(sourceName,target);
+     z.radiatedGreenLinks.push({source,target,sourceBase:source.quaternion.clone(),targetBase:target.quaternion.clone(),delta:new THREE.Quaternion()});
+   }
+   z.rigVisual.traverse(o=>{if(o.isMesh)o.visible=false});
+ }
+ if(!z.radiatedGreenLinks.length&&radiatedGreenGuyAsset.animations?.length){
+   const clips=radiatedGreenGuyAsset.animations;
+   const clip=clips.find(c=>/walk|run|move|shamble|locomotion/i.test(c.name))||clips.find(c=>/idle/i.test(c.name))||clips[0];
+   if(clip){z.radiatedGreenMixer=new THREE.AnimationMixer(model);z.radiatedGreenAction=z.radiatedGreenMixer.clipAction(clip);z.radiatedGreenAction.setLoop(THREE.LoopRepeat,Infinity).play()}
+ }
+ console.log("CITY OUTBREAK: Radiated uses green guy.glb",{retargetedBones:z.radiatedGreenLinks.length,animation:z.radiatedGreenAction?._clip?.name||""});
+ return true;
+}
+function syncRadiatedGreenGuy(z,dt=0){
+ if(z?.radiatedGreenMixer&&!z.dead&&!z.knockdown){
+   if(z.radiatedGreenAction)z.radiatedGreenAction.timeScale=Math.max(.65,Math.min(1.8,z.speed*.58));
+   z.radiatedGreenMixer.update(dt);
+ }
+ if(!z?.radiatedGreenLinks?.length)return;
+ for(const l of z.radiatedGreenLinks){
+   l.delta.copy(l.sourceBase).invert().multiply(l.source.quaternion);
+   l.target.quaternion.copy(l.targetBase).multiply(l.delta);
+ }
+}
 function applyZombieRigProfile(rig,kind){
  const p=ZOMBIE_RIG_PROFILES[kind]||SHAMBLER_RIG_PROFILE;
  rig.scale.setScalar(p.rigScale);
@@ -2724,6 +2792,7 @@ function setZombieLocomotion(z,wantsRun){
 }
 function releaseZombieVisual(z){
  if(!z)return;
+ if(z.radiatedGreenMixer){z.radiatedGreenMixer.stopAllAction();if(z.radiatedGreenModel)z.radiatedGreenMixer.uncacheRoot(z.radiatedGreenModel)}
  if(z.mixer){z.mixer.stopAllAction();if(z.rigVisual)z.mixer.uncacheRoot(z.rigVisual)}
  if(z.rigMaterials){for(const m of z.rigMaterials){try{m.dispose()}catch(_){}}z.rigMaterials.length=0}
  if(z.ownedGeometries){for(const geo of z.ownedGeometries){try{geo.dispose()}catch(_){}}z.ownedGeometries.length=0}
@@ -3111,6 +3180,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  g.traverse(o=>{if(o.isMesh&&o.geometry&&!o.userData.sharedGeometry)ownedGeometrySet.add(o.geometry)});
  zz.ownedGeometries=[...ownedGeometrySet];
  attachRiggedZombie(zz,g,kind,i,hazardMist);
+ if(kind==="radiated")attachRadiatedGreenGuy(zz,g);
  if(kind==="boss"&&zz.rigVisual){
    zz.rigVisual.scale.multiplyScalar(1.10);
    const chestBone=zz.rigVisual.getObjectByName("Chest");if(chestBone)chestBone.scale.set(1.30,1.08,1.22);
@@ -3524,9 +3594,9 @@ function stagger(z,hs){
 function rigBone(z,name){return z.rigVisual?z.rigVisual.getObjectByName(name):null}
 function hideRigLimb(z,name){
  const b=rigBone(z,name);
- if(!b)return;
- b.scale.set(.001,.001,.001);
- b.updateMatrixWorld(true);
+ if(b){b.scale.set(.001,.001,.001);b.updateMatrixWorld(true)}
+ const gb=z.radiatedGreenBones?.get(name);
+ if(gb){gb.scale.set(.001,.001,.001);gb.updateMatrixWorld(true)}
 }
 function addLimbStump(z,pos,leg=false){
  const q=new THREE.Mesh(FX.bloodGeoBig,FX.bloodMat);
@@ -4678,6 +4748,7 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
  if(!z.dead)continue;
  z.corpseAge+=dt;
  if(z.falling)updateRagdoll(z,dt);
+ syncRadiatedGreenGuy(z,dt);
  if(z.corpseAge>10&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
 }
 if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
@@ -4708,6 +4779,7 @@ for(let z of active){
    z.cool=Math.max(0,z.cool-dt);
    z.groan-=dt;z.step-=dt;
    updateKnockdown(z,dt);
+   syncRadiatedGreenGuy(z,dt);
    continue;
  }
 
@@ -4965,6 +5037,7 @@ resolveZombiePlayerContact(z,ox,oz);
      if(z.head)z.head.rotation.z-=lean*.65;
    }
  }
+ syncRadiatedGreenGuy(z,dt);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 const perfGuard=createPerformanceGuard({
  renderer:ren,
