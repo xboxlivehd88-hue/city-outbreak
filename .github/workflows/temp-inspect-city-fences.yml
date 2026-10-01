@@ -1,0 +1,31 @@
+name: inspect city fence nodes
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-inspect-city-fences.yml'
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect city GLB names
+        run: |
+          python3 - <<'PY'
+          import json,struct,re
+          from pathlib import Path
+          p=Path('assets/chicken_gun_fruzer_-_city.glb')
+          b=p.read_bytes()
+          magic,ver,total=struct.unpack_from('<4sII',b,0)
+          n,t=struct.unpack_from('<II',b,12)
+          g=json.loads(b[20:20+n].decode('utf-8').rstrip('\x00 '))
+          print('nodes',len(g.get('nodes',[])),'meshes',len(g.get('meshes',[])))
+          pats=re.compile(r'fence|gate|wall|wood|barrier|yard|rail',re.I)
+          for i,node in enumerate(g.get('nodes',[])):
+            name=node.get('name','')
+            if pats.search(name):
+              print('NODE',i,name,'mesh',node.get('mesh'),'children',node.get('children'),'T',node.get('translation'),'R',node.get('rotation'),'S',node.get('scale'),'M',node.get('matrix'))
+          for i,m in enumerate(g.get('meshes',[])):
+            name=m.get('name','')
+            if pats.search(name):
+              print('MESH',i,name,'prims',len(m.get('primitives',[])))
+          PY
