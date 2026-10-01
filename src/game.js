@@ -3213,9 +3213,9 @@ function zombieSpawnSpreadOk(x,z,minSeparation,minAngle){
  // Late waves continually refill the 30-active cap. Keep new arrivals away from
  // living zombies too, so replacement spawns do not reform a large clump.
  const liveSep=Math.max(3.4,minSeparation*.72);
- for(const z of zombies){
-   if(z.dead)continue;
-   if(Math.hypot(x-z.g.position.x,z-z.g.position.z)<liveSep)return false;
+ for(const live of zombies){
+   if(live.dead)continue;
+   if(Math.hypot(x-live.g.position.x,z-live.g.position.z)<liveSep)return false;
  }
  return true;
 }
