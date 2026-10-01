@@ -955,6 +955,61 @@ function addCityHallStairSideWallColliders(map){
  console.log("CITY OUTBREAK: City Hall stair side-wall collision added",{added});
 }
 
+// v410: one photo-matched fence panel in the user-identified alley.
+// Reference panel: the standard Fence_01 section shown in the user's first photo
+// (about 1.58m wide x 1.89m high). Target: the ~1.73m opening between
+// House_06 and House_03__3, centered at game X=38.595, at the street-facing
+// House_03 edge (Z=26.65). Scale is copied exactly; only yaw/position change.
+function addPhotoMatchedHouseGapFence(map){
+ const source=map.getObjectByName("Fence_01__22_")||map.getObjectByName("Fence_01__28_")||map.getObjectByName("Fence_01");
+ if(!source){console.warn("CITY OUTBREAK: v410 photo fence source not found");return}
+
+ map.updateMatrixWorld(true);source.updateMatrixWorld(true);
+ const mapInv=new THREE.Matrix4().copy(map.matrixWorld).invert();
+ const rel=new THREE.Matrix4().multiplyMatrices(mapInv,source.matrixWorld);
+ const basePos=new THREE.Vector3(),baseQuat=new THREE.Quaternion(),baseScale=new THREE.Vector3();
+ rel.decompose(basePos,baseQuat,baseScale);
+
+ const fence=source.clone(true);
+ fence.name="PhotoMatchedHouseGapFence_v410";
+ fence.matrixAutoUpdate=true;
+ fence.position.set(
+   (38.595-NEW_CITY_X_OFFSET)/NEW_CITY_SCALE,
+   basePos.y,
+   (26.65-NEW_CITY_Z_OFFSET)/NEW_CITY_SCALE
+ );
+ fence.quaternion.copy(baseQuat);
+ fence.rotateY(Math.PI*.5);
+ fence.scale.copy(baseScale);
+ fence.visible=true;
+ fence.traverse(o=>{
+   o.userData.externalMapAsset=true;
+   o.userData.v410PhotoGapFence=true;
+   if(o.isMesh){o.castShadow=false;o.receiveShadow=false}
+ });
+ map.add(fence);
+ fence.updateMatrixWorld(true);
+
+ const box=new THREE.Box3().setFromObject(fence),size=new THREE.Vector3(),center=new THREE.Vector3();
+ box.getSize(size);box.getCenter(center);
+ const hit={
+   x:center.x,z:center.z,
+   hx:size.x*.5+.045,
+   hz:size.z*.5+.045,
+   source:"v410PhotoGapFence"
+ };
+ buildingColliders.push(hit);indexCityCollider(hit);
+ ZNAV_BLOCK_CACHE.clear();
+ zombieSpawnPlayableCellsReady=false;
+ zombieSpawnPlayableCells.clear();
+ document.documentElement.dataset.v410PhotoGapFence="1";
+ console.log("CITY OUTBREAK: v410 photo-matched alley fence added",{
+   gameCenter:[center.x,center.y,center.z],
+   size:[size.x,size.y,size.z],
+   targetGap:{left:"House_06",right:"House_03__3_",width:1.732}
+ });
+}
+
 // v336: true one-for-one replacement of the city's 15 authored Light_01 lamps.
 // Use each original lamp root's exact world origin and yaw. No extra lamps are
 // added in this build; power-line-side placement will be handled only after these
@@ -1276,6 +1331,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
  addCityHallStairSideWallColliders(map);
+ addPhotoMatchedHouseGapFence(map);
  const additionalStreetLampPlacements=buildManualAdditionalStreetLamps(map);
  const allStreetLampPlacements=streetLampPlacements.concat(additionalStreetLampPlacements);
  addStreetLampColliders(allStreetLampPlacements);
