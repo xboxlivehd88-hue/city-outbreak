@@ -1,4 +1,4 @@
-name: inspect real walkable house gaps
+name: inspect positive row neighbors
 on:
   push:
     paths:
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Find real walkable gaps between house wall faces
+      - name: Inspect all named nodes near positive gap
         run: |
           python3 - <<'PY'
           import json,struct,math,re
@@ -47,40 +47,31 @@ jobs:
             while stack:
               i=stack.pop();out.append(i);stack.extend(nodes[i].get('children',[]))
             return out
-          def gamep(p): return (21.33575+p[0]*1.55,28.68275+p[1]*1.55,8.25+p[2]*1.55)
-          def allpoints(root):
-            out=[]
+          def gamep(p):return(21.33575+p[0]*1.55,28.68275+p[1]*1.55,8.25+p[2]*1.55)
+          cache={}
+          def bbox(root):
+            if root in cache:return cache[root]
+            pts=[]
             for i in descendants(root):
               mi=nodes[i].get('mesh')
               if mi is None:continue
               M=wm(i)
               for pr in g['meshes'][mi].get('primitives',[]):
                 pa=pr.get('attributes',{}).get('POSITION')
-                if pa is not None:out += [gamep(tp(M,p)) for p in acc(pa)]
-            return out
-          roots=[]
-          for i,nod in enumerate(nodes):
-            if i in parents:continue
-            ps=allpoints(i)
-            if not ps:continue
-            x0,x1=min(p[0] for p in ps),max(p[0] for p in ps);z0,z1=min(p[2] for p in ps),max(p[2] for p in ps)
-            roots.append((i,nod.get('name',''),x0,x1,z0,z1))
-          print('=== LARGE/GLASS/OFFICE ROOTS ===')
-          for r in roots:
-            i,name,x0,x1,z0,z1=r
-            if re.search(r'Office|BG_|Bank|Mall|Hotel|Shop|Store|Building|CityHall',name,re.I) or ((x1-x0)>16 and (z1-z0)>12):
-              print(i,name,'BBOX',tuple(round(v,2) for v in (x0,x1,z0,z1)))
-          print('=== ROADS/PARKING NEAR POSITIVE ROW ===')
+                if pa is not None:pts += [gamep(tp(M,p)) for p in acc(pa)]
+            if not pts:return None
+            bb=(min(p[0] for p in pts),max(p[0] for p in pts),min(p[2] for p in pts),max(p[2] for p in pts));cache[root]=bb;return bb
           tx,tz=38.6,22.0
-          for i,name,x0,x1,z0,z1 in roots:
-            if not re.search(r'Road_|ParkingBG_',name,re.I):continue
-            cx=(x0+x1)/2;cz=(z0+z1)/2
-            if math.hypot(cx-tx,cz-tz)<40:
-              print(i,name,'BBOX',tuple(round(v,2) for v in (x0,x1,z0,z1)))
-          print('=== HOUSES NEAR POSITIVE ROW ===')
-          for i,name,x0,x1,z0,z1 in roots:
-            if not name.startswith('House_'):continue
-            cx=(x0+x1)/2;cz=(z0+z1)/2
-            if math.hypot(cx-tx,cz-tz)<38:
-              print(i,name,'BBOX',tuple(round(v,2) for v in (x0,x1,z0,z1)))
+          print('=== NEAR POSITIVE GAP ===')
+          rows=[]
+          for i,nod in enumerate(nodes):
+            name=nod.get('name','')
+            if not name or 'LowPolyFPS' in name:continue
+            if not re.search(r'House_|Road_|ParkingBG_|Office|BG_|Bank|Mall|Hotel|Shop|Store|Gas_|Church|CityHall|Fence_01',name,re.I):continue
+            bb=bbox(i)
+            if not bb:continue
+            x0,x1,z0,z1=bb;cx=(x0+x1)/2;cz=(z0+z1)/2;d=math.hypot(cx-tx,cz-tz)
+            if d<45:rows.append((d,i,name,bb))
+          for d,i,name,bb in sorted(rows):
+            print(round(d,2),i,name,'BBOX',tuple(round(v,2) for v in bb))
           PY
