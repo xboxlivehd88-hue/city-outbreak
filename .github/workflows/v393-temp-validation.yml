@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - '.github/workflows/v393-temp-validation.yml'
+      - 'src/game.js'
+      - 'index.html'
 jobs:
   validate:
     runs-on: ubuntu-latest

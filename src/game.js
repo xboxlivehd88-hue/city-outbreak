@@ -2601,15 +2601,37 @@ function attachRadiatedGreenGuy(z,g){
  return true;
 }
 function syncRadiatedGreenGuy(z,dt=0){
- if(z?.radiatedGreenMixer&&!z.dead&&!z.knockdown){
+ if(!z?.radiatedGreenVisual)return;
+ if(z.radiatedGreenMixer&&!z.dead&&!z.knockdown){
    if(z.radiatedGreenAction)z.radiatedGreenAction.timeScale=Math.max(.65,Math.min(1.8,z.speed*.58));
    z.radiatedGreenMixer.update(dt);
  }
- if(!z?.radiatedGreenLinks?.length)return;
- for(const l of z.radiatedGreenLinks){
-   l.delta.copy(l.sourceBase).invert().multiply(l.source.quaternion);
-   l.target.quaternion.copy(l.targetBase).multiply(l.delta);
+ if(z.radiatedGreenLinks?.length){
+   for(const l of z.radiatedGreenLinks){
+     l.delta.copy(l.sourceBase).invert().multiply(l.source.quaternion);
+     l.target.quaternion.copy(l.targetBase).multiply(l.delta);
+   }
+   return;
  }
+ // v394: green guy.glb is a static mesh (no skin/animations). Preserve the
+ // existing invisible gameplay rig, but give the visible GLB a subtle whole-body
+ // shamble driven by the same locomotion phase so it does not glide rigidly.
+ const h=z.radiatedGreenVisual,g=z.g;
+ if(z.dead||z.knockdown){
+   h.position.y=THREE.MathUtils.lerp(h.position.y,0,Math.min(1,dt*12));
+   h.rotation.x=THREE.MathUtils.lerp(h.rotation.x,0,Math.min(1,dt*12));
+   h.rotation.z=THREE.MathUtils.lerp(h.rotation.z,0,Math.min(1,dt*12));
+   return;
+ }
+ const gx=g.position.x,gz=g.position.z,lastX=Number.isFinite(z.radiatedGreenLastX)?z.radiatedGreenLastX:gx,lastZ=Number.isFinite(z.radiatedGreenLastZ)?z.radiatedGreenLastZ:gz;
+ const speedNow=Math.hypot(gx-lastX,gz-lastZ)/Math.max(dt,.001);
+ z.radiatedGreenLastX=gx;z.radiatedGreenLastZ=gz;
+ const targetMove=speedNow>.08?1:0;
+ z.radiatedGreenMoveBlend=THREE.MathUtils.lerp(z.radiatedGreenMoveBlend||0,targetMove,Math.min(1,dt*7));
+ const b=z.radiatedGreenMoveBlend,p=z.rigPolishPhase||z.phase||0,attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
+ h.position.y=Math.abs(Math.sin(p))*0.035*b;
+ h.rotation.x=-.040*b+Math.sin(p*2)*.012*b-attack*.055;
+ h.rotation.z=Math.sin(p)*.045*b+(z.staggerDir||1)*(z.stagger||0)*.06;
 }
 function applyZombieRigProfile(rig,kind){
  const p=ZOMBIE_RIG_PROFILES[kind]||SHAMBLER_RIG_PROFILE;
