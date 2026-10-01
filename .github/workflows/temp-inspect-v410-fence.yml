@@ -1,4 +1,4 @@
-name: inspect photographed brown gray gap
+name: inspect photographed alley wall faces
 on:
   push:
     paths:
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Measure House_03 / House_04 ground geometry
+      - name: Extract wall planes around House_03 House_04 seam
         run: |
           python3 - <<'PY'
           import json,struct,math
@@ -47,32 +47,40 @@ jobs:
             while stack:
               i=stack.pop();out.append(i);stack.extend(nodes[i].get('children',[]))
             return out
-          def gamep(p):
-            return (21.33575+p[0]*1.55,28.68275+p[1]*1.55,8.25+p[2]*1.55)
-          def points(root):
-            out=[]
-            for i in descendants(root):
-              mi=nodes[i].get('mesh')
+          def gamep(p): return (21.33575+p[0]*1.55,28.68275+p[1]*1.55,8.25+p[2]*1.55)
+          for root in [585,587,114]:
+            print('===',root,nodes[root].get('name'),'===')
+            rows=[]
+            for ni in descendants(root):
+              mi=nodes[ni].get('mesh')
               if mi is None:continue
-              M=wm(i)
+              M=wm(ni)
               for pr in g['meshes'][mi].get('primitives',[]):
                 pa=pr.get('attributes',{}).get('POSITION')
-                if pa is not None: out += [gamep(tp(M,p)) for p in acc(pa)]
-            return out
-          for root in [585,587,114,110]:
-            ps=points(root); name=nodes[root].get('name')
-            print('===',root,name,'===')
-            # ground-level footprint only (roughly feet-to-shoulder height)
-            low=[p for p in ps if -.2<=p[1]<=3.5]
-            print('LOW_COUNT',len(low))
-            if low:
-              print('LOW_BBOX',round(min(p[0] for p in low),3),round(max(p[0] for p in low),3),round(min(p[2] for p in low),3),round(max(p[2] for p in low),3))
-            # street-side x slices for the House_03/House_04 seam near z=30
-            for x0,x1 in [(-9.5,-8),(-11,-9.5),(-13,-11),(-15,-13),(-17,-15),(-20,-17)]:
-              zs=[p[2] for p in low if x0<=p[0]<x1]
-              if zs: print('SLICE',x0,x1,'Z',round(min(zs),3),round(max(zs),3),'N',len(zs))
-          # reference panel actual geometry center + size in game space
-          ps=points(618)
-          print('=== REF FENCE 618 ===')
-          print('BBOX',tuple(round(v,4) for v in (min(p[0] for p in ps),max(p[0] for p in ps),min(p[1] for p in ps),max(p[1] for p in ps),min(p[2] for p in ps),max(p[2] for p in ps))))
+                if pa is None:continue
+                P=acc(pa); idx=acc(pr['indices']) if 'indices' in pr else None
+                # flatten scalar index tuples
+                inds=[v[0] for v in idx] if idx else list(range(len(P)))
+                for j in range(0,len(inds)-2,3):
+                  a=gamep(tp(M,P[inds[j]]));b=gamep(tp(M,P[inds[j+1]]));c=gamep(tp(M,P[inds[j+2]]))
+                  miny,maxy=min(a[1],b[1],c[1]),max(a[1],b[1],c[1])
+                  if maxy<.1 or miny>2.3 or maxy-miny<.5:continue
+                  ux,uy,uz=b[0]-a[0],b[1]-a[1],b[2]-a[2];vx,vy,vz=c[0]-a[0],c[1]-a[1],c[2]-a[2]
+                  nx=uy*vz-uz*vy;ny=uz*vx-ux*vz;nz=ux*vy-uy*vx;ln=(nx*nx+ny*ny+nz*nz)**.5
+                  if ln<1e-6:continue
+                  nx,ny,nz=nx/ln,ny/ln,nz/ln
+                  # side walls running into alley: plane z is nearly constant, normal mostly Z.
+                  cz=(a[2]+b[2]+c[2])/3;cx=(a[0]+b[0]+c[0])/3
+                  if abs(nz)>.82 and 18<=cz<=33 and -24<=cx<=-6:
+                    rows.append((cz,cx,min(a[0],b[0],c[0]),max(a[0],b[0],c[0]),miny,maxy,nz,ni))
+            # cluster by z plane
+            rows.sort()
+            clusters=[]
+            for row in rows:
+              if not clusters or abs(row[0]-clusters[-1][0][0])>.055:clusters.append([row])
+              else:clusters[-1].append(row)
+            for cl in clusters:
+              z=sum(r[0] for r in cl)/len(cl); xmin=min(r[2] for r in cl);xmax=max(r[3] for r in cl)
+              if xmax-xmin>.5:
+                print('ZWALL',round(z,3),'XSPAN',round(xmin,3),round(xmax,3),'N',len(cl),'nodes',sorted(set(r[7] for r in cl))[:8])
           PY
