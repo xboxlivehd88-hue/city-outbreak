@@ -3366,19 +3366,19 @@ function applyRigLocomotionPolish(z,wantsRun,dt){
        lArm=rigBone(z,"L_UpperArm"),rArm=rigBone(z,"R_UpperArm"),
        hips=rigBone(z,"Hips"),spine=rigBone(z,"Spine"),chest=rigBone(z,"Chest"),head=rigBone(z,"Head");
 
- // v422: knee hinge corrected from the user's video. Positive local X is
- // the anatomical flex direction for the current 180-degree-facing walker setup;
- // negative X produced the flamingo/backward-knee look.
+ // v427: the support/special-infected rig is NOT the 180-degree walker
+ // holder. Its anatomical knee hinge is the opposite local-X sign. Keeping the
+ // walker sign here made these zombies bend like flamingos.
  const thighAmp=.27+(.62-.27)*rb;
  if(lUpper)lUpper.rotation.x=s*thighAmp;
  if(rUpper)rUpper.rotation.x=-s*thighAmp;
  const lf=Math.max(0,Math.sin(p+.68)),rf=Math.max(0,Math.sin(p+Math.PI+.68));
  const lFlex=lf*lf,rFlex=rf*rf;
  const kneeBase=.045+.035*rb,kneeAmp=.34+.46*rb;
- if(lLower)lLower.rotation.x=(kneeBase+lFlex*kneeAmp);
- if(rLower)rLower.rotation.x=(kneeBase+rFlex*kneeAmp);
- if(lFoot)lFoot.rotation.x=-(kneeBase+lFlex*kneeAmp)*.42-.035*rb;
- if(rFoot)rFoot.rotation.x=-(kneeBase+rFlex*kneeAmp)*.42-.035*rb;
+ if(lLower)lLower.rotation.x=-(kneeBase+lFlex*kneeAmp);
+ if(rLower)rLower.rotation.x=-(kneeBase+rFlex*kneeAmp);
+ if(lFoot)lFoot.rotation.x=(kneeBase+lFlex*kneeAmp)*.42-.035*rb;
+ if(rFoot)rFoot.rotation.x=(kneeBase+rFlex*kneeAmp)*.42-.035*rb;
 
  // Two small rises per stride make the hips feel weight-bearing rather than sliding.
  if(hips){
@@ -4282,10 +4282,13 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
    let vx=inheritedVX,vz=inheritedVZ,vy=0;
    if(isBlast&&blastOrigin){
      const dx=pos.x-blastOrigin.x,dy=pos.y-blastOrigin.y,dz=pos.z-blastOrigin.z,nodeD=Math.hypot(dx,dy,dz)||1;
-     const asym=THREE.MathUtils.clamp(1+(bodyCenterD-nodeD)*.34,.68,1.58);
-     const horiz=Math.hypot(dx,dz)||1,launch=(5.1+power*2.55)*asym;
+     // v427: explosive kills are intentionally comic-book violent.
+     // Even the far side of a lethal blast gets a large launch; proximity and
+     // per-limb distance still make the closest side fly harder.
+     const asym=THREE.MathUtils.clamp(1+(bodyCenterD-nodeD)*.30,.78,1.62);
+     const horiz=Math.hypot(dx,dz)||1,launch=(8.4+power*3.05)*asym;
      vx=dx/horiz*launch;vz=dz/horiz*launch;
-     vy=(3.45+power*1.42)*asym+Math.max(0,dy/nodeD)*1.1;
+     vy=(6.2+power*2.15)*asym+Math.max(0,dy/nodeD)*1.6;
    }
    const distal=key.includes("Hand")||key.includes("Foot")||key.includes("Lower")||key==="Head";
    const random=distal?(isBlast?2.35:1.18):(isBlast?1.25:.62);
@@ -4294,10 +4297,29 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
    const radius=key==="Head"?.17:key.includes("Hand")||key.includes("Foot")?.075:.10;
    nodes.set(key,{key,bone,pos,vel:new THREE.Vector3(vx,vy,vz),old:new THREE.Vector3(),invMass,radius,lastGroundY:rag.floorY});
  }
+ // v427: feet need their own segment. Create a lightweight virtual toe in the
+ // foot bone's authored forward direction; the ankle/foot can now rotate
+ // independently instead of looking welded to the lower leg.
+ for(const side of ["L","R"]){
+   const footKey=side+"_Foot",toeKey=side+"_Toe",foot=nodes.get(footKey),footBone=rig.bones.get(footKey);
+   if(!foot||!footBone)continue;
+   footBone.getWorldQuaternion(bodyPbdParentQ);
+   const toeDir=new THREE.Vector3(0,0,1).applyQuaternion(bodyPbdParentQ).normalize();
+   const toePos=foot.pos.clone().addScaledVector(toeDir,.23);
+   nodes.set(toeKey,{
+     key:toeKey,bone:null,pos:toePos,
+     vel:foot.vel.clone().add(new THREE.Vector3((rnd()-.5)*.18,(rnd()-.5)*.10,(rnd()-.5)*.18)),
+     old:new THREE.Vector3(),invMass:1.12,radius:.055,lastGroundY:rag.floorY,virtual:true
+   });
+ }
  if(!nodes.has("Hips")||!nodes.has("Chest")||!nodes.has("Head")||nodes.size<7)return null;
  const edges=[];
  for(const [a,b] of BODY_PBD_EDGES){
    const na=nodes.get(a),nb=nodes.get(b);if(na&&nb)edges.push({a:na,b:nb,len:na.pos.distanceTo(nb.pos)});
+ }
+ for(const side of ["L","R"]){
+   const f=nodes.get(side+"_Foot"),t=nodes.get(side+"_Toe");
+   if(f&&t)edges.push({a:f,b:t,len:f.pos.distanceTo(t.pos)});
  }
  // v426: restore the v423 articulation map. Branch roots must NOT be
  // oriented toward multiple children: doing that made Chest fight between both
@@ -4308,14 +4330,15 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
    ["Hips","Spine"],["Spine","Chest"],["Chest","Neck"],["Neck","Head"],
    ["L_UpperArm","L_LowerArm"],["L_LowerArm","L_Hand"],
    ["R_UpperArm","R_LowerArm"],["R_LowerArm","R_Hand"],
-   ["L_UpperLeg","L_LowerLeg"],["L_LowerLeg","L_Foot"],
-   ["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"]
+   ["L_UpperLeg","L_LowerLeg"],["L_LowerLeg","L_Foot"],["L_Foot","L_Toe"],
+   ["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"],["R_Foot","R_Toe"]
  ];
  const links=[];
  for(const [a,b] of linkPairs){
    const bone=rig.bones.get(a),child=rig.bones.get(b),na=nodes.get(a),nb=nodes.get(b);
-   if(!bone||!child||!na||!nb||!bone.parent)continue;
-   bone.getWorldPosition(bodyPbdTmpA);child.getWorldPosition(bodyPbdTmpB);
+   if(!bone||!na||!nb||!bone.parent)continue;
+   bone.getWorldPosition(bodyPbdTmpA);
+   if(child)child.getWorldPosition(bodyPbdTmpB);else bodyPbdTmpB.copy(nb.pos);
    bone.parent.getWorldQuaternion(bodyPbdParentQ);bodyPbdInvQ.copy(bodyPbdParentQ).invert();
    const restDir=bodyPbdTmpB.sub(bodyPbdTmpA).applyQuaternion(bodyPbdInvQ).normalize().clone();
    links.push({a,b,bone,baseQuat:bone.quaternion.clone(),restDir});
@@ -5293,7 +5316,7 @@ function explodeLauncherRound(g){
      const blast=Math.max(2,Math.ceil((7-d)*1.55))*damageLevel;
      const force=Math.max(.35,1-d/6.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),2.60+force*3.10,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),3.00+force*3.35,p);
      else blastReact(z,p,.70+force*1.15)
    }
  }
@@ -5327,7 +5350,7 @@ function explodeGrenade(g){
    if(d<7.5){
      const blast=Math.max(1,Math.ceil((8-d)/2))*damageLevel,force=Math.max(.25,1-d/7.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),2.45+force*3.00,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),2.90+force*3.30,p);
      else blastReact(z,p,.55+force*.95)
    }
  }
