@@ -2847,19 +2847,22 @@ function syncCustomVisualFromRagdoll(z,bones,holder,storeKey){
    return 1;
  };
 
+ // v420: visible custom zombies follow the simulated ragdoll 1:1.
+ // Previous sub-1.0 multipliers visibly stiffened the hips/spine/chest/neck
+ // and upper legs even while the hidden support rig was moving freely.
  let applied=0;
- applied+=apply("Hips",.78);
- applied+=apply("Spine",.90);
- applied+=apply("Chest",.94);
- applied+=apply("Neck",.90);
+ applied+=apply("Hips",1.00);
+ applied+=apply("Spine",1.00);
+ applied+=apply("Chest",1.00);
+ applied+=apply("Neck",1.00);
  applied+=apply("Head",1.00);
  applied+=apply("L_UpperArm",1.00);
  applied+=apply("L_LowerArm",1.00);
  applied+=apply("R_UpperArm",1.00);
  applied+=apply("R_LowerArm",1.00);
- applied+=apply("L_UpperLeg",.96);
+ applied+=apply("L_UpperLeg",1.00);
  applied+=apply("L_LowerLeg",1.00);
- applied+=apply("R_UpperLeg",.96);
+ applied+=apply("R_UpperLeg",1.00);
  applied+=apply("R_LowerLeg",1.00);
  return applied>=8;
 }
@@ -4435,6 +4438,10 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  const d=Math.hypot(z.g.position.x-ox,z.g.position.z-oz)||1;
  const awayX=(z.g.position.x-ox)/d,awayZ=(z.g.position.z-oz)/d;
  const power=Math.max(.65,Math.min(isBlast?4.6:2.6,force));
+ // v420: an ordinary gunshot death inherits the zombie's actual movement.
+ // Death removes control; it does not erase momentum or add a fake stop first.
+ const inheritedVX=THREE.MathUtils.clamp(Number.isFinite(z.motionVX)?z.motionVX:0,-6.5,6.5);
+ const inheritedVZ=THREE.MathUtils.clamp(Number.isFinite(z.motionVZ)?z.motionVZ:0,-6.5,6.5);
 
  const rag=z.ragdoll={
    t:0,bones:[],blast:isBlast,unpowered:true,active:true,power,settleT:0,
@@ -4450,9 +4457,9 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    ravy:isBlast?(rnd()-.5)*(2.1+power*.54):(rnd()-.5)*.30,
    ravz:isBlast?(rnd()-.5)*(3.0+power*.78):sideFall*(1.72+rnd()*.60)+(rnd()-.5)*.48,
    rootPhase:rnd()*6.283,
-   vx:awayX*(isBlast?(2.38+1.48*rnd())*power:(.18+.18*rnd())*power)+(rnd()-.5)*(isBlast?.72:.12),
-   vz:awayZ*(isBlast?(2.38+1.48*rnd())*power:(.18+.18*rnd())*power)+(rnd()-.5)*(isBlast?.72:.12),
-   vy:isBlast?(2.62+1.68*rnd())*power:(.06+.14*rnd())*power,
+   vx:isBlast?awayX*(2.38+1.48*rnd())*power+(rnd()-.5)*.72:inheritedVX*.94,
+   vz:isBlast?awayZ*(2.38+1.48*rnd())*power+(rnd()-.5)*.72:inheritedVZ*.94,
+   vy:isBlast?(2.62+1.68*rnd())*power:0,
    hips:null,hipsStartY:0,hipsTargetY:0
  };
 
@@ -4608,8 +4615,11 @@ function updateRagdoll(z,dt){
  // Ground contact should kill whole-body pinwheel energy, not freeze the joints.
  // The visible "pinned and spinning" corpse came from preserving root angular
  // velocity while also adding a fresh random root jolt on every new contact.
- if(contact.contacts>0||r.rootGrounded){
-   const rootGroundDrag=Math.exp(-dt*(contact.allDown?3.8:2.55));
+ // v420: first contact must not pin the corpse. Leave root angular
+ // momentum alone while only a hand/foot/hip is touching; add friction only
+ // after the core (hips + chest + head) is actually down.
+ if(contact.coreDown){
+   const rootGroundDrag=Math.exp(-dt*(contact.allDown?2.15:1.10));
    r.ravx*=rootGroundDrag;r.ravy*=rootGroundDrag;r.ravz*=rootGroundDrag;
  }
  if(contact.contacts>r.maxContactCount){
@@ -5667,7 +5677,8 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  surge=1+(Math.sin(z.phase*1.35)>.72?z.surge*0.6:0),
  shamble=(z.nightmareType==="twitch"?1.00:z.nightmareType==="brute"?.88:z.nightmareType==="crawler"?.90:.84)
           +Math.max(0,Math.sin(z.phase*z.gait))*(z.nightmareType==="twitch"?.22:.14)*z.lurch,
- stun=z.stagger>0?(kind==="boss"?.72:.18):1,
+ // v420: bullet hits are visual reactions, not a movement freeze.
+       stun=z.stagger>0?(kind==="boss"?.72:1):1,
  limpSlow=Math.max(.42,1-z.legDamage*.18-z.limp*.08);
  const bossCharging=kind==="boss"&&z.bossAttackState==="charge";
  const bossPressuring=kind==="boss"&&!z.bossAttackState&&playerDistToZombie>10;
@@ -5686,6 +5697,10 @@ const strideRate=(kind==="sprinter"||kind==="infected"||kind==="acidic")?8.8:kin
 z.phase += moveLen*strideRate;
 let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,movementClearance);z.g.position.x=zp.x;z.g.position.z=zp.z;
 resolveZombiePlayerContact(z,ox,oz);
+ // Preserve actual pre-death planar velocity so a lethal hit does not erase
+ // forward motion before the body goes limp.
+ z.motionVX=(z.g.position.x-ox)/Math.max(dt,.001);
+ z.motionVZ=(z.g.position.z-oz)/Math.max(dt,.001);
 
  const moved=Math.hypot(z.g.position.x-ox,z.g.position.z-oz);
  if(moveLen>.012&&moved<moveLen*.28){
@@ -5706,7 +5721,7 @@ resolveZombiePlayerContact(z,ox,oz);
    z.avoidT=.85;
    z.stuckT=0;
    z.think=0;
- }if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;z.g.position.x-=nx*(z.kind==="boss"?.18:.7)*dt;z.g.position.z-=nz*(z.kind==="boss"?.18:.7)*dt;}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else if(!spinTopDecoy){
+ }if(z.stagger>0){const sr=z.kind==="boss"?.07:.24;z.torso.rotation.z+=z.staggerDir*sr;z.head.rotation.z-=z.staggerDir*sr*.55;if(z.kind==="boss"){z.g.position.x-=nx*.18*dt;z.g.position.z-=nz*.18*dt;}}if(z.step<=0&&d<14){zStep(Math.max(.018,.10*(1-d/16)));z.step=Math.max(.34,.62-z.speed*.035+rnd()*.18)}}else if(!spinTopDecoy){
  if(z.attackAnim>0&&d>.001){
    const ax=(px-z.g.position.x)/d,az=(pz-z.g.position.z)/d;
    const ox=z.g.position.x,oz=z.g.position.z,lunge=(z.kind==="boss"?.38:z.kind==="crawler"?.16:.28)*dt;
