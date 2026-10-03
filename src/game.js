@@ -4637,7 +4637,12 @@ function updateRagdoll(z,dt){
  if(r.settleT>1.25){r.active=false;z.falling=false}else z.falling=true;
 }
 function killZ(z,hs,p,ragForce=1,ragOrigin=null){
- if(z.dead)return;z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
+ if(z.dead)return;
+ z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;
+ // v421: dead bodies have no navigation state at all. The active-zombie loop
+ // already excludes them; clear any cached route too so nothing can steer a corpse.
+ z.navPath=null;z.navIndex=0;z.navForceRepath=false;z.navCheckT=0;
+ beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
  if(hs){heads++;headS();burst(p,true);if(z.head&&z.head.parent)z.g.remove(z.head)}
  else{noise(.12,.16,260)}
  // Dead bodies keep the silhouette but stop expensive shadow work immediately.
