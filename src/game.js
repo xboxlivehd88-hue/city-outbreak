@@ -741,12 +741,6 @@ function buildNewCitySpawnZones(map){
  document.documentElement.dataset.newCitySpawnZones=String(newCitySpawnZones.length);
  console.log("CITY OUTBREAK: outdoor zombie spawn zones built",{count:newCitySpawnZones.length});
 }
-function pointOnNewCitySpawnZone(x,z,pad=.55){
- for(const zone of newCitySpawnZones){
-   if(x>zone.minX+pad&&x<zone.maxX-pad&&z>zone.minZ+pad&&z<zone.maxZ-pad)return true;
- }
- return false;
-}
 function pointNearNewCitySpawnZone(x,z,maxGap=12){
  for(const zone of newCitySpawnZones){
    const dx=x<zone.minX?zone.minX-x:x>zone.maxX?x-zone.maxX:0;
