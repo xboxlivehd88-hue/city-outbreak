@@ -571,13 +571,6 @@ function zombieTex(baseHex,kind=0){
 }
 
 
-function makeWaterTower(x,y,z,p=scene){
- const g=new THREE.Group();
- const tank=new THREE.Mesh(new THREE.CylinderGeometry(.65,.72,1.35,10),M(0x7b5b3c,.88));tank.position.y=.95;g.add(tank);
- const band=new THREE.Mesh(new THREE.CylinderGeometry(.70,.70,.12,10),M(0x2e2b29,.68));band.position.y=1.35;g.add(band);
- for(const sx of [-.38,.38])for(const sz of [-.38,.38]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,1.25,6),M(0x4d4136,.7));leg.position.set(sx,.35,sz);g.add(leg)}
- g.position.set(x,y,z);p.add(g);return g
-}
 function addFireEscape(x,y,z,h,side,p=scene){
  for(let yy=y+.8;yy<h;yy+=1.55){
    box(.10,.12,1.4,M(0x2a2c2e,.65),x+side*.06,yy,z,p);
