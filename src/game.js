@@ -2876,6 +2876,7 @@ function syncRadiatedGreenGuy(z,dt=0){
  z.radiatedGreenMoveBlend=THREE.MathUtils.lerp(z.radiatedGreenMoveBlend||0,targetMove,Math.min(1,dt*7));
  const blend=z.radiatedGreenMoveBlend,p=z.rigPolishPhase||z.phase||0,step=Math.sin(p),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
  h.rotation.y=Math.PI;
+ if(z.dead&&z.ragdoll?.bodyPbd?.holder===h)return;
  if(z.dead&&syncCustomVisualFromRagdoll(z,bones,h,"radiatedVisibleRagdollBase"))return;
  if(z.leglessCrawler){
    h.position.y=-.43;h.rotation.x=-.72;h.rotation.z=step*.018*blend;
@@ -3079,7 +3080,7 @@ function buildBasicWalkerHitboxes(z){
 function syncBasicWalkerVisual(z,dt=0){
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
  holder.rotation.y=Math.PI;
- if(z.dead&&z.ragdoll?.walkerPbd)return;
+ if(z.dead&&z.ragdoll?.bodyPbd?.holder===holder)return;
  if(z.dead&&z.ragdoll?.directVisual===holder)return;
  if(z.dead&&syncCustomVisualFromRagdoll(z,bones,holder,"walkerVisibleRagdollBase"))return;
 
@@ -4220,12 +4221,12 @@ function ragBone(z,name){
 }
 function ragVisibleHolder(z){return z?.walkerVisual||null}
 
-const WALKER_PBD_KEYS=Object.freeze([
+const BODY_PBD_KEYS=Object.freeze([
  "Hips","Spine","Chest","Neck","Head",
  "L_UpperArm","L_LowerArm","L_Hand","R_UpperArm","R_LowerArm","R_Hand",
  "L_UpperLeg","L_LowerLeg","L_Foot","R_UpperLeg","R_LowerLeg","R_Foot"
 ]);
-const WALKER_PBD_EDGES=Object.freeze([
+const BODY_PBD_EDGES=Object.freeze([
  ["Hips","Spine"],["Spine","Chest"],["Chest","Neck"],["Neck","Head"],
  ["Chest","L_UpperArm"],["L_UpperArm","L_LowerArm"],["L_LowerArm","L_Hand"],
  ["Chest","R_UpperArm"],["R_UpperArm","R_LowerArm"],["R_LowerArm","R_Hand"],
@@ -4233,100 +4234,165 @@ const WALKER_PBD_EDGES=Object.freeze([
  ["Hips","R_UpperLeg"],["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"],
  ["L_UpperArm","R_UpperArm"],["L_UpperLeg","R_UpperLeg"]
 ]);
-const walkerPbdTmpA=new THREE.Vector3(),walkerPbdTmpB=new THREE.Vector3(),walkerPbdTmpC=new THREE.Vector3();
-const walkerPbdParentQ=new THREE.Quaternion(),walkerPbdInvQ=new THREE.Quaternion(),walkerPbdDeltaQ=new THREE.Quaternion();
+const bodyPbdTmpA=new THREE.Vector3(),bodyPbdTmpB=new THREE.Vector3(),bodyPbdTmpC=new THREE.Vector3(),bodyPbdScale=new THREE.Vector3();
+const bodyPbdParentQ=new THREE.Quaternion(),bodyPbdInvQ=new THREE.Quaternion(),bodyPbdDeltaQ=new THREE.Quaternion();
 
-function buildWalkerPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
- if(!z?.walkerVisual||!z?.walkerBones?.size)return null;
- z.g.updateMatrixWorld(true);z.walkerVisual.updateMatrixWorld(true);
+function bodyPbdRig(z){
+ if(z?.walkerBones?.size&&z.walkerVisual)return{holder:z.walkerVisual,bones:z.walkerBones,kind:"walker"};
+ if(z?.radiatedGreenBones?.size&&z.radiatedGreenVisual)return{holder:z.radiatedGreenVisual,bones:z.radiatedGreenBones,kind:"radiated"};
+ if(z?.rigVisual){
+   const bones=new Map();
+   for(const key of BODY_PBD_KEYS){const b=z.rigVisual.getObjectByName(key);if(b)bones.set(key,b)}
+   if(bones.size>=8)return{holder:z.rigVisual,bones,kind:"rig"};
+ }
+ const bones=new Map();
+ const add=(key,o)=>{if(o&&o.parent)bones.set(key,o)};
+ add("Hips",z?.pelvis);add("Chest",z?.torso);add("Head",z?.head);
+ add("L_UpperArm",z?.armL);add("L_LowerArm",z?.elbowL);
+ add("R_UpperArm",z?.armR);add("R_LowerArm",z?.elbowR);
+ add("L_UpperLeg",z?.legL);add("L_LowerLeg",z?.kneeL);
+ add("R_UpperLeg",z?.legR);add("R_LowerLeg",z?.kneeR);
+ return bones.size>=7?{holder:z.g,bones,kind:"procedural"}:null;
+}
+function bodyPbdBoneAllowed(z,key){
+ if(z.leftArmDetached&&(key==="L_UpperArm"||key==="L_LowerArm"||key==="L_Hand"))return false;
+ if(z.rightArmDetached&&(key==="R_UpperArm"||key==="R_LowerArm"||key==="R_Hand"))return false;
+ if(z.leftLegDetached&&(key==="L_UpperLeg"||key==="L_LowerLeg"||key==="L_Foot"))return false;
+ if(z.rightLegDetached&&(key==="R_UpperLeg"||key==="R_LowerLeg"||key==="R_Foot"))return false;
+ return true;
+}
+function bodyPbdPushOutsideCar(c,x,z,pad=.08){
+ const dx=x-c.position.x,dz=z-c.position.z,a=c.rotation.y,co=Math.cos(a),si=Math.sin(a);
+ let lx=co*dx-si*dz,lz=si*dx+co*dz;
+ const hw=(c.userData.carHalfW||.88)+pad,hl=(c.userData.carHalfL||2.30)+pad;
+ if(Math.abs(lx)>=hw||Math.abs(lz)>=hl)return{x,z};
+ const px=hw-Math.abs(lx),pz=hl-Math.abs(lz);
+ if(px<pz)lx=(lx<0?-1:1)*hw;else lz=(lz<0?-1:1)*hl;
+ return{x:c.position.x+co*lx+si*lz,z:c.position.z-si*lx+co*lz};
+}
+function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,impact=null){
+ const rig=bodyPbdRig(z);if(!rig)return null;
+ z.g.updateMatrixWorld(true);rig.holder.updateMatrixWorld(true);
  const nodes=new Map();
- for(const key of WALKER_PBD_KEYS){
-   const bone=z.walkerBones.get(key);if(!bone)continue;
+ const centerY=z.g.position.y+1.0,bodyCenterD=isBlast&&blastOrigin?Math.hypot(z.g.position.x-blastOrigin.x,centerY-blastOrigin.y,z.g.position.z-blastOrigin.z):0;
+ for(const key of BODY_PBD_KEYS){
+   if(!bodyPbdBoneAllowed(z,key))continue;
+   const bone=rig.bones.get(key);if(!bone||!bone.parent)continue;
    const pos=new THREE.Vector3();bone.getWorldPosition(pos);
    let vx=inheritedVX,vz=inheritedVZ,vy=0;
    if(isBlast&&blastOrigin){
-     const dx=pos.x-blastOrigin.x,dz=pos.z-blastOrigin.z,dl=Math.hypot(dx,dz)||1;
-     const launch=(3.5+power*1.65)*(key==="Head"||key.includes("Hand")?1.15:1);
-     vx=dx/dl*launch;vz=dz/dl*launch;vy=2.6+power*1.08;
+     const dx=pos.x-blastOrigin.x,dy=pos.y-blastOrigin.y,dz=pos.z-blastOrigin.z,nodeD=Math.hypot(dx,dy,dz)||1;
+     const asym=THREE.MathUtils.clamp(1+(bodyCenterD-nodeD)*.34,.68,1.58);
+     const horiz=Math.hypot(dx,dz)||1,launch=(5.1+power*2.55)*asym;
+     vx=dx/horiz*launch;vz=dz/horiz*launch;
+     vy=(3.45+power*1.42)*asym+Math.max(0,dy/nodeD)*1.1;
    }
    const distal=key.includes("Hand")||key.includes("Foot")||key.includes("Lower")||key==="Head";
-   const random=distal?(isBlast?2.0:1.15):(isBlast?1.05:.58);
+   const random=distal?(isBlast?2.35:1.18):(isBlast?1.25:.62);
    vx+=(rnd()-.5)*random;vy+=(rnd()-.5)*random*.72;vz+=(rnd()-.5)*random;
+   if(impact?.dir&&impact?.point&&impact.strength>0){
+     const nd=pos.distanceTo(impact.point),near=.18+.82*Math.exp(-nd*2.35),kick=impact.strength*near;
+     vx+=impact.dir.x*kick;vy+=impact.dir.y*kick;vz+=impact.dir.z*kick;
+     if(nd<.34){vx+=impact.dir.x*impact.strength*.30;vy+=impact.dir.y*impact.strength*.30;vz+=impact.dir.z*impact.strength*.30}
+   }
    const invMass=(key==="Hips"||key==="Chest")?.62:key==="Spine"?.72:1;
    const radius=key==="Head"?.17:key.includes("Hand")||key.includes("Foot")?.075:.10;
-   nodes.set(key,{key,bone,pos,vel:new THREE.Vector3(vx,vy,vz),old:new THREE.Vector3(),invMass,radius});
+   nodes.set(key,{key,bone,pos,vel:new THREE.Vector3(vx,vy,vz),old:new THREE.Vector3(),invMass,radius,lastGroundY:rag.floorY});
  }
- if(!nodes.has("Hips")||nodes.size<12)return null;
+ if(!nodes.has("Hips")||!nodes.has("Chest")||!nodes.has("Head")||nodes.size<7)return null;
  const edges=[];
- for(const [a,b] of WALKER_PBD_EDGES){
+ for(const [a,b] of BODY_PBD_EDGES){
    const na=nodes.get(a),nb=nodes.get(b);if(na&&nb)edges.push({a:na,b:nb,len:na.pos.distanceTo(nb.pos)});
  }
- const links=[
+ const linkPairs=[
    ["Hips","Spine"],["Spine","Chest"],["Chest","Neck"],["Neck","Head"],
-   ["L_UpperArm","L_LowerArm"],["L_LowerArm","L_Hand"],
-   ["R_UpperArm","R_LowerArm"],["R_LowerArm","R_Hand"],
-   ["L_UpperLeg","L_LowerLeg"],["L_LowerLeg","L_Foot"],
-   ["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"]
- ].map(([a,b])=>{
-   const bone=z.walkerBones.get(a),child=z.walkerBones.get(b);
-   return bone&&child?{a,b,bone,baseQuat:bone.quaternion.clone(),restDir:child.position.clone().normalize()}:null;
- }).filter(Boolean);
- return{nodes,edges,links,settleT:0,allDown:false,maxSpeed:999};
+   ["Chest","L_UpperArm"],["L_UpperArm","L_LowerArm"],["L_LowerArm","L_Hand"],
+   ["Chest","R_UpperArm"],["R_UpperArm","R_LowerArm"],["R_LowerArm","R_Hand"],
+   ["Hips","L_UpperLeg"],["L_UpperLeg","L_LowerLeg"],["L_LowerLeg","L_Foot"],
+   ["Hips","R_UpperLeg"],["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"]
+ ];
+ const links=[];
+ for(const [a,b] of linkPairs){
+   const bone=rig.bones.get(a),child=rig.bones.get(b),na=nodes.get(a),nb=nodes.get(b);
+   if(!bone||!child||!na||!nb||!bone.parent)continue;
+   bone.getWorldPosition(bodyPbdTmpA);child.getWorldPosition(bodyPbdTmpB);
+   bone.parent.getWorldQuaternion(bodyPbdParentQ);bodyPbdInvQ.copy(bodyPbdParentQ).invert();
+   const restDir=bodyPbdTmpB.sub(bodyPbdTmpA).applyQuaternion(bodyPbdInvQ).normalize().clone();
+   links.push({a,b,bone,baseQuat:bone.quaternion.clone(),restDir});
+ }
+ return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999};
 }
-function solveWalkerPbdEdge(e){
- const d=walkerPbdTmpA.subVectors(e.b.pos,e.a.pos),dist=d.length();if(dist<1e-6)return;
+function solveBodyPbdEdge(e){
+ const d=bodyPbdTmpA.subVectors(e.b.pos,e.a.pos),dist=d.length();if(dist<1e-6)return;
  const corr=(dist-e.len)/dist,w1=e.a.invMass,w2=e.b.invMass,ws=w1+w2;if(ws<=0)return;
  d.multiplyScalar(corr);e.a.pos.addScaledVector(d,w1/ws);e.b.pos.addScaledVector(d,-w2/ws);
 }
-function clampWalkerPbdToGround(n,rag){
- const gy=sampleRagdollGroundY(n.pos.x,n.pos.z,rag.floorY,n.pos.y),floor=gy+n.radius;
- if(n.pos.y>=floor)return false;n.pos.y=floor;return true;
+function collideBodyPbdNode(n,rag){
+ const pad=Math.max(.055,n.radius*.72),slide=slideBuilding(n.old.x,n.old.z,n.pos.x,n.pos.z,pad);
+ n.pos.x=slide.x;n.pos.z=slide.z;
+ for(const c of parkedCars){
+   if(carPointCollision(c,n.pos.x,n.pos.z,pad)){const pushed=bodyPbdPushOutsideCar(c,n.pos.x,n.pos.z,pad);n.pos.x=pushed.x;n.pos.z=pushed.z}
+ }
+ let gy=sampleRagdollGroundY(n.pos.x,n.pos.z,rag.floorY,n.pos.y);
+ if(Number.isFinite(n.lastGroundY)&&gy>n.lastGroundY+.18&&n.pos.y<gy+n.radius+.24){
+   n.pos.x=n.old.x;n.pos.z=n.old.z;gy=n.lastGroundY;
+ }
+ const floor=gy+n.radius,touched=n.pos.y<floor;
+ if(touched)n.pos.y=floor;
+ n.lastGroundY=gy;
+ return touched;
 }
-function orientWalkerPbd(z,pbd){
- const hips=pbd.nodes.get("Hips"),holder=z.walkerVisual,hipsBone=z.walkerBones.get("Hips");
+function orientBodyPbd(z,pbd){
+ const hips=pbd.nodes.get("Hips"),holder=pbd.holder,hipsBone=pbd.bones.get("Hips");
  if(!hips||!holder||!hipsBone)return;
- z.g.updateMatrixWorld(true);holder.updateMatrixWorld(true);hipsBone.getWorldPosition(walkerPbdTmpA);
- const localA=z.g.worldToLocal(walkerPbdTmpA.clone()),localB=z.g.worldToLocal(hips.pos.clone());
- holder.position.add(walkerPbdTmpC.subVectors(localB,localA));holder.updateMatrixWorld(true);
+ z.g.updateMatrixWorld(true);holder.updateMatrixWorld(true);hipsBone.getWorldPosition(bodyPbdTmpA);
+ bodyPbdTmpC.subVectors(hips.pos,bodyPbdTmpA);
+ if(holder.parent){
+   holder.parent.getWorldQuaternion(bodyPbdParentQ);bodyPbdInvQ.copy(bodyPbdParentQ).invert();
+   bodyPbdTmpC.applyQuaternion(bodyPbdInvQ);
+   holder.parent.getWorldScale(bodyPbdScale);
+   bodyPbdTmpC.x/=Math.max(.0001,bodyPbdScale.x);bodyPbdTmpC.y/=Math.max(.0001,bodyPbdScale.y);bodyPbdTmpC.z/=Math.max(.0001,bodyPbdScale.z);
+ }
+ holder.position.add(bodyPbdTmpC);holder.updateMatrixWorld(true);
  for(const link of pbd.links){
    const target=pbd.nodes.get(link.b),bone=link.bone,parent=bone.parent;if(!target||!parent)continue;
-   bone.getWorldPosition(walkerPbdTmpA);walkerPbdTmpB.subVectors(target.pos,walkerPbdTmpA);
-   if(walkerPbdTmpB.lengthSq()<1e-8)continue;
-   parent.getWorldQuaternion(walkerPbdParentQ);walkerPbdInvQ.copy(walkerPbdParentQ).invert();
-   walkerPbdTmpB.applyQuaternion(walkerPbdInvQ).normalize();
-   walkerPbdTmpC.copy(link.restDir).applyQuaternion(link.baseQuat).normalize();
-   walkerPbdDeltaQ.setFromUnitVectors(walkerPbdTmpC,walkerPbdTmpB);
-   bone.quaternion.copy(walkerPbdDeltaQ.multiply(link.baseQuat));bone.updateMatrixWorld(true);
+   bone.getWorldPosition(bodyPbdTmpA);bodyPbdTmpB.subVectors(target.pos,bodyPbdTmpA);
+   if(bodyPbdTmpB.lengthSq()<1e-8)continue;
+   parent.getWorldQuaternion(bodyPbdParentQ);bodyPbdInvQ.copy(bodyPbdParentQ).invert();
+   bodyPbdTmpB.applyQuaternion(bodyPbdInvQ).normalize();
+   bodyPbdDeltaQ.setFromUnitVectors(link.restDir,bodyPbdTmpB);
+   bone.quaternion.copy(bodyPbdDeltaQ.multiply(link.baseQuat));bone.updateMatrixWorld(true);
  }
  holder.updateMatrixWorld(true);
 }
-function updateWalkerPbd(z,rag,dt){
- const p=rag.walkerPbd;if(!p)return false;
+function updateBodyPbd(z,rag,dt){
+ const p=rag.bodyPbd;if(!p)return false;
  const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60)))),h=dt/steps;
  for(let step=0;step<steps;step++){
    const touched=new Set();
    for(const n of p.nodes.values()){n.old.copy(n.pos);n.vel.y-=9.81*h;n.pos.addScaledVector(n.vel,h)}
-   for(let iter=0;iter<5;iter++){
-     for(const e of p.edges)solveWalkerPbdEdge(e);
-     for(const n of p.nodes.values())if(clampWalkerPbdToGround(n,rag))touched.add(n);
-   }
+   for(let iter=0;iter<5;iter++)for(const e of p.edges)solveBodyPbdEdge(e);
+   for(const n of p.nodes.values())if(collideBodyPbdNode(n,rag))touched.add(n);
+   for(let iter=0;iter<2;iter++)for(const e of p.edges)solveBodyPbdEdge(e);
    for(const n of p.nodes.values()){
-     n.vel.subVectors(n.pos,n.old).multiplyScalar(.994/Math.max(h,.001));
-     if(touched.has(n)){n.vel.x*=.58;n.vel.z*=.58;if(n.vel.y<0)n.vel.y=-n.vel.y*.08}
+     if(collideBodyPbdNode(n,rag))touched.add(n);
+     n.vel.subVectors(n.pos,n.old).multiplyScalar(.995/Math.max(h,.001));
+     if(touched.has(n)){n.vel.x*=.62;n.vel.z*=.62;if(n.vel.y<0)n.vel.y=-n.vel.y*.10}
    }
  }
  let contacts=0,maxSpeed=0;
  for(const n of p.nodes.values()){
-   const gy=sampleRagdollGroundY(n.pos.x,n.pos.z,rag.floorY,n.pos.y);
-   if(n.pos.y<=gy+n.radius+.035)contacts++;
+   const floor=(Number.isFinite(n.lastGroundY)?n.lastGroundY:rag.floorY)+n.radius;
+   if(n.pos.y<=floor+.04)contacts++;
    maxSpeed=Math.max(maxSpeed,n.vel.length());
  }
- const down=k=>{const n=p.nodes.get(k);if(!n)return false;const gy=sampleRagdollGroundY(n.pos.x,n.pos.z,rag.floorY,n.pos.y);return n.pos.y<=gy+n.radius+.09};
- p.allDown=down("Hips")&&down("Chest")&&down("Head")&&contacts>=7;p.maxSpeed=maxSpeed;
- p.settleT=p.allDown&&maxSpeed<.20?p.settleT+dt:0;
- orientWalkerPbd(z,p);
+ const down=k=>{const n=p.nodes.get(k);return !!n&&n.pos.y<=(Number.isFinite(n.lastGroundY)?n.lastGroundY:rag.floorY)+n.radius+.10};
+ const needContacts=Math.max(4,Math.min(7,Math.ceil(p.nodes.size*.46)));
+ p.allDown=down("Hips")&&down("Chest")&&down("Head")&&contacts>=needContacts;
+ p.maxSpeed=maxSpeed;p.settleT=p.allDown&&maxSpeed<.22?p.settleT+dt:0;
+ orientBodyPbd(z,p);
  rag.contactCount=contacts;rag.fullBodyDown=p.allDown;rag.grounded=p.allDown;
- if(p.settleT>1.05){rag.active=false;z.falling=false}else z.falling=true;
+ if(p.settleT>1.10){rag.active=false;z.falling=false}else z.falling=true;
  return true;
 }
 function hideRigLimb(z,name){
@@ -4556,7 +4622,7 @@ function blastBoneProfile(role){
    default:return{lx:1.40,ly:1.00,lz:1.18,airA:.00050,airD:.060,groundA:.0055,groundD:.82,maxA:62,gust:1.30,inertia:1.12,couple:.40,root:.30,impact:1.00};
  }
 }
-function beginRagdoll(z,force=1,blastOrigin=null){
+function beginRagdoll(z,force=1,blastOrigin=null,impact=null){
  if(z.ragdoll)return;
  // v421: capture/release the exact live pose. Do not normalize the holder or
  // hips before ragdoll starts; that was silently snapping every corpse toward
@@ -4602,10 +4668,10 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    vz:isBlast?awayZ*(2.38+1.48*rnd())*power+(rnd()-.5)*.72:inheritedVZ*.94,
    vy:isBlast?(2.62+1.68*rnd())*power:0,
    hips:null,hipsStartY:0,hipsTargetY:0,
-   walkerPbd:null
+   bodyPbd:null
  };
- rag.walkerPbd=buildWalkerPbd(z,rag,isBlast,blastOrigin,inheritedVX*.94,inheritedVZ*.94,power);
- if(rag.walkerPbd)return;
+ rag.bodyPbd=buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX*.94,inheritedVZ*.94,power,impact);
+ if(rag.bodyPbd)return;
 
  const add=(o,role)=>{
    if(!o||!o.parent)return;
@@ -4665,7 +4731,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
 function updateRagdoll(z,dt){
  if(!z.ragdoll)beginRagdoll(z);
  const r=z.ragdoll;r.t+=dt;
- if(r.walkerPbd){updateWalkerPbd(z,r,dt);return}
+ if(r.bodyPbd){updateBodyPbd(z,r,dt);return}
 
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
 
@@ -4804,13 +4870,13 @@ function updateRagdoll(z,dt){
  r.settleT=settled?r.settleT+dt:0;
  if(r.settleT>1.25){r.active=false;z.falling=false}else z.falling=true;
 }
-function killZ(z,hs,p,ragForce=1,ragOrigin=null){
+function killZ(z,hs,p,ragForce=1,ragOrigin=null,ragImpact=null){
  if(z.dead)return;
  z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;
  // v421: dead bodies have no navigation state at all. The active-zombie loop
  // already excludes them; clear any cached route too so nothing can steer a corpse.
  z.navPath=null;z.navIndex=0;z.navForceRepath=false;z.navCheckT=0;
- beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
+ beginRagdoll(z,ragForce,ragOrigin,ragImpact);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
  if(hs){heads++;headS();burst(p,true);if(z.head&&z.head.parent)z.g.remove(z.head)}
  else{noise(.12,.16,260)}
  // Dead bodies keep the silhouette but stop expensive shadow work immediately.
@@ -4899,6 +4965,12 @@ function cityProjectileHitNormal(hit){
  cityProjectileNormalMatrix.getNormalMatrix(hit.object.matrixWorld);
  return cityProjectileNormal.copy(hit.face.normal).applyMatrix3(cityProjectileNormalMatrix).normalize();
 }
+function bulletDeathImpulseStrength(w,dist,head=false){
+ let base=({pistol:1.00,smg:.78,rifle:1.28,shotgun:2.35,dmr:1.62,m240:1.48,awm:2.85})[w]||1;
+ if(w==="shotgun")base*=THREE.MathUtils.clamp(1.30-dist/13,.45,1.30);
+ if(head)base*=1.10;
+ return base;
+}
 function fire(){
  if(!running||paused||reloading||dying||between)return;
  if(weapon==="awm"&&gameTimeNow()<awmReadyAt){show("CYCLING BOLT");return}
@@ -4948,8 +5020,15 @@ function fire(){
      impactFX(hit.point);burst(hit.point,false);didHit=true;headHit=headHit||hs;
      // v421: a lethal hit skips the living hit-reaction animation completely.
      // The exact current pose is released directly into ragdoll.
-     if(z.hp<=0&&!z.dead)killZ(z,hs,hit.point);
-     else stagger(z,hs);
+     if(z.hp<=0&&!z.dead){
+       const ragImpact={
+         dir:ray.ray.direction.clone(),
+         point:hit.point.clone(),
+         strength:bulletDeathImpulseStrength(weapon,zombieHitDistance,hs),
+         part
+       };
+       killZ(z,hs,hit.point,1,null,ragImpact);
+     }else stagger(z,hs);
    }
  }
  if(didHit)hitMark(headHit);
@@ -5227,7 +5306,7 @@ function explodeLauncherRound(g){
      const blast=Math.max(2,Math.ceil((7-d)*1.55))*damageLevel;
      const force=Math.max(.35,1-d/6.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),2.30+force*2.45,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.2,0)),2.60+force*3.10,p);
      else blastReact(z,p,.70+force*1.15)
    }
  }
@@ -5261,7 +5340,7 @@ function explodeGrenade(g){
    if(d<7.5){
      const blast=Math.max(1,Math.ceil((8-d)/2))*damageLevel,force=Math.max(.25,1-d/7.5);
      z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),2.08+force*2.20,p);
+     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),2.45+force*3.00,p);
      else blastReact(z,p,.55+force*.95)
    }
  }
