@@ -430,9 +430,8 @@ function applyWetCityMaterials(map){
  console.log("CITY OUTBREAK: wet road/ground materials applied",{wetMeshes});
 }
 
-const materialCache=new Map(),emissiveMaterialCache=new Map(),zombieMaterialCache=new Map();
+const materialCache=new Map(),zombieMaterialCache=new Map();
 const M=(c,r=.82)=>{const k=c+"|"+r;let m=materialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,roughness:r});materialCache.set(k,m)}return m};
-const EM=(c,e=.95,r=.28)=>{const k=c+"|"+e+"|"+r;let m=emissiveMaterialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:e,roughness:r});emissiveMaterialCache.set(k,m)}return m};
 const ZM=(c,r=.9)=>{const k=c+"|"+r;let m=zombieMaterialCache.get(k);if(!m){m=new THREE.MeshStandardMaterial({color:c,roughness:r,flatShading:true});zombieMaterialCache.set(k,m)}return m};
 function box(w,h,d,m,x,y,z,p=scene){let q=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);q.position.set(x,y,z);q.castShadow=true;q.receiveShadow=true;p.add(q);return q}
 
