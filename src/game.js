@@ -1689,30 +1689,6 @@ function zombieRouteWaypoint(z){
 // collision anchors after their meshes are merged into the city batches.
 batchStaticCity();
 
-function batchLoadedStiCars(){
- const buckets=new Map(),remove=[];
- for(const anchor of parkedCars){
-   const root=anchor.children[0];if(!root)continue;
-   root.updateWorldMatrix(true,true);
-   root.traverse(o=>{
-     if(!o.isMesh||!o.geometry||!o.material)return;
-     const mats=Array.isArray(o.material)?o.material:[o.material];
-     if(mats.length!==1)return;
-     const mat=mats[0],key=mat.uuid;
-     let b=buckets.get(key);if(!b){b={material:mat,geos:[]};buckets.set(key,b)}
-     const geo=o.geometry.clone();geo.applyMatrix4(o.matrixWorld);b.geos.push(geo);
-   });
-   remove.push(root);
- }
- for(const b of buckets.values()){
-   if(!b.geos.length)continue;
-   const merged=mergeGeometries(b.geos,false);for(const g of b.geos)g.dispose();
-   if(!merged)continue;merged.computeBoundingBox();merged.computeBoundingSphere();
-   const mesh=new THREE.Mesh(merged,b.material);mesh.name="STIBatch";mesh.castShadow=false;mesh.receiveShadow=false;mesh.matrixAutoUpdate=false;scene.add(mesh);
- }
- for(const root of remove)if(root.parent)root.parent.remove(root);
- document.documentElement.dataset.stiBatched="1";
-}
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 // External M4 Carbine visual. The GLB is the sole M4 viewmodel; rebuild when loaded.
 let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null;
