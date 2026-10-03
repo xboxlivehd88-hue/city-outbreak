@@ -1,3 +1,50 @@
+# LATEST LIVE STATE — 2026-10-03 — v446 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=446`
+- v446 cleanup commit: `531174d4cdd2dbcf6621ef35b7e7fdf2b4417b28`
+- v446 loader/deploy commit: `afcbdf40c329f0612c736d7c4b0b1b182432e755`
+- v446 successful Pages run: `37152234503`
+- Current `src/game.js` content SHA: `cf1a0988e61f080a31c0d93d621ee3c3b39393a8`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v444 and reported: **"works great whats next"**.
+- User then asked to continue with the next cleanup before testing again.
+- Therefore v444 remains the latest user-confirmed gameplay baseline; v445 and v446 are pending the user's combined live test.
+
+## v446 cleanup — removed unused STI batching routine
+
+Current-main audit proved:
+- `batchLoadedStiCars` occurred exactly once: its own definition.
+- It had zero call sites.
+- `mergeGeometries` remains used elsewhere after removal, so no live utility/import was orphaned.
+- `addBuilding()` remains untouched for a later independent audit.
+
+v446 removed only:
+- the 24-line unused `batchLoadedStiCars()` routine.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus v445 contains only 24 deleted lines in `src/game.js` plus the v446 loader bump in `index.html`;
+- native crawler conversion, PBD/ragdoll, M240 authored WAV path/state, grenade/spintop, live spawn-zone/connectivity protections, active zombie cap and other protected systems remain present;
+- M240 audio was not modified.
+
+## Continue cleanup carefully
+
+The next known dead-code candidate is `addBuilding()` (currently 51 lines, one occurrence: its own definition). It belongs to the old procedural-city path and must be audited separately before deletion because it references facade/building helpers and collision data. Do not remove it together with unrelated helpers.
+
+---
+
 # LATEST LIVE STATE — 2026-10-03 — v445 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
