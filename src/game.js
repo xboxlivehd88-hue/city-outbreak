@@ -4374,8 +4374,6 @@ function ragSoftLimitAcceleration(offset,velocity,limit,dt,maxAccel){
  return ragSpringAcceleration(penetration,velocity,.010,.72,dt,maxAccel);
 }
 const ragContactPos=new THREE.Vector3();
-const ragGravityPivot=new THREE.Vector3(),ragGravityMass=new THREE.Vector3(),ragGravityTmp=new THREE.Vector3(),
-      ragGravityLever=new THREE.Vector3(),ragGravityTorque=new THREE.Vector3(),ragGravityParentQ=new THREE.Quaternion();
 function ragdollBodyContactState(z,r){
  // v415: touching the floor is NOT the same as "finished ragdoll".
  // Hairibar Unpowered bodies stay dynamic after contact; we only permit sleep
@@ -4555,63 +4553,27 @@ function updateRagdoll(z,dt){
    }
  }
 
- // v416: Hairibar's Unpowered bones are still dynamic rigidbodies with gravity.
- // Our Three.js support rig has rotational joints but no per-bone rigidbodies, so
- // approximate that missing physics by applying gravity torque around each joint
- // from its current segment direction. This keeps elevated arms, legs, head and
- // spine collapsing after the root/another limb touches down instead of merely
- // coasting on their one-time death impulse until angular drag makes them rigid.
- z.g.updateMatrixWorld(true);
- for(const b of r.bones){
-   b.gax=0;b.gay=0;b.gaz=0;
-   if(r.fullBodyDown||b.role==="hips"||!b.o)continue;
-
-   b.o.getWorldPosition(ragGravityPivot);
-   ragGravityMass.set(0,0,0);
-   let gravitySamples=0;
-   for(const child of b.o.children){
-     if(!child?.isBone)continue;
-     child.getWorldPosition(ragGravityTmp);
-     ragGravityMass.add(ragGravityTmp);
-     gravitySamples++;
-   }
-   if(gravitySamples){
-     ragGravityMass.multiplyScalar(1/gravitySamples);
-   }else{
-     // Terminal joints still need a small center-of-mass lever. Limbs extend
-     // down their local Y axis; the head's mass sits above its neck pivot.
-     ragGravityMass.set(0,b.role==="head"?.14:-.16,0);
-     b.o.localToWorld(ragGravityMass);
-   }
-
-   ragGravityLever.subVectors(ragGravityMass,ragGravityPivot);
-   const gravityLeverLength=ragGravityLever.length();
-   if(gravityLeverLength>.02){
-     // torque = lever x gravity, with gravity normalized to world -Y.
-     ragGravityTorque.set(ragGravityLever.z,0,-ragGravityLever.x);
-     if(b.o.parent){
-       b.o.parent.getWorldQuaternion(ragGravityParentQ).invert();
-       ragGravityTorque.applyQuaternion(ragGravityParentQ);
-     }
-     const gravityAccel=(5.8+(b.p?.inertia||1)*1.4)/Math.max(.10,gravityLeverLength);
-     b.gax=ragGravityTorque.x*gravityAccel;
-     b.gay=ragGravityTorque.y*gravityAccel;
-     b.gaz=ragGravityTorque.z*gravityAccel;
-   }
- }
-
+ // v417: do NOT fake per-bone gravity with an inward pendulum torque.
+ // Hairibar's bones can translate as separate rigidbodies; our support rig cannot.
+ // The v416 torque therefore pulled every child under its parent and compacted the
+ // corpse into a ball. Keep Unpowered joints alive with a tiny unbiased free-drift
+ // torque instead: no target pose, no center-seeking force, and no inward bias.
  for(const b of r.bones){
    const p=b.p;
    const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60)))),h=dt/steps;
    for(let step=0;step<steps;step++){
      const parent=b.parentState;
      const parentX=parent?parent.avx:r.ravx,parentY=parent?parent.avy:r.ravy,parentZ=parent?parent.avz:r.ravz;
+     const free=r.fullBodyDown?0:Math.exp(-r.t*.16);
+     const looseX=Math.sin(r.t*(2.15+p.inertia*.31)+b.phase)*p.gust*.58*free;
+     const looseY=Math.sin(r.t*(1.83+p.inertia*.27)+b.phase+2.17)*p.gust*.40*free;
+     const looseZ=Math.sin(r.t*(2.47+p.inertia*.29)+b.phase+4.03)*p.gust*.66*free;
      // No animation-matching spring in Unpowered state. Soft joint limits,
-     // light constraint coupling, passive angular drag, and the gravity torque
-     // above are the only joint forces.
-     const ax=(b.gax||0)+ragSoftLimitAcceleration(b.ox,b.avx,p.lx,h,p.maxA*1.25)+(parentX-b.avx)*p.couple*.15+r.ravx*p.root*.045;
-     const ay=(b.gay||0)+ragSoftLimitAcceleration(b.oy,b.avy,p.ly,h,p.maxA*1.25)+(parentY-b.avy)*p.couple*.13+r.ravy*p.root*.040;
-     const az=(b.gaz||0)+ragSoftLimitAcceleration(b.oz,b.avz,p.lz,h,p.maxA*1.25)+(parentZ-b.avz)*p.couple*.17+r.ravz*p.root*.050;
+     // light constraint coupling, passive angular drag and unbiased free drift
+     // are the only joint forces.
+     const ax=looseX+ragSoftLimitAcceleration(b.ox,b.avx,p.lx,h,p.maxA*1.25)+(parentX-b.avx)*p.couple*.15+r.ravx*p.root*.045;
+     const ay=looseY+ragSoftLimitAcceleration(b.oy,b.avy,p.ly,h,p.maxA*1.25)+(parentY-b.avy)*p.couple*.13+r.ravy*p.root*.040;
+     const az=looseZ+ragSoftLimitAcceleration(b.oz,b.avz,p.lz,h,p.maxA*1.25)+(parentZ-b.avz)*p.couple*.17+r.ravz*p.root*.050;
      b.avx+=ax*h;b.avy+=ay*h;b.avz+=az*h;
      const angularDrag=Math.exp(-h*(r.fullBodyDown?.42:.055));
      b.avx*=angularDrag;b.avy*=angularDrag;b.avz*=angularDrag;
