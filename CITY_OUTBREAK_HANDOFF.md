@@ -1,3 +1,46 @@
+# LATEST LIVE STATE — 2026-10-03 — v442 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=442`
+- v442 cleanup commit: `301f894d19219f4ae34247061820cc1754081369`
+- v442 loader/deploy commit: `ff2bcbdf65d2dd3e4d021f7e8a17114e1f9f9827`
+- v442 successful Pages run: `37145141583`
+- Current `src/game.js` content SHA after cleanup: `aa843fd70b1eb13117f1e06e13a44ac54c7dce68`
+- Live game: https://xboxlivehd88-hue.github.io/city-outbreak/?v=442-ff2bcbdf
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## v442 cleanup — removed unused UI helper imports
+
+Audit found four named imports from `ui-helpers.js` that had no references anywhere else in current `src/game.js`:
+- `clearTransientMessage`
+- `clearDamageOverlay`
+- `clearHitMarker`
+- `clearNukeOverlays`
+
+Only those unused import names were removed. The UI helper module remains imported and all used UI helpers are unchanged.
+
+Verification:
+- current v442 `game.js` parses successfully;
+- comparing v442 against the v441 gameplay commit shows exactly one changed line: the UI-helper import list;
+- native `convertLeglessToCrawler()` architecture remains present;
+- PBD/ragdoll/gameplay code body is byte-identical to v441 outside the import line;
+- M240 WAV path/state is unchanged and must not be tuned until the user provides the planned recording;
+- grenade/spintop, spawn/connectivity, City Hall collision, weapon transforms/reloads, rain/lighting/store/pause/start/death/restart, and wave/player settings were not changed.
+
+## Current task — continue SAFE CODE CLEANUP / PERFORMANCE AUDIT
+
+Continue one controlled cleanup at a time. The next audit may inspect other provably unused helpers/constants, but do not combine several cleanups or perform a broad refactor. Candidate unused functions noticed during the v442 read-only audit include `EM`, `addBuilding`, `pointOnNewCitySpawnZone`, `batchLoadedStiCars`, and `toggleShop`; **do not delete them merely from this note**. Re-prove current references from GitHub main before changing anything.
+
+---
+
 # LATEST LIVE STATE — 2026-10-03 — v441 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
