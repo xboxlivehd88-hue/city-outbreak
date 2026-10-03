@@ -1,3 +1,52 @@
+# LATEST LIVE STATE — 2026-10-03 — v448 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=448`
+- v448 cleanup commit: `8c983c0c32d486bbaf47db0f0073bf784a94fcab`
+- v448 loader/deploy commit: `e2e5cfa90f68dae30e2918e866e9946d68751aaf`
+- v448 successful Pages run: `37154133985`
+- Current `src/game.js` content SHA: `785ffabe2298537d17cb2ee962fba55b25dedc54`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v447 and reported: **"works fine next step"**.
+- v447 is therefore the latest user-confirmed gameplay baseline before this v448 dead-code cleanup.
+
+## v448 cleanup — removed unused water tower helper
+
+Current-main audit proved:
+- `makeWaterTower` occurred exactly once: its own definition.
+- It had zero call sites after the v447 removal of the obsolete `addBuilding()` procedural-city routine.
+
+v448 removed only:
+- the 7-line unused `makeWaterTower(x,y,z,p)` helper.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v447 contains only seven deleted lines in `src/game.js` plus the v448 loader bump in `index.html`;
+- `addFireEscape()` and `facadeMaterial()` remain untouched for later isolated cleanup;
+- native crawler conversion, PBD/ragdoll, M240 authored WAV path/state, grenade/spintop, live spawn/connectivity protections, active zombie cap and other protected systems remain present;
+- M240 audio was not modified.
+
+## Continue cleanup carefully
+
+Current dead procedural-city candidates:
+- `addFireEscape()` — one occurrence, own definition, 8 lines.
+- `facadeMaterial()` — one occurrence, own definition, 76 lines; its `facadeMaterialCache` is also only used by that helper.
+
+Prefer `addFireEscape()` next because it is the smaller isolated removal. Re-audit current main before deleting anything.
+
+---
+
 # LATEST LIVE STATE — 2026-10-03 — v447 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
