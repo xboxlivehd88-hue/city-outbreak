@@ -38,8 +38,9 @@ Verification:
 
 ## Deployment note
 
-- Initial v449 Pages run `37156222511` reached GitHub's Jekyll build step and failed there; JavaScript/source verification had already passed.
-- A fresh Pages run should be used as the deployment authority before handing v449 to the user.
+- Initial v449 Pages run `37156222511` failed in GitHub Pages/Jekyll because GitHub's own metadata API returned `Net::ReadTimeout`; JavaScript/source verification had already passed.
+- Fresh v449 Pages run `37156349588`, rerun attempt 2, completed successfully with build + deploy + status reporting all successful.
+- Current deployed/docs commit for that successful run: `7989305193dd74268995737c979fa6f9f01cfab1`.
 
 ## Continue cleanup carefully
 
