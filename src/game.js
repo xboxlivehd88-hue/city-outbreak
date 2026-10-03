@@ -2875,6 +2875,7 @@ function syncRadiatedGreenGuy(z,dt=0){
  z.radiatedGreenMoveBlend=THREE.MathUtils.lerp(z.radiatedGreenMoveBlend||0,targetMove,Math.min(1,dt*7));
  const blend=z.radiatedGreenMoveBlend,p=z.rigPolishPhase||z.phase||0,step=Math.sin(p),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
  h.rotation.y=Math.PI;
+ if(z.dead&&z.ragdoll?.directVisual===h)return;
  if(z.dead&&syncCustomVisualFromRagdoll(z,bones,h,"radiatedVisibleRagdollBase"))return;
  if(z.leglessCrawler){
    h.position.y=-.43;h.rotation.x=-.72;h.rotation.z=step*.018*blend;
@@ -3062,6 +3063,7 @@ function buildBasicWalkerHitboxes(z){
 function syncBasicWalkerVisual(z,dt=0){
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
  holder.rotation.y=Math.PI;
+ if(z.dead&&z.ragdoll?.directVisual===holder)return;
  if(z.dead&&syncCustomVisualFromRagdoll(z,bones,holder,"walkerVisibleRagdollBase"))return;
 
  // Legacy fallback only: if the hidden support ragdoll is unavailable, keep the
@@ -3205,10 +3207,10 @@ function syncBasicWalkerVisual(z,dt=0){
  if(lul)lul.rotation.set(s*thighAmp,0,0);
  if(rul)rul.rotation.set(-s*thighAmp,0,0);
  const lk=kneeBase+lf*lf*kneeAmp,rk=kneeBase+rf*rf*kneeAmp;
- if(lll)lll.rotation.set(-lk,0,0);
- if(rll)rll.rotation.set(-rk,0,0);
- if(lfoot)lfoot.rotation.set(lk*.42-.035*run,0,0);
- if(rfoot)rfoot.rotation.set(rk*.42-.035*run,0,0);
+ if(lll)lll.rotation.set(lk,0,0);
+ if(rll)rll.rotation.set(rk,0,0);
+ if(lfoot)lfoot.rotation.set(-lk*.42-.035*run,0,0);
+ if(rfoot)rfoot.rotation.set(-rk*.42-.035*run,0,0);
 }
 function applyZombieRigProfile(rig,kind){
  const p=ZOMBIE_RIG_PROFILES[kind]||SHAMBLER_RIG_PROFILE;
@@ -3346,18 +3348,19 @@ function applyRigLocomotionPolish(z,wantsRun,dt){
        lArm=rigBone(z,"L_UpperArm"),rArm=rigBone(z,"R_UpperArm"),
        hips=rigBone(z,"Hips"),spine=rigBone(z,"Spine"),chest=rigBone(z,"Chest"),head=rigBone(z,"Head");
 
- // Correct anatomy: on this skeleton negative lower-leg X bends the knee backward.
- // The embedded Shamble/Sprint clips used positive X, which visually hyperextended them.
+ // v422: knee hinge corrected from the user's video. Positive local X is
+ // the anatomical flex direction for the current 180-degree-facing walker setup;
+ // negative X produced the flamingo/backward-knee look.
  const thighAmp=.27+(.62-.27)*rb;
  if(lUpper)lUpper.rotation.x=s*thighAmp;
  if(rUpper)rUpper.rotation.x=-s*thighAmp;
  const lf=Math.max(0,Math.sin(p+.68)),rf=Math.max(0,Math.sin(p+Math.PI+.68));
  const lFlex=lf*lf,rFlex=rf*rf;
  const kneeBase=.045+.035*rb,kneeAmp=.34+.46*rb;
- if(lLower)lLower.rotation.x=-(kneeBase+lFlex*kneeAmp);
- if(rLower)rLower.rotation.x=-(kneeBase+rFlex*kneeAmp);
- if(lFoot)lFoot.rotation.x=(kneeBase+lFlex*kneeAmp)*.42-.035*rb;
- if(rFoot)rFoot.rotation.x=(kneeBase+rFlex*kneeAmp)*.42-.035*rb;
+ if(lLower)lLower.rotation.x=(kneeBase+lFlex*kneeAmp);
+ if(rLower)rLower.rotation.x=(kneeBase+rFlex*kneeAmp);
+ if(lFoot)lFoot.rotation.x=-(kneeBase+lFlex*kneeAmp)*.42-.035*rb;
+ if(rFoot)rFoot.rotation.x=-(kneeBase+rFlex*kneeAmp)*.42-.035*rb;
 
  // Two small rises per stride make the hips feel weight-bearing rather than sliding.
  if(hips){
@@ -4194,6 +4197,12 @@ function stagger(z,hs){
 }
 
 function rigBone(z,name){return z.rigVisual?z.rigVisual.getObjectByName(name):null}
+function ragBone(z,name){
+ const wb=z?.walkerBones?.get(name);if(wb)return wb;
+ const gb=z?.radiatedGreenBones?.get(name);if(gb)return gb;
+ return rigBone(z,name);
+}
+function ragVisibleHolder(z){return z?.walkerVisual||z?.radiatedGreenVisual||null}
 function hideRigLimb(z,name){
  const b=rigBone(z,name);
  if(b){b.scale.set(.001,.001,.001);b.updateMatrixWorld(true)}
@@ -4381,7 +4390,7 @@ function ragdollBodyContactState(z,r){
  // v415: touching the floor is NOT the same as "finished ragdoll".
  // Hairibar Unpowered bodies stay dynamic after contact; we only permit sleep
  // once the central mass is genuinely down and the limbs have nearly stopped.
- if(!z?.rigVisual){
+ if(!z?.rigVisual&&!z?.walkerBones?.size&&!z?.radiatedGreenBones?.size){
    const down=!!r.rootGrounded;
    return{contacts:down?7:0,hips:down,chest:down,head:down,coreDown:down,allDown:down};
  }
@@ -4393,7 +4402,7 @@ function ragdollBodyContactState(z,r){
    ["L_LowerLeg","limb",.18],["R_LowerLeg","limb",.18]
  ];
  for(const [key,role,pad] of probes){
-   const b=rigBone(z,key);if(!b)continue;
+   const b=ragBone(z,key);if(!b)continue;
    b.getWorldPosition(ragContactPos);
    const gy=sampleRagdollGroundY(ragContactPos.x,ragContactPos.z,r.floorY,ragContactPos.y);
    const hit=ragContactPos.y<=gy+pad;
@@ -4412,7 +4421,7 @@ function blastBoneProfile(role){
    case "spine":return{lx:.82,ly:.66,lz:.78,airA:.0012,airD:.10,groundA:.009,groundD:.88,maxA:46,gust:.82,inertia:.72,couple:.62,root:.45,impact:.78};
    case "chest":return{lx:.92,ly:.76,lz:.88,airA:.0010,airD:.09,groundA:.008,groundD:.86,maxA:50,gust:.95,inertia:.82,couple:.64,root:.48,impact:.84};
    case "upperLeg":return{lx:1.34,ly:.88,lz:1.08,airA:.00065,airD:.075,groundA:.0065,groundD:.84,maxA:58,gust:1.15,inertia:1.00,couple:.48,root:.36,impact:1.00};
-   case "lowerLeg":return{lx:1.62,ly:.72,lz:.82,airA:.00042,airD:.060,groundA:.0055,groundD:.82,maxA:64,gust:1.38,inertia:1.32,couple:.38,root:.30,impact:1.18};
+   case "lowerLeg":return{lx:1.58,ly:.16,lz:.20,airA:.00042,airD:.060,groundA:.0055,groundD:.82,maxA:64,gust:1.38,inertia:1.32,couple:.38,root:.30,impact:1.18};
    case "upperArm":return{lx:1.72,ly:1.34,lz:1.62,airA:.00036,airD:.052,groundA:.0048,groundD:.80,maxA:70,gust:1.62,inertia:1.52,couple:.34,root:.28,impact:1.30};
    case "lowerArm":return{lx:1.92,ly:1.18,lz:1.48,airA:.00028,airD:.045,groundA:.0042,groundD:.78,maxA:76,gust:1.88,inertia:1.78,couple:.26,root:.22,impact:1.48};
    case "neck":return{lx:.76,ly:.68,lz:.74,airA:.00075,airD:.070,groundA:.0070,groundD:.86,maxA:58,gust:1.18,inertia:.92,couple:.48,root:.34,impact:.96};
@@ -4444,6 +4453,8 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  // Death removes control; it does not erase momentum or add a fake stop first.
  const inheritedVX=THREE.MathUtils.clamp(Number.isFinite(z.motionVX)?z.motionVX:0,-6.5,6.5);
  const inheritedVZ=THREE.MathUtils.clamp(Number.isFinite(z.motionVZ)?z.motionVZ:0,-6.5,6.5);
+ const directVisual=ragVisibleHolder(z);
+ const directVisibleBones=!!directVisual;
 
  const rag=z.ragdoll={
    t:0,bones:[],blast:isBlast,unpowered:true,active:true,power,settleT:0,
@@ -4451,12 +4462,15 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    contactCount:0,maxContactCount:0,bounceCount:0,
    floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
    baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
-   // v421: one-time release angular momentum only. No target fall pose,
-   // no forward/side script and no later steering. Blast adds impulse; ordinary
-   // death simply loses support with a small unpredictable balance break.
-   ravx:isBlast?(rnd()-.5)*(2.35+power*.62):releaseX,
-   ravy:isBlast?(rnd()-.5)*(1.85+power*.46):(rnd()-.5)*.22,
-   ravz:isBlast?(rnd()-.5)*(2.55+power*.68):releaseZ,
+   directVisual,
+   holderStartY:directVisual?directVisual.position.y:0,
+   holderDrop:0,holderVy:0,holderDropTarget:-(.52+rnd()*.16),
+   // v422: the visible skeleton now does the collapsing. Keep root rotation small
+   // for direct walkers so the corpse cannot look like a rigid plank pivoting at
+   // its feet. Blast retains some whole-body tumble, but substantially less.
+   ravx:isBlast?(rnd()-.5)*(directVisibleBones?(1.25+power*.30):(2.35+power*.62)):(directVisibleBones?(rnd()-.5)*.50:releaseX),
+   ravy:isBlast?(rnd()-.5)*(directVisibleBones?(1.05+power*.24):(1.85+power*.46)):(directVisibleBones?(rnd()-.5)*.16:(rnd()-.5)*.22),
+   ravz:isBlast?(rnd()-.5)*(directVisibleBones?(1.35+power*.32):(2.55+power*.68)):(directVisibleBones?(rnd()-.5)*.50:releaseZ),
    rootPhase:rnd()*6.283,
    vx:isBlast?awayX*(2.38+1.48*rnd())*power+(rnd()-.5)*.72:inheritedVX*.94,
    vz:isBlast?awayZ*(2.38+1.48*rnd())*power+(rnd()-.5)*.72:inheritedVZ*.94,
@@ -4481,27 +4495,28 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    });
  };
 
- if(z.rigVisual){
-   const hips=rigBone(z,"Hips");
+ const ragHips=ragBone(z,"Hips");
+ if(ragHips){
+   const hips=ragHips;
    rag.hips=hips;
-   if(hips){rag.hipsStartY=hips.position.y;rag.hipsTargetY=Math.max(.20,hips.position.y-(rag.blast?.24:.62)-rnd()*(rag.blast?.05:.10))}
+   if(hips){rag.hipsStartY=hips.position.y;rag.hipsTargetY=hips.position.y}
 
-   add(rigBone(z,"L_UpperLeg"),"upperLeg");
-   add(rigBone(z,"R_UpperLeg"),"upperLeg");
-   add(rigBone(z,"L_LowerLeg"),"lowerLeg");
-   add(rigBone(z,"R_LowerLeg"),"lowerLeg");
+   add(ragBone(z,"L_UpperLeg"),"upperLeg");
+   add(ragBone(z,"R_UpperLeg"),"upperLeg");
+   add(ragBone(z,"L_LowerLeg"),"lowerLeg");
+   add(ragBone(z,"R_LowerLeg"),"lowerLeg");
 
    add(hips,"hips");
-   add(rigBone(z,"Spine"),"spine");
-   add(rigBone(z,"Chest"),"chest");
+   add(ragBone(z,"Spine"),"spine");
+   add(ragBone(z,"Chest"),"chest");
 
-   add(rigBone(z,"L_UpperArm"),"upperArm");
-   add(rigBone(z,"L_LowerArm"),"lowerArm");
-   add(rigBone(z,"R_UpperArm"),"upperArm");
-   add(rigBone(z,"R_LowerArm"),"lowerArm");
+   add(ragBone(z,"L_UpperArm"),"upperArm");
+   add(ragBone(z,"L_LowerArm"),"lowerArm");
+   add(ragBone(z,"R_UpperArm"),"upperArm");
+   add(ragBone(z,"R_LowerArm"),"lowerArm");
 
-   add(rigBone(z,"Neck"),"neck");
-   add(rigBone(z,"Head"),"head");
+   add(ragBone(z,"Neck"),"neck");
+   add(ragBone(z,"Head"),"head");
  }else{
    add(z.legL,"upperLeg");add(z.kneeL,"lowerLeg");
    add(z.legR,"upperLeg");add(z.kneeR,"lowerLeg");
@@ -4525,14 +4540,26 @@ function updateRagdoll(z,dt){
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
 
  if(r.unpowered){
-   // v415 / Hairibar Unpowered: zero animation drive. Ground contact does not
-   // suddenly stiffen the body. Only light passive angular drag is applied;
-   // once the WHOLE body is already down we allow slightly more friction-like drag.
    const rootDamp=Math.exp(-dt*(r.fullBodyDown?.55:.08));
    z.g.rotation.x+=r.ravx*dt;
    z.g.rotation.y+=r.ravy*dt;
    z.g.rotation.z+=r.ravz*dt;
    r.ravx*=rootDamp;r.ravy*=rootDamp;r.ravz*=rootDamp;
+ }
+ // v422: ordinary custom-model deaths collapse by losing support vertically,
+ // instead of needing large root rotation to "tip" the whole zombie over.
+ if(r.directVisual&&!r.blast){
+   if(!r.fullBodyDown){
+     r.holderVy-=9.2*dt;
+     r.holderDrop+=r.holderVy*dt;
+     if(r.holderDrop<r.holderDropTarget){
+       r.holderDrop=r.holderDropTarget;
+       if(r.holderVy<0)r.holderVy=-r.holderVy*.08;
+     }
+   }else{
+     r.holderVy*=Math.exp(-dt*5);
+   }
+   r.directVisual.position.y=r.holderStartY+r.holderDrop;
  }
 
  z.g.position.x+=r.vx*dt;z.g.position.z+=r.vz*dt;
@@ -4572,7 +4599,11 @@ function updateRagdoll(z,dt){
      // v421: true release state. No oscillator, target pose, root steering or
      // animation-matching force is allowed after death. Only soft anatomical
      // limits and passive drag remain active between real contact events.
-     const ax=ragSoftLimitAcceleration(b.ox,b.avx,p.lx,h,p.maxA*1.25);
+     const kneeAngle=b.sx+b.ox;
+     const ax=b.role==="lowerLeg"
+       ?(kneeAngle<.02?THREE.MathUtils.clamp((.02-kneeAngle)*38-b.avx*4,0,p.maxA*1.25)
+        :kneeAngle>1.48?THREE.MathUtils.clamp((1.48-kneeAngle)*38-b.avx*4,-p.maxA*1.25,0):0)
+       :ragSoftLimitAcceleration(b.ox,b.avx,p.lx,h,p.maxA*1.25);
      const ay=ragSoftLimitAcceleration(b.oy,b.avy,p.ly,h,p.maxA*1.25);
      const az=ragSoftLimitAcceleration(b.oz,b.avz,p.lz,h,p.maxA*1.25);
      b.avx+=ax*h;b.avy+=ay*h;b.avz+=az*h;
@@ -4587,7 +4618,12 @@ function updateRagdoll(z,dt){
        if(v>hard){b[axis]=hard;b[velAxis]=-Math.abs(b[velAxis])*.10}
        else if(v<-hard){b[axis]=-hard;b[velAxis]=Math.abs(b[velAxis])*.10}
      };
-     project("ox",p.lx,"avx");project("oy",p.ly,"avy");project("oz",p.lz,"avz");
+     if(b.role==="lowerLeg"){
+       const knee=b.sx+b.ox;
+       if(knee<-.06){b.ox=-.06-b.sx;b.avx=Math.abs(b.avx)*.08}
+       else if(knee>1.58){b.ox=1.58-b.sx;b.avx=-Math.abs(b.avx)*.08}
+     }else project("ox",p.lx,"avx");
+     project("oy",p.ly,"avy");project("oz",p.lz,"avz");
    }
    b.o.rotation.x=b.sx+b.ox;b.o.rotation.y=b.sy+b.oy;b.o.rotation.z=b.sz+b.oz;
  }
@@ -4607,8 +4643,10 @@ function updateRagdoll(z,dt){
  // v420: first contact must not pin the corpse. Leave root angular
  // momentum alone while only a hand/foot/hip is touching; add friction only
  // after the core (hips + chest + head) is actually down.
- if(contact.coreDown){
-   const rootGroundDrag=Math.exp(-dt*(contact.allDown?2.15:1.10));
+ if(r.rootGrounded||contact.coreDown){
+   // Root friction stops the corpse from rotating/pinwheeling on the pavement.
+   // This does NOT damp the individual bones, which remain loose until settled.
+   const rootGroundDrag=Math.exp(-dt*(r.rootGrounded?6.0:(contact.allDown?2.15:1.10)));
    r.ravx*=rootGroundDrag;r.ravy*=rootGroundDrag;r.ravz*=rootGroundDrag;
  }
  if(contact.contacts>r.maxContactCount){
