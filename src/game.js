@@ -2883,7 +2883,7 @@ function syncRadiatedGreenGuy(z,dt=0){
    // v428: crawler stays chest-down and low to the pavement. The previous
    // negative root pitch rolled the amputated torso backward and pointed both
    // arms into the sky.
-   h.position.y=-.30;h.rotation.x=1.04;h.rotation.z=step*.018*blend;
+   h.position.y=-.30;h.rotation.x=-1.22;h.rotation.z=step*.018*blend;
  }else{
    h.position.y=Math.abs(step)*.028*blend;
    h.rotation.x=-.035*blend-attack*.025;
@@ -2901,10 +2901,10 @@ function syncRadiatedGreenGuy(z,dt=0){
  if(z.leglessCrawler){
    // v397: crawler pulls itself forward with alternating arms instead of freezing.
    const crawlL=Math.sin(p),crawlR=Math.sin(p+Math.PI);
-   if(lua){radiatedArmTarget.set(-.32,-.70,-.64+crawlL*.16).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
-   if(rua){radiatedArmTarget.set(.32,-.70,-.64+crawlR*.16).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
-   if(lla)lla.rotation.set(.62+Math.max(0,crawlL)*.24,0,-.08);
-   if(rla)rla.rotation.set(.62+Math.max(0,crawlR)*.24,0,.08);
+   if(lua){radiatedArmTarget.set(-.30,-.34,-.92+crawlL*.14).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
+   if(rua){radiatedArmTarget.set(.30,-.34,-.92+crawlR*.14).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
+   if(lla)lla.rotation.set(.72+Math.max(0,crawlL)*.20,0,-.07);
+   if(rla)rla.rotation.set(.72+Math.max(0,crawlR)*.20,0,.07);
  }else{
    // Keep both arms clearly outside the torso while walking upright.
    if(lua){radiatedArmTarget.set(-.36,-.93,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
@@ -3180,16 +3180,16 @@ function syncBasicWalkerVisual(z,dt=0){
  if(z.leglessCrawler){
    // v428: prone drag posture. Keep the torso long and low, with forearms
    // reaching along the street instead of both arms raised overhead.
-   holder.position.y=-.28;holder.rotation.x=1.04;holder.rotation.z=s*.020*walk;
+   holder.position.y=-.28;holder.rotation.x=-1.22;holder.rotation.z=s*.020*walk;
    if(hips)hips.rotation.set(-.16,0,0);
    if(spine)spine.rotation.set(.10+Math.abs(s)*.020,0,s*.022);
    if(chest)chest.rotation.set(.16+attack*.06,0,-s*.030);
    if(neck)neck.rotation.set(-.34,0,0);
    if(head)head.rotation.set(-.14+attack*.035,0,s*.030);
-   if(lua)lua.rotation.set(.36+s*.18,0,.20);
-   if(rua)rua.rotation.set(.36-s*.18,0,-.20);
-   if(lla)lla.rotation.set(.62+Math.max(0,s)*.22,0,.06);
-   if(rla)rla.rotation.set(.62+Math.max(0,-s)*.22,0,-.06);
+   if(lua)lua.rotation.set(.18+s*.16,0,.18);
+   if(rua)rua.rotation.set(.18-s*.16,0,-.18);
+   if(lla)lla.rotation.set(.74+Math.max(0,s)*.20,0,.05);
+   if(rla)rla.rotation.set(.74+Math.max(0,-s)*.20,0,-.05);
    return;
  }
 
@@ -4487,32 +4487,76 @@ function detachArm(z,side){
  if(side==="left")z.armL=new THREE.Group();else z.armR=new THREE.Group();
  noise(.12,.22,350);show(side==="left"?"LEFT ARM OFF":"RIGHT ARM OFF");
 }
+const crawlerHitTmpA=new THREE.Vector3(),crawlerHitTmpB=new THREE.Vector3(),crawlerHitTmpC=new THREE.Vector3();
+const crawlerHitYAxis=new THREE.Vector3(0,1,0);
+function crawlerBone(z,name){
+ if(z?.walkerBones?.size){const b=z.walkerBones.get(name);if(b)return b}
+ if(z?.radiatedGreenBones?.size){const b=z.radiatedGreenBones.get(name);if(b)return b}
+ return z?.rigVisual?.getObjectByName(name)||null;
+}
 function buildLeglessCrawlerHitboxes(z){
- if(!z||z.crawlerHitboxes)return;
- // Retire the standing procedural hitboxes. They remain as hidden support geometry,
- // but must no longer be raycast targets once the visual body drops to the street.
- if(z.hitMeshes)for(const o of z.hitMeshes){if(o)o.raycast=()=>{}}
-
+ if(!z||z.crawlerHitboxes)return false;
+ if(z.hitMeshes)for(const o of z.hitMeshes)if(o)o.raycast=()=>{};
  const mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false});
- const hitboxes=[];
- const add=(geo,x,y,zz,part,isHead=false)=>{
-   const q=new THREE.Mesh(geo,mat);
-   q.position.set(x,y,zz);q.name="LeglessCrawler_"+part;
-   q.castShadow=false;q.receiveShadow=false;
+ const unitBox=new THREE.BoxGeometry(1,1,1),headGeo=new THREE.SphereGeometry(1,10,8),hitboxes=[];
+ const add=(name,part,isHead=false)=>{
+   const q=new THREE.Mesh(isHead?headGeo:unitBox,mat);
+   q.name="LeglessCrawler_"+name;q.castShadow=false;q.receiveShadow=false;
    q.userData.zombie=z;q.userData.part=part;if(isHead)q.userData.isHead=true;
-   z.g.add(q);hitboxes.push(q);
-   if(z.ownedGeometries)z.ownedGeometries.push(geo);
-   return q;
+   z.g.add(q);hitboxes.push(q);return q;
  };
- // The preserved rig is pitched forward about 41 degrees. These volumes sit over
- // the low chest, skull and weight-bearing arms seen by the player.
- add(new THREE.BoxGeometry(.62,.50,.86),0,.53,-.70,"torso");
- add(new THREE.SphereGeometry(.215,9,7),0,.64,-1.17,"head",true);
- if(!z.leftArmDetached)add(new THREE.BoxGeometry(.20,.28,.62),-.31,.36,-.58,"leftArm");
- if(!z.rightArmDetached)add(new THREE.BoxGeometry(.20,.28,.62),.31,.36,-.58,"rightArm");
+ const torso=add("Torso","torso"),head=add("Head","head",true),
+       leftUpper=add("LeftUpperArm","leftArm"),leftLower=add("LeftLowerArm","leftArm"),
+       rightUpper=add("RightUpperArm","rightArm"),rightLower=add("RightLowerArm","rightArm");
+ z.crawlerHitboxParts={torso,head,leftUpper,leftLower,rightUpper,rightLower};
+ z.crawlerHitboxes=hitboxes;z.hitMeshes=hitboxes;
+ if(z.ownedGeometries){z.ownedGeometries.push(unitBox,headGeo)}
  if(z.ownedMaterials)z.ownedMaterials.push(mat);
- z.crawlerHitboxes=hitboxes;
- z.hitMeshes=hitboxes;
+ updateLeglessCrawlerHitboxes(z);
+ return true;
+}
+function updateLeglessCrawlerHitboxes(z){
+ const h=z?.crawlerHitboxParts;if(!z?.leglessCrawler||!h)return;
+ z.g.updateMatrixWorld(true);
+ const worldToLocal=v=>z.g.worldToLocal(v.clone());
+ const bonePos=name=>{
+   const b=crawlerBone(z,name);if(!b)return null;
+   b.getWorldPosition(crawlerHitTmpA);return worldToLocal(crawlerHitTmpA);
+ };
+ const segment=(mesh,aName,bName,width,depth,partGone=false)=>{
+   if(!mesh)return;
+   if(partGone){mesh.visible=false;mesh.raycast=()=>{};return}
+   const a=bonePos(aName),b=bonePos(bName);
+   if(!a||!b){mesh.visible=false;return}
+   crawlerHitTmpB.subVectors(b,a);const len=crawlerHitTmpB.length();
+   if(len<.015){mesh.visible=false;return}
+   mesh.visible=true;mesh.position.copy(a).add(b).multiplyScalar(.5);
+   mesh.quaternion.setFromUnitVectors(crawlerHitYAxis,crawlerHitTmpB.normalize());
+   mesh.scale.set(width,len,depth);
+ };
+ const hips=bonePos("Hips"),chest=bonePos("Chest");
+ if(hips&&chest){
+   crawlerHitTmpB.subVectors(chest,hips);const len=Math.max(.34,crawlerHitTmpB.length());
+   h.torso.visible=true;h.torso.position.copy(hips).add(chest).multiplyScalar(.5);
+   h.torso.quaternion.setFromUnitVectors(crawlerHitYAxis,crawlerHitTmpB.normalize());
+   h.torso.scale.set(.58,len+.16,.42);
+ }else{
+   h.torso.visible=true;h.torso.position.set(0,.42,-.28);h.torso.quaternion.identity();h.torso.scale.set(.62,.42,.72);
+ }
+ const hp=bonePos("Head");
+ if(hp){h.head.visible=true;h.head.position.copy(hp);h.head.scale.setScalar(.23)}
+ else{h.head.visible=true;h.head.position.set(0,.40,-.78);h.head.scale.setScalar(.22)}
+ segment(h.leftUpper,"L_UpperArm","L_LowerArm",.20,.22,z.leftArmDetached);
+ segment(h.rightUpper,"R_UpperArm","R_LowerArm",.20,.22,z.rightArmDetached);
+ const lh=crawlerBone(z,"L_Hand"),rh=crawlerBone(z,"R_Hand");
+ if(lh)segment(h.leftLower,"L_LowerArm","L_Hand",.18,.20,z.leftArmDetached);
+ else{
+   const p=bonePos("L_LowerArm");if(p&&!z.leftArmDetached){h.leftLower.visible=true;h.leftLower.position.copy(p);h.leftLower.quaternion.identity();h.leftLower.scale.set(.20,.34,.20)}else h.leftLower.visible=false;
+ }
+ if(rh)segment(h.rightLower,"R_LowerArm","R_Hand",.18,.20,z.rightArmDetached);
+ else{
+   const p=bonePos("R_LowerArm");if(p&&!z.rightArmDetached){h.rightLower.visible=true;h.rightLower.position.copy(p);h.rightLower.quaternion.identity();h.rightLower.scale.set(.20,.34,.20)}else h.rightLower.visible=false;
+ }
 }
 function poseLeglessCrawlerRig(z,walk=0,walk2=0,attack=0){
  if(!z||!z.leglessCrawler||!z.rigVisual)return;
@@ -4520,7 +4564,7 @@ function poseLeglessCrawlerRig(z,walk=0,walk2=0,attack=0){
  // Keep the original zombie identity, but lower and pitch that same body into a
  // weight-bearing crawl. The severed upper-leg bones remain hidden.
  rig.position.y=-.30;
- rig.rotation.x=1.04;
+ rig.rotation.x=-1.22;
  rig.rotation.z=0;
  const hips=rigBone(z,"Hips"),spine=rigBone(z,"Spine"),chest=rigBone(z,"Chest"),
        neck=rigBone(z,"Neck"),headB=rigBone(z,"Head"),
@@ -4531,10 +4575,10 @@ function poseLeglessCrawlerRig(z,walk=0,walk2=0,attack=0){
  if(chest)chest.rotation.set(.16+attack*.06,0,-walk*.030);
  if(neck)neck.rotation.set(-.34,0,0);
  if(headB)headB.rotation.set(-.14+attack*.035,0,walk*.030);
- if(lua)lua.rotation.set(.36+walk*.18,0,-.20);
- if(rua)rua.rotation.set(.36+walk2*.18,0,.20);
- if(lla)lla.rotation.set(.62+Math.max(0,walk)*.22,0,-.06);
- if(rla)rla.rotation.set(.62+Math.max(0,walk2)*.22,0,.06);
+ if(lua)lua.rotation.set(.18+walk*.16,0,-.18);
+ if(rua)rua.rotation.set(.18+walk2*.16,0,.18);
+ if(lla)lla.rotation.set(.74+Math.max(0,walk)*.20,0,-.05);
+ if(rla)rla.rotation.set(.74+Math.max(0,walk2)*.20,0,.05);
 }
 function convertLeglessToCrawler(z){
  if(!z||z.dead||z.kind==="boss"||z.leglessCrawler||z.hp<=0||!z.leftLegDetached||!z.rightLegDetached)return;
@@ -4550,13 +4594,9 @@ function convertLeglessToCrawler(z){
  z.rigBase=null;z.rigTransient=null;z.rigTransientT=0;
  hideRigLimb(z,"L_UpperLeg");hideRigLimb(z,"R_UpperLeg");
  poseLeglessCrawlerRig(z,0,0,0);
- if(z.radiatedGreenVisual||z.walkerVisual){
-   // Custom GLB head/torso/arm hitboxes are already bone-attached and
-   // remain accurate after the visible body pitches into the crawler pose.
-   z.crawlerHitboxes=z.hitMeshes?z.hitMeshes.slice():[];
- }else{
-   buildLeglessCrawlerHitboxes(z);
- }
+ // v429: every crawler gets a fresh low-profile hitbox set that follows the
+ // actual prone bones. Never reuse standing hitboxes after both legs are gone.
+ buildLeglessCrawlerHitboxes(z);
 
  z.navForceRepath=true;z.navCheckT=0;z.think=0;
  show("CRIPPLED — CRAWLER");
@@ -5021,7 +5061,7 @@ function fire(){
   return
  }
  let didHit=false,headHit=false;rayTargets.length=0;
- for(const z of zombies){if(z.dead)continue;if(z.hitMeshes)rayTargets.push(...z.hitMeshes)}
+ for(const z of zombies){if(z.dead)continue;if(z.leglessCrawler)updateLeglessCrawlerHitboxes(z);if(z.hitMeshes)rayTargets.push(...z.hitMeshes)}
  for(let pellet=0;pellet<wd().pellets;pellet++){
    const adsSpread=aiming?(weapon==="awm"?.08:weapon==="shotgun"?.62:.38):1;
    // M17 ADS fires through true screen center. The ADS rig itself is pitched
@@ -5699,6 +5739,7 @@ for(let z of active){
    z.groan-=dt;z.step-=dt;
    updateKnockdown(z,dt);
    syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
+   if(z.leglessCrawler)updateLeglessCrawlerHitboxes(z);
    continue;
  }
 
@@ -5969,6 +6010,7 @@ resolveZombiePlayerContact(z,ox,oz);
    }
  }
  syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
+ if(z.leglessCrawler)updateLeglessCrawlerHitboxes(z);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 const perfGuard=createPerformanceGuard({
  renderer:ren,
