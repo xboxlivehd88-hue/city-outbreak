@@ -49,8 +49,8 @@ new GLTFLoader().load("assets/walkers.glb?v=399",gltf=>{
 
 const cv=document.querySelector("#cv"),cross=document.querySelector("#crosshair"),healthText=document.querySelector("#healthText"),healthBar=document.querySelector("#healthBar"),ammoEl=document.querySelector("#ammo"),killsEl=document.querySelector("#kills"),headsEl=document.querySelector("#heads"),waveEl=document.querySelector("#wave"),remainingEl=document.querySelector("#remaining"),cashEl=document.querySelector("#cash"),weaponNameEl=document.querySelector("#weaponName"),grenadeEl=document.querySelector("#grenadeCount"),nukeEl=document.querySelector("#nukeCount"),nukeFlash=document.querySelector("#nukeFlash"),nukeShock=document.querySelector("#nukeShock"),shop=document.querySelector("#shop"),shopCash=document.querySelector("#shopCash"),shopNote=document.querySelector("#shopNote"),damage=document.querySelector("#damage"),hitmarker=document.querySelector("#hitmarker"),announce=document.querySelector("#announce"),big=document.querySelector("#big"),small=document.querySelector("#small"),death=document.querySelector("#death"),msg=document.querySelector("#msg"),startScreen=document.querySelector("#startScreen"),bossHUD=document.querySelector("#bossHUD"),bossFill=document.querySelector("#bossFill"),bossNameEl=document.querySelector("#bossName"),bossSubEl=document.querySelector("#bossSub"),sprintFill=document.querySelector("#sprintFill"),sprintState=document.querySelector("#sprintState"),scopeOverlay=document.querySelector("#scopeOverlay"),pauseBtn=document.querySelector("#pauseBtn"),pauseOverlay=document.querySelector("#pauseOverlay"),resumeGameBtn=document.querySelector("#resumeGame");
 let ac,master,audioOn=false,noiseBuffer=null;
-const M240_FIRE_SAMPLE_URL="./assets/240 firing.wav?v=434";
-let m240FireBuffer=null,m240FireLoopBuffer=null,m240FireLoad=null,m240FireSource=null,m240FireGain=null;
+const M240_FIRE_SAMPLE_URL="./assets/101961__cgeffex__heavy-machine-gun-edited.wav?v=439";
+let m240FireBuffer=null,m240FireLoad=null,m240FireSource=null,m240FireGain=null;
 function loadM240FireSample(){
  if(!ac)return Promise.resolve(null);
  if(m240FireBuffer)return Promise.resolve(m240FireBuffer);
@@ -58,86 +58,20 @@ function loadM240FireSample(){
  m240FireLoad=fetch(M240_FIRE_SAMPLE_URL,{cache:"force-cache"})
    .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.arrayBuffer()})
    .then(buf=>ac.decodeAudioData(buf))
-   .then(decoded=>{
-     m240FireBuffer=decoded;
-     // v438: preserve a LONG stretch of the real recording and correct only its
-     // slow loudness envelope. v437's 2.4 s "stable" slice was too short and
-     // happened to begin on a softer section. Here we:
-     //  1) locate the continuous firing portion,
-     //  2) retain essentially all of that portion,
-     //  3) normalize only 250 ms-scale loudness drift,
-     //  4) crossfade the loop seam.
-     const sr=decoded.sampleRate,channels=decoded.numberOfChannels;
-     const envWin=Math.max(256,Math.floor(sr*.250)),env=[];
-     let peakEnv=0;
-     for(let i=0;i<decoded.length;i+=envWin){
-       let sum=0,n=0;
-       for(let ch=0;ch<channels;ch++){
-         const d=decoded.getChannelData(ch);
-         for(let j=i;j<Math.min(decoded.length,i+envWin);j++){const v=d[j];sum+=v*v;n++}
-       }
-       const r=Math.sqrt(sum/Math.max(1,n));env.push(r);if(r>peakEnv)peakEnv=r;
-     }
-     const activeThreshold=Math.max(.004,peakEnv*.12);
-     let first=0,last=env.length-1;
-     while(first<env.length-1&&env[first]<activeThreshold)first++;
-     while(last>first&&env[last]<activeThreshold)last--;
-     // Trim only a little from the detected ends. Keep the original attack and
-     // several seconds of natural variation instead of collapsing to a tiny loop.
-     const trimHead=Math.floor(sr*.06),trimTail=Math.floor(sr*.18);
-     const startFrame=Math.max(0,first*envWin+trimHead);
-     const endFrame=Math.max(startFrame+Math.floor(sr*2.0),Math.min(decoded.length,(last+1)*envWin-trimTail));
-     const loopFrames=Math.max(1,endFrame-startFrame);
-
-     const activeEnv=env.slice(first,last+1).filter(v=>v>=activeThreshold).sort((a,b)=>a-b);
-     const target=activeEnv.length?activeEnv[Math.min(activeEnv.length-1,Math.floor(activeEnv.length*.72))]:peakEnv*.75;
-     const gains=[];
-     for(let i=first;i<=last;i++){
-       const r=Math.max(env[i]||0,target*.28);
-       gains.push(THREE.MathUtils.clamp(target/r,.72,2.65));
-     }
-     // Smooth in both directions so the correction removes only slow fade/drift,
-     // not the punch of individual rounds.
-     for(let i=1;i<gains.length;i++)gains[i]=gains[i-1]*.72+gains[i]*.28;
-     for(let i=gains.length-2;i>=0;i--)gains[i]=gains[i+1]*.72+gains[i]*.28;
-
-     const loop=ac.createBuffer(channels,loopFrames,sr);
-     for(let ch=0;ch<channels;ch++){
-       const src=decoded.getChannelData(ch),dst=loop.getChannelData(ch);
-       for(let i=0;i<loopFrames;i++){
-         const sourceFrame=startFrame+i;
-         const ef=(sourceFrame/envWin)-first;
-         const e0=Math.max(0,Math.min(gains.length-1,Math.floor(ef)));
-         const e1=Math.min(gains.length-1,e0+1),mix=THREE.MathUtils.clamp(ef-e0,0,1);
-         const gain=THREE.MathUtils.lerp(gains[e0]||1,gains[e1]||1,mix);
-         dst[i]=THREE.MathUtils.clamp(src[sourceFrame]*gain,-1,1);
-       }
-       const xf=Math.min(Math.floor(sr*.085),Math.floor(loopFrames*.06));
-       for(let i=0;i<xf;i++){
-         const t=i/Math.max(1,xf-1),a=t*t*(3-2*t),tail=dst[loopFrames-xf+i];
-         dst[i]=tail*(1-a)+dst[i]*a;
-       }
-     }
-     m240FireLoopBuffer=loop;
-     console.log("CITY OUTBREAK: M240 long normalized loop",{
-       start:(startFrame/sr).toFixed(2),
-       duration:(loopFrames/sr).toFixed(2),
-       targetRms:target.toFixed(4),
-       peakRms:peakEnv.toFixed(4)
-     });
-     return decoded
-   })
-   .catch(err=>{console.error("CITY OUTBREAK: M240 firing WAV failed to load",err);m240FireLoad=null;return null});
+   .then(decoded=>{m240FireBuffer=decoded;return decoded})
+   .catch(err=>{console.error("CITY OUTBREAK: M240 edited firing WAV failed to load",err);m240FireLoad=null;return null});
  return m240FireLoad;
 }
 function startM240FireAudio(){
  if(!audioOn||!ac)return false;
  if(m240FireSource)return true;
- if(!m240FireLoopBuffer){loadM240FireSample();return false}
+ if(!m240FireBuffer){loadM240FireSample();return false}
  const src=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime;
- src.buffer=m240FireLoopBuffer;
- src.loop=true;src.loopStart=0;src.loopEnd=m240FireLoopBuffer.duration;
- g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.88,t+.010);
+ src.buffer=m240FireBuffer;
+ // v439: the newly uploaded file is the authored M240 loop. Play it exactly
+ // as supplied: start on trigger, loop continuously, stop on trigger release.
+ src.loop=true;src.loopStart=0;src.loopEnd=m240FireBuffer.duration;
+ g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.90,t+.008);
  src.connect(g);g.connect(master);
  m240FireSource=src;m240FireGain=g;
  src.onended=()=>{
@@ -146,13 +80,17 @@ function startM240FireAudio(){
  };
  src.start(t,0);return true;
 }
-function stopM240FireAudio(fade=.035){
+function stopM240FireAudio(fade=.018){
  const src=m240FireSource,g=m240FireGain;if(!src)return;
  m240FireSource=null;m240FireGain=null;
  const t=ac?.currentTime||0;
  try{
-   if(g){g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(Math.max(.001,g.gain.value||.001),t);g.gain.linearRampToValueAtTime(.001,t+fade)}
-   src.stop(t+fade+.01);
+   if(g){
+     g.gain.cancelScheduledValues(t);
+     g.gain.setValueAtTime(Math.max(.001,g.gain.value||.001),t);
+     g.gain.linearRampToValueAtTime(.001,t+fade);
+   }
+   src.stop(t+fade+.005);
  }catch(_){}
 }
 function initAudio(){
