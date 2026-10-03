@@ -4442,11 +4442,13 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    contactCount:0,maxContactCount:0,bounceCount:0,
    floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
    baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
-   // Root is a free Hairibar-style rigid body in death. Non-explosive deaths
-   // get a smaller but real physical tip/roll impulse instead of a canned fall.
-   ravx:isBlast?(rnd()-.5)*(5.2+power*1.4):forward*(1.10+rnd()*.50)+(rnd()-.5)*.55,
-   ravy:isBlast?(rnd()-.5)*(4.0+power*1.0):(rnd()-.5)*.42,
-   ravz:isBlast?(rnd()-.5)*(5.8+power*1.5):sideFall*(1.20+rnd()*.55)+(rnd()-.5)*.58,
+   // v419: let the joints sell the limp body instead of letting root rotation
+   // dominate the silhouette. Gunshot deaths collapse faster; blast deaths keep
+   // their launch distance but use less whole-body tumble so limbs can visibly
+   // move relative to the torso in flight.
+   ravx:isBlast?(rnd()-.5)*(2.7+power*.72):forward*(1.78+rnd()*.58)+(rnd()-.5)*.46,
+   ravy:isBlast?(rnd()-.5)*(2.1+power*.54):(rnd()-.5)*.30,
+   ravz:isBlast?(rnd()-.5)*(3.0+power*.78):sideFall*(1.72+rnd()*.60)+(rnd()-.5)*.48,
    rootPhase:rnd()*6.283,
    vx:awayX*(isBlast?(2.38+1.48*rnd())*power:(.18+.18*rnd())*power)+(rnd()-.5)*(isBlast?.72:.12),
    vz:awayZ*(isBlast?(2.38+1.48*rnd())*power:(.18+.18*rnd())*power)+(rnd()-.5)*(isBlast?.72:.12),
@@ -4458,12 +4460,10 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    if(!o||!o.parent)return;
    const loose=rag.blast?1:1.24;
    const p=blastBoneProfile(role);
-   // v418: normal gunshot deaths must go limp on frame one, not let the root
-   // tip the whole zombie over like a rigid board. Give every joint a stronger
-   // independent angular kick immediately. Keep explosion behavior unchanged.
-   // No dx/dy/dz bias is used for ordinary deaths so joints are never driven
-   // toward the same folded/balling pose.
-   const spin=(rag.blast?(2.55+.52*rag.power):(1.90+.34*rag.power))*p.inertia;
+   // v419: both gunshot and blast deaths start as independent unpowered joints.
+   // Stronger relative joint motion is intentional: root motion no longer carries
+   // the whole model like a board, and no shared directional bias folds the body.
+   const spin=(rag.blast?(3.45+.62*rag.power):(2.65+.42*rag.power))*p.inertia;
    rag.bones.push({
      o,role,p,
      sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
@@ -4472,9 +4472,9 @@ function beginRagdoll(z,force=1,blastOrigin=null){
      tx:o.rotation.x+dx*loose,ty:o.rotation.y+dy*loose,tz:o.rotation.z+dz*loose,
      delay:0,duration,wob:wob*loose,phase:rnd()*6.283,
      ox:0,oy:0,oz:0,
-     avx:((rnd()-.5)*(rag.blast?2:1.55)+dx*(rag.blast?.05:0))*spin,
-     avy:((rnd()-.5)*(rag.blast?2:1.45)+dy*(rag.blast?.05:0))*spin,
-     avz:((rnd()-.5)*(rag.blast?2:1.55)+dz*(rag.blast?.05:0))*spin,
+     avx:(rnd()-.5)*(rag.blast?2.25:1.85)*spin,
+     avy:(rnd()-.5)*(rag.blast?2.10:1.70)*spin,
+     avz:(rnd()-.5)*(rag.blast?2.25:1.85)*spin,
      parentState:null
    });
  };
@@ -4605,10 +4605,18 @@ function updateRagdoll(z,dt){
  // Every NEW body contact gets a small collision response. This approximates the
  // separate rigidbody contacts Hairibar/PhysX would generate and keeps hands,
  // elbows, knees and head flopping after the first thing touches the pavement.
+ // Ground contact should kill whole-body pinwheel energy, not freeze the joints.
+ // The visible "pinned and spinning" corpse came from preserving root angular
+ // velocity while also adding a fresh random root jolt on every new contact.
+ if(contact.contacts>0||r.rootGrounded){
+   const rootGroundDrag=Math.exp(-dt*(contact.allDown?3.8:2.55));
+   r.ravx*=rootGroundDrag;r.ravy*=rootGroundDrag;r.ravz*=rootGroundDrag;
+ }
  if(contact.contacts>r.maxContactCount){
    const newHits=contact.contacts-r.maxContactCount;
    const jolt=(r.blast?.20:.13)*Math.max(1,newHits);
-   r.ravx+=(rnd()-.5)*jolt;r.ravy+=(rnd()-.5)*jolt*.55;r.ravz+=(rnd()-.5)*jolt;
+   // Keep impact life in the individual limbs only. Do not spin the entire
+   // corpse around its ground contact point.
    for(const b of r.bones){
      const impact=b.p?.impact||1;
      b.avx+=(rnd()-.5)*jolt*1.45*impact;
