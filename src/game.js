@@ -571,14 +571,6 @@ function zombieTex(baseHex,kind=0){
 }
 
 
-function addFireEscape(x,y,z,h,side,p=scene){
- for(let yy=y+.8;yy<h;yy+=1.55){
-   box(.10,.12,1.4,M(0x2a2c2e,.65),x+side*.06,yy,z,p);
-   box(.82,.08,.18,M(0x2a2c2e,.65),x+side*.42,yy-.15,z,p);
-   box(.08,1.0,.08,M(0x2a2c2e,.65),x+side*.06,yy-.45,z-.55,p);
-   box(.08,1.0,.08,M(0x2a2c2e,.65),x+side*.06,yy-.45,z+.55,p);
- }
-}
 
 const CITY_COLLISION_BUCKET=4.0;
 const cityCollisionBuckets=new Map();
