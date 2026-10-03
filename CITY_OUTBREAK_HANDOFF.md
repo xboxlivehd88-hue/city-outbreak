@@ -1,3 +1,128 @@
+# LATEST LIVE STATE — 2026-10-03 — v441 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=441`
+- v441 gameplay cleanup commit: `fb75c87ed883de9350f2580a3803bdcb73c4ba22`
+- v441 loader/deploy commit: `7bd666a779bccbd13e445de28aea6dbd319d11f0`
+- v441 successful Pages run: `37144643784`
+- Current `src/game.js` content SHA at handoff: `fb4f8376f013c4e3f5ab43b8cf9e434f9b65abb1`
+- Current `index.html` content SHA at handoff: `6bf32fbacabb86efc634bb5fd185c79944555fcb`
+- Live game: https://xboxlivehd88-hue.github.io/city-outbreak/?v=441-7bd666a
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Current task — SAFE CODE CLEANUP / PERFORMANCE AUDIT
+
+The user asked for a Codex-style engineering audit and cleanup of the existing game. We are doing it directly in ChatGPT/GitHub, one controlled change at a time.
+
+Goal:
+- shorten/clean code where safe;
+- remove truly unreachable/dead code;
+- reduce duplication and expensive work;
+- identify performance opportunities;
+- modularize only when behavior can remain identical;
+- **do not change gameplay feel while cleaning.**
+
+Required workflow:
+1. Read this file, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, current `index.html`, and current `src/game.js`.
+2. Treat current GitHub `main` as source of truth.
+3. Audit first; do not make broad refactors.
+4. Make **one low-risk cleanup at a time**.
+5. Syntax/protected-system checks after every change.
+6. Commit directly to `main`, bump loader, wait for Pages success, then give a fresh cache-busted test link.
+7. Screenshots/gameplay testing are final authority.
+
+## Cleanup already completed
+
+### v440 — removed unused duplicate audio module
+- Commit: `0404bda69cc9d530cc6af2ecd10f7f8e1ee4f27f`
+- Loader/deploy: `b0e14c42efc807f2fa10d39368e510b3a0918556`
+- Pages run: `37144484661` success.
+- Removed `src/audio.js` (49 lines).
+- It was not imported by current `src/game.js`; live audio logic remains in `src/game.js`.
+- No gameplay/audio behavior was intentionally changed.
+
+### v441 — removed unreachable legacy crawler system
+- Gameplay cleanup commit: `fb75c87ed883de9350f2580a3803bdcb73c4ba22`
+- Loader/deploy: `7bd666a779bccbd13e445de28aea6dbd319d11f0`
+- Pages run: `37144643784` success.
+- Removed old pre-native-crawler `z.leglessCrawler` branches from Green Guy/walker sync.
+- Removed obsolete functions:
+  - `crawlerBone`
+  - `buildLeglessCrawlerHitboxes`
+  - `updateLeglessCrawlerHitboxes`
+  - `poseLeglessCrawlerRig`
+  - legacy crawler hitbox temp vectors/axis
+- Removed obsolete per-frame/fire calls to `updateLeglessCrawlerHitboxes`.
+- Removed old `leglessCrawler` guards from locomotion.
+- **Current native crawler conversion remains intact:** losing both legs uses `convertLeglessToCrawler()`, creates a native `kind==="crawler"`, and transfers/preserves the source zombie upper-body visual.
+- This cleanup removed 153 lines and added 16 lines of simplification.
+- Do not reintroduce the old v428-v430 crawler-folding system.
+
+## Important current v439+ M240 audio state — preserve during cleanup
+
+Newest user WAV:
+`assets/101961__cgeffex__heavy-machine-gun-edited.wav`
+
+Current M240 audio behavior:
+- source constant: `M240_FIRE_SAMPLE_URL="./assets/101961__cgeffex__heavy-machine-gun-edited.wav?v=439"`
+- plays the uploaded edited WAV as-is;
+- loops the whole WAV while trigger is held;
+- stops on trigger release, reload, weapon switch, pause/shop via `stopAuto()`, and empty magazine;
+- prior auto-trimming/normalizing experiments from v437/v438 were removed.
+- User said v439 is **better but audio still kind of fades/goes away**; user plans to send a screen recording later. **Do not tune the M240 audio again until that recording is provided.**
+
+Preserve M240 gameplay:
+- `m240:{name:"M240 LMG",rate:78,hold:78,...}`
+- ADS: `m240:{x:-.36,y:.01,z:1.20,fov:56,rx:0}`
+- whole-gun recoil remains disabled:
+  `const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil;`
+
+## Protected gameplay systems — cleanup must not change behavior
+
+Preserve unless user explicitly asks:
+- v324 protected recovery identity.
+- PBD death ragdoll / explosion ragdoll / knockdown behavior.
+- Bullet-force death impulse remains intentionally removed.
+- Native crawler conversion and preserved upper-body identity.
+- M240/M17/M4/MP5 transforms, ADS, recoil and reload behavior.
+- zombie spawn connectivity / anti-clumping / doorway behavior / active cap.
+- City Hall collision and map boundaries.
+- grenade/spintop model and attraction behavior.
+- rain, lighting, street-lamp performance setup.
+- start screen, store/pause, sound, death/restart.
+- current wave counts, sprint/health reset, max active zombies.
+
+## Current cleanup audit clues / next step
+
+Known structure:
+- `src/game.js` is still very large (~330 KB).
+- `src/zombie-rig-data.js` is also large (~355 KB) but is generated/embedded rig data and should not be casually refactored.
+- Existing small modules include UI, input, render, wave, format, performance helpers.
+- The next chat should continue the read-only audit of current v441 and choose the **next lowest-risk cleanup**.
+- Good categories to investigate:
+  - unused constants/functions/imports;
+  - duplicate helper logic;
+  - allocations inside hot update paths;
+  - repeated traversals/raycasts that can be cached;
+  - old version-specific branches that are now provably unreachable;
+  - safe extraction of self-contained systems from `game.js`.
+- Do **not** do a giant refactor or move the ragdoll/crawler/spawn systems wholesale.
+- Before deleting anything, prove there are no current references and compare against the current native crawler/PBD architecture.
+
+## Testing status
+
+v440 and v441 both deployed successfully. At this handoff point, the user has not supplied a post-v441 gameplay screenshot/test report in this chat. Treat deploy/syntax success as necessary but not proof of visual correctness.
+
+---
+
 # LATEST LIVE STATE — 2026-10-01 — v392 — READ THIS BEFORE OLDER SECTIONS
 
 This section supersedes older "current live state" notes below. **Do not change the protected recovery identity** unless the user explicitly approves a new recovery checkpoint.
