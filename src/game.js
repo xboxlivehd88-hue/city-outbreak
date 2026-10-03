@@ -50,7 +50,7 @@ new GLTFLoader().load("assets/walkers.glb?v=399",gltf=>{
 const cv=document.querySelector("#cv"),cross=document.querySelector("#crosshair"),healthText=document.querySelector("#healthText"),healthBar=document.querySelector("#healthBar"),ammoEl=document.querySelector("#ammo"),killsEl=document.querySelector("#kills"),headsEl=document.querySelector("#heads"),waveEl=document.querySelector("#wave"),remainingEl=document.querySelector("#remaining"),cashEl=document.querySelector("#cash"),weaponNameEl=document.querySelector("#weaponName"),grenadeEl=document.querySelector("#grenadeCount"),nukeEl=document.querySelector("#nukeCount"),nukeFlash=document.querySelector("#nukeFlash"),nukeShock=document.querySelector("#nukeShock"),shop=document.querySelector("#shop"),shopCash=document.querySelector("#shopCash"),shopNote=document.querySelector("#shopNote"),damage=document.querySelector("#damage"),hitmarker=document.querySelector("#hitmarker"),announce=document.querySelector("#announce"),big=document.querySelector("#big"),small=document.querySelector("#small"),death=document.querySelector("#death"),msg=document.querySelector("#msg"),startScreen=document.querySelector("#startScreen"),bossHUD=document.querySelector("#bossHUD"),bossFill=document.querySelector("#bossFill"),bossNameEl=document.querySelector("#bossName"),bossSubEl=document.querySelector("#bossSub"),sprintFill=document.querySelector("#sprintFill"),sprintState=document.querySelector("#sprintState"),scopeOverlay=document.querySelector("#scopeOverlay"),pauseBtn=document.querySelector("#pauseBtn"),pauseOverlay=document.querySelector("#pauseOverlay"),resumeGameBtn=document.querySelector("#resumeGame");
 let ac,master,audioOn=false,noiseBuffer=null;
 const M240_FIRE_SAMPLE_URL="./assets/240 firing.wav?v=434";
-let m240FireBuffer=null,m240FireLoad=null,m240FireSource=null,m240FireGain=null;
+let m240FireBuffer=null,m240FireLoad=null,m240FireSource=null,m240FireGain=null,m240LoopStart=.15,m240LoopEnd=12;
 function loadM240FireSample(){
  if(!ac)return Promise.resolve(null);
  if(m240FireBuffer)return Promise.resolve(m240FireBuffer);
@@ -58,7 +58,26 @@ function loadM240FireSample(){
  m240FireLoad=fetch(M240_FIRE_SAMPLE_URL,{cache:"force-cache"})
    .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.arrayBuffer()})
    .then(buf=>ac.decodeAudioData(buf))
-   .then(decoded=>{m240FireBuffer=decoded;return decoded})
+   .then(decoded=>{
+     m240FireBuffer=decoded;
+     // v435: find the actual sustained gunfire region and loop only that. The
+     // source WAV has a finite quiet/fade tail; playing it straight through made
+     // long bursts disappear and then restart.
+     const data=decoded.getChannelData(0),sr=decoded.sampleRate,win=Math.max(64,Math.floor(sr*.040));
+     let peak=0,first=-1,last=-1;const rms=[];
+     for(let i=0;i<data.length;i+=win){
+       let sum=0,n=0;for(let j=i;j<Math.min(data.length,i+win);j++){const v=data[j];sum+=v*v;n++}
+       const r=Math.sqrt(sum/Math.max(1,n));rms.push(r);if(r>peak)peak=r;
+     }
+     const threshold=Math.max(.008,peak*.17);
+     for(let i=0;i<rms.length;i++)if(rms[i]>=threshold){if(first<0)first=i;last=i}
+     const activeStart=first>=0?first*win/sr:0;
+     const activeEnd=last>=0?Math.min(decoded.duration,(last+1)*win/sr):decoded.duration;
+     m240LoopStart=Math.min(Math.max(.08,activeStart+.08),Math.max(.08,decoded.duration-.60));
+     m240LoopEnd=Math.max(m240LoopStart+.45,Math.min(decoded.duration-.06,activeEnd-.10));
+     if(m240LoopEnd>decoded.duration)m240LoopEnd=decoded.duration;
+     return decoded
+   })
    .catch(err=>{console.error("CITY OUTBREAK: M240 firing WAV failed to load",err);m240FireLoad=null;return null});
  return m240FireLoad;
 }
@@ -68,6 +87,7 @@ function startM240FireAudio(){
  if(!m240FireBuffer){loadM240FireSample();return false}
  const src=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime;
  src.buffer=m240FireBuffer;
+ src.loop=true;src.loopStart=m240LoopStart;src.loopEnd=Math.min(m240FireBuffer.duration,m240LoopEnd);
  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.78,t+.012);
  src.connect(g);g.connect(master);
  m240FireSource=src;m240FireGain=g;
@@ -75,7 +95,7 @@ function startM240FireAudio(){
    if(m240FireSource===src){m240FireSource=null;m240FireGain=null}
    try{src.disconnect();g.disconnect()}catch(_){}
  };
- src.start(t);return true;
+ src.start(t,m240LoopStart);return true;
 }
 function stopM240FireAudio(fade=.035){
  const src=m240FireSource,g=m240FireGain;if(!src)return;
@@ -2907,6 +2927,7 @@ function syncCustomVisualFromRagdoll(z,bones,holder,storeKey){
 }
 function syncRadiatedGreenGuy(z,dt=0){
  const h=z?.radiatedGreenVisual,bones=z?.radiatedGreenBones;if(!h||!bones?.size)return;
+ if(z.crawlerUpperVisual===h&&syncCrawlerUpperVisual(z))return;
  const g=z.g,gx=g.position.x,gz=g.position.z,lastX=Number.isFinite(z.radiatedGreenLastX)?z.radiatedGreenLastX:gx,lastZ=Number.isFinite(z.radiatedGreenLastZ)?z.radiatedGreenLastZ:gz;
  const speedNow=Math.hypot(gx-lastX,gz-lastZ)/Math.max(dt,.001);
  z.radiatedGreenLastX=gx;z.radiatedGreenLastZ=gz;
@@ -3127,6 +3148,7 @@ function buildBasicWalkerHitboxes(z){
 }
 function syncBasicWalkerVisual(z,dt=0){
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
+ if(z.crawlerUpperVisual===holder&&syncCrawlerUpperVisual(z))return;
  holder.rotation.y=Math.PI;
  if(z.knockdown?.bodyPbd?.holder===holder)return;
  if(z.dead&&z.ragdoll?.bodyPbd?.holder===holder)return;
@@ -4630,6 +4652,79 @@ function poseLeglessCrawlerRig(z,walk=0,walk2=0,attack=0){
  if(lla)lla.rotation.set(.82+Math.max(0,walk)*.18,0,-.05);
  if(rla)rla.rotation.set(.82+Math.max(0,walk2)*.18,0,.05);
 }
+function hideNativeCrawlerVisual(crawler){
+ if(!crawler?.g)return;
+ crawler.g.traverse(o=>{
+   if(!o.isMesh)return;
+   // Keep invisible gameplay hit targets alive. Hide only rendered native body meshes.
+   if(o.userData?.zombie===crawler)return;
+   o.visible=false;
+ });
+}
+function captureCrawlerUpperPose(holder,bones,type){
+ const rotations=new Map();
+ for(const key of ["Hips","Spine","Chest","Neck","Head","L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm"]){
+   const b=bones?.get(key);if(b)rotations.set(key,b.rotation.clone());
+ }
+ return{type,holderPos:holder.position.clone(),holderQuat:holder.quaternion.clone(),rotations};
+}
+function transferCrawlerUpperVisual(source,crawler){
+ let holder=null,bones=null,type="";
+ if(source?.walkerVisual&&source?.walkerBones?.size){holder=source.walkerVisual;bones=source.walkerBones;type="walker"}
+ else if(source?.radiatedGreenVisual&&source?.radiatedGreenBones?.size){holder=source.radiatedGreenVisual;bones=source.radiatedGreenBones;type="green"}
+ else return false;
+
+ const pose=captureCrawlerUpperPose(holder,bones,type);
+ // Retire the old standing hitboxes embedded in this model. The native crawler's
+ // stable hitboxes remain active underneath the preserved visible upper body.
+ holder.traverse(o=>{
+   if(o.userData?.zombie===source){o.raycast=()=>{};o.visible=false}
+ });
+ holder.removeFromParent();hideNativeCrawlerVisual(crawler);crawler.g.add(holder);
+ holder.position.copy(pose.holderPos);holder.position.y-=type==="walker"?.48:.46;
+ holder.quaternion.copy(pose.holderQuat);
+
+ crawler.crawlerUpperVisual=holder;crawler.crawlerUpperBones=bones;crawler.crawlerUpperPose=pose;
+ if(type==="walker"){
+   crawler.walkerVisual=holder;crawler.walkerBones=bones;crawler.walkerModel=source.walkerModel;crawler.walkerSourceHeight=source.walkerSourceHeight;
+   source.walkerVisual=null;source.walkerModel=null;source.walkerBones=null;
+ }else{
+   crawler.radiatedGreenVisual=holder;crawler.radiatedGreenBones=bones;crawler.radiatedGreenModel=source.radiatedGreenModel;
+   source.radiatedGreenVisual=null;source.radiatedGreenModel=null;source.radiatedGreenBones=null;
+   const geo=new THREE.SphereGeometry(.38,8,6),mat=new THREE.MeshBasicMaterial({color:0x46ff59,transparent:true,opacity:.10,depthWrite:false});
+   const aura=new THREE.Mesh(geo,mat);aura.name="PreservedGreenCrawlerAura";aura.scale.set(1.10,.70,1.18);aura.position.set(0,.54,-.04);aura.userData.visualOnly=true;aura.raycast=()=>{};
+   crawler.g.add(aura);if(crawler.ownedGeometries)crawler.ownedGeometries.push(geo);if(crawler.ownedMaterials)crawler.ownedMaterials.push(mat);
+ }
+ return true;
+}
+function syncCrawlerUpperVisual(z){
+ const holder=z?.crawlerUpperVisual,bones=z?.crawlerUpperBones,pose=z?.crawlerUpperPose;
+ if(!holder||!bones?.size||!pose)return false;
+ if(z.knockdown?.bodyPbd?.holder===holder)return true;
+ if(z.dead&&z.ragdoll?.bodyPbd?.holder===holder)return true;
+
+ const phase=z.phase||0,s=Math.sin(phase),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
+ holder.position.copy(pose.holderPos);holder.position.y-=pose.type==="walker"?.48:.46;
+ holder.quaternion.copy(pose.holderQuat);
+
+ const add=(key,x=0,y=0,zz=0)=>{
+   const b=bones.get(key),r=pose.rotations.get(key);if(!b||!r)return;
+   b.rotation.set(r.x+x,r.y+y,r.z+zz);
+ };
+ // A restrained upper-body crawl: enough forward fold to read as crawling without
+ // collapsing the imported skin around its root pivot.
+ add("Hips",.56,s*.025,0);
+ add("Spine",.10,0,s*.025);
+ add("Chest",.06,0,-s*.020);
+ add("Neck",-.18,0,0);
+ add("Head",-.16+attack*.025,-s*.045,s*.015);
+ add("L_UpperArm",.34+s*.16,0,.08);
+ add("R_UpperArm",.34-s*.16,0,-.08);
+ add("L_LowerArm",.52+Math.max(0,s)*.18,0,.03);
+ add("R_LowerArm",.52+Math.max(0,-s)*.18,0,-.03);
+ holder.updateMatrixWorld(true);
+ return true;
+}
 function crawlerMatColor(mat,fallback){
  const m=Array.isArray(mat)?mat[0]:mat;
  return m?.color?.isColor?m.color.getHex():fallback;
@@ -4736,7 +4831,8 @@ function convertLeglessToCrawler(z){
  crawler.cool=oldCool;crawler.groan=oldGroan;crawler.phase=oldPhase;
  crawler.navForceRepath=true;crawler.navCheckT=0;crawler.think=0;
  crawler.stagger=.08;
- applyCrawlerIdentity(crawler,identity);
+ const preservedUpper=transferCrawlerUpperVisual(z,crawler);
+ if(!preservedUpper)applyCrawlerIdentity(crawler,identity);
 
  zombies[oldIndex]=crawler;
  releaseZombieVisual(z);
