@@ -4656,9 +4656,12 @@ function hideNativeCrawlerVisual(crawler){
  if(!crawler?.g)return;
  crawler.g.traverse(o=>{
    if(!o.isMesh)return;
-   // Keep invisible gameplay hit targets alive. Hide only rendered native body meshes.
-   if(o.userData?.zombie===crawler)return;
+   // v436: the native crawler uses its visible body meshes as ray targets too.
+   // Three.js raycasting does not require a mesh to be rendered, so hide ALL
+   // native crawler meshes visually while leaving their raycast functions intact.
+   // This removes the generic crawler shell without sacrificing stable mechanics.
    o.visible=false;
+   o.castShadow=false;o.receiveShadow=false;
  });
 }
 function captureCrawlerUpperPose(holder,bones,type){
@@ -4697,6 +4700,24 @@ function transferCrawlerUpperVisual(source,crawler){
  }
  return true;
 }
+function setCrawlerArmToward(bones,upperKey,lowerKey,side,phase){
+ const upper=bones.get(upperKey),lower=bones.get(lowerKey);if(!upper||!lower)return;
+ const restUpper=lower.position.clone().normalize();
+ // Imported walker/Green Guy models face +Z inside their holder; holders rotate
+ // 180° to face the live zombie direction. Reach forward (+Z), down and slightly out.
+ const reach=.10*Math.sin(phase),targetUpper=new THREE.Vector3(side*.34,-.42,.84+reach).normalize();
+ upper.quaternion.setFromUnitVectors(restUpper,targetUpper);
+
+ const hand=lower.children.find(o=>o.isBone);
+ if(hand){
+   const restLower=hand.position.clone().normalize();
+   const targetLower=new THREE.Vector3(side*.12,-.26,.96-.06*Math.sin(phase)).normalize();
+   lower.quaternion.setFromUnitVectors(restLower,targetLower);
+ }else{
+   // Green Guy lower arms have no hand bone; use a simple forward elbow bend.
+   lower.rotation.set(.72+Math.max(0,Math.sin(phase))* .12,0,side*.035);
+ }
+}
 function syncCrawlerUpperVisual(z){
  const holder=z?.crawlerUpperVisual,bones=z?.crawlerUpperBones,pose=z?.crawlerUpperPose;
  if(!holder||!bones?.size||!pose)return false;
@@ -4718,10 +4739,10 @@ function syncCrawlerUpperVisual(z){
  add("Chest",.06,0,-s*.020);
  add("Neck",-.18,0,0);
  add("Head",-.16+attack*.025,-s*.045,s*.015);
- add("L_UpperArm",.34+s*.16,0,.08);
- add("R_UpperArm",.34-s*.16,0,-.08);
- add("L_LowerArm",.52+Math.max(0,s)*.18,0,.03);
- add("R_LowerArm",.52+Math.max(0,-s)*.18,0,-.03);
+ // v436: point both arm chains toward the crawl direction instead of applying
+ // mirrored Euler offsets. This fixes the preserved walker's backwards arm.
+ setCrawlerArmToward(bones,"L_UpperArm","L_LowerArm",-1,phase);
+ setCrawlerArmToward(bones,"R_UpperArm","R_LowerArm", 1,phase+Math.PI);
  holder.updateMatrixWorld(true);
  return true;
 }
