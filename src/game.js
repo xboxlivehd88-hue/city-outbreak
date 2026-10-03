@@ -2876,10 +2876,14 @@ function syncRadiatedGreenGuy(z,dt=0){
  z.radiatedGreenMoveBlend=THREE.MathUtils.lerp(z.radiatedGreenMoveBlend||0,targetMove,Math.min(1,dt*7));
  const blend=z.radiatedGreenMoveBlend,p=z.rigPolishPhase||z.phase||0,step=Math.sin(p),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
  h.rotation.y=Math.PI;
+ if(z.knockdown?.bodyPbd?.holder===h)return;
  if(z.dead&&z.ragdoll?.bodyPbd?.holder===h)return;
  if(z.dead&&syncCustomVisualFromRagdoll(z,bones,h,"radiatedVisibleRagdollBase"))return;
  if(z.leglessCrawler){
-   h.position.y=-.43;h.rotation.x=-.72;h.rotation.z=step*.018*blend;
+   // v428: crawler stays chest-down and low to the pavement. The previous
+   // negative root pitch rolled the amputated torso backward and pointed both
+   // arms into the sky.
+   h.position.y=-.30;h.rotation.x=1.04;h.rotation.z=step*.018*blend;
  }else{
    h.position.y=Math.abs(step)*.028*blend;
    h.rotation.x=-.035*blend-attack*.025;
@@ -2897,10 +2901,10 @@ function syncRadiatedGreenGuy(z,dt=0){
  if(z.leglessCrawler){
    // v397: crawler pulls itself forward with alternating arms instead of freezing.
    const crawlL=Math.sin(p),crawlR=Math.sin(p+Math.PI);
-   if(lua){radiatedArmTarget.set(-.30,-.36,-.88+crawlL*.20).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
-   if(rua){radiatedArmTarget.set(.30,-.36,-.88+crawlR*.20).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
-   if(lla)lla.rotation.set(.34+Math.max(0,crawlL)*.34,0,-.08);
-   if(rla)rla.rotation.set(.34+Math.max(0,crawlR)*.34,0,.08);
+   if(lua){radiatedArmTarget.set(-.32,-.70,-.64+crawlL*.16).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
+   if(rua){radiatedArmTarget.set(.32,-.70,-.64+crawlR*.16).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
+   if(lla)lla.rotation.set(.62+Math.max(0,crawlL)*.24,0,-.08);
+   if(rla)rla.rotation.set(.62+Math.max(0,crawlR)*.24,0,.08);
  }else{
    // Keep both arms clearly outside the torso while walking upright.
    if(lua){radiatedArmTarget.set(-.36,-.93,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
@@ -3080,6 +3084,7 @@ function buildBasicWalkerHitboxes(z){
 function syncBasicWalkerVisual(z,dt=0){
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
  holder.rotation.y=Math.PI;
+ if(z.knockdown?.bodyPbd?.holder===holder)return;
  if(z.dead&&z.ragdoll?.bodyPbd?.holder===holder)return;
  if(z.dead&&z.ragdoll?.directVisual===holder)return;
  if(z.dead&&syncCustomVisualFromRagdoll(z,bones,holder,"walkerVisibleRagdollBase"))return;
@@ -3173,16 +3178,18 @@ function syncBasicWalkerVisual(z,dt=0){
        lfoot=bones.get("L_Foot"),rfoot=bones.get("R_Foot");
 
  if(z.leglessCrawler){
-   holder.position.y=-.50;holder.rotation.x=-.72;holder.rotation.z=s*.020*walk;
-   if(hips)hips.rotation.set(-.10,0,0);
-   if(spine)spine.rotation.set(.18+Math.abs(s)*.025,0,s*.025);
-   if(chest)chest.rotation.set(.20+attack*.08,0,-s*.035);
-   if(neck)neck.rotation.set(-.24,0,0);
-   if(head)head.rotation.set(-.10+attack*.04,0,s*.035);
-   if(lua)lua.rotation.set(.98+s*.22,0,.28);
-   if(rua)rua.rotation.set(.98-s*.22,0,-.28);
-   if(lla)lla.rotation.set(.58+Math.max(0,s)*.26,0,.08);
-   if(rla)rla.rotation.set(.58+Math.max(0,-s)*.26,0,-.08);
+   // v428: prone drag posture. Keep the torso long and low, with forearms
+   // reaching along the street instead of both arms raised overhead.
+   holder.position.y=-.28;holder.rotation.x=1.04;holder.rotation.z=s*.020*walk;
+   if(hips)hips.rotation.set(-.16,0,0);
+   if(spine)spine.rotation.set(.10+Math.abs(s)*.020,0,s*.022);
+   if(chest)chest.rotation.set(.16+attack*.06,0,-s*.030);
+   if(neck)neck.rotation.set(-.34,0,0);
+   if(head)head.rotation.set(-.14+attack*.035,0,s*.030);
+   if(lua)lua.rotation.set(.36+s*.18,0,.20);
+   if(rua)rua.rotation.set(.36-s*.18,0,-.20);
+   if(lla)lla.rotation.set(.62+Math.max(0,s)*.22,0,.06);
+   if(rla)rla.rotation.set(.62+Math.max(0,-s)*.22,0,-.06);
    return;
  }
 
@@ -4270,7 +4277,7 @@ function bodyPbdPushOutsideCar(c,x,z,pad=.08){
  if(px<pz)lx=(lx<0?-1:1)*hw;else lz=(lz<0?-1:1)*hl;
  return{x:c.position.x+co*lx+si*lz,z:c.position.z-si*lx+co*lz};
 }
-function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
+function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,options=null){
  const rig=bodyPbdRig(z);if(!rig)return null;
  z.g.updateMatrixWorld(true);rig.holder.updateMatrixWorld(true);
  const nodes=new Map();
@@ -4317,6 +4324,13 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
  for(const [a,b] of BODY_PBD_EDGES){
    const na=nodes.get(a),nb=nodes.get(b);if(na&&nb)edges.push({a:na,b:nb,len:na.pos.distanceTo(nb.pos)});
  }
+ // Procedural/crawler fallbacks may have no explicit Spine/Neck bones.
+ if(nodes.get("Hips")&&nodes.get("Chest")&&!nodes.get("Spine")){
+   const a=nodes.get("Hips"),b=nodes.get("Chest");edges.push({a,b,len:a.pos.distanceTo(b.pos)});
+ }
+ if(nodes.get("Chest")&&nodes.get("Head")&&!nodes.get("Neck")){
+   const a=nodes.get("Chest"),b=nodes.get("Head");edges.push({a,b,len:a.pos.distanceTo(b.pos)});
+ }
  for(const side of ["L","R"]){
    const f=nodes.get(side+"_Foot"),t=nodes.get(side+"_Toe");
    if(f&&t)edges.push({a:f,b:t,len:f.pos.distanceTo(t.pos)});
@@ -4343,7 +4357,7 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
    const restDir=bodyPbdTmpB.sub(bodyPbdTmpA).applyQuaternion(bodyPbdInvQ).normalize().clone();
    links.push({a,b,bone,baseQuat:bone.quaternion.clone(),restDir});
  }
- return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999};
+ return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999,followRoot:!!options?.followRoot};
 }
 function solveBodyPbdEdge(e){
  const d=bodyPbdTmpA.subVectors(e.b.pos,e.a.pos),dist=d.length();if(dist<1e-6)return;
@@ -4368,6 +4382,9 @@ function collideBodyPbdNode(n,rag){
 function orientBodyPbd(z,pbd){
  const hips=pbd.nodes.get("Hips"),holder=pbd.holder,hipsBone=pbd.bones.get("Hips");
  if(!hips||!holder||!hipsBone)return;
+ if(pbd.followRoot&&holder!==z.g){
+   z.g.position.x=hips.pos.x;z.g.position.z=hips.pos.z;
+ }
  z.g.updateMatrixWorld(true);holder.updateMatrixWorld(true);hipsBone.getWorldPosition(bodyPbdTmpA);
  bodyPbdTmpC.subVectors(hips.pos,bodyPbdTmpA);
  if(holder.parent){
@@ -4502,22 +4519,22 @@ function poseLeglessCrawlerRig(z,walk=0,walk2=0,attack=0){
  const rig=z.rigVisual;
  // Keep the original zombie identity, but lower and pitch that same body into a
  // weight-bearing crawl. The severed upper-leg bones remain hidden.
- rig.position.y=-.53;
- rig.rotation.x=-.72;
+ rig.position.y=-.30;
+ rig.rotation.x=1.04;
  rig.rotation.z=0;
  const hips=rigBone(z,"Hips"),spine=rigBone(z,"Spine"),chest=rigBone(z,"Chest"),
        neck=rigBone(z,"Neck"),headB=rigBone(z,"Head"),
        lua=rigBone(z,"L_UpperArm"),rua=rigBone(z,"R_UpperArm"),
        lla=rigBone(z,"L_LowerArm"),rla=rigBone(z,"R_LowerArm");
- if(hips)hips.rotation.set(-.10,0,0);
- if(spine)spine.rotation.set(.18+Math.abs(walk)*.025,0,walk*.025);
- if(chest)chest.rotation.set(.20+attack*.08,0,-walk*.035);
- if(neck)neck.rotation.set(-.24,0,0);
- if(headB)headB.rotation.set(-.10+attack*.04,0,walk*.035);
- if(lua)lua.rotation.set(.98+walk*.20,0,-.34);
- if(rua)rua.rotation.set(.98+walk2*.20,0,.34);
- if(lla)lla.rotation.set(.58+Math.max(0,walk)*.24,0,-.10);
- if(rla)rla.rotation.set(.58+Math.max(0,walk2)*.24,0,.10);
+ if(hips)hips.rotation.set(-.16,0,0);
+ if(spine)spine.rotation.set(.10+Math.abs(walk)*.020,0,walk*.022);
+ if(chest)chest.rotation.set(.16+attack*.06,0,-walk*.030);
+ if(neck)neck.rotation.set(-.34,0,0);
+ if(headB)headB.rotation.set(-.14+attack*.035,0,walk*.030);
+ if(lua)lua.rotation.set(.36+walk*.18,0,-.20);
+ if(rua)rua.rotation.set(.36+walk2*.18,0,.20);
+ if(lla)lla.rotation.set(.62+Math.max(0,walk)*.22,0,-.06);
+ if(rla)rla.rotation.set(.62+Math.max(0,walk2)*.22,0,.06);
 }
 function convertLeglessToCrawler(z){
  if(!z||z.dead||z.kind==="boss"||z.leglessCrawler||z.hp<=0||!z.leftLegDetached||!z.rightLegDetached)return;
@@ -5171,124 +5188,75 @@ function fireGrenadeLauncherRound(){
  const vel=dir.multiplyScalar(25);vel.y+=1.1;scene.add(q);
  thrown.push({q,v:vel,fuse:3.0,launcher:true});
 }
+function captureKnockdownRest(pbd){
+ return{
+   holderPos:pbd.holder.position.clone(),holderQuat:pbd.holder.quaternion.clone(),
+   bones:[...pbd.bones.values()].filter(Boolean).map(b=>({b,q:b.quaternion.clone()}))
+ };
+}
+function addKnockdownBlastImpulse(z,k,origin,strength){
+ const p=k?.bodyPbd;if(!p)return;
+ const power=Math.max(.55,Math.min(2.2,strength)),cy=z.g.position.y+1;
+ const centerD=Math.hypot(z.g.position.x-origin.x,cy-origin.y,z.g.position.z-origin.z);
+ for(const n of p.nodes.values()){
+   const dx=n.pos.x-origin.x,dy=n.pos.y-origin.y,dz=n.pos.z-origin.z,d=Math.hypot(dx,dy,dz)||1,h=Math.hypot(dx,dz)||1;
+   const asym=THREE.MathUtils.clamp(1+(centerD-d)*.24,.82,1.48),launch=(5.7+power*2.45)*asym;
+   n.vel.x+=dx/h*launch;n.vel.z+=dz/h*launch;n.vel.y+=(4.3+power*1.65)*asym;
+ }
+ p.settleT=0;k.active=true;k.recovering=false;k.t=0;z.falling=true;
+}
 function beginKnockdown(z,origin,strength=1){
  if(!z||z.dead||z.kind==="boss")return;
- const dx=z.g.position.x-origin.x,dz=z.g.position.z-origin.z,d=Math.hypot(dx,dz)||1;
- const nx=dx/d,nz=dz/d,cos=Math.cos(z.g.rotation.y),sin=Math.sin(z.g.rotation.y);
- const localX=nx*cos-nz*sin,localZ=nx*sin+nz*cos;
- const power=Math.max(.45,Math.min(1.9,strength));
-
- if(z.knockdown){
-   // A second blast while already down keeps the zombie on the pavement longer,
-   // adds another shove, and re-triggers the short limb-whip impulse.
-   z.knockdown.downDur=Math.max(z.knockdown.downDur,.82+power*.55);
-   z.knockdown.vx+=nx*(1.5+power*1.8);
-   z.knockdown.vz+=nz*(1.5+power*1.8);
-   z.knockdown.impactT=0;
-   z.knockdown.impactScale=Math.max(z.knockdown.impactScale||1,.90+power*.35);
-   return;
- }
+ if(z.knockdown?.bodyPbd){addKnockdownBlastImpulse(z,z.knockdown,origin,strength);return}
 
  if(z.mixer)z.mixer.stopAllAction();
- z.attackAnim=0;z.cool=Math.max(z.cool,.8);
- z.stagger=0;z.blastT=0;
-
- // v150: blast knockdowns finish near-horizontal instead of stopping in a
- // 60-degree lean. The group rotates around its ground-level origin, so roughly
- // 88–92 degrees lays the body onto the street without sinking the whole rig.
- const fallAngle=1.52+Math.min(.09,power*.045);
- const k=z.knockdown={
-   t:0,
-   fallDur:.26+Math.min(.10,power*.045),
-   downDur:.72+power*.58+rnd()*.24,
-   riseDur:.78+rnd()*.18,
-   baseX:z.g.rotation.x,baseZ:z.g.rotation.z,baseYPos:z.g.position.y,
-   groundDrop:z.kind==="crawler"?.025:.085,
-   fallX:z.g.rotation.x+(-localZ)*fallAngle,
-   fallZ:z.g.rotation.z+( localX)*fallAngle,
-   vx:nx*(2.0+power*2.65),
-   vz:nz*(2.0+power*2.65),
-   impactT:0,impactScale:.90+power*.35,
-   bones:[]
+ z.attackAnim=0;z.cool=Math.max(z.cool,.8);z.stagger=0;z.blastT=0;
+ const power=Math.max(.55,Math.min(2.2,strength));
+ const rag={
+   t:0,bones:[],blast:true,unpowered:true,active:true,power,settleT:0,
+   grounded:false,rootGrounded:false,bodyGrounded:false,fullBodyDown:false,
+   contactCount:0,maxContactCount:0,bounceCount:0,
+   floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
+   bodyPbd:null
  };
-
- // kick controls the brief blast-pressure whip. It decays quickly, while the
- // target rotations below remain as the loose-limbed downed pose.
- const add=(o,dxr,dyr,dzr,kick=.08,kickRate=0)=>{
-   if(!o||!o.parent)return;
-   k.bones.push({
-     o,
-     sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
-     tx:o.rotation.x+dxr,ty:o.rotation.y+dyr,tz:o.rotation.z+dzr,
-     phase:rnd()*6.28,kick,kickRate,kickDir:rnd()>.5?1:-1
-   });
+ const vx=THREE.MathUtils.clamp(Number.isFinite(z.motionVX)?z.motionVX:0,-6.5,6.5),
+       vz=THREE.MathUtils.clamp(Number.isFinite(z.motionVZ)?z.motionVZ:0,-6.5,6.5);
+ rag.bodyPbd=buildBodyPbd(z,rag,true,origin,vx*.82,vz*.82,power,{followRoot:true});
+ if(!rag.bodyPbd){z.stagger=Math.max(z.stagger,.42);return}
+ const rest=captureKnockdownRest(rag.bodyPbd);
+ z.knockdown={
+   bodyPbd:rag.bodyPbd,rag,rest,t:0,minDown:.58+power*.18,
+   recovering:false,recoverT:0,recoverDur:.72,
+   recoverHolderPos:null,recoverHolderQuat:null,recoverBones:null,
+   recoverGY:z.g.position.y
  };
-
- if(z.rigVisual){
-   add(rigBone(z,"Hips"),.26*localZ,0,-.32*localX,.08,1);
-   add(rigBone(z,"Spine"),.58+(rnd()-.5)*.22,(rnd()-.5)*.20,-localX*.38,.10,2);
-   add(rigBone(z,"Chest"),.68+(rnd()-.5)*.26,(rnd()-.5)*.24,-localX*.46,.12,3);
-   add(rigBone(z,"Neck"),-.42,(rnd()-.5)*.25,localX*.32,.15,4);
-   add(rigBone(z,"Head"),-.68,(rnd()-.5)*.36,localX*.46,.18,5);
-
-   // Arms and legs get the strongest impulse so the blast visibly travels
-   // through the extremities instead of the torso falling with stiff limbs.
-   add(rigBone(z,"L_UpperArm"),1.10+(rnd()-.5)*.42,(rnd()-.5)*.24,-.92-rnd()*.35,.34,7);
-   add(rigBone(z,"L_LowerArm"),1.30+rnd()*.45,(rnd()-.5)*.28,-.42-rnd()*.25,.39,9);
-   add(rigBone(z,"R_UpperArm"),1.10+(rnd()-.5)*.42,(rnd()-.5)*.24,.92+rnd()*.35,.34,8);
-   add(rigBone(z,"R_LowerArm"),1.30+rnd()*.45,(rnd()-.5)*.28,.42+rnd()*.25,.39,10);
-   add(rigBone(z,"L_UpperLeg"),.72+(rnd()-.5)*.36,(rnd()-.5)*.16,-.30-rnd()*.18,.27,6);
-   add(rigBone(z,"L_LowerLeg"),-1.18-rnd()*.34,(rnd()-.5)*.14,-.15-rnd()*.12,.32,8);
-   add(rigBone(z,"R_UpperLeg"),.62+(rnd()-.5)*.36,(rnd()-.5)*.16,.30+rnd()*.18,.27,7);
-   add(rigBone(z,"R_LowerLeg"),-1.14-rnd()*.34,(rnd()-.5)*.14,.15+rnd()*.12,.32,9);
- }else{
-   // Native crawlers/procedural fallback use the same impulse concept.
-   add(z.torso,.62+(rnd()-.5)*.22,0,-localX*.38,.12,3);
-   add(z.head,-.62,(rnd()-.5)*.28,localX*.42,.18,5);
-   add(z.armL,1.12,(rnd()-.5)*.22,-.90,.34,7);add(z.elbowL,1.28,(rnd()-.5)*.20,-.38,.39,9);
-   add(z.armR,1.12,(rnd()-.5)*.22,.90,.34,8);add(z.elbowR,1.28,(rnd()-.5)*.20,.38,.39,10);
-   add(z.legL,.68,(rnd()-.5)*.14,-.26,.27,6);add(z.kneeL,-1.10,(rnd()-.5)*.12,-.13,.32,8);
-   add(z.legR,.58,(rnd()-.5)*.14,.26,.27,7);add(z.kneeR,-1.06,(rnd()-.5)*.12,.13,.32,9);
- }
+ z.falling=true;
 }
 function updateKnockdown(z,dt){
- const k=z.knockdown;if(!k)return false;
- k.t+=dt;k.impactT=(k.impactT||0)+dt;
- const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
- const fallEnd=k.fallDur,downEnd=fallEnd+k.downDur,total=downEnd+k.riseDur;
-
- let pose=1,root=1;
- if(k.t<fallEnd){pose=smooth(k.t/fallEnd);root=smooth(k.t/fallEnd)}
- else if(k.t<downEnd){pose=1;root=1}
- else{const r=smooth((k.t-downEnd)/k.riseDur);pose=1-r;root=1-r}
-
- z.g.rotation.x=k.baseX+(k.fallX-k.baseX)*root;
- z.g.rotation.z=k.baseZ+(k.fallZ-k.baseZ)*root;
- z.g.position.y=k.baseYPos-(k.groundDrop||.055)*root;
-
- if(k.t<downEnd){
-   const ox=z.g.position.x,oz=z.g.position.z;
-   const bp=slideBuilding(ox,oz,ox+k.vx*dt,oz+k.vz*dt,.50);
-   z.g.position.x=bp.x;z.g.position.z=bp.z;
-   const drag=Math.exp(-dt*5.2);k.vx*=drag;k.vz*=drag;
+ const k=z.knockdown;if(!k)return false;k.t+=dt;
+ const rag=k.rag,p=k.bodyPbd;
+ if(!k.recovering){
+   if(rag.active!==false)updateBodyPbd(z,rag,dt);
+   if(rag.active===false&&k.t>=k.minDown){
+     k.recovering=true;k.recoverT=0;
+     k.recoverHolderPos=p.holder.position.clone();k.recoverHolderQuat=p.holder.quaternion.clone();
+     k.recoverBones=k.rest.bones.map(x=>({b:x.b,from:x.b.quaternion.clone(),to:x.q}));
+     k.recoverGY=z.g.position.y;
+     z.groundY=sampleZombieGroundY(z.g.position.x,z.g.position.z,z.groundY||0);
+   }
+   return true;
  }
-
- for(const b of k.bones){
-   const settle=k.t<fallEnd?Math.sin(k.t*15+b.phase)*.035*(1-pose):0;
-   const whip=Math.sin(k.impactT*(19+(b.kickRate||0))+b.phase)*(b.kick||.08)*(k.impactScale||1)*Math.exp(-k.impactT*5.0);
-   const w=whip*(b.kickDir||1);
-   b.o.rotation.x=b.sx+(b.tx-b.sx)*pose+settle+w;
-   b.o.rotation.y=b.sy+(b.ty-b.sy)*pose+settle*.35+w*.42;
-   b.o.rotation.z=b.sz+(b.tz-b.sz)*pose+settle*.55+w*.72;
- }
-
- if(k.t>=total){
-   z.g.rotation.x=k.baseX;z.g.rotation.z=k.baseZ;z.g.position.y=k.baseYPos;
-   for(const b of k.bones){b.o.rotation.set(b.sx,b.sy,b.sz)}
-   z.knockdown=null;z.stagger=.10;z.think=0;
+ k.recoverT+=dt;
+ const raw=Math.max(0,Math.min(1,k.recoverT/k.recoverDur)),u=raw*raw*(3-2*raw);
+ p.holder.position.lerpVectors(k.recoverHolderPos,k.rest.holderPos,u);
+ p.holder.quaternion.copy(k.recoverHolderQuat).slerp(k.rest.holderQuat,u);
+ for(const x of k.recoverBones)x.b.quaternion.copy(x.from).slerp(x.to,u);
+ z.g.position.y=THREE.MathUtils.lerp(k.recoverGY,z.groundY||0,u);
+ p.holder.updateMatrixWorld(true);
+ if(raw>=1){
+   z.falling=false;z.knockdown=null;z.stagger=.10;z.think=0;
    if(z.mixer&&z.rigBase){
-     z.mixer.stopAllAction();
-     z.rigBase.reset().fadeIn(.10).play();
+     z.mixer.stopAllAction();z.rigBase.reset().fadeIn(.10).play();
      z.rigTransient=null;z.rigTransientT=0;
    }
    return false;
