@@ -49,12 +49,50 @@ new GLTFLoader().load("assets/walkers.glb?v=399",gltf=>{
 
 const cv=document.querySelector("#cv"),cross=document.querySelector("#crosshair"),healthText=document.querySelector("#healthText"),healthBar=document.querySelector("#healthBar"),ammoEl=document.querySelector("#ammo"),killsEl=document.querySelector("#kills"),headsEl=document.querySelector("#heads"),waveEl=document.querySelector("#wave"),remainingEl=document.querySelector("#remaining"),cashEl=document.querySelector("#cash"),weaponNameEl=document.querySelector("#weaponName"),grenadeEl=document.querySelector("#grenadeCount"),nukeEl=document.querySelector("#nukeCount"),nukeFlash=document.querySelector("#nukeFlash"),nukeShock=document.querySelector("#nukeShock"),shop=document.querySelector("#shop"),shopCash=document.querySelector("#shopCash"),shopNote=document.querySelector("#shopNote"),damage=document.querySelector("#damage"),hitmarker=document.querySelector("#hitmarker"),announce=document.querySelector("#announce"),big=document.querySelector("#big"),small=document.querySelector("#small"),death=document.querySelector("#death"),msg=document.querySelector("#msg"),startScreen=document.querySelector("#startScreen"),bossHUD=document.querySelector("#bossHUD"),bossFill=document.querySelector("#bossFill"),bossNameEl=document.querySelector("#bossName"),bossSubEl=document.querySelector("#bossSub"),sprintFill=document.querySelector("#sprintFill"),sprintState=document.querySelector("#sprintState"),scopeOverlay=document.querySelector("#scopeOverlay"),pauseBtn=document.querySelector("#pauseBtn"),pauseOverlay=document.querySelector("#pauseOverlay"),resumeGameBtn=document.querySelector("#resumeGame");
 let ac,master,audioOn=false,noiseBuffer=null;
+const M240_FIRE_SAMPLE_URL="./assets/240 firing.wav?v=434";
+let m240FireBuffer=null,m240FireLoad=null,m240FireSource=null,m240FireGain=null;
+function loadM240FireSample(){
+ if(!ac)return Promise.resolve(null);
+ if(m240FireBuffer)return Promise.resolve(m240FireBuffer);
+ if(m240FireLoad)return m240FireLoad;
+ m240FireLoad=fetch(M240_FIRE_SAMPLE_URL,{cache:"force-cache"})
+   .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.arrayBuffer()})
+   .then(buf=>ac.decodeAudioData(buf))
+   .then(decoded=>{m240FireBuffer=decoded;return decoded})
+   .catch(err=>{console.error("CITY OUTBREAK: M240 firing WAV failed to load",err);m240FireLoad=null;return null});
+ return m240FireLoad;
+}
+function startM240FireAudio(){
+ if(!audioOn||!ac)return false;
+ if(m240FireSource)return true;
+ if(!m240FireBuffer){loadM240FireSample();return false}
+ const src=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime;
+ src.buffer=m240FireBuffer;
+ g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.78,t+.012);
+ src.connect(g);g.connect(master);
+ m240FireSource=src;m240FireGain=g;
+ src.onended=()=>{
+   if(m240FireSource===src){m240FireSource=null;m240FireGain=null}
+   try{src.disconnect();g.disconnect()}catch(_){}
+ };
+ src.start(t);return true;
+}
+function stopM240FireAudio(fade=.035){
+ const src=m240FireSource,g=m240FireGain;if(!src)return;
+ m240FireSource=null;m240FireGain=null;
+ const t=ac?.currentTime||0;
+ try{
+   if(g){g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(Math.max(.001,g.gain.value||.001),t);g.gain.linearRampToValueAtTime(.001,t+fade)}
+   src.stop(t+fade+.01);
+ }catch(_){}
+}
 function initAudio(){
  if(!ac){
    ac=new AudioContext();master=ac.createGain();master.gain.value=.4;master.connect(ac.destination);
    noiseBuffer=ac.createBuffer(1,Math.floor(ac.sampleRate*1.2),ac.sampleRate);
    const a=noiseBuffer.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1;
  }
+ loadM240FireSample();
  ac.resume();audioOn=true
 }
 function tone(f,d,type="sine",v=.1,delay=0){
@@ -1808,7 +1846,7 @@ const weaponDefs={
  pistol:{name:"M17 SIG",rate:240,hold:9999,spread:.007,pellets:1,body:.82,recoil:.09,baseMag:16},
  dmr:{name:"DMR",rate:330,hold:9999,spread:.0025,pellets:1,body:2.15,recoil:.16,baseMag:10},
  grenadeLauncher:{name:"GRENADE LAUNCHER",rate:900,hold:9999,spread:0,pellets:1,body:0,recoil:.28,baseMag:6},
- m240:{name:"M240 LMG",rate:78,hold:130,spread:.010,pellets:1,body:1.20,recoil:.09,baseMag:100},
+ m240:{name:"M240 LMG",rate:78,hold:78,spread:.010,pellets:1,body:1.20,recoil:.09,baseMag:100},
  awm:{name:"AWM ULTIMATE",rate:1150,hold:9999,spread:.00055,pellets:1,body:8.0,recoil:.30,baseMag:5}
 };
 const ADS={
@@ -2412,7 +2450,7 @@ function shotgunDamageScale(distance){
 function weaponSound(){
  if(weapon==="pistol"){noise(.075,.38,1100);tone(125,.055,"square",.13);return}
  if(weapon==="dmr"){noise(.13,.62,1450);tone(78,.10,"square",.19);return}
- if(weapon==="m240"){noise(.095,.62,1650);tone(74,.085,"square",.18);tone(112,.045,"sine",.06);return}
+ if(weapon==="m240"){if(!startM240FireAudio()){noise(.095,.62,1650);tone(74,.085,"square",.18);tone(112,.045,"sine",.06)}return}
  if(weapon==="awm"){noise(.20,.92,1500);tone(54,.16,"square",.28);tone(92,.11,"sine",.12,.02);return}
  if(weapon==="grenadeLauncher"){noise(.14,.72,850);tone(62,.18,"square",.30);tone(118,.08,"sine",.12,.02);return}if(weapon==="shotgun"){noise(.16,.8,1800);tone(58,.22,"square",.34)}else if(weapon==="smg"){noise(.07,.5,2300);tone(105,.09,"square",.18)}else gunS()}
 
@@ -5084,6 +5122,7 @@ function reload(w=weapon){
  const a=ammoState[w],cap=maxMag(w),infiniteReserve=w==="pistol";
  if(paused||reloading||!a||a.mag===cap||(!infiniteReserve&&a.reserve<=0)||dying)return false;
  const seq=++reloadSequence;
+ if(w==="m240")stopM240FireAudio();
  setAim(false);
  if(w==="shotgun"){
    const shellDuration=Math.max(360,560-reloadLevel*45);
@@ -5152,6 +5191,7 @@ function fire(){
  if(!running||paused||reloading||dying||between)return;
  if(weapon==="awm"&&gameTimeNow()<awmReadyAt){show("CYCLING BOLT");return}
  if(A().mag<=0){
+  if(weapon==="m240")stopM240FireAudio();
   tone(180,.05,"square",.08);
   if(weapon==="pistol"||A().reserve>0){autoReloadIfEmpty(weapon)}else show("EMPTY");
   return
@@ -5204,7 +5244,7 @@ function fire(){
  if(didHit)hitMark(headHit);
  autoReloadIfEmpty(weapon);
 }
-function stopAuto(){triggerHeld=false;if(autoDelay){clearTimeout(autoDelay);autoDelay=null}if(autoTimer){clearInterval(autoTimer);autoTimer=null}}
+function stopAuto(){triggerHeld=false;stopM240FireAudio();if(autoDelay){clearTimeout(autoDelay);autoDelay=null}if(autoTimer){clearInterval(autoTimer);autoTimer=null}}
 function triggerDown(){if(!running||paused||dying||between)return;initAudio();fire();triggerHeld=true;if(autoDelay)clearTimeout(autoDelay);autoDelay=setTimeout(()=>{if(!triggerHeld||weapon==="shotgun"||weapon==="grenadeLauncher"||weapon==="awm")return;autoTimer=setInterval(()=>{if(triggerHeld)fire()},wd().rate)},wd().hold)}
 function triggerUp(){stopAuto()}
 
