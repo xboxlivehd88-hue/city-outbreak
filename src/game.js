@@ -4299,12 +4299,17 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
  for(const [a,b] of BODY_PBD_EDGES){
    const na=nodes.get(a),nb=nodes.get(b);if(na&&nb)edges.push({a:na,b:nb,len:na.pos.distanceTo(nb.pos)});
  }
+ // v426: restore the v423 articulation map. Branch roots must NOT be
+ // oriented toward multiple children: doing that made Chest fight between both
+ // shoulders and Hips fight between both thighs, visually folding the corpse
+ // into a tight ball. Shoulder/hip spacing stays physical through PBD distance
+ // constraints; only single-chain bones drive visible rotations.
  const linkPairs=[
    ["Hips","Spine"],["Spine","Chest"],["Chest","Neck"],["Neck","Head"],
-   ["Chest","L_UpperArm"],["L_UpperArm","L_LowerArm"],["L_LowerArm","L_Hand"],
-   ["Chest","R_UpperArm"],["R_UpperArm","R_LowerArm"],["R_LowerArm","R_Hand"],
-   ["Hips","L_UpperLeg"],["L_UpperLeg","L_LowerLeg"],["L_LowerLeg","L_Foot"],
-   ["Hips","R_UpperLeg"],["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"]
+   ["L_UpperArm","L_LowerArm"],["L_LowerArm","L_Hand"],
+   ["R_UpperArm","R_LowerArm"],["R_LowerArm","R_Hand"],
+   ["L_UpperLeg","L_LowerLeg"],["L_LowerLeg","L_Foot"],
+   ["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"]
  ];
  const links=[];
  for(const [a,b] of linkPairs){
