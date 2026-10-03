@@ -4423,17 +4423,19 @@ function blastBoneProfile(role){
 }
 function beginRagdoll(z,force=1,blastOrigin=null){
  if(z.ragdoll)return;
+ // v421: capture/release the exact live pose. Do not normalize the holder or
+ // hips before ragdoll starts; that was silently snapping every corpse toward
+ // the same pre-fall setup. Stop animation only after leaving the current bone
+ // transforms exactly where the last live frame put them.
  if(z.mixer)z.mixer.stopAllAction();
- if(z.rigVisual&&!z.leglessCrawler){
-   z.rigVisual.position.y=0;
-   const hips=rigBone(z,"Hips");if(hips&&Number.isFinite(z.rigHipsBaseY))hips.position.y=z.rigHipsBaseY;
- }
  z.g.rotation.order="YXZ";z.falling=true;
 
- const side=z.fallDir||((rnd()>.5)?1:-1),isBlast=!!blastOrigin;
- const collapse=rnd();
- const forward=isBlast?(rnd()>.5?1:-1)*(1.08+rnd()*.38):(collapse<.40?1.02+rnd()*.28:collapse<.70?-(.82+rnd()*.24):(rnd()>.5?1:-1)*(.42+rnd()*.28));
- const sideFall=isBlast?side*(1.02+rnd()*.52):(collapse>.62?side*(.82+rnd()*.34):side*(.30+rnd()*.26));
+ const isBlast=!!blastOrigin;
+ // v421: death has no authored fall direction. Pick a one-time release imbalance
+ // from the exact live pose, like letting go of a loose skeleton. This seed is
+ // never re-applied after release, so two deaths do not follow the same path.
+ const releaseAngle=rnd()*Math.PI*2,releaseTilt=1.15+rnd()*1.55;
+ const releaseX=Math.cos(releaseAngle)*releaseTilt,releaseZ=Math.sin(releaseAngle)*releaseTilt;
  const ox=isBlast?blastOrigin.x:px,oz=isBlast?blastOrigin.z:pz;
  const d=Math.hypot(z.g.position.x-ox,z.g.position.z-oz)||1;
  const awayX=(z.g.position.x-ox)/d,awayZ=(z.g.position.z-oz)/d;
@@ -4449,13 +4451,12 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    contactCount:0,maxContactCount:0,bounceCount:0,
    floorY:Number.isFinite(z.groundY)?z.groundY:z.g.position.y,
    baseX:z.g.rotation.x,baseY:z.g.rotation.y,baseZ:z.g.rotation.z,
-   // v419: let the joints sell the limp body instead of letting root rotation
-   // dominate the silhouette. Gunshot deaths collapse faster; blast deaths keep
-   // their launch distance but use less whole-body tumble so limbs can visibly
-   // move relative to the torso in flight.
-   ravx:isBlast?(rnd()-.5)*(2.7+power*.72):forward*(1.78+rnd()*.58)+(rnd()-.5)*.46,
-   ravy:isBlast?(rnd()-.5)*(2.1+power*.54):(rnd()-.5)*.30,
-   ravz:isBlast?(rnd()-.5)*(3.0+power*.78):sideFall*(1.72+rnd()*.60)+(rnd()-.5)*.48,
+   // v421: one-time release angular momentum only. No target fall pose,
+   // no forward/side script and no later steering. Blast adds impulse; ordinary
+   // death simply loses support with a small unpredictable balance break.
+   ravx:isBlast?(rnd()-.5)*(2.35+power*.62):releaseX,
+   ravy:isBlast?(rnd()-.5)*(1.85+power*.46):(rnd()-.5)*.22,
+   ravz:isBlast?(rnd()-.5)*(2.55+power*.68):releaseZ,
    rootPhase:rnd()*6.283,
    vx:isBlast?awayX*(2.38+1.48*rnd())*power+(rnd()-.5)*.72:inheritedVX*.94,
    vz:isBlast?awayZ*(2.38+1.48*rnd())*power+(rnd()-.5)*.72:inheritedVZ*.94,
@@ -4463,25 +4464,19 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    hips:null,hipsStartY:0,hipsTargetY:0
  };
 
- const add=(o,role,dx,dy,dz,delay=.08,duration=.72,wob=.12)=>{
+ const add=(o,role)=>{
    if(!o||!o.parent)return;
-   const loose=rag.blast?1:1.24;
    const p=blastBoneProfile(role);
-   // v419: both gunshot and blast deaths start as independent unpowered joints.
-   // Stronger relative joint motion is intentional: root motion no longer carries
-   // the whole model like a board, and no shared directional bias folds the body.
-   const spin=(rag.blast?(3.45+.62*rag.power):(2.65+.42*rag.power))*p.inertia;
+   // v421: each joint gets only an initial release velocity. After this instant
+   // there is no wobble oscillator or authored death target driving it.
+   const spin=(rag.blast?(3.05+.54*rag.power):(2.20+.36*rag.power))*p.inertia;
    rag.bones.push({
      o,role,p,
      sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
-     // Kept only as debug/reference pose data. Unpowered death does not drive
-     // toward these targets; the simulated joint is free inside its soft limits.
-     tx:o.rotation.x+dx*loose,ty:o.rotation.y+dy*loose,tz:o.rotation.z+dz*loose,
-     delay:0,duration,wob:wob*loose,phase:rnd()*6.283,
      ox:0,oy:0,oz:0,
-     avx:(rnd()-.5)*(rag.blast?2.25:1.85)*spin,
-     avy:(rnd()-.5)*(rag.blast?2.10:1.70)*spin,
-     avz:(rnd()-.5)*(rag.blast?2.25:1.85)*spin,
+     avx:(rnd()-.5)*(rag.blast?2.20:1.75)*spin,
+     avy:(rnd()-.5)*(rag.blast?2.00:1.55)*spin,
+     avz:(rnd()-.5)*(rag.blast?2.20:1.75)*spin,
      parentState:null
    });
  };
@@ -4491,29 +4486,29 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    rag.hips=hips;
    if(hips){rag.hipsStartY=hips.position.y;rag.hipsTargetY=Math.max(.20,hips.position.y-(rag.blast?.24:.62)-rnd()*(rag.blast?.05:.10))}
 
-   add(rigBone(z,"L_UpperLeg"),"upperLeg", .65+(rnd()-.5)*.30,(rnd()-.5)*.14,-.20-rnd()*.18,.00,.40,.07);
-   add(rigBone(z,"R_UpperLeg"),"upperLeg", .25+(rnd()-.5)*.55,(rnd()-.5)*.14, .20+rnd()*.18,.00,.43,.07);
-   add(rigBone(z,"L_LowerLeg"),"lowerLeg",-1.15-rnd()*.35,0,-.10-rnd()*.10,.02,.42,.08);
-   add(rigBone(z,"R_LowerLeg"),"lowerLeg",-1.05-rnd()*.40,0, .10+rnd()*.10,.03,.45,.08);
+   add(rigBone(z,"L_UpperLeg"),"upperLeg");
+   add(rigBone(z,"R_UpperLeg"),"upperLeg");
+   add(rigBone(z,"L_LowerLeg"),"lowerLeg");
+   add(rigBone(z,"R_LowerLeg"),"lowerLeg");
 
-   add(hips,"hips",forward*.25,(rnd()-.5)*.18,side*.24,.08,.55,.06);
-   add(rigBone(z,"Spine"),"spine",forward*.52,(rnd()-.5)*.26,side*.30,.12,.62,.10);
-   add(rigBone(z,"Chest"),"chest",forward*.68,(rnd()-.5)*.34,side*.38,.15,.68,.12);
+   add(hips,"hips");
+   add(rigBone(z,"Spine"),"spine");
+   add(rigBone(z,"Chest"),"chest");
 
-   add(rigBone(z,"L_UpperArm"),"upperArm",1.02+rnd()*.62,(rnd()-.5)*.42,-.92-rnd()*.46,.06,.82,.25);
-   add(rigBone(z,"L_LowerArm"),"lowerArm",1.22+rnd()*.62,(rnd()-.5)*.36,-.48-rnd()*.34,.11,.78,.28);
-   add(rigBone(z,"R_UpperArm"),"upperArm",1.02+rnd()*.62,(rnd()-.5)*.42, .92+rnd()*.46,.07,.82,.25);
-   add(rigBone(z,"R_LowerArm"),"lowerArm",1.22+rnd()*.62,(rnd()-.5)*.36, .48+rnd()*.34,.12,.78,.28);
+   add(rigBone(z,"L_UpperArm"),"upperArm");
+   add(rigBone(z,"L_LowerArm"),"lowerArm");
+   add(rigBone(z,"R_UpperArm"),"upperArm");
+   add(rigBone(z,"R_LowerArm"),"lowerArm");
 
-   add(rigBone(z,"Neck"),"neck",-forward*.52,(rnd()-.5)*.42,-side*.34,.18,.68,.20);
-   add(rigBone(z,"Head"),"head",-forward*.88,(rnd()-.5)*.60,-side*.62,.22,.74,.28);
+   add(rigBone(z,"Neck"),"neck");
+   add(rigBone(z,"Head"),"head");
  }else{
-   add(z.legL,"upperLeg",.78,0,-.34,.00,.48,.13);add(z.kneeL,"lowerLeg",-1.30,0,-.18,.02,.50,.14);
-   add(z.legR,"upperLeg",.42,0,.34,.00,.50,.13);add(z.kneeR,"lowerLeg",-1.22,0,.18,.03,.52,.14);
-   add(z.torso,"torso",forward*.88,(rnd()-.5)*.38,side*.50,.09,.78,.21);
-   add(z.armL,"upperArm",1.18,0,-.88,.06,.82,.27);add(z.elbowL,"lowerArm",1.28,0,-.42,.11,.78,.28);
-   add(z.armR,"upperArm",1.18,0,.88,.07,.82,.27);add(z.elbowR,"lowerArm",1.28,0,.42,.12,.78,.28);
-   add(z.head,"head",-forward*.86,(rnd()-.5)*.52,-side*.58,.18,.72,.27);
+   add(z.legL,"upperLeg");add(z.kneeL,"lowerLeg");
+   add(z.legR,"upperLeg");add(z.kneeR,"lowerLeg");
+   add(z.torso,"torso");
+   add(z.armL,"upperArm");add(z.elbowL,"lowerArm");
+   add(z.armR,"upperArm");add(z.elbowR,"lowerArm");
+   add(z.head,"head");
  }
 
  const byObject=new Map(rag.bones.map(b=>[b.o,b]));
@@ -4574,20 +4569,14 @@ function updateRagdoll(z,dt){
    const p=b.p;
    const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60)))),h=dt/steps;
    for(let step=0;step<steps;step++){
-     const parent=b.parentState;
-     const parentX=parent?parent.avx:r.ravx,parentY=parent?parent.avy:r.ravy,parentZ=parent?parent.avz:r.ravz;
-     const free=r.fullBodyDown?0:Math.exp(-r.t*.16);
-     const looseX=Math.sin(r.t*(2.15+p.inertia*.31)+b.phase)*p.gust*.58*free;
-     const looseY=Math.sin(r.t*(1.83+p.inertia*.27)+b.phase+2.17)*p.gust*.40*free;
-     const looseZ=Math.sin(r.t*(2.47+p.inertia*.29)+b.phase+4.03)*p.gust*.66*free;
-     // No animation-matching spring in Unpowered state. Soft joint limits,
-     // light constraint coupling, passive angular drag and unbiased free drift
-     // are the only joint forces.
-     const ax=looseX+ragSoftLimitAcceleration(b.ox,b.avx,p.lx,h,p.maxA*1.25)+(parentX-b.avx)*p.couple*.15+r.ravx*p.root*.045;
-     const ay=looseY+ragSoftLimitAcceleration(b.oy,b.avy,p.ly,h,p.maxA*1.25)+(parentY-b.avy)*p.couple*.13+r.ravy*p.root*.040;
-     const az=looseZ+ragSoftLimitAcceleration(b.oz,b.avz,p.lz,h,p.maxA*1.25)+(parentZ-b.avz)*p.couple*.17+r.ravz*p.root*.050;
+     // v421: true release state. No oscillator, target pose, root steering or
+     // animation-matching force is allowed after death. Only soft anatomical
+     // limits and passive drag remain active between real contact events.
+     const ax=ragSoftLimitAcceleration(b.ox,b.avx,p.lx,h,p.maxA*1.25);
+     const ay=ragSoftLimitAcceleration(b.oy,b.avy,p.ly,h,p.maxA*1.25);
+     const az=ragSoftLimitAcceleration(b.oz,b.avz,p.lz,h,p.maxA*1.25);
      b.avx+=ax*h;b.avy+=ay*h;b.avz+=az*h;
-     const angularDrag=Math.exp(-h*(r.fullBodyDown?.42:.055));
+     const angularDrag=Math.exp(-h*(r.fullBodyDown?.34:.030));
      b.avx*=angularDrag;b.avy*=angularDrag;b.avz*=angularDrag;
      b.ox+=b.avx*h;b.oy+=b.avy*h;b.oz+=b.avz*h;
 
@@ -4783,8 +4772,11 @@ function fire(){
                         part==="leftLeg"||part==="rightLeg"?shotDamage*.18:shotDamage;
      if(hs){if(z.kind==="boss")z.hp-=Math.max(shotDamage*2.6,4.5);else{const headshotToughness=1+Math.max(0,wave-1)*.2;z.hp-=shotDamage*3/headshotToughness}}else z.hp-=healthDamage;
      if(limbHit)limbDamage(z,part,weapon==="shotgun"?shotDamage*2:shotDamage);
-     impactFX(hit.point);burst(hit.point,false);stagger(z,hs);didHit=true;headHit=headHit||hs;
+     impactFX(hit.point);burst(hit.point,false);didHit=true;headHit=headHit||hs;
+     // v421: a lethal hit skips the living hit-reaction animation completely.
+     // The exact current pose is released directly into ragdoll.
      if(z.hp<=0&&!z.dead)killZ(z,hs,hit.point);
+     else stagger(z,hs);
    }
  }
  if(didHit)hitMark(headHit);
