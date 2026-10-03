@@ -1,3 +1,48 @@
+# LATEST LIVE STATE — 2026-10-03 — v444 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=444`
+- v444 cleanup commit: `5e8a16d36537bbde4c1d30ea83bdc88aef1a732b`
+- v444 loader/deploy commit: `22f0a9e35b7ce26a3b3c488c914f4485e8a9b54a`
+- v444 successful Pages run: `37151243166`
+- Current `src/game.js` content SHA: `5c67d61861359d2372320570298272a65fc6ef4c`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v443 and reported: **"works great lets move on"**.
+- v443 is therefore the latest user-confirmed gameplay baseline before this v444 dead-code cleanup.
+
+## v444 cleanup — removed unused shop toggle wrapper
+
+Current-main audit proved:
+- `toggleShop` occurred exactly once: its own definition.
+- Shop/input wiring uses `openShop()` directly and does not reference `toggleShop`.
+- `openShop()` remains live and is still called by the between-wave shop flow.
+
+v444 removed only:
+- `function toggleShop(){if(!between)return;openShop()}`
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus the confirmed-good v443 main baseline contains only one deleted line in `src/game.js` plus the v444 loader change in `index.html`;
+- native crawler conversion, PBD/ragdoll, M240 authored WAV path/state, grenade/spintop, spawn cap/connectivity and other protected systems remain present;
+- M240 audio was not modified.
+
+## Continue cleanup carefully
+
+Continue one controlled cleanup at a time. Remaining candidates previously observed with only their own reference include `addBuilding`, `pointOnNewCitySpawnZone`, and `batchLoadedStiCars`. Re-prove references from current GitHub main before removing anything; these are larger/more structural than the v444 wrapper and should be inspected individually.
+
+---
+
 # LATEST LIVE STATE — 2026-10-03 — v443 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
