@@ -2705,13 +2705,11 @@ function buildRadiatedGreenGuyTemplate(source){
      const armMinFrac=.105+THREE.MathUtils.clamp((.68-yf)/.36,0,1)*.075;
      if(ax>h*armMinFrac){
        if(yf>.56)return left?bi.lua:bi.rua;
-       if(yf>.39)return left?bi.lla:bi.rla;
-       return left?bi.lhand:bi.rhand;
+       return left?bi.lla:bi.rla;
      }
    }
 
    if(yf<.46){
-     if(yf<.095)return left?bi.lfoot:bi.rfoot;
      if(yf<.245)return left?bi.lll:bi.rll;
      return left?bi.lul:bi.rul;
    }
@@ -2721,10 +2719,13 @@ function buildRadiatedGreenGuyTemplate(source){
  };
  const skinned=[];
  for(const p of pieces){
+   // v423: restore the uploaded Green Guy model. The previous builder called
+   // a missing skin-weight helper and referenced hand/foot bones this rig does
+   // not contain. Use the actual measured rigid segmentation instead.
    const pos=p.geo.attributes.position,indices=[],weights=[];
    for(let i=0;i<pos.count;i++){
-     const w=chooseWeights(pos.getX(i),pos.getY(i)),i0=w[0],w0=w[1],i1=w[2],w1=w[3];
-     indices.push(i0,i1,0,0);weights.push(w0,w1,0,0);
+     const boneIndex=chooseRigidBone(pos.getX(i),pos.getY(i),pos.getZ(i));
+     indices.push(boneIndex,0,0,0);weights.push(1,0,0,0);
    }
    p.geo.setAttribute("skinIndex",new THREE.Uint16BufferAttribute(indices,4));
    p.geo.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));
@@ -2875,7 +2876,6 @@ function syncRadiatedGreenGuy(z,dt=0){
  z.radiatedGreenMoveBlend=THREE.MathUtils.lerp(z.radiatedGreenMoveBlend||0,targetMove,Math.min(1,dt*7));
  const blend=z.radiatedGreenMoveBlend,p=z.rigPolishPhase||z.phase||0,step=Math.sin(p),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
  h.rotation.y=Math.PI;
- if(z.dead&&z.ragdoll?.directVisual===h)return;
  if(z.dead&&syncCustomVisualFromRagdoll(z,bones,h,"radiatedVisibleRagdollBase"))return;
  if(z.leglessCrawler){
    h.position.y=-.43;h.rotation.x=-.72;h.rotation.z=step*.018*blend;
@@ -2986,21 +2986,37 @@ function buildBasicWalkerTemplate(source){
    if(yf<.64)return bi.spine;
    return bi.chest;
  };
+ const jointBlend=(yf,boundary,width=.035)=>Math.max(0,1-Math.abs(yf-boundary)/width)*.22;
+ const chooseWalkerWeights=(x,y,z)=>{
+   const yf=y/h,primary=chooseRigidBone(x,y,z);
+   let secondary=primary,w=0;
+   const blend=(idx,boundary,width=.035)=>{const bw=jointBlend(yf,boundary,width);if(bw>w){secondary=idx;w=bw}};
+   if(primary===bi.lua){blend(bi.lla,.56);blend(bi.chest,.70,.045)}
+   else if(primary===bi.rua){blend(bi.rla,.56);blend(bi.chest,.70,.045)}
+   else if(primary===bi.lla){blend(bi.lua,.56);blend(bi.lhand,.39)}
+   else if(primary===bi.rla){blend(bi.rua,.56);blend(bi.rhand,.39)}
+   else if(primary===bi.lhand)blend(bi.lla,.39);
+   else if(primary===bi.rhand)blend(bi.rla,.39);
+   else if(primary===bi.lul){blend(bi.lll,.245);blend(bi.hips,.445,.04)}
+   else if(primary===bi.rul){blend(bi.rll,.245);blend(bi.hips,.445,.04)}
+   else if(primary===bi.lll){blend(bi.lul,.245);blend(bi.lfoot,.095)}
+   else if(primary===bi.rll){blend(bi.rul,.245);blend(bi.rfoot,.095)}
+   else if(primary===bi.lfoot)blend(bi.lll,.095);
+   else if(primary===bi.rfoot)blend(bi.rll,.095);
+   else if(primary===bi.spine){blend(bi.hips,.53);blend(bi.chest,.64)}
+   else if(primary===bi.chest)blend(bi.spine,.64);
+   return secondary===primary||w<=.001?[primary,1,0,0]:[primary,1-w,secondary,w];
+ };
  const skinned=[];
  for(const p of pieces){
-   // Make triangle vertices unique, then assign all three vertices to the same bone.
-   // This produces true hinged body sections instead of rubbery blended deformation.
+   // v423: a small blend only at anatomical seams keeps the skin connected while
+   // elbows/knees/shoulders move. Most vertices remain effectively rigid.
    const geo=p.geo.index?p.geo.toNonIndexed():p.geo;
    p.geo=geo;
    const pos=geo.attributes.position,indices=[],weights=[];
-   for(let i=0;i<pos.count;i+=3){
-     const cx=(pos.getX(i)+pos.getX(i+1)+pos.getX(i+2))/3,
-           cy=(pos.getY(i)+pos.getY(i+1)+pos.getY(i+2))/3,
-           cz=(pos.getZ(i)+pos.getZ(i+1)+pos.getZ(i+2))/3,
-           boneIndex=chooseRigidBone(cx,cy,cz);
-     for(let k=0;k<3;k++){
-       indices.push(boneIndex,0,0,0);weights.push(1,0,0,0);
-     }
+   for(let i=0;i<pos.count;i++){
+     const w=chooseWalkerWeights(pos.getX(i),pos.getY(i),pos.getZ(i));
+     indices.push(w[0],w[2],0,0);weights.push(w[1],w[3],0,0);
    }
    geo.setAttribute("skinIndex",new THREE.Uint16BufferAttribute(indices,4));
    geo.setAttribute("skinWeight",new THREE.Float32BufferAttribute(weights,4));
@@ -3063,6 +3079,7 @@ function buildBasicWalkerHitboxes(z){
 function syncBasicWalkerVisual(z,dt=0){
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
  holder.rotation.y=Math.PI;
+ if(z.dead&&z.ragdoll?.walkerPbd)return;
  if(z.dead&&z.ragdoll?.directVisual===holder)return;
  if(z.dead&&syncCustomVisualFromRagdoll(z,bones,holder,"walkerVisibleRagdollBase"))return;
 
@@ -4199,10 +4216,119 @@ function stagger(z,hs){
 function rigBone(z,name){return z.rigVisual?z.rigVisual.getObjectByName(name):null}
 function ragBone(z,name){
  const wb=z?.walkerBones?.get(name);if(wb)return wb;
- const gb=z?.radiatedGreenBones?.get(name);if(gb)return gb;
  return rigBone(z,name);
 }
-function ragVisibleHolder(z){return z?.walkerVisual||z?.radiatedGreenVisual||null}
+function ragVisibleHolder(z){return z?.walkerVisual||null}
+
+const WALKER_PBD_KEYS=Object.freeze([
+ "Hips","Spine","Chest","Neck","Head",
+ "L_UpperArm","L_LowerArm","L_Hand","R_UpperArm","R_LowerArm","R_Hand",
+ "L_UpperLeg","L_LowerLeg","L_Foot","R_UpperLeg","R_LowerLeg","R_Foot"
+]);
+const WALKER_PBD_EDGES=Object.freeze([
+ ["Hips","Spine"],["Spine","Chest"],["Chest","Neck"],["Neck","Head"],
+ ["Chest","L_UpperArm"],["L_UpperArm","L_LowerArm"],["L_LowerArm","L_Hand"],
+ ["Chest","R_UpperArm"],["R_UpperArm","R_LowerArm"],["R_LowerArm","R_Hand"],
+ ["Hips","L_UpperLeg"],["L_UpperLeg","L_LowerLeg"],["L_LowerLeg","L_Foot"],
+ ["Hips","R_UpperLeg"],["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"],
+ ["L_UpperArm","R_UpperArm"],["L_UpperLeg","R_UpperLeg"]
+]);
+const walkerPbdTmpA=new THREE.Vector3(),walkerPbdTmpB=new THREE.Vector3(),walkerPbdTmpC=new THREE.Vector3();
+const walkerPbdParentQ=new THREE.Quaternion(),walkerPbdInvQ=new THREE.Quaternion(),walkerPbdDeltaQ=new THREE.Quaternion();
+
+function buildWalkerPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
+ if(!z?.walkerVisual||!z?.walkerBones?.size)return null;
+ z.g.updateMatrixWorld(true);z.walkerVisual.updateMatrixWorld(true);
+ const nodes=new Map();
+ for(const key of WALKER_PBD_KEYS){
+   const bone=z.walkerBones.get(key);if(!bone)continue;
+   const pos=new THREE.Vector3();bone.getWorldPosition(pos);
+   let vx=inheritedVX,vz=inheritedVZ,vy=0;
+   if(isBlast&&blastOrigin){
+     const dx=pos.x-blastOrigin.x,dz=pos.z-blastOrigin.z,dl=Math.hypot(dx,dz)||1;
+     const launch=(3.5+power*1.65)*(key==="Head"||key.includes("Hand")?1.15:1);
+     vx=dx/dl*launch;vz=dz/dl*launch;vy=2.6+power*1.08;
+   }
+   const distal=key.includes("Hand")||key.includes("Foot")||key.includes("Lower")||key==="Head";
+   const random=distal?(isBlast?2.0:1.15):(isBlast?1.05:.58);
+   vx+=(rnd()-.5)*random;vy+=(rnd()-.5)*random*.72;vz+=(rnd()-.5)*random;
+   const invMass=(key==="Hips"||key==="Chest")?.62:key==="Spine"?.72:1;
+   const radius=key==="Head"?.17:key.includes("Hand")||key.includes("Foot")?.075:.10;
+   nodes.set(key,{key,bone,pos,vel:new THREE.Vector3(vx,vy,vz),old:new THREE.Vector3(),invMass,radius});
+ }
+ if(!nodes.has("Hips")||nodes.size<12)return null;
+ const edges=[];
+ for(const [a,b] of WALKER_PBD_EDGES){
+   const na=nodes.get(a),nb=nodes.get(b);if(na&&nb)edges.push({a:na,b:nb,len:na.pos.distanceTo(nb.pos)});
+ }
+ const links=[
+   ["Hips","Spine"],["Spine","Chest"],["Chest","Neck"],["Neck","Head"],
+   ["L_UpperArm","L_LowerArm"],["L_LowerArm","L_Hand"],
+   ["R_UpperArm","R_LowerArm"],["R_LowerArm","R_Hand"],
+   ["L_UpperLeg","L_LowerLeg"],["L_LowerLeg","L_Foot"],
+   ["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"]
+ ].map(([a,b])=>{
+   const bone=z.walkerBones.get(a),child=z.walkerBones.get(b);
+   return bone&&child?{a,b,bone,baseQuat:bone.quaternion.clone(),restDir:child.position.clone().normalize()}:null;
+ }).filter(Boolean);
+ return{nodes,edges,links,settleT:0,allDown:false,maxSpeed:999};
+}
+function solveWalkerPbdEdge(e){
+ const d=walkerPbdTmpA.subVectors(e.b.pos,e.a.pos),dist=d.length();if(dist<1e-6)return;
+ const corr=(dist-e.len)/dist,w1=e.a.invMass,w2=e.b.invMass,ws=w1+w2;if(ws<=0)return;
+ d.multiplyScalar(corr);e.a.pos.addScaledVector(d,w1/ws);e.b.pos.addScaledVector(d,-w2/ws);
+}
+function clampWalkerPbdToGround(n,rag){
+ const gy=sampleRagdollGroundY(n.pos.x,n.pos.z,rag.floorY,n.pos.y),floor=gy+n.radius;
+ if(n.pos.y>=floor)return false;n.pos.y=floor;return true;
+}
+function orientWalkerPbd(z,pbd){
+ const hips=pbd.nodes.get("Hips"),holder=z.walkerVisual,hipsBone=z.walkerBones.get("Hips");
+ if(!hips||!holder||!hipsBone)return;
+ z.g.updateMatrixWorld(true);holder.updateMatrixWorld(true);hipsBone.getWorldPosition(walkerPbdTmpA);
+ const localA=z.g.worldToLocal(walkerPbdTmpA.clone()),localB=z.g.worldToLocal(hips.pos.clone());
+ holder.position.add(walkerPbdTmpC.subVectors(localB,localA));holder.updateMatrixWorld(true);
+ for(const link of pbd.links){
+   const target=pbd.nodes.get(link.b),bone=link.bone,parent=bone.parent;if(!target||!parent)continue;
+   bone.getWorldPosition(walkerPbdTmpA);walkerPbdTmpB.subVectors(target.pos,walkerPbdTmpA);
+   if(walkerPbdTmpB.lengthSq()<1e-8)continue;
+   parent.getWorldQuaternion(walkerPbdParentQ);walkerPbdInvQ.copy(walkerPbdParentQ).invert();
+   walkerPbdTmpB.applyQuaternion(walkerPbdInvQ).normalize();
+   walkerPbdTmpC.copy(link.restDir).applyQuaternion(link.baseQuat).normalize();
+   walkerPbdDeltaQ.setFromUnitVectors(walkerPbdTmpC,walkerPbdTmpB);
+   bone.quaternion.copy(walkerPbdDeltaQ.multiply(link.baseQuat));bone.updateMatrixWorld(true);
+ }
+ holder.updateMatrixWorld(true);
+}
+function updateWalkerPbd(z,rag,dt){
+ const p=rag.walkerPbd;if(!p)return false;
+ const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60)))),h=dt/steps;
+ for(let step=0;step<steps;step++){
+   const touched=new Set();
+   for(const n of p.nodes.values()){n.old.copy(n.pos);n.vel.y-=9.81*h;n.pos.addScaledVector(n.vel,h)}
+   for(let iter=0;iter<5;iter++){
+     for(const e of p.edges)solveWalkerPbdEdge(e);
+     for(const n of p.nodes.values())if(clampWalkerPbdToGround(n,rag))touched.add(n);
+   }
+   for(const n of p.nodes.values()){
+     n.vel.subVectors(n.pos,n.old).multiplyScalar(.994/Math.max(h,.001));
+     if(touched.has(n)){n.vel.x*=.58;n.vel.z*=.58;if(n.vel.y<0)n.vel.y=-n.vel.y*.08}
+   }
+ }
+ let contacts=0,maxSpeed=0;
+ for(const n of p.nodes.values()){
+   const gy=sampleRagdollGroundY(n.pos.x,n.pos.z,rag.floorY,n.pos.y);
+   if(n.pos.y<=gy+n.radius+.035)contacts++;
+   maxSpeed=Math.max(maxSpeed,n.vel.length());
+ }
+ const down=k=>{const n=p.nodes.get(k);if(!n)return false;const gy=sampleRagdollGroundY(n.pos.x,n.pos.z,rag.floorY,n.pos.y);return n.pos.y<=gy+n.radius+.09};
+ p.allDown=down("Hips")&&down("Chest")&&down("Head")&&contacts>=7;p.maxSpeed=maxSpeed;
+ p.settleT=p.allDown&&maxSpeed<.20?p.settleT+dt:0;
+ orientWalkerPbd(z,p);
+ rag.contactCount=contacts;rag.fullBodyDown=p.allDown;rag.grounded=p.allDown;
+ if(p.settleT>1.05){rag.active=false;z.falling=false}else z.falling=true;
+ return true;
+}
 function hideRigLimb(z,name){
  const b=rigBone(z,name);
  if(b){b.scale.set(.001,.001,.001);b.updateMatrixWorld(true)}
@@ -4475,8 +4601,11 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    vx:isBlast?awayX*(2.38+1.48*rnd())*power+(rnd()-.5)*.72:inheritedVX*.94,
    vz:isBlast?awayZ*(2.38+1.48*rnd())*power+(rnd()-.5)*.72:inheritedVZ*.94,
    vy:isBlast?(2.62+1.68*rnd())*power:0,
-   hips:null,hipsStartY:0,hipsTargetY:0
+   hips:null,hipsStartY:0,hipsTargetY:0,
+   walkerPbd:null
  };
+ rag.walkerPbd=buildWalkerPbd(z,rag,isBlast,blastOrigin,inheritedVX*.94,inheritedVZ*.94,power);
+ if(rag.walkerPbd)return;
 
  const add=(o,role)=>{
    if(!o||!o.parent)return;
@@ -4536,6 +4665,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
 function updateRagdoll(z,dt){
  if(!z.ragdoll)beginRagdoll(z);
  const r=z.ragdoll;r.t+=dt;
+ if(r.walkerPbd){updateWalkerPbd(z,r,dt);return}
 
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
 
