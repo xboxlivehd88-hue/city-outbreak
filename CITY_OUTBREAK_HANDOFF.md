@@ -1,3 +1,52 @@
+# LATEST LIVE STATE — 2026-10-03 — v449 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=449`
+- v449 cleanup commit: `2fc38604175ea3612dd8f355f2fa6f43b57777aa`
+- v449 loader/deploy commit: `58e401a400e3aa0edfa676b349bdc4b7c12c539a`
+- Current `src/game.js` content SHA: `5c207eb5b76a86fbfb807fd794f5502f073b9e14`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v448 and said: **"im good lets move on"**.
+- v448 is therefore the latest user-confirmed gameplay baseline before this v449 dead-code cleanup.
+
+## v449 cleanup — removed unused fire escape helper
+
+Current-main audit proved:
+- `addFireEscape` occurred exactly once: its own definition.
+- It had zero call sites after removal of the old procedural `addBuilding()` path.
+
+v449 removed only:
+- the 8-line unused `addFireEscape(x,y,z,h,side,p)` helper.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v448 contains only eight deleted lines in `src/game.js` plus the v449 loader bump in `index.html`;
+- `facadeMaterial()` and `facadeMaterialCache` remain untouched for later isolated cleanup;
+- native crawler conversion, PBD/ragdoll, M240 authored WAV path/state, grenade/spintop, live spawn/connectivity protections, active zombie cap and other protected systems remain present;
+- M240 audio was not modified.
+
+## Deployment note
+
+- Initial v449 Pages run `37156222511` reached GitHub's Jekyll build step and failed there; JavaScript/source verification had already passed.
+- A fresh Pages run should be used as the deployment authority before handing v449 to the user.
+
+## Continue cleanup carefully
+
+The next known dead procedural-city block is `facadeMaterial()` (76 lines, one occurrence: its own definition). Its `facadeMaterialCache` is only used by that function. Re-audit current main before removing them; keep that as its own isolated cleanup after v449 is user-tested.
+
+---
+
 # LATEST LIVE STATE — 2026-10-03 — v448 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
