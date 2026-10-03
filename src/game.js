@@ -4270,7 +4270,7 @@ function bodyPbdPushOutsideCar(c,x,z,pad=.08){
  if(px<pz)lx=(lx<0?-1:1)*hw;else lz=(lz<0?-1:1)*hl;
  return{x:c.position.x+co*lx+si*lz,z:c.position.z-si*lx+co*lz};
 }
-function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,impact=null){
+function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power){
  const rig=bodyPbdRig(z);if(!rig)return null;
  z.g.updateMatrixWorld(true);rig.holder.updateMatrixWorld(true);
  const nodes=new Map();
@@ -4290,11 +4290,6 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,im
    const distal=key.includes("Hand")||key.includes("Foot")||key.includes("Lower")||key==="Head";
    const random=distal?(isBlast?2.35:1.18):(isBlast?1.25:.62);
    vx+=(rnd()-.5)*random;vy+=(rnd()-.5)*random*.72;vz+=(rnd()-.5)*random;
-   if(impact?.dir&&impact?.point&&impact.strength>0){
-     const nd=pos.distanceTo(impact.point),near=.18+.82*Math.exp(-nd*2.35),kick=impact.strength*near;
-     vx+=impact.dir.x*kick;vy+=impact.dir.y*kick;vz+=impact.dir.z*kick;
-     if(nd<.34){vx+=impact.dir.x*impact.strength*.30;vy+=impact.dir.y*impact.strength*.30;vz+=impact.dir.z*impact.strength*.30}
-   }
    const invMass=(key==="Hips"||key==="Chest")?.62:key==="Spine"?.72:1;
    const radius=key==="Head"?.17:key.includes("Hand")||key.includes("Foot")?.075:.10;
    nodes.set(key,{key,bone,pos,vel:new THREE.Vector3(vx,vy,vz),old:new THREE.Vector3(),invMass,radius,lastGroundY:rag.floorY});
@@ -4622,7 +4617,7 @@ function blastBoneProfile(role){
    default:return{lx:1.40,ly:1.00,lz:1.18,airA:.00050,airD:.060,groundA:.0055,groundD:.82,maxA:62,gust:1.30,inertia:1.12,couple:.40,root:.30,impact:1.00};
  }
 }
-function beginRagdoll(z,force=1,blastOrigin=null,impact=null){
+function beginRagdoll(z,force=1,blastOrigin=null){
  if(z.ragdoll)return;
  // v421: capture/release the exact live pose. Do not normalize the holder or
  // hips before ragdoll starts; that was silently snapping every corpse toward
@@ -4670,7 +4665,7 @@ function beginRagdoll(z,force=1,blastOrigin=null,impact=null){
    hips:null,hipsStartY:0,hipsTargetY:0,
    bodyPbd:null
  };
- rag.bodyPbd=buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX*.94,inheritedVZ*.94,power,impact);
+ rag.bodyPbd=buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX*.94,inheritedVZ*.94,power);
  if(rag.bodyPbd)return;
 
  const add=(o,role)=>{
@@ -4870,13 +4865,13 @@ function updateRagdoll(z,dt){
  r.settleT=settled?r.settleT+dt:0;
  if(r.settleT>1.25){r.active=false;z.falling=false}else z.falling=true;
 }
-function killZ(z,hs,p,ragForce=1,ragOrigin=null,ragImpact=null){
+function killZ(z,hs,p,ragForce=1,ragOrigin=null){
  if(z.dead)return;
  z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;
  // v421: dead bodies have no navigation state at all. The active-zombie loop
  // already excludes them; clear any cached route too so nothing can steer a corpse.
  z.navPath=null;z.navIndex=0;z.navForceRepath=false;z.navCheckT=0;
- beginRagdoll(z,ragForce,ragOrigin,ragImpact);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
+ beginRagdoll(z,ragForce,ragOrigin);kills++;if(z.kind==="boss"){cash+=z.bossBounty;spawnBossRewardCache(z.g.position.clone());currentBoss=null;hideBossHud(bossHUD);show("BOSS SLAIN — $"+z.bossBounty+" BOUNTY + REWARD CACHE");bossWaveName=""}else{cash+=hs?45:25;spawnZombieDrop(z.g.position)}hitMark(hs);
  if(hs){heads++;headS();burst(p,true);if(z.head&&z.head.parent)z.g.remove(z.head)}
  else{noise(.12,.16,260)}
  // Dead bodies keep the silhouette but stop expensive shadow work immediately.
@@ -4965,12 +4960,6 @@ function cityProjectileHitNormal(hit){
  cityProjectileNormalMatrix.getNormalMatrix(hit.object.matrixWorld);
  return cityProjectileNormal.copy(hit.face.normal).applyMatrix3(cityProjectileNormalMatrix).normalize();
 }
-function bulletDeathImpulseStrength(w,dist,head=false){
- let base=({pistol:1.00,smg:.78,rifle:1.28,shotgun:2.35,dmr:1.62,m240:1.48,awm:2.85})[w]||1;
- if(w==="shotgun")base*=THREE.MathUtils.clamp(1.30-dist/13,.45,1.30);
- if(head)base*=1.10;
- return base;
-}
 function fire(){
  if(!running||paused||reloading||dying||between)return;
  if(weapon==="awm"&&gameTimeNow()<awmReadyAt){show("CYCLING BOLT");return}
@@ -5020,15 +5009,8 @@ function fire(){
      impactFX(hit.point);burst(hit.point,false);didHit=true;headHit=headHit||hs;
      // v421: a lethal hit skips the living hit-reaction animation completely.
      // The exact current pose is released directly into ragdoll.
-     if(z.hp<=0&&!z.dead){
-       const ragImpact={
-         dir:ray.ray.direction.clone(),
-         point:hit.point.clone(),
-         strength:bulletDeathImpulseStrength(weapon,zombieHitDistance,hs),
-         part
-       };
-       killZ(z,hs,hit.point,1,null,ragImpact);
-     }else stagger(z,hs);
+     if(z.hp<=0&&!z.dead)killZ(z,hs,hit.point);
+     else stagger(z,hs);
    }
  }
  if(didHit)hitMark(headHit);
