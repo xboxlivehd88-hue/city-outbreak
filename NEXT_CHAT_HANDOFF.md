@@ -1,3 +1,55 @@
+# LATEST LIVE STATE — 2026-10-03 — v443 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=443`
+- v443 cleanup commit: `f1e867912dfb347cc3649c8d8339ed006e5c2206`
+- v443 repaired full-tree/current deployment commit: `d963cdcb34549fefcbda1ef80b96edc2a5ed6c75`
+- v443 successful Pages run: `37146612179`
+- Current `src/game.js` content SHA: `f18c546b90d200950dab4d426716e30cd5bd47d8`
+- Live game: https://xboxlivehd88-hue.github.io/city-outbreak/?v=443-d963cdcb
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v442 and reported: **"works great"**.
+- v442 is therefore the last user-confirmed gameplay baseline before this v443 dead-code cleanup.
+
+## v443 cleanup — removed unused emissive material helper/cache
+
+Current-main audit proved:
+- `EM` had no call sites and occurred only at its own definition.
+- `emissiveMaterialCache` existed only in the cache declaration and inside unused `EM`.
+
+v443 removed:
+- unused `EM(c,e,r)`;
+- now-unused `emissiveMaterialCache`.
+
+Verification:
+- current v443 `src/game.js` parses successfully;
+- net comparison against the full v442 tree shows only `src/game.js` and `index.html` modified;
+- the game.js net change is only removal of the dead cache/helper;
+- loader changed from v442 to v443;
+- native crawler conversion, PBD/ragdoll markers, M240 authored WAV path/state, spintop asset, spawn active cap, protected recovery doc and other protected systems remain present;
+- M240 audio was not modified.
+
+## v443 tree repair note
+
+The first low-level v443 tree commit accidentally used an incomplete base tree. This was caught before handoff. Commit `d963cdcb34549fefcbda1ef80b96edc2a5ed6c75` rebuilt v443 on the full v442 tree. Required files were rechecked, and the final net diff versus v442 contains only the intended `src/game.js` cleanup and `index.html` loader bump. Use the repaired/current commit as authoritative.
+
+## Continue cleanup carefully
+
+Continue one controlled cleanup at a time. Other functions previously noticed with only their own current reference included `addBuilding`, `pointOnNewCitySpawnZone`, `batchLoadedStiCars`, and `toggleShop`; re-audit current GitHub main before deleting any of them. Do not combine removals merely because they look unused.
+
+---
+
 # LATEST LIVE STATE — 2026-10-03 — v442 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
