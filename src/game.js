@@ -60,50 +60,70 @@ function loadM240FireSample(){
    .then(buf=>ac.decodeAudioData(buf))
    .then(decoded=>{
      m240FireBuffer=decoded;
-     // v437: do NOT loop the long recording. It contains a natural amplitude
-     // envelope, which is why sustained fire slowly fades away. Find the loudest,
-     // most level ~2.4-second plateau, copy only that plateau into a dedicated
-     // loop buffer, and loop the new buffer forever.
-     const data=decoded.getChannelData(0),sr=decoded.sampleRate;
-     const win=Math.max(128,Math.floor(sr*.050)),rms=[];
-     for(let i=0;i<data.length;i+=win){
+     // v438: preserve a LONG stretch of the real recording and correct only its
+     // slow loudness envelope. v437's 2.4 s "stable" slice was too short and
+     // happened to begin on a softer section. Here we:
+     //  1) locate the continuous firing portion,
+     //  2) retain essentially all of that portion,
+     //  3) normalize only 250 ms-scale loudness drift,
+     //  4) crossfade the loop seam.
+     const sr=decoded.sampleRate,channels=decoded.numberOfChannels;
+     const envWin=Math.max(256,Math.floor(sr*.250)),env=[];
+     let peakEnv=0;
+     for(let i=0;i<decoded.length;i+=envWin){
        let sum=0,n=0;
-       for(let j=i;j<Math.min(data.length,i+win);j++){const v=data[j];sum+=v*v;n++}
-       rms.push(Math.sqrt(sum/Math.max(1,n)));
+       for(let ch=0;ch<channels;ch++){
+         const d=decoded.getChannelData(ch);
+         for(let j=i;j<Math.min(decoded.length,i+envWin);j++){const v=d[j];sum+=v*v;n++}
+       }
+       const r=Math.sqrt(sum/Math.max(1,n));env.push(r);if(r>peakEnv)peakEnv=r;
      }
-     const span=Math.max(12,Math.min(rms.length-4,Math.round(2.40*sr/win)));
-     const minStart=Math.max(0,Math.round(.45*sr/win));
-     const maxStart=Math.max(minStart,Math.min(rms.length-span-1,Math.round((decoded.duration-.65)*sr/win)-span));
-     let bestStart=minStart,bestScore=-1,bestMean=0;
-     for(let a=minStart;a<=maxStart;a++){
-       let sum=0,sq=0;
-       for(let k=0;k<span;k++){const r=rms[a+k]||0;sum+=r;sq+=r*r}
-       const mean=sum/span,variance=Math.max(0,sq/span-mean*mean),sd=Math.sqrt(variance);
-       let first=0,last=0,q=Math.max(1,Math.floor(span/4));
-       for(let k=0;k<q;k++){first+=rms[a+k]||0;last+=rms[a+span-q+k]||0}
-       first/=q;last/=q;
-       const cv=sd/Math.max(.0001,mean),trend=Math.abs(last-first)/Math.max(.0001,mean);
-       const score=mean/(1+cv*2.5+trend*4.0);
-       if(score>bestScore){bestScore=score;bestStart=a;bestMean=mean}
+     const activeThreshold=Math.max(.004,peakEnv*.12);
+     let first=0,last=env.length-1;
+     while(first<env.length-1&&env[first]<activeThreshold)first++;
+     while(last>first&&env[last]<activeThreshold)last--;
+     // Trim only a little from the detected ends. Keep the original attack and
+     // several seconds of natural variation instead of collapsing to a tiny loop.
+     const trimHead=Math.floor(sr*.06),trimTail=Math.floor(sr*.18);
+     const startFrame=Math.max(0,first*envWin+trimHead);
+     const endFrame=Math.max(startFrame+Math.floor(sr*2.0),Math.min(decoded.length,(last+1)*envWin-trimTail));
+     const loopFrames=Math.max(1,endFrame-startFrame);
+
+     const activeEnv=env.slice(first,last+1).filter(v=>v>=activeThreshold).sort((a,b)=>a-b);
+     const target=activeEnv.length?activeEnv[Math.min(activeEnv.length-1,Math.floor(activeEnv.length*.72))]:peakEnv*.75;
+     const gains=[];
+     for(let i=first;i<=last;i++){
+       const r=Math.max(env[i]||0,target*.28);
+       gains.push(THREE.MathUtils.clamp(target/r,.72,2.65));
      }
-     const startFrame=Math.max(0,bestStart*win),loopFrames=Math.min(decoded.length-startFrame,span*win);
-     const loop=ac.createBuffer(decoded.numberOfChannels,loopFrames,sr);
-     for(let ch=0;ch<decoded.numberOfChannels;ch++){
+     // Smooth in both directions so the correction removes only slow fade/drift,
+     // not the punch of individual rounds.
+     for(let i=1;i<gains.length;i++)gains[i]=gains[i-1]*.72+gains[i]*.28;
+     for(let i=gains.length-2;i>=0;i--)gains[i]=gains[i+1]*.72+gains[i]*.28;
+
+     const loop=ac.createBuffer(channels,loopFrames,sr);
+     for(let ch=0;ch<channels;ch++){
        const src=decoded.getChannelData(ch),dst=loop.getChannelData(ch);
-       dst.set(src.subarray(startFrame,startFrame+loopFrames));
-       // Blend the first 55 ms toward the matching tail so the wrap is smooth,
-       // without changing the level across the rest of the burst.
-       const xf=Math.min(Math.floor(sr*.055),Math.floor(loopFrames*.08));
+       for(let i=0;i<loopFrames;i++){
+         const sourceFrame=startFrame+i;
+         const ef=(sourceFrame/envWin)-first;
+         const e0=Math.max(0,Math.min(gains.length-1,Math.floor(ef)));
+         const e1=Math.min(gains.length-1,e0+1),mix=THREE.MathUtils.clamp(ef-e0,0,1);
+         const gain=THREE.MathUtils.lerp(gains[e0]||1,gains[e1]||1,mix);
+         dst[i]=THREE.MathUtils.clamp(src[sourceFrame]*gain,-1,1);
+       }
+       const xf=Math.min(Math.floor(sr*.085),Math.floor(loopFrames*.06));
        for(let i=0;i<xf;i++){
          const t=i/Math.max(1,xf-1),a=t*t*(3-2*t),tail=dst[loopFrames-xf+i];
          dst[i]=tail*(1-a)+dst[i]*a;
        }
      }
      m240FireLoopBuffer=loop;
-     console.log("CITY OUTBREAK: M240 stable loop",{
+     console.log("CITY OUTBREAK: M240 long normalized loop",{
        start:(startFrame/sr).toFixed(2),
        duration:(loopFrames/sr).toFixed(2),
-       rms:bestMean.toFixed(4)
+       targetRms:target.toFixed(4),
+       peakRms:peakEnv.toFixed(4)
      });
      return decoded
    })
@@ -117,7 +137,7 @@ function startM240FireAudio(){
  const src=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime;
  src.buffer=m240FireLoopBuffer;
  src.loop=true;src.loopStart=0;src.loopEnd=m240FireLoopBuffer.duration;
- g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.78,t+.012);
+ g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.88,t+.010);
  src.connect(g);g.connect(master);
  m240FireSource=src;m240FireGain=g;
  src.onended=()=>{
