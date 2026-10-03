@@ -3425,8 +3425,14 @@ function setZombieLocomotion(z,wantsRun){
 }
 function releaseZombieVisual(z){
  if(!z)return;
- if(z.radiatedGreenMixer){z.radiatedGreenMixer.stopAllAction();if(z.radiatedGreenModel)z.radiatedGreenMixer.uncacheRoot(z.radiatedGreenModel)}
- if(z.mixer){z.mixer.stopAllAction();if(z.rigVisual)z.mixer.uncacheRoot(z.rigVisual)}
+ // v432: do not uncache the animation root while tearing down a live zombie.
+ // Three.js can hit an invalid internal action/binding cache entry and throw
+ // "Cannot set properties of undefined (setting '_cacheIndex')", freezing the
+ // game during leg-loss crawler replacement. Stop actions and drop references;
+ // the removed mixer/root can then be garbage-collected safely.
+ if(z.radiatedGreenMixer){try{z.radiatedGreenMixer.stopAllAction()}catch(_){}}
+ if(z.mixer){try{z.mixer.stopAllAction()}catch(_){}}
+ z.radiatedGreenMixer=null;z.mixer=null;z.rigActions=null;z.rigBase=null;z.rigTransient=null;
  if(z.rigMaterials){for(const m of z.rigMaterials){try{m.dispose()}catch(_){}}z.rigMaterials.length=0}
  if(z.ownedGeometries){for(const geo of z.ownedGeometries){try{geo.dispose()}catch(_){}}z.ownedGeometries.length=0}
  if(z.ownedMaterials){for(const m of z.ownedMaterials){try{m.dispose()}catch(_){}}z.ownedMaterials.length=0}
