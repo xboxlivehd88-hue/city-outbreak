@@ -4587,24 +4587,33 @@ function poseLeglessCrawlerRig(z,walk=0,walk2=0,attack=0){
  if(rla)rla.rotation.set(.82+Math.max(0,walk2)*.18,0,.05);
 }
 function convertLeglessToCrawler(z){
- if(!z||z.dead||z.kind==="boss"||z.leglessCrawler||z.hp<=0||!z.leftLegDetached||!z.rightLegDetached)return;
- z.leglessCrawler=true;
- z.kind="crawler";z.nightmareType="crawler";z.role="charger";z.lurch=.90;z.strideScale=1;
- const d=diff(wave);z.speed=d.speed*.82;z.damage=Math.round(d.damage*.95);z.attack=d.attack;
- z.legDamage=0;z.limp=0;z.knockdown=null;z.ragdoll=null;z.falling=false;z.stagger=Math.max(z.stagger,.18);
- z.g.rotation.x=0;z.g.rotation.z=0;z.g.position.y=z.groundY||0;
+ if(!z||z.dead||z.kind==="boss"||z.kind==="crawler"||z.hp<=0||!z.leftLegDetached||!z.rightLegDetached)return;
 
- // Preserve the exact rig/materials/outfit from the walker. Stop normal walking clips;
- // the crawler pose below drives the surviving upper body instead.
- if(z.mixer)z.mixer.stopAllAction();
- z.rigBase=null;z.rigTransient=null;z.rigTransientT=0;
- hideRigLimb(z,"L_UpperLeg");hideRigLimb(z,"R_UpperLeg");
- poseLeglessCrawlerRig(z,0,0,0);
- // v429: every crawler gets a fresh low-profile hitbox set that follows the
- // actual prone bones. Never reuse standing hitboxes after both legs are gone.
- buildLeglessCrawlerHitboxes(z);
+ // v431: do NOT fold a standing skinned zombie into a crawler. The game already
+ // has a dedicated native crawler body/animation/hitbox setup that was authored
+ // to crawl low to the ground. Replacing the crippled zombie in-place avoids the
+ // inverted-head/blob failures from v428-v430 on walkers, Green Guy and specials.
+ const oldIndex=zombies.indexOf(z);
+ if(oldIndex<0)return;
 
- z.navForceRepath=true;z.navCheckT=0;z.think=0;
+ const x=z.g.position.x,zp=z.g.position.z,yaw=z.g.rotation.y,
+       hp=Math.max(1,z.hp),maxHP=Math.max(hp,z.maxHP||hp),
+       oldGround=Number.isFinite(z.groundY)?z.groundY:(z.g.position.y||0),
+       oldCool=z.cool||0,oldGroan=z.groan||1,oldPhase=z.phase||0;
+
+ makeZombie(x,zp,oldIndex,"crawler");
+ const crawler=zombies.pop();
+ if(!crawler)return;
+
+ crawler.g.position.x=x;crawler.g.position.z=zp;
+ crawler.g.rotation.y=yaw;crawler.groundY=oldGround;crawler.g.position.y=oldGround+.003;
+ crawler.hp=hp;crawler.maxHP=maxHP;
+ crawler.cool=oldCool;crawler.groan=oldGroan;crawler.phase=oldPhase;
+ crawler.navForceRepath=true;crawler.navCheckT=0;crawler.think=0;
+ crawler.stagger=.08;
+
+ zombies[oldIndex]=crawler;
+ releaseZombieVisual(z);
  show("CRIPPLED — CRAWLER");
 }
 function detachLeg(z,side){
