@@ -4458,7 +4458,12 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    if(!o||!o.parent)return;
    const loose=rag.blast?1:1.24;
    const p=blastBoneProfile(role);
-   const spin=(rag.blast?(2.55+.52*rag.power):(1.05+.24*rag.power))*p.inertia;
+   // v418: normal gunshot deaths must go limp on frame one, not let the root
+   // tip the whole zombie over like a rigid board. Give every joint a stronger
+   // independent angular kick immediately. Keep explosion behavior unchanged.
+   // No dx/dy/dz bias is used for ordinary deaths so joints are never driven
+   // toward the same folded/balling pose.
+   const spin=(rag.blast?(2.55+.52*rag.power):(1.90+.34*rag.power))*p.inertia;
    rag.bones.push({
      o,role,p,
      sx:o.rotation.x,sy:o.rotation.y,sz:o.rotation.z,
@@ -4467,9 +4472,9 @@ function beginRagdoll(z,force=1,blastOrigin=null){
      tx:o.rotation.x+dx*loose,ty:o.rotation.y+dy*loose,tz:o.rotation.z+dz*loose,
      delay:0,duration,wob:wob*loose,phase:rnd()*6.283,
      ox:0,oy:0,oz:0,
-     avx:((rnd()-.5)*(rag.blast?2:1.25)+dx*(rag.blast?.05:.20))*spin,
-     avy:((rnd()-.5)*(rag.blast?2:1.10)+dy*(rag.blast?.05:.16))*spin,
-     avz:((rnd()-.5)*(rag.blast?2:1.25)+dz*(rag.blast?.05:.20))*spin,
+     avx:((rnd()-.5)*(rag.blast?2:1.55)+dx*(rag.blast?.05:0))*spin,
+     avy:((rnd()-.5)*(rag.blast?2:1.45)+dy*(rag.blast?.05:0))*spin,
+     avz:((rnd()-.5)*(rag.blast?2:1.55)+dz*(rag.blast?.05:0))*spin,
      parentState:null
    });
  };
