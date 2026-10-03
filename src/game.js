@@ -50,7 +50,7 @@ new GLTFLoader().load("assets/walkers.glb?v=399",gltf=>{
 const cv=document.querySelector("#cv"),cross=document.querySelector("#crosshair"),healthText=document.querySelector("#healthText"),healthBar=document.querySelector("#healthBar"),ammoEl=document.querySelector("#ammo"),killsEl=document.querySelector("#kills"),headsEl=document.querySelector("#heads"),waveEl=document.querySelector("#wave"),remainingEl=document.querySelector("#remaining"),cashEl=document.querySelector("#cash"),weaponNameEl=document.querySelector("#weaponName"),grenadeEl=document.querySelector("#grenadeCount"),nukeEl=document.querySelector("#nukeCount"),nukeFlash=document.querySelector("#nukeFlash"),nukeShock=document.querySelector("#nukeShock"),shop=document.querySelector("#shop"),shopCash=document.querySelector("#shopCash"),shopNote=document.querySelector("#shopNote"),damage=document.querySelector("#damage"),hitmarker=document.querySelector("#hitmarker"),announce=document.querySelector("#announce"),big=document.querySelector("#big"),small=document.querySelector("#small"),death=document.querySelector("#death"),msg=document.querySelector("#msg"),startScreen=document.querySelector("#startScreen"),bossHUD=document.querySelector("#bossHUD"),bossFill=document.querySelector("#bossFill"),bossNameEl=document.querySelector("#bossName"),bossSubEl=document.querySelector("#bossSub"),sprintFill=document.querySelector("#sprintFill"),sprintState=document.querySelector("#sprintState"),scopeOverlay=document.querySelector("#scopeOverlay"),pauseBtn=document.querySelector("#pauseBtn"),pauseOverlay=document.querySelector("#pauseOverlay"),resumeGameBtn=document.querySelector("#resumeGame");
 let ac,master,audioOn=false,noiseBuffer=null;
 const M240_FIRE_SAMPLE_URL="./assets/240 firing.wav?v=434";
-let m240FireBuffer=null,m240FireLoad=null,m240FireSource=null,m240FireGain=null,m240LoopStart=.15,m240LoopEnd=12;
+let m240FireBuffer=null,m240FireLoopBuffer=null,m240FireLoad=null,m240FireSource=null,m240FireGain=null;
 function loadM240FireSample(){
  if(!ac)return Promise.resolve(null);
  if(m240FireBuffer)return Promise.resolve(m240FireBuffer);
@@ -60,22 +60,51 @@ function loadM240FireSample(){
    .then(buf=>ac.decodeAudioData(buf))
    .then(decoded=>{
      m240FireBuffer=decoded;
-     // v435: find the actual sustained gunfire region and loop only that. The
-     // source WAV has a finite quiet/fade tail; playing it straight through made
-     // long bursts disappear and then restart.
-     const data=decoded.getChannelData(0),sr=decoded.sampleRate,win=Math.max(64,Math.floor(sr*.040));
-     let peak=0,first=-1,last=-1;const rms=[];
+     // v437: do NOT loop the long recording. It contains a natural amplitude
+     // envelope, which is why sustained fire slowly fades away. Find the loudest,
+     // most level ~2.4-second plateau, copy only that plateau into a dedicated
+     // loop buffer, and loop the new buffer forever.
+     const data=decoded.getChannelData(0),sr=decoded.sampleRate;
+     const win=Math.max(128,Math.floor(sr*.050)),rms=[];
      for(let i=0;i<data.length;i+=win){
-       let sum=0,n=0;for(let j=i;j<Math.min(data.length,i+win);j++){const v=data[j];sum+=v*v;n++}
-       const r=Math.sqrt(sum/Math.max(1,n));rms.push(r);if(r>peak)peak=r;
+       let sum=0,n=0;
+       for(let j=i;j<Math.min(data.length,i+win);j++){const v=data[j];sum+=v*v;n++}
+       rms.push(Math.sqrt(sum/Math.max(1,n)));
      }
-     const threshold=Math.max(.008,peak*.17);
-     for(let i=0;i<rms.length;i++)if(rms[i]>=threshold){if(first<0)first=i;last=i}
-     const activeStart=first>=0?first*win/sr:0;
-     const activeEnd=last>=0?Math.min(decoded.duration,(last+1)*win/sr):decoded.duration;
-     m240LoopStart=Math.min(Math.max(.08,activeStart+.08),Math.max(.08,decoded.duration-.60));
-     m240LoopEnd=Math.max(m240LoopStart+.45,Math.min(decoded.duration-.06,activeEnd-.10));
-     if(m240LoopEnd>decoded.duration)m240LoopEnd=decoded.duration;
+     const span=Math.max(12,Math.min(rms.length-4,Math.round(2.40*sr/win)));
+     const minStart=Math.max(0,Math.round(.45*sr/win));
+     const maxStart=Math.max(minStart,Math.min(rms.length-span-1,Math.round((decoded.duration-.65)*sr/win)-span));
+     let bestStart=minStart,bestScore=-1,bestMean=0;
+     for(let a=minStart;a<=maxStart;a++){
+       let sum=0,sq=0;
+       for(let k=0;k<span;k++){const r=rms[a+k]||0;sum+=r;sq+=r*r}
+       const mean=sum/span,variance=Math.max(0,sq/span-mean*mean),sd=Math.sqrt(variance);
+       let first=0,last=0,q=Math.max(1,Math.floor(span/4));
+       for(let k=0;k<q;k++){first+=rms[a+k]||0;last+=rms[a+span-q+k]||0}
+       first/=q;last/=q;
+       const cv=sd/Math.max(.0001,mean),trend=Math.abs(last-first)/Math.max(.0001,mean);
+       const score=mean/(1+cv*2.5+trend*4.0);
+       if(score>bestScore){bestScore=score;bestStart=a;bestMean=mean}
+     }
+     const startFrame=Math.max(0,bestStart*win),loopFrames=Math.min(decoded.length-startFrame,span*win);
+     const loop=ac.createBuffer(decoded.numberOfChannels,loopFrames,sr);
+     for(let ch=0;ch<decoded.numberOfChannels;ch++){
+       const src=decoded.getChannelData(ch),dst=loop.getChannelData(ch);
+       dst.set(src.subarray(startFrame,startFrame+loopFrames));
+       // Blend the first 55 ms toward the matching tail so the wrap is smooth,
+       // without changing the level across the rest of the burst.
+       const xf=Math.min(Math.floor(sr*.055),Math.floor(loopFrames*.08));
+       for(let i=0;i<xf;i++){
+         const t=i/Math.max(1,xf-1),a=t*t*(3-2*t),tail=dst[loopFrames-xf+i];
+         dst[i]=tail*(1-a)+dst[i]*a;
+       }
+     }
+     m240FireLoopBuffer=loop;
+     console.log("CITY OUTBREAK: M240 stable loop",{
+       start:(startFrame/sr).toFixed(2),
+       duration:(loopFrames/sr).toFixed(2),
+       rms:bestMean.toFixed(4)
+     });
      return decoded
    })
    .catch(err=>{console.error("CITY OUTBREAK: M240 firing WAV failed to load",err);m240FireLoad=null;return null});
@@ -84,10 +113,10 @@ function loadM240FireSample(){
 function startM240FireAudio(){
  if(!audioOn||!ac)return false;
  if(m240FireSource)return true;
- if(!m240FireBuffer){loadM240FireSample();return false}
+ if(!m240FireLoopBuffer){loadM240FireSample();return false}
  const src=ac.createBufferSource(),g=ac.createGain(),t=ac.currentTime;
- src.buffer=m240FireBuffer;
- src.loop=true;src.loopStart=m240LoopStart;src.loopEnd=Math.min(m240FireBuffer.duration,m240LoopEnd);
+ src.buffer=m240FireLoopBuffer;
+ src.loop=true;src.loopStart=0;src.loopEnd=m240FireLoopBuffer.duration;
  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.78,t+.012);
  src.connect(g);g.connect(master);
  m240FireSource=src;m240FireGain=g;
@@ -95,7 +124,7 @@ function startM240FireAudio(){
    if(m240FireSource===src){m240FireSource=null;m240FireGain=null}
    try{src.disconnect();g.disconnect()}catch(_){}
  };
- src.start(t,m240LoopStart);return true;
+ src.start(t,0);return true;
 }
 function stopM240FireAudio(fade=.035){
  const src=m240FireSource,g=m240FireGain;if(!src)return;
