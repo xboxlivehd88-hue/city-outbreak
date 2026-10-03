@@ -1,3 +1,49 @@
+# LATEST LIVE STATE — 2026-10-03 — v445 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=445`
+- v445 cleanup commit: `05399cfe0948e008b2365e43ce2ed090e619e6e0`
+- v445 loader/deploy commit: `70b0831aabb8d96198881714aeae663ee18833cc`
+- v445 successful Pages run: `37151991481`
+- Current `src/game.js` content SHA: `a4e62edbbe4c5069c75c7d0324d99e174ae324cd`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v444 and reported: **"works great whats next"**.
+- v444 is therefore the latest user-confirmed gameplay baseline before this v445 dead-code cleanup.
+
+## v445 cleanup — removed unused exact-zone spawn helper
+
+Current-main audit proved:
+- `pointOnNewCitySpawnZone` occurred exactly once: its own definition.
+- The live spawn system uses `pointNearNewCitySpawnZone()` and `zombieSpawnConnectedToPlayer()`, both of which remain live and referenced.
+
+v445 removed only:
+- the six-line unused `pointOnNewCitySpawnZone(x,z,pad)` helper.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v444 contains only six deleted lines in `src/game.js` plus the v445 loader change in `index.html`;
+- `pointNearNewCitySpawnZone()` remains referenced three times;
+- `zombieSpawnConnectedToPlayer()` remains referenced twice;
+- native crawler conversion, PBD/ragdoll, M240 authored WAV path/state, grenade/spintop, spawn cap and other protected systems remain present;
+- M240 audio was not modified.
+
+## Continue cleanup carefully
+
+Remaining candidates previously seen with only their own current reference include `addBuilding` and `batchLoadedStiCars`. These are much larger than the helpers removed in v442-v445 and must be inspected individually before deletion. Prefer the smallest provably unreachable block next; do not touch active spawn/PBD/crawler logic merely for cleanup.
+
+---
+
 # LATEST LIVE STATE — 2026-10-03 — v444 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
