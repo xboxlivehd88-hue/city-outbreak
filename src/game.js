@@ -4592,6 +4592,86 @@ function poseLeglessCrawlerRig(z,walk=0,walk2=0,attack=0){
  if(lla)lla.rotation.set(.82+Math.max(0,walk)*.18,0,-.05);
  if(rla)rla.rotation.set(.82+Math.max(0,walk2)*.18,0,.05);
 }
+function crawlerMatColor(mat,fallback){
+ const m=Array.isArray(mat)?mat[0]:mat;
+ return m?.color?.isColor?m.color.getHex():fallback;
+}
+function captureCrawlerIdentity(z){
+ const kind=z?.kind||"shambler";
+ let skin=crawlerMatColor(z?.head?.material,0x7d796d),
+     shirt=crawlerMatColor(z?.torso?.material,0x4d5848),
+     pants=crawlerMatColor(z?.pelvis?.material,0x26292d),
+     eye=kind==="radiated"?0x52ff62:(kind==="infected"||kind==="acidic"?0xff3e3e:0xffe34e),
+     aura=0;
+
+ // The imported walker and Green Guy visuals are the identities the user sees,
+ // so give their crawler forms explicit matching family palettes rather than the
+ // hidden procedural fallback colors.
+ if(z?.walkerVisual){
+   skin=0xb89478;shirt=0x3567a3;pants=0x172845;eye=0xffd85a;
+ }
+ if(z?.radiatedGreenVisual||kind==="radiated"){
+   skin=0x78a64e;shirt=0x315a8e;pants=0x1b314d;eye=0x52ff62;aura=0x46ff59;
+ }else if(kind==="infected"){
+   skin=0x777164;shirt=0x5b3030;pants=0x252a31;eye=0xff3e3e;aura=0x8f1616;
+ }else if(kind==="acidic"){
+   skin=0x71805e;shirt=0x4b5d2d;pants=0x252b25;eye=0xff3e3e;aura=0x78a629;
+ }else if(kind==="sprinter"){
+   shirt=0x4a505b;pants=0x202733;
+ }
+ return{kind,skin,shirt,pants,eye,aura,walker:!!z?.walkerVisual,green:!!z?.radiatedGreenVisual};
+}
+function tintCrawlerMaterial(obj,hex){
+ if(!obj)return;
+ const mats=Array.isArray(obj.material)?obj.material:[obj.material];
+ for(const m of mats){if(m?.color?.isColor){m.color.setHex(hex);m.needsUpdate=true}}
+}
+function applyCrawlerIdentity(crawler,id){
+ if(!crawler||!id)return;
+ crawler.crawlerSourceKind=id.kind;
+ crawler.crawlerSourceWalker=id.walker;
+ crawler.crawlerSourceGreen=id.green;
+
+ tintCrawlerMaterial(crawler.head,id.skin);
+ tintCrawlerMaterial(crawler.neck,id.skin);
+ tintCrawlerMaterial(crawler.jaw,id.skin);
+ tintCrawlerMaterial(crawler.torso,id.shirt);
+ tintCrawlerMaterial(crawler.chest,id.shirt);
+ tintCrawlerMaterial(crawler.pelvis,id.pants);
+ tintCrawlerMaterial(crawler.jacket,id.shirt);
+ tintCrawlerMaterial(crawler.shoulderL,id.shirt);
+ tintCrawlerMaterial(crawler.shoulderR,id.shirt);
+
+ // Keep hands/forearms readable as the same corpse skin while the crawler drags.
+ for(const arm of [crawler.armL,crawler.armR]){
+   if(!arm)continue;
+   arm.traverse(o=>{
+     if(!o.isMesh||!o.material)return;
+     const mats=Array.isArray(o.material)?o.material:[o.material];
+     for(const m of mats){
+       if(!m?.color?.isColor)continue;
+       // Leave very dark wound/detail materials alone; recolor the visible flesh.
+       const lum=(m.color.r+m.color.g+m.color.b)/3;
+       if(lum>.16){m.color.setHex(id.skin);m.needsUpdate=true}
+     }
+   });
+ }
+ if(crawler.ownedMaterials?.[0]?.color?.isColor){
+   crawler.ownedMaterials[0].color.setHex(id.eye);
+   crawler.ownedMaterials[0].needsUpdate=true;
+ }
+
+ if(id.aura){
+   const geo=new THREE.SphereGeometry(.34,8,6);
+   const mat=new THREE.MeshBasicMaterial({color:id.aura,transparent:true,opacity:.10,depthWrite:false});
+   const glow=new THREE.Mesh(geo,mat);
+   glow.name="CrawlerIdentityAura";glow.scale.set(1.12,.72,1.20);glow.position.set(0,.62,-.10);
+   glow.userData.visualOnly=true;glow.raycast=()=>{};crawler.g.add(glow);
+   crawler.crawlerIdentityAura=glow;
+   if(crawler.ownedGeometries)crawler.ownedGeometries.push(geo);
+   if(crawler.ownedMaterials)crawler.ownedMaterials.push(mat);
+ }
+}
 function convertLeglessToCrawler(z){
  if(!z||z.dead||z.kind==="boss"||z.kind==="crawler"||z.hp<=0||!z.leftLegDetached||!z.rightLegDetached)return;
 
@@ -4602,6 +4682,7 @@ function convertLeglessToCrawler(z){
  const oldIndex=zombies.indexOf(z);
  if(oldIndex<0)return;
 
+ const identity=captureCrawlerIdentity(z);
  const x=z.g.position.x,zp=z.g.position.z,yaw=z.g.rotation.y,
        hp=Math.max(1,z.hp),maxHP=Math.max(hp,z.maxHP||hp),
        oldGround=Number.isFinite(z.groundY)?z.groundY:(z.g.position.y||0),
@@ -4617,6 +4698,7 @@ function convertLeglessToCrawler(z){
  crawler.cool=oldCool;crawler.groan=oldGroan;crawler.phase=oldPhase;
  crawler.navForceRepath=true;crawler.navCheckT=0;crawler.think=0;
  crawler.stagger=.08;
+ applyCrawlerIdentity(crawler,identity);
 
  zombies[oldIndex]=crawler;
  releaseZombieVisual(z);
