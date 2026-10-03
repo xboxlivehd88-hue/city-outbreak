@@ -586,57 +586,6 @@ function addFireEscape(x,y,z,h,side,p=scene){
    box(.08,1.0,.08,M(0x2a2c2e,.65),x+side*.06,yy-.45,z+.55,p);
  }
 }
-function addBuilding(w,h,d,x,z,base,variant){
- const style=variant%8,mat=facadeMaterial(base,variant),q=box(w,h,d,mat,x,h/2,z);q.userData.cityMain=true;
- buildingColliders.push({x,z,hx:w/2,hz:d/2});
- const roof=M(style===1?0x2f3940:style===3?0x5e4d42:style===5?0x626867:0x505556,.94);
- box(w*.96,.18,d*.96,roof,x,h+.09,z);
-
- // Setback massing for taller towers to feel more like NYC / Chicago.
- if(h>23){
-   box(w*.74,Math.max(3.4,h*.18),d*.74,facadeMaterial(base,variant+21),x,h+Math.max(1.7,h*.09),z);
-   if(h>34)box(w*.50,Math.max(2.8,h*.13),d*.50,facadeMaterial(base,variant+31),x,h+Math.max(5.0,h*.19),z);
- }
-
- // Ground-floor street wall / storefronts.
- if(style===0||style===3||style===7){
-   const faceX=x-(Math.sign(x)||1)*(w*.5+.05);
-   for(let k=-1;k<=1;k++)box(.18,2.2,2.2,M(0x1f2122,.34),faceX,1.25,z+k*2.7,scene);
-   box(.16,.32,d*.70,M(style===3?0x7d3430:0x8b2f28,.55),faceX,3.0,z,scene);
- }
-
- // Facade flavor.
- if(style===0){
-   box(w*.90,.24,d*.96,M(0x85776a,.82),x,h*.16,z);
-   box(w*.94,.20,d*.96,M(0x85776a,.82),x,h*.66,z);
-   if(h>18)addFireEscape(x-(Math.sign(x)||1)*(w*.5+.08),0,z,h*.75,-Math.sign(x)||-1,scene);
- }else if(style===1){
-   for(let yy=h*.20;yy<h*.94;yy+=h*.20)box(w*1.01,.11,d*1.01,M(0x92a0aa,.38),x,yy,z);
-   box(w*.42,.65,d*.32,M(0x354048,.72),x+w*.12,h+.38,z);
- }else if(style===2){
-   box(w*.96,.32,d*.98,M(0xb29f86,.72),x,h*.18,z);
-   box(1.2,2.3,1.2,M(0x54585b,.74),x-w*.22,h+1.2,z-d*.12);
- }else if(style===3){
-   for(let k=-1;k<=1;k++)box(.45,.16,.9,M(0x8d7967,.7),x-(Math.sign(x)||1)*(w*.49),.95,z+k*2.2,scene);
-   addFireEscape(x-(Math.sign(x)||1)*(w*.5+.08),0,z,h*.62,-Math.sign(x)||-1,scene);
- }else if(style===4){
-   box(w*.88,1.0,d*.84,facadeMaterial(base,variant+53),x,h+.6,z);
- }else if(style===5){
-   for(let yy=2;yy<h;yy+=3.3)box(w*.98,.16,d*.98,M(0x767d7b,.46),x,yy,z);
- }else if(style===6){
-   box(w*.78,h*.15,d*.76,facadeMaterial(base,variant+41),x,h+h*.08,z);
-   if(h>24&&variant%2===0)makeWaterTower(x+w*.10,h+.25,z-d*.12,scene);
- }else{
-   box(w*.92,.48,d*.26,M(0x2e3233,.82),x,h*.34,z-d*.39);
-   box(2.2,.42,.18,M(0x7e322c,.7),x,h*.33,z-d*.50);
-   if(h>20&&variant%3===0)makeWaterTower(x-w*.12,h+.15,z+w*.05,scene);
- }
-
- // Rooftop mechanicals / water towers.
- if(variant%3===0)box(Math.max(1.1,w*.16),.7,Math.max(1.1,d*.16),M(0x52595a,.72),x+w*.16,h+.48,z-d*.14);
- if(variant%5===0)box(Math.max(.9,w*.12),1.0,Math.max(.9,d*.12),M(0x474c4c,.72),x-w*.18,h+.65,z+d*.15);
- return q
-}
 
 const CITY_COLLISION_BUCKET=4.0;
 const cityCollisionBuckets=new Map();
