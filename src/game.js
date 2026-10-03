@@ -2880,10 +2880,10 @@ function syncRadiatedGreenGuy(z,dt=0){
  if(z.dead&&z.ragdoll?.bodyPbd?.holder===h)return;
  if(z.dead&&syncCustomVisualFromRagdoll(z,bones,h,"radiatedVisibleRagdollBase"))return;
  if(z.leglessCrawler){
-   // v428: crawler stays chest-down and low to the pavement. The previous
-   // negative root pitch rolled the amputated torso backward and pointed both
-   // arms into the sky.
-   h.position.y=-.30;h.rotation.x=-1.22;h.rotation.z=step*.018*blend;
+   // v430: never rotate the whole skinned holder to make a crawler. Doing that
+   // orbited the body around its model pivot and produced the upside-down/blob
+   // failures seen in v428-v429. Keep the holder level; the skeleton folds prone.
+   h.position.y=-.68;h.rotation.x=0;h.rotation.z=step*.012*blend;
  }else{
    h.position.y=Math.abs(step)*.028*blend;
    h.rotation.x=-.035*blend-attack*.025;
@@ -2899,12 +2899,18 @@ function syncRadiatedGreenGuy(z,dt=0){
  if(head)head.rotation.set(.035*blend,-step*.055*blend,step*.020*blend);
  const armSwing=step*.24*blend,attackReach=attack*.28;
  if(z.leglessCrawler){
-   // v397: crawler pulls itself forward with alternating arms instead of freezing.
+   // v430: hips carry the torso into a true belly-down crawl while the holder
+   // stays level. Small spine/neck counter-rotations keep the head looking ahead.
    const crawlL=Math.sin(p),crawlR=Math.sin(p+Math.PI);
-   if(lua){radiatedArmTarget.set(-.30,-.34,-.92+crawlL*.14).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
-   if(rua){radiatedArmTarget.set(.30,-.34,-.92+crawlR*.14).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
-   if(lla)lla.rotation.set(.72+Math.max(0,crawlL)*.20,0,-.07);
-   if(rla)rla.rotation.set(.72+Math.max(0,crawlR)*.20,0,.07);
+   if(hips)hips.rotation.set(1.26,step*.018*blend,0);
+   if(spine)spine.rotation.set(-.12+Math.abs(step)*.018,0,step*.018*blend);
+   if(chest)chest.rotation.set(-.08+attack*.045,0,-step*.022*blend);
+   if(neck)neck.rotation.set(-.34,0,0);
+   if(head)head.rotation.set(-.24+attack*.03,-step*.035*blend,step*.018*blend);
+   if(lua){radiatedArmTarget.set(-.30,-.30,-.94+crawlL*.14).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
+   if(rua){radiatedArmTarget.set(.30,-.30,-.94+crawlR*.14).normalize();rua.quaternion.setFromUnitVectors(radiatedArmRestR,radiatedArmTarget)}
+   if(lla)lla.rotation.set(.82+Math.max(0,crawlL)*.18,0,-.06);
+   if(rla)rla.rotation.set(.82+Math.max(0,crawlR)*.18,0,.06);
  }else{
    // Keep both arms clearly outside the torso while walking upright.
    if(lua){radiatedArmTarget.set(-.36,-.93,armSwing-attackReach).normalize();lua.quaternion.setFromUnitVectors(radiatedArmRestL,radiatedArmTarget)}
@@ -3178,18 +3184,18 @@ function syncBasicWalkerVisual(z,dt=0){
        lfoot=bones.get("L_Foot"),rfoot=bones.get("R_Foot");
 
  if(z.leglessCrawler){
-   // v428: prone drag posture. Keep the torso long and low, with forearms
-   // reaching along the street instead of both arms raised overhead.
-   holder.position.y=-.28;holder.rotation.x=-1.22;holder.rotation.z=s*.020*walk;
-   if(hips)hips.rotation.set(-.16,0,0);
-   if(spine)spine.rotation.set(.10+Math.abs(s)*.020,0,s*.022);
-   if(chest)chest.rotation.set(.16+attack*.06,0,-s*.030);
+   // v430: keep the GLB holder level and lower the hip pivot close to the
+   // pavement. The hip/spine chain, not the whole model root, creates the crawl.
+   holder.position.y=-.62;holder.rotation.x=0;holder.rotation.z=s*.012*walk;
+   if(hips)hips.rotation.set(1.24,s*.016*walk,0);
+   if(spine)spine.rotation.set(-.12+Math.abs(s)*.018,0,s*.018*walk);
+   if(chest)chest.rotation.set(-.08+attack*.045,0,-s*.022*walk);
    if(neck)neck.rotation.set(-.34,0,0);
-   if(head)head.rotation.set(-.14+attack*.035,0,s*.030);
-   if(lua)lua.rotation.set(.18+s*.16,0,.18);
-   if(rua)rua.rotation.set(.18-s*.16,0,-.18);
-   if(lla)lla.rotation.set(.74+Math.max(0,s)*.20,0,.05);
-   if(rla)rla.rotation.set(.74+Math.max(0,-s)*.20,0,-.05);
+   if(head)head.rotation.set(-.24+attack*.03,-s*.035*walk,s*.016*walk);
+   if(lua)lua.rotation.set(.26+s*.15,0,.18);
+   if(rua)rua.rotation.set(.26-s*.15,0,-.18);
+   if(lla)lla.rotation.set(.82+Math.max(0,s)*.18,0,.05);
+   if(rla)rla.rotation.set(.82+Math.max(0,-s)*.18,0,-.05);
    return;
  }
 
@@ -4539,15 +4545,15 @@ function updateLeglessCrawlerHitboxes(z){
    crawlerHitTmpB.subVectors(chest,hips);const len=Math.max(.34,crawlerHitTmpB.length());
    h.torso.visible=true;h.torso.position.copy(hips).add(chest).multiplyScalar(.5);
    h.torso.quaternion.setFromUnitVectors(crawlerHitYAxis,crawlerHitTmpB.normalize());
-   h.torso.scale.set(.58,len+.16,.42);
+   h.torso.scale.set(.54,len+.10,.34);
  }else{
    h.torso.visible=true;h.torso.position.set(0,.42,-.28);h.torso.quaternion.identity();h.torso.scale.set(.62,.42,.72);
  }
  const hp=bonePos("Head");
- if(hp){h.head.visible=true;h.head.position.copy(hp);h.head.scale.setScalar(.23)}
+ if(hp){h.head.visible=true;h.head.position.copy(hp);h.head.scale.setScalar(.215)}
  else{h.head.visible=true;h.head.position.set(0,.40,-.78);h.head.scale.setScalar(.22)}
- segment(h.leftUpper,"L_UpperArm","L_LowerArm",.20,.22,z.leftArmDetached);
- segment(h.rightUpper,"R_UpperArm","R_LowerArm",.20,.22,z.rightArmDetached);
+ segment(h.leftUpper,"L_UpperArm","L_LowerArm",.18,.19,z.leftArmDetached);
+ segment(h.rightUpper,"R_UpperArm","R_LowerArm",.18,.19,z.rightArmDetached);
  const lh=crawlerBone(z,"L_Hand"),rh=crawlerBone(z,"R_Hand");
  if(lh)segment(h.leftLower,"L_LowerArm","L_Hand",.18,.20,z.leftArmDetached);
  else{
@@ -4561,24 +4567,24 @@ function updateLeglessCrawlerHitboxes(z){
 function poseLeglessCrawlerRig(z,walk=0,walk2=0,attack=0){
  if(!z||!z.leglessCrawler||!z.rigVisual)return;
  const rig=z.rigVisual;
- // Keep the original zombie identity, but lower and pitch that same body into a
- // weight-bearing crawl. The severed upper-leg bones remain hidden.
- rig.position.y=-.30;
- rig.rotation.x=-1.22;
+ // Keep the original zombie identity. The holder remains level and low while
+ // the hip/spine chain folds the upper body into a weight-bearing crawl.
+ rig.position.y=-.62;
+ rig.rotation.x=0;
  rig.rotation.z=0;
  const hips=rigBone(z,"Hips"),spine=rigBone(z,"Spine"),chest=rigBone(z,"Chest"),
        neck=rigBone(z,"Neck"),headB=rigBone(z,"Head"),
        lua=rigBone(z,"L_UpperArm"),rua=rigBone(z,"R_UpperArm"),
        lla=rigBone(z,"L_LowerArm"),rla=rigBone(z,"R_LowerArm");
- if(hips)hips.rotation.set(-.16,0,0);
- if(spine)spine.rotation.set(.10+Math.abs(walk)*.020,0,walk*.022);
- if(chest)chest.rotation.set(.16+attack*.06,0,-walk*.030);
+ if(hips)hips.rotation.set(1.24,walk*.016,0);
+ if(spine)spine.rotation.set(-.12+Math.abs(walk)*.018,0,walk*.018);
+ if(chest)chest.rotation.set(-.08+attack*.045,0,-walk*.022);
  if(neck)neck.rotation.set(-.34,0,0);
- if(headB)headB.rotation.set(-.14+attack*.035,0,walk*.030);
- if(lua)lua.rotation.set(.18+walk*.16,0,-.18);
- if(rua)rua.rotation.set(.18+walk2*.16,0,.18);
- if(lla)lla.rotation.set(.74+Math.max(0,walk)*.20,0,-.05);
- if(rla)rla.rotation.set(.74+Math.max(0,walk2)*.20,0,.05);
+ if(headB)headB.rotation.set(-.24+attack*.03,-walk*.035,walk*.016);
+ if(lua)lua.rotation.set(.26+walk*.15,0,-.18);
+ if(rua)rua.rotation.set(.26+walk2*.15,0,.18);
+ if(lla)lla.rotation.set(.82+Math.max(0,walk)*.18,0,-.05);
+ if(rla)rla.rotation.set(.82+Math.max(0,walk2)*.18,0,.05);
 }
 function convertLeglessToCrawler(z){
  if(!z||z.dead||z.kind==="boss"||z.leglessCrawler||z.hp<=0||!z.leftLegDetached||!z.rightLegDetached)return;
