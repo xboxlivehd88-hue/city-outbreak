@@ -5234,7 +5234,6 @@ function openShop(){
  shop.style.cursor="default";
  ui();
 }
-function toggleShop(){if(!between)return;openShop()}
 function buy(type){
  const needUnlock={rifleAmmo:"rifle",smgAmmo:"smg",shotgunAmmo:"shotgun",pistolAmmo:"pistol",dmrAmmo:"dmr",grenadeLauncherAmmo:"grenadeLauncher",m240Ammo:"m240",awmAmmo:"awm"};
  if(needUnlock[type]&&!unlocked[needUnlock[type]]){show("UNLOCK "+weaponDefs[needUnlock[type]].name+" FIRST");return}
