@@ -1,3 +1,53 @@
+# M4 TUNING PHASE — 2026-10-06 — v474 — ACOG ADS VERTICAL EYE-LINE CORRECTION — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=474`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v474 ADS vertical-fix commit: `58c5605ee155031b3360943a5e4670cdf211a267`
+- v474 loader commit: `6f3511eceaf966f0a6909648820a7d059eb71318`
+- Current `src/game.js` SHA: `0bbc70d1a44458a4d74d06a0697f937cc4778e50`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v473 result
+
+User said true model ADS was a **really good first try**, but the ACOG sits much too high.
+
+From the screenshot:
+- horizontal alignment is already close;
+- rear-lens distance / apparent size is already close;
+- the optic center is roughly 200 px above screen center at 1920×1080.
+
+## v474 fix
+
+Only the calculated M4 ADS Y target changes:
+- adds `adsEyeYCorrection=-.034`.
+
+Everything else remains:
+- same real ACOG geometry;
+- same ACOG material fix;
+- same rear-lens distance (`~0.18`);
+- same rifle FOV (48);
+- same v470 hip placement;
+- same model-based ADS behavior;
+- same recoil/damage/reload/sound.
+
+## Next test
+
+Check only:
+- vertical centering of the real ACOG;
+- horizontal centering stays good;
+- eye distance stays good;
+- hip placement remains unchanged.
+
+If more tuning is needed, adjust only the ADS target from the next screenshot.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v473 — TRUE MODEL-BASED ACOG ADS — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
