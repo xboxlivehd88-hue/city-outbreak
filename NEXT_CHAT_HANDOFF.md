@@ -1,3 +1,57 @@
+# M4 TUNING PHASE — 2026-10-06 — v466 — NEW M4 GLB FULL VIEWMODEL REPLACEMENT — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=466`
+- New M4 asset: `assets/ar-15_style_rifle.glb`
+- Asset upload commit: `07f513f3e57a018f655be2ae73d642c5f78a66ee`
+- v466 model-swap commit: `a9ca029ecc65154f96a100397a1953346dc279ae`
+- v466 loader commit: `9859c166028eb5232c58b2acfd1472a99bb219e5`
+- v466 Pages run: `37531314757` success
+- Current `src/game.js` SHA: `bb34c8b8faddcfd457d8690b7052155eb9528137`
+- Protected recovery remains **v324** unchanged.
+
+## What changed
+
+The old M4 runtime GLB:
+- `assets/classic_m4.glb.glb`
+
+was replaced in the M4 loader by:
+- `assets/ar-15_style_rifle.glb?v=466`
+
+Only the model source URL changed.
+
+The old GLB file still exists in `assets` for rollback but is no longer referenced or loaded by the game.
+
+The temporary M4 testing loadout remains:
+- player starts with M4;
+- reset/restart starts with M4;
+- M4 unlocked;
+- M17 remains unlocked.
+
+## Important: first test before tuning
+
+Do not immediately retune transforms.
+
+The first v466 test should establish how the new GLB sits using the old M4 values:
+- size;
+- orientation;
+- hip-fire position;
+- ADS alignment;
+- reload/magazine visual.
+
+Existing scale/position/ADS/recoil/damage/ammo/sound/reload logic were intentionally left unchanged.
+
+Current magazine lookup still expects `Magazine_m4_0` or `Magazine`. If the new GLB uses another node name, fix that separately only after observing the reload test.
+
+## Next step
+
+Ask the user what is visually wrong with v466, then make one M4-only adjustment at a time. Do not touch unrelated weapons/game systems.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v465 — TEMPORARY M4 STARTING LOADOUT — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
