@@ -2030,58 +2030,42 @@ function rebuildGun(){
      // Normalize the replacement GLB from its authored bounds into the established
      // first-person M4 length. The previous 5.15 scale was specific to the old asset.
      const m4Root=m4ModelTemplate.clone(true);m4Root.name="ExternalM4Carbine";
-     m4Root.updateMatrixWorld(true);
+     // The GLB's original ACOG geometry is valid. Its exported optic material uses
+     // alpha blending plus very strong emissive output, which looks correct in
+     // Sketchfab but causes sorting/glow artifacts in Three.js first person.
      const m4RawBox=new THREE.Box3().setFromObject(m4Root);
      const m4RawSize=m4RawBox.getSize(new THREE.Vector3());
      const m4RawLength=Math.max(m4RawSize.x,m4RawSize.y,m4RawSize.z);
-
-     // The replacement GLB's supplied optic renders badly in first person. Remove
-     // only the imported top/rear optic assembly and mount a clean compact optic
-     // on the same rifle. Prefer semantic node names, with a bounded spatial fallback
-     // for exporters that replaced useful node names with generic mesh IDs.
-     const m4Meshes=[];m4Root.traverse(o=>{if(o.isMesh)m4Meshes.push(o)});
-     let importedOptic=m4Meshes.filter(o=>/(scope|optic|acog|lens|eyepiece|eyecup|reticle|sight)/i.test(o.name||""));
-     if(!importedOptic.length&&m4RawSize.y>1e-5&&m4RawSize.z>1e-5){
-       const tmpBox=new THREE.Box3(),tmpCenter=new THREE.Vector3(),tmpSize=new THREE.Vector3();
-       importedOptic=m4Meshes.filter(o=>{
-         tmpBox.setFromObject(o);tmpBox.getCenter(tmpCenter);tmpBox.getSize(tmpSize);
-         const yf=(tmpCenter.y-m4RawBox.min.y)/m4RawSize.y;
-         const zf=(tmpCenter.z-m4RawBox.min.z)/m4RawSize.z;
-         return yf>.62&&zf>.28&&zf<.92&&Math.max(tmpSize.x,tmpSize.y,tmpSize.z)>m4RawLength*.025;
-       });
-     }
-     for(const o of importedOptic)o.visible=false;
-
-     const cleanBaseBox=new THREE.Box3().makeEmpty(),tmpVisibleBox=new THREE.Box3();
-     for(const o of m4Meshes)if(o.visible){tmpVisibleBox.setFromObject(o);cleanBaseBox.union(tmpVisibleBox)}
-     if(cleanBaseBox.isEmpty())cleanBaseBox.copy(m4RawBox);
-     const cleanBaseCenter=cleanBaseBox.getCenter(new THREE.Vector3());
-     const opticGroup=new THREE.Group();opticGroup.name="M4CleanOptic";
-     const opticLen=Math.max(m4RawLength*.16,1e-4),opticRad=Math.max(m4RawLength*.036,1e-4);
-     const opticZ=cleanBaseBox.max.z-m4RawLength*.40,opticY=cleanBaseBox.max.y+m4RawLength*.055,opticX=cleanBaseCenter.x;
-     const opticMat=new THREE.MeshStandardMaterial({color:0x141719,roughness:.48,metalness:.62});
-     const lensMat=new THREE.MeshStandardMaterial({color:0x29443d,roughness:.16,metalness:.08,transparent:true,opacity:.74,side:THREE.DoubleSide});
-     const opticBody=new THREE.Mesh(new THREE.CylinderGeometry(opticRad*.90,opticRad,opticLen,18),opticMat);
-     opticBody.rotation.x=Math.PI/2;opticBody.position.set(opticX,opticY,opticZ);opticGroup.add(opticBody);
-     const lensGeo=new THREE.CircleGeometry(opticRad*.77,20);
-     for(const dz of [-opticLen*.505,opticLen*.505]){
-       const lens=new THREE.Mesh(lensGeo.clone(),lensMat);lens.position.set(opticX,opticY,opticZ+dz);opticGroup.add(lens);
-     }
-     const mount=new THREE.Mesh(new THREE.BoxGeometry(opticRad*1.10,opticRad*.72,opticLen*.30),opticMat);
-     mount.position.set(opticX,opticY-opticRad*1.02,opticZ);opticGroup.add(mount);
-     opticGroup.traverse(o=>{o.userData.externalWeaponAsset=false;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
-     m4Root.add(opticGroup);
-
      m4Root.scale.setScalar(m4RawLength>1e-5?3.45/m4RawLength:1);
      m4Root.rotation.set(THREE.MathUtils.degToRad(-8),0,THREE.MathUtils.degToRad(-6));
      m4Root.position.set(.54,-.56,-1.48);m4ViewRoot=m4Root;
 
      m4AdsOccluders=[];
      m4Root.traverse(o=>{
-       o.userData.externalWeaponAsset=o.userData.externalWeaponAsset!==false;
+       o.userData.externalWeaponAsset=true;
        if(o.isMesh){
          o.castShadow=false;o.receiveShadow=false;
          const n=(o.name||"").toLowerCase();
+         const mats=Array.isArray(o.material)?o.material:[o.material];
+         const isOriginalAcog=n==="acog_optic.001_0"||n.includes("acog")||mats.some(m=>(m?.name||"").toLowerCase()==="optic.001");
+         if(isOriginalAcog){
+           const fixed=mats.map(m=>{
+             if(!m)return m;
+             const c=m.clone();
+             c.transparent=false;
+             c.opacity=1;
+             c.depthWrite=true;
+             c.depthTest=true;
+             c.alphaTest=.12;
+             if(c.emissive)c.emissive.setHex(0xffffff);
+             if("emissiveIntensity" in c)c.emissiveIntensity=.15;
+             c.side=THREE.FrontSide;
+             c.needsUpdate=true;
+             return c;
+           });
+           o.material=Array.isArray(o.material)?fixed:fixed[0];
+           o.renderOrder=0;
+         }
          if(n.includes("stock")||n.includes("butt"))m4AdsOccluders.push(o);
        }
      });
