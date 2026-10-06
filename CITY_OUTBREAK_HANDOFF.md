@@ -1,3 +1,116 @@
+# M4 TUNING PHASE — 2026-10-06 — v473 — TRUE MODEL-BASED ACOG ADS — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=473`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v473 true-ADS gameplay commit: `06944eb7cc3cd11e9fa7a6dbe816d727fd711cc8`
+- v473 loader commit: `c909e73b25f33ee2617f981ed731bced8cf389c9`
+- Current `src/game.js` SHA: `e5bcc7fe28a5579dd66eeb868f4b65a9fa698978`
+- Protected recovery remains **v324** unchanged.
+
+## User-confirmed v472 result
+
+User tested the real GLB ACOG after the Three.js material correction and said: **"perfect"**.
+
+That means:
+- original ACOG geometry from the uploaded GLB is approved;
+- v470 overall M4 placement remains approved;
+- do not replace the optic geometry;
+- do not move the hip-fire pose unless the user explicitly asks.
+
+## User's v473 request
+
+User wants true ADS using the actual modeled ACOG:
+- bring the scope to the player's eye;
+- keep the real M4 visible;
+- look through the modeled optic;
+- stop using the old fake/full-screen M4 scope overlay.
+
+## v473 change — actual model-based ADS
+
+The old M4 ADS path was still legacy behavior:
+- right-click showed `scopeOverlay`;
+- the complete gun was hidden while aiming;
+- the player never actually looked through the modeled ACOG.
+
+v473 removes that behavior **for the M4 only**.
+
+### Real ACOG alignment
+
+The game now finds the actual GLB node:
+- `acog`
+- fallback mesh: `acog_optic.001_0`
+
+At rebuild time it:
+1. measures the real ACOG bounding box;
+2. finds the optic center;
+3. uses the existing normalized M4 scale;
+4. computes a full-ADS root target that centers the optic on the camera;
+5. places the rear of the ACOG about **0.18 first-person units in front of the camera**.
+
+This means the final ADS position is based on the actual uploaded GLB geometry instead of hand-tuned guesses.
+
+### M4 overlay removed
+
+For M4:
+- `scopeOverlay` no longer opens;
+- `gun.visible` stays true while aiming;
+- crosshair still fades out while aiming;
+- current rifle ADS FOV remains `48`.
+
+AWM behavior is unchanged:
+- AWM still uses the full-screen scope overlay;
+- AWM still hides its viewmodel while scoped.
+
+### Hip placement preserved
+
+v470 hip pose remains exactly:
+- X `.54`
+- Y `-.56`
+- Z `-1.48`
+- pitch `-8°`
+- roll `-6°`
+
+As `aimBlend` approaches 1, M4 root position now blends to the dynamically calculated ACOG eye-alignment target.
+
+M4 rotation still blends to zero at full ADS.
+
+## Intentionally unchanged
+
+v473 does not change:
+- v472 ACOG material fix;
+- v470 hip placement;
+- rifle scale normalization;
+- recoil;
+- damage/spread/fire rate;
+- ammo;
+- sounds;
+- reload choreography;
+- temporary M4 starting loadout;
+- other weapons;
+- AWM scope behavior.
+
+Verification:
+- exact v473 gameplay diff is limited to M4 ACOG ADS target calculation and removal of legacy M4 overlay/hide behavior;
+- full `src/game.js` syntax parse passed.
+
+## v473 test focus
+
+User should test right-click ADS and report:
+1. does the real ACOG move to the eye smoothly;
+2. is the optic centered;
+3. can the player see through the modeled scope naturally;
+4. is the rear lens too close/far;
+5. is FOV 48 comfortable or should magnification be stronger/weaker;
+6. hip placement still looks exactly like approved v470/v472.
+
+Do not change hip placement while tuning ADS.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v472 — ORIGINAL GLB ACOG RESTORED / THREE.JS MATERIAL FIX — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
