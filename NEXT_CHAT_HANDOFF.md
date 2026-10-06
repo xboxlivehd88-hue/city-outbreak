@@ -1,3 +1,65 @@
+# M4 TUNING PHASE — 2026-10-06 — v465 — TEMPORARY M4 STARTING LOADOUT — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live / baseline state
+
+- Loader: `./src/game.js?v=465`
+- v465 gameplay commit: `1a4bb5091c4d877524f7af81153ff6ccf3a86757`
+- v465 loader commit: `c3ba421d4d0acdb3ee6ee6785b7587853623cc7f`
+- Current `src/game.js` SHA: `1c3f27a55c4e315ce955192d4eee7890f09123ae`
+- **v464 is the latest user-confirmed good baseline before the M4 tuning phase.**
+- Protected recovery remains **v324** unchanged.
+
+## User's current goal
+
+The user wants to fix/tune the M4.
+
+For this phase, they explicitly want the player to **spawn with the M4** until they feel the weapon is in a good spot.
+
+After that work begins, the user plans to upload a **new GLB file to replace the old M4 model**.
+
+## v465 change
+
+Temporary testing loadout only:
+- initial state now starts with `weapon="rifle"`;
+- reset/restart also starts with `weapon="rifle"`;
+- `unlocked.rifle=true` in both starting-loadout definitions;
+- M17 remains unlocked.
+
+So every new run/restart starts holding the M4 while still allowing the player to switch to the M17.
+
+No M4 model, ADS, recoil, damage, ammo, sound, reload, or firing behavior changed.
+
+Verification:
+- full `src/game.js` syntax parse passed;
+- diff is limited to the two starting-loadout definitions;
+- unrelated systems are untouched.
+
+## Next work rule
+
+Keep M4 as the temporary starting weapon until the user explicitly says M4 tuning is finished.
+
+When the user uploads the replacement M4 GLB:
+1. inspect the actual uploaded asset/current repo;
+2. identify the exact filename/path;
+3. read the current M4 model-loading and transform code;
+4. replace only the M4 model first;
+5. let the user test before retuning transforms/ADS/recoil unless replacement itself requires minimal alignment.
+
+Do not guess asset names or work from an old model assumption.
+
+## v465 test focus
+
+Confirm:
+- new game starts with M4;
+- restart/reset starts with M4;
+- M4 otherwise behaves exactly as before;
+- M17 remains switchable;
+- no unrelated regressions.
+
+---
+
 # CLEANUP COMPLETE — 2026-10-06 — v464 USER-CONFIRMED GOOD — READ THIS FIRST
 
 This section supersedes older cleanup-status sections below. **GitHub main is authoritative.**
