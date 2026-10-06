@@ -2042,7 +2042,7 @@ function rebuildGun(){
        m4Root.updateMatrixWorld(true);
        const acogBox=new THREE.Box3().setFromObject(m4AcogNode);
        const acogCenter=acogBox.getCenter(new THREE.Vector3());
-       const rifleAdsScale=.96,desiredRearLensZ=-.18,adsEyeYCorrection=-.034;
+       const rifleAdsScale=.96,desiredRearLensZ=-.18,adsEyeYCorrection=-.042;
        m4AdsRootTarget.set(
          -ADS.rifle.x-m4RootScale*acogCenter.x,
          -ADS.rifle.y/rifleAdsScale-m4RootScale*acogCenter.y+adsEyeYCorrection,
@@ -2069,12 +2069,11 @@ function rebuildGun(){
              const c=m.clone();
              c.transparent=true;
              c.opacity=1;
-             c.depthWrite=true;
+             c.depthWrite=false;
              c.depthTest=true;
-             c.alphaTest=.02;
+             c.alphaTest=0;
              if(c.emissive)c.emissive.setHex(0xffffff);
              if("emissiveIntensity" in c)c.emissiveIntensity=.15;
-             c.side=THREE.FrontSide;
              c.needsUpdate=true;
              return c;
            });
@@ -5038,8 +5037,9 @@ function fire(){
    // Shift only the SMG ADS ray slightly left/down; hip fire and other weapons are untouched.
    const smgAdsZeroX=(aiming&&weapon==="smg")?-.018:0;
    const smgAdsZeroY=(aiming&&weapon==="smg")?-.025:0;
+   const rifleAdsZeroY=(aiming&&weapon==="rifle")?-.008:0;
    const sx=aimX+smgAdsZeroX+(Math.random()-.5)*wd().spread*adsSpread,
-         sy=aimY+pistolAdsZero+smgAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
+         sy=aimY+pistolAdsZero+smgAdsZeroY+rifleAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
    const cityHit=firstCityProjectileHit(ray.ray.origin,ray.ray.direction,80);
    let hit=ray.intersectObjects(rayTargets,false)[0];
