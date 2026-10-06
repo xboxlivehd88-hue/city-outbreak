@@ -1,3 +1,44 @@
+# M4 TUNING PHASE — 2026-10-06 — v468 — REPLACEMENT M4 ORIENTATION FLIP — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=468`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v468 orientation-fix commit: `16df10a4ccf392bc752ac34946d00cf50f138734`
+- v468 loader commit: `d651da078e308db717fb3662e29db4313cde6a7c`
+- Current `src/game.js` SHA: `815ff85b302473435355d65189d618430ba20864`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v467 result
+
+User screenshot showed:
+- replacement rifle now visible at a usable scale;
+- black-screen/oversize issue fixed;
+- rifle pointed 180° backward.
+
+## v468 fix
+
+Only the replacement M4's Y rotation changed:
+- from `Math.PI`
+- to `0`
+
+Do not change scale, position, ADS, recoil, damage, sound, reload or unrelated systems until the user tests v468.
+
+## Next test
+
+Confirm:
+- muzzle points away from player;
+- stock is toward player;
+- size remains acceptable;
+- note hip-fire placement;
+- then inspect ADS.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v467 — REPLACEMENT M4 SCALE NORMALIZATION — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
