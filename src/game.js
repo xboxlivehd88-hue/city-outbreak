@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=302";
+import {showTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=464";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
