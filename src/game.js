@@ -2033,7 +2033,8 @@ function rebuildGun(){
      const m4RawSize=new THREE.Box3().setFromObject(m4Root).getSize(new THREE.Vector3());
      const m4RawLength=Math.max(m4RawSize.x,m4RawSize.y,m4RawSize.z);
      m4Root.scale.setScalar(m4RawLength>1e-5?3.45/m4RawLength:1);
-     m4Root.rotation.y=0;m4Root.position.set(x,-.25,-1.66);m4ViewRoot=m4Root;
+     m4Root.rotation.set(THREE.MathUtils.degToRad(-8),0,THREE.MathUtils.degToRad(-6));
+     m4Root.position.set(.54,-.56,-1.48);m4ViewRoot=m4Root;
      m4AdsOccluders=[];
      m4Root.traverse(o=>{
        o.userData.externalWeaponAsset=true;
@@ -5481,15 +5482,19 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.position.z+=weaponContact*contactSpec.retract;
  gun.rotation.x+=weaponContact*contactSpec.tilt;
  if(weapon==="rifle"&&m4ViewRoot){
-   // Replacement M4 hip pose: move the complete rifle slightly farther from the
-   // camera and lower it so the stock no longer crowds the player's chin. Keep the
-   // existing ADS/reload pose unchanged at full aim/reload.
+   // Replacement M4 gets its own first-person pose instead of inheriting the old
+   // classic_m4 geometry placement. Hip-fire sits lower/right with a mild downward
+   // pitch and roll, then blends back to the existing centered ADS pose.
    if(reloading){
-     m4ViewRoot.position.y=-.25;
-     m4ViewRoot.position.z=-1.66;
+     m4ViewRoot.position.set(.36,-.25,-1.66);
+     m4ViewRoot.rotation.set(0,0,0);
    }else{
-     m4ViewRoot.position.y=THREE.MathUtils.lerp(-.42,-.25,aimBlend);
-     m4ViewRoot.position.z=THREE.MathUtils.lerp(-1.85,-1.66,aimBlend);
+     m4ViewRoot.position.x=THREE.MathUtils.lerp(.54,.36,aimBlend);
+     m4ViewRoot.position.y=THREE.MathUtils.lerp(-.56,-.25,aimBlend);
+     m4ViewRoot.position.z=THREE.MathUtils.lerp(-1.48,-1.66,aimBlend);
+     m4ViewRoot.rotation.x=THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-8),0,aimBlend);
+     m4ViewRoot.rotation.y=0;
+     m4ViewRoot.rotation.z=THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-6),0,aimBlend);
    }
  }
  if(weapon==="smg"&&mp5ViewRoot){
