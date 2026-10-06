@@ -1,3 +1,51 @@
+# LATEST LIVE STATE — 2026-10-06 — v458 — RAIN REGRESSION REVERT — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=458`
+- v458 revert commit: `102b3527fee9e74151cb5e8891660520430c280f`
+- v458 loader commit: `1695e09f55e6e2197b7972d1052520787a9bb562`
+- Current `src/game.js` content SHA: `e025864266c8e1642a4b5f2ab9b663149b1a0a4e`
+- **Important:** that game SHA exactly matches user-confirmed-good v456.
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v456 and reported: **"everything seems fine to me"**.
+- User then tested v457 and reported a rain regression: **"when under cover the rain stops but stops everywhere"**.
+- Therefore v457 is **not** a good baseline.
+- v458 restores the exact v456 `src/game.js` content and only advances the loader version.
+
+## v457 regression and v458 revert
+
+v457 attempted to reuse a scratch `THREE.Vector3` for the rain-cover ray origin.
+
+User-observed regression:
+- entering cover caused rain to stop everywhere rather than behaving locally as before.
+
+v458 restores the exact prior implementation:
+- `rainCoverRay.set(new THREE.Vector3(px,playerGroundY+1.35,pz),rainUp);`
+- removes the added `rainCoverOrigin` scratch vector.
+
+Verification:
+- `src/game.js` SHA is exactly the same as v456: `e025864266c8e1642a4b5f2ab9b663149b1a0a4e`;
+- JavaScript parses successfully;
+- native crawler conversion, PBD/ragdoll, grenade/spintop, spawn systems, weapons, and M240 audio remain unchanged;
+- v324 protected recovery remains unchanged.
+
+## Cleanup guidance
+
+Do not retry the v457 rain-vector reuse optimization. Continue future performance cleanup only with a different isolated target, and keep v456/v458 behavior as the known-good rain baseline.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v457 — PERFORMANCE CLEANUP IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
