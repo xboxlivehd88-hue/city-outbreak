@@ -1,3 +1,99 @@
+# M4 TUNING PHASE — 2026-10-06 — v470 — DEDICATED FIRST-PERSON M4 POSE — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=470`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v470 pose commit: `4b84bcdd5cb7f3f49ee790540da5425a52ec9963`
+- v470 loader commit: `ad2f38fa61e77ade8245d81bc65ab3b111cbbf54`
+- v470 successful Pages run: `37535907982`
+- Current `src/game.js` SHA: `1fe960e410eacaf73890b15f3276166ae6df9b84`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v469 result
+
+User supplied another screenshot and said the M4 **still looked very broken**.
+
+The screenshot showed:
+- orientation was correct;
+- scale was usable;
+- rifle was still too centered/upright in first person;
+- rear/stock area still crowded the camera;
+- front perspective still felt stretched;
+- optic still looked wrong in the bad pose.
+
+User then explicitly told us to stop explaining and **just do the fix**.
+
+## v470 change — replacement M4 gets its own first-person pose
+
+v469's limited Y/Z hip offset was replaced by a dedicated replacement-M4 pose.
+
+### Hip-fire pose
+
+At hip:
+- X = `.54` — moves rifle farther right;
+- Y = `-.56` — lowers it substantially;
+- Z = `-1.48` — brings the complete rifle back from the stretched/far-away v469 perspective;
+- pitch = `-8°`;
+- yaw = `0°`;
+- roll = `-6°`.
+
+The same pose is also used immediately when the GLB is rebuilt so there is no old neutral-pose flash.
+
+### ADS blend
+
+As `aimBlend` reaches full ADS, the replacement M4 smoothly returns to the existing centered ADS root:
+- X `.36`;
+- Y `-.25`;
+- Z `-1.66`;
+- rotation `0,0,0`.
+
+This preserves the existing ADS target while giving hip-fire a proper shouldered/right-side pose.
+
+### Reload
+
+Reload uses the existing neutral root:
+- position `.36,-.25,-1.66`;
+- rotation `0,0,0`.
+
+Reload choreography itself was not rewritten.
+
+## Intentionally unchanged
+
+v470 does not change:
+- bounds-based scale normalization;
+- forward/backward M4 orientation;
+- ADS configuration/FOV;
+- recoil;
+- damage/spread/fire rate;
+- ammo;
+- sound;
+- magazine lookup;
+- temporary M4 starting loadout;
+- any unrelated weapon/game system.
+
+The optic mesh itself is still untouched. First test this corrected complete-gun pose; if the optic still looks malformed, fix the optic separately next.
+
+Verification:
+- exact v470 gameplay diff is limited to M4 root pose/rebuild and M4 runtime pose blending;
+- full `src/game.js` syntax parse passed;
+- Pages run `37535907982` completed successfully.
+
+## v470 test focus
+
+User should check only:
+1. does the M4 now sit lower/right like a shouldered rifle;
+2. does it stop looking held against the chin;
+3. does the front perspective look less stretched/far away;
+4. does the optic still look broken in this improved pose;
+5. what happens when entering ADS.
+
+If the optic is still visibly malformed, make the next build an optic-only M4 fix.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v469 — HIP-FIRE PLACEMENT CORRECTION — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
