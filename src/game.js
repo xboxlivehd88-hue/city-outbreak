@@ -1034,6 +1034,7 @@ const streetLampLightHeads=[];
 const streetLampLightPool=[];
 const streetLampLightTargets=[];
 const streetLampFlickerStates=[];
+const streetLampNearestScratch=[];
 let streetLampGlowPoints=null;
 let streetLampGlowBrightness=null;
 let streetLampLightLastUpdate=-1e9;
@@ -1158,12 +1159,18 @@ function updateStreetLampLighting(t,force=false){
  // Their on/off state is no longer used for the normal lamp appearance.
  if(force||t-streetLampLightLastUpdate>=220){
    streetLampLightLastUpdate=t;
-   const nearest=streetLampLightHeads
-     .map((h,i)=>({i,d:(h.x-px)*(h.x-px)+(h.z-pz)*(h.z-pz)}))
-     .sort((a,b)=>a.d-b.d)
-     .slice(0,streetLampLightPool.length);
+   if(streetLampNearestScratch.length!==streetLampLightHeads.length){
+     streetLampNearestScratch.length=0;
+     for(let i=0;i<streetLampLightHeads.length;i++)streetLampNearestScratch.push({i,d:0});
+   }
+   for(let i=0;i<streetLampLightHeads.length;i++){
+     const h=streetLampLightHeads[i],pick=streetLampNearestScratch[i];
+     pick.i=i;
+     pick.d=(h.x-px)*(h.x-px)+(h.z-pz)*(h.z-pz);
+   }
+   streetLampNearestScratch.sort((a,b)=>a.d-b.d);
    for(let i=0;i<streetLampLightPool.length;i++){
-     const light=streetLampLightPool[i],target=streetLampLightTargets[i],pick=nearest[i];
+     const light=streetLampLightPool[i],target=streetLampLightTargets[i],pick=streetLampNearestScratch[i];
      if(!pick)continue;
      const h=streetLampLightHeads[pick.i];
      light.position.set(h.x,h.y,h.z);
