@@ -1,3 +1,81 @@
+# M4 TUNING PHASE — 2026-10-06 — v467 — REPLACEMENT M4 SCALE NORMALIZATION — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=467`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v467 scale-fix commit: `3b3a2d45da09d47a407e95bfb4cea98bebaf25e1`
+- v467 loader commit: `57bbc3aa8888a122cf10aa98974193568ef1e20c`
+- v467 successful Pages run: `37532220116`
+- Current `src/game.js` SHA: `c6d007875d4544340a6dea8fea40a3b70e250e7c`
+- Protected recovery remains **v324** unchanged.
+
+## Why v467 was needed
+
+User tested v466 and supplied a screenshot showing:
+- almost the entire world view blacked out;
+- only a large dark triangular/sliver-like portion of the weapon visible near the lower-left;
+- HUD remained visible.
+
+Diagnosis:
+- the new GLB was loading correctly;
+- the old hard-coded M4 scale `5.15` was specific to the previous `classic_m4` asset;
+- the replacement GLB uses a different authored scale, so multiplying it by 5.15 made the rifle enormous around/inside the camera.
+
+## v467 change
+
+Only M4 visual scale handling changed.
+
+Before:
+- M4 root always used `scale.setScalar(5.15)`.
+
+Now:
+- clone the replacement M4;
+- compute its actual `THREE.Box3` bounds;
+- read the largest dimension;
+- scale the replacement so its longest dimension becomes about `3.45` first-person units, matching the established old M4 visual length.
+
+Current code concept:
+- `m4RawSize = new THREE.Box3().setFromObject(m4Root).getSize(...)`
+- `m4RawLength = max(x,y,z)`
+- `m4Root.scale = 3.45 / m4RawLength`
+
+This makes the replacement asset independent of its source-file unit scale.
+
+## Intentionally unchanged
+
+Do not treat v467 as final M4 placement.
+
+Still unchanged:
+- M4 orientation/rotation;
+- hip-fire position;
+- ADS transforms;
+- recoil;
+- firing/spread/damage;
+- ammo;
+- sound;
+- reload choreography;
+- magazine node lookup;
+- temporary M4 starting loadout.
+
+## v467 test focus
+
+The next test is specifically to see the whole replacement rifle clearly enough to tune it.
+
+User should report:
+1. whether the black/blocked screen is gone;
+2. whether the complete rifle is visible;
+3. whether it faces the correct direction;
+4. whether size now looks reasonable;
+5. where it sits in hip-fire;
+6. what ADS looks like.
+
+Do not change multiple transform values at once. Use the visible v467 result to tune one M4-only issue per build.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v466 — NEW M4 GLB FULL VIEWMODEL REPLACEMENT — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
