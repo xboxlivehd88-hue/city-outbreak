@@ -1,3 +1,49 @@
+# LATEST LIVE STATE — 2026-10-06 — v454 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=454`
+- v454 cleanup commit: `b7368e6f31468ba79d5a1d35b1bb37cc04a00f82`
+- v454 loader/deploy commit: `ab50c02df56f037222cfe962034c265ffb8b901d`
+- v454 successful Pages run: `37496402874`
+- Current `src/game.js` content SHA: `670d18b83ee51c978b3bb413c9806e04eb5a9ae0`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v453 and reported: **"spawn just fine"**.
+- v453 is therefore the latest user-confirmed gameplay baseline before this v454 cleanup.
+
+## v454 cleanup — inlined one-use zombie rig clone wrapper
+
+Audit proved:
+- `cloneShamblerRig()` had exactly two occurrences: its definition and one call.
+- The helper only returned `zombieRigAsset ? SkeletonUtils.clone(zombieRigAsset.scene) : null`.
+
+v454 changed only:
+- removed the three-line `cloneShamblerRig()` wrapper;
+- inlined that exact clone expression at its only call site.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v453 is one added line / four deleted lines in `src/game.js` plus the v454 loader bump in `index.html`;
+- zombie eye/outfit helpers remain untouched;
+- no model selection, transforms, animations, hitboxes, crawler behavior, PBD/ragdoll physics, spawn behavior, grenade logic, weapon behavior, or M240 audio were changed;
+- protected v324 recovery remains unchanged.
+
+## Continue cleanup carefully
+
+Continue with fresh proof for tiny one-call wrappers only. Prefer visual/setup wrappers such as `rigEyeColor()` or `rigOutfitColor()` before touching spawn math or performance-sensitive gameplay code.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v453 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
