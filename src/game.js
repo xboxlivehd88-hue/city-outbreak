@@ -2033,7 +2033,7 @@ function rebuildGun(){
      const m4RawSize=new THREE.Box3().setFromObject(m4Root).getSize(new THREE.Vector3());
      const m4RawLength=Math.max(m4RawSize.x,m4RawSize.y,m4RawSize.z);
      m4Root.scale.setScalar(m4RawLength>1e-5?3.45/m4RawLength:1);
-     m4Root.rotation.y=Math.PI;m4Root.position.set(x,-.25,-1.66);m4ViewRoot=m4Root;
+     m4Root.rotation.y=0;m4Root.position.set(x,-.25,-1.66);m4ViewRoot=m4Root;
      m4AdsOccluders=[];
      m4Root.traverse(o=>{
        o.userData.externalWeaponAsset=true;
