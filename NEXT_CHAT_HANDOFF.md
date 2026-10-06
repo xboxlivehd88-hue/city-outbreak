@@ -1,3 +1,51 @@
+# LATEST LIVE STATE — 2026-10-06 — v451 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=451`
+- v451 cleanup commit: `77709c85dfb959c310f26dd39409b7c8270f124d`
+- v451 loader/deploy commit: `980769fe3c190ddca15ea62e2dd7552f9d3c7ddd`
+- v451 successful Pages run: `37491026700`
+- Current `src/game.js` content SHA: `3cf64dadfdcd20fd00effc6a36d02d10f970a534`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v450 and reported: **"visuals are good"**.
+- v450 is therefore the latest user-confirmed gameplay baseline before this v451 dead-code cleanup.
+
+## v451 cleanup — removed obsolete city batching no-op
+
+Audit proved:
+- `batchStaticCity()` was literally an empty function.
+- Its only other reference was one call to that empty function.
+- The surrounding comments described old batching behavior that no longer exists.
+
+v451 removed only:
+- the empty `batchStaticCity(){}` stub;
+- its single no-op call;
+- the now-misleading comments associated with those two lines.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v450 contains only eight deleted lines in `src/game.js` plus the v451 loader bump in `index.html`;
+- uploaded city GLB path remains present;
+- native crawler conversion, PBD/ragdoll, M240 authored WAV path/state, grenade/spintop, live spawn/connectivity protections, active zombie cap and other protected systems remain present;
+- M240 audio was not modified.
+
+## Continue cleanup carefully
+
+The simple one-occurrence dead functions/constants have been exhausted. Continue with a fresh audit for other safe no-op wrappers, stale imports, duplicate helpers, or low-risk hot-path cleanup. Do not jump into gameplay behavior changes.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v450 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
