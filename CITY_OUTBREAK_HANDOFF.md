@@ -1,3 +1,85 @@
+# M4 TUNING PHASE — 2026-10-06 — v466 — NEW M4 GLB FULL VIEWMODEL REPLACEMENT — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=466`
+- New uploaded M4 asset: `assets/ar-15_style_rifle.glb`
+- Asset upload commit: `07f513f3e57a018f655be2ae73d642c5f78a66ee`
+- v466 gameplay/model-swap commit: `a9ca029ecc65154f96a100397a1953346dc279ae`
+- v466 loader commit: `9859c166028eb5232c58b2acfd1472a99bb219e5`
+- v466 successful Pages run: `37531314757`
+- Current `src/game.js` SHA: `bb34c8b8faddcfd457d8690b7052155eb9528137`
+- Protected recovery remains **v324** unchanged.
+
+## v466 M4 model replacement
+
+User uploaded `assets/ar-15_style_rifle.glb` and requested it fully replace the old M4 model.
+
+Current runtime M4 loader now uses:
+- `assets/ar-15_style_rifle.glb?v=466`
+
+The previous runtime source:
+- `assets/classic_m4.glb.glb`
+
+is no longer referenced by `src/game.js`.
+
+The old file remains in `assets` only as an unused rollback asset; it is not loaded or displayed by the game.
+
+### Scope intentionally limited
+
+v466 changed only the M4 GLB source URL.
+
+The existing M4 first-person setup is deliberately preserved for the first visual test:
+- current scale unchanged;
+- current rotation unchanged;
+- current hip-fire position unchanged;
+- current ADS transforms unchanged;
+- recoil unchanged;
+- firing/spread/damage unchanged;
+- ammo unchanged;
+- sounds unchanged;
+- reload logic unchanged.
+
+The current model-specific magazine lookup still attempts:
+- `Magazine_m4_0`
+- `Magazine`
+
+If the new GLB uses different node names, the weapon itself will still load, but detachable-mag reload visuals may need a separate M4-only follow-up after the user tests the replacement.
+
+Verification:
+- exact v466 gameplay diff is one line replacing the old M4 GLB source with the new uploaded asset;
+- full `src/game.js` syntax parse passed;
+- Pages run `37531314757` completed successfully;
+- no unrelated gameplay system was changed.
+
+## Temporary M4 starting loadout remains active
+
+v465's temporary tuning loadout remains in place:
+- new game starts holding M4;
+- reset/restart starts holding M4;
+- M4 is unlocked;
+- M17 remains unlocked/switchable.
+
+Keep this temporary setup until the user explicitly says M4 tuning is finished.
+
+## v466 test focus
+
+User should now inspect the replacement M4 and report:
+1. whether the new model appears;
+2. whether its size is too large/small;
+3. whether it faces the correct direction;
+4. whether hip-fire placement is correct;
+5. whether ADS lines up;
+6. whether reload/magazine visuals still work.
+
+Do not adjust those values until the user reports what is visually wrong.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v465 — TEMPORARY M4 STARTING LOADOUT — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
