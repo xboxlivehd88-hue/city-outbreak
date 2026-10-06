@@ -2309,15 +2309,11 @@ function bossWaveSpec(w){
  const mult=bossScaleFactor(w),tier=bossTier(w);
  return {name:ensureBossWaveName(w),hp:Math.round(184*mult),speed:2.25*mult,attack:.80/mult,damage:Math.round(21*mult),bounty:250+tier*75,specialCd:6.5/mult}
 }
+const bossHudRenderArgs={bossHUD,bossNameEl,bossSubEl,bossFill,boss:null,wave:1};
 function updateBossUI(){
- renderBossHud({
-  bossHUD,
-  bossNameEl,
-  bossSubEl,
-  bossFill,
-  boss:currentBoss,
-  wave
- });
+ bossHudRenderArgs.boss=currentBoss;
+ bossHudRenderArgs.wave=wave;
+ renderBossHud(bossHudRenderArgs);
 }
 function resetHealthRegenDelay(){
  healthRegenCooldown=PLAYER_HEALTH_REGEN_DELAY;
