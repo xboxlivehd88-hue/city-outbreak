@@ -276,7 +276,7 @@ rainSplashes.renderOrder=851;
 scene.add(rainSplashes);
 
 const rainCoverRay=new THREE.Raycaster();
-const rainUp=new THREE.Vector3(0,1,0);
+const rainUp=new THREE.Vector3(0,1,0),rainCoverOrigin=new THREE.Vector3();
 let rainCoverCheckAt=-1e9,rainCovered=false,rainOpacity=.39,rainSplashSpawnAcc=0,rainSplashCursor=0;
 
 function resetRainDrop(i,randomY=true,centerX=0,centerY=0,centerZ=-15){
@@ -343,7 +343,7 @@ function updateRainCover(t){
  rainCoverCheckAt=t;
  rainCovered=false;
  if(!newCityRoot)return;
- rainCoverRay.set(new THREE.Vector3(px,playerGroundY+1.35,pz),rainUp);
+ rainCoverRay.set(rainCoverOrigin.set(px,playerGroundY+1.35,pz),rainUp);
  rainCoverRay.near=.15;rainCoverRay.far=18;
  const hits=rainCoverRay.intersectObject(newCityRoot,true);
  for(const hit of hits){
