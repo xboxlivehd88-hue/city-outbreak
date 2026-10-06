@@ -1,3 +1,59 @@
+# LATEST LIVE STATE — 2026-10-06 — v460 — RAIN SPLASH ALLOCATION CLEANUP — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=460`
+- v460 cleanup commit: `bec4a7f1f99941827df4554f5f4ad815853b65cf`
+- v460 loader/deploy commit: `c7b47b8d862be1332ba93ca5222081bfca1b9fcd`
+- v460 successful Pages run: `37517596459`
+- Current `src/game.js` content SHA: `a8289386443f5582fd839793f26d8d28caeffcd0`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v459 and reported: **"this is fine lets move on"**.
+- v459 is therefore the latest user-confirmed gameplay baseline before this v460 cleanup.
+- v459 intentionally keeps the v457 rain-cover behavior because that state was playable; do not revert it under cleanup unless the user explicitly asks.
+
+## v460 cleanup — remove per-frame rain splash array allocation
+
+Audit found:
+- each active rain splash built a fresh 24-number temporary `verts` JavaScript array every frame;
+- those values were immediately copied into the existing `rainSplashPositions` typed buffer;
+- the temporary array was unnecessary garbage in a frequently updated visual effect.
+
+v460 changed only:
+- removed the temporary 24-number `verts` array;
+- wrote the exact same 24 coordinates directly into `rainSplashPositions` in the same order.
+
+Verification:
+- `src/game.js` parses successfully;
+- rain-cover logic is untouched and still uses the v457/v459 `rainCoverOrigin` scratch-vector behavior;
+- splash spread/rise/position math is unchanged;
+- no rain intensity, cover detection, wind, lighting, city collision, spawn behavior, crawler/ragdoll logic, grenade logic, weapon behavior, or M240 audio were changed;
+- protected v324 recovery remains unchanged.
+
+## Test focus
+
+User should confirm:
+- game remains smooth/playable;
+- rain splashes still appear normally on the ground;
+- no malformed, stretched, missing, or flickering splash geometry appears;
+- known v457/v459 rain-cover behavior is unchanged.
+
+## Next cleanup guidance
+
+If v460 is good, continue with another low-risk allocation cleanup outside the rain-cover logic itself. Do not revert the rain-cover scratch-vector optimization.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v459 — EXACT v457 GAME RESTORE — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
