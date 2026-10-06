@@ -5481,9 +5481,16 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.position.z+=weaponContact*contactSpec.retract;
  gun.rotation.x+=weaponContact*contactSpec.tilt;
  if(weapon==="rifle"&&m4ViewRoot){
-   // Hip-fire: pull the M4 back toward the shoulder so it no longer reads like
-   // the player is holding it at arm's length. Preserve the approved ADS/reload position.
-   m4ViewRoot.position.z=reloading?-1.66:THREE.MathUtils.lerp(-1.62,-1.66,aimBlend);
+   // Replacement M4 hip pose: move the complete rifle slightly farther from the
+   // camera and lower it so the stock no longer crowds the player's chin. Keep the
+   // existing ADS/reload pose unchanged at full aim/reload.
+   if(reloading){
+     m4ViewRoot.position.y=-.25;
+     m4ViewRoot.position.z=-1.66;
+   }else{
+     m4ViewRoot.position.y=THREE.MathUtils.lerp(-.42,-.25,aimBlend);
+     m4ViewRoot.position.z=THREE.MathUtils.lerp(-1.85,-1.66,aimBlend);
+   }
  }
  if(weapon==="smg"&&mp5ViewRoot){
    const a=aimBlend;
