@@ -2398,10 +2398,6 @@ function createLastZombieMarker(){
 
 
 
-function rigOutfitColor(kind,seedish=0){
- const colors=[0x4a5549,0x5a5145,0x33495a,0x665e54,0x4b403f,0x3d474c];
- return colors[Math.abs(seedish)%colors.length];
-}
 // Shared low-cost geometry for the standing rig. Facial anatomy is merged into
 // two meshes per zombie so human detail does not explode draw-call count.
 function zombieEllipsoid(r,sx,sy,sz,x,y,z,segX=10,segY=7){
@@ -3087,7 +3083,7 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
  if(!rig)return false;
  rig.name="RiggedZombieVisual";
  rig.position.set(0,0,0);
- const eye=kind==="radiated"?0x52ff62:(kind==="infected"||kind==="acidic")?0xff4141:kind==="boss"?0xf4f7ff:0xffdf43, outfit=rigOutfitColor(kind,variant),ownedRigMaterials=[];
+ const eye=kind==="radiated"?0x52ff62:(kind==="infected"||kind==="acidic")?0xff4141:kind==="boss"?0xf4f7ff:0xffdf43, outfit=[0x4a5549,0x5a5145,0x33495a,0x665e54,0x4b403f,0x3d474c][Math.abs(variant)%6],ownedRigMaterials=[];
  let rigSkinMat=null,rigShirtMat=null,rigHairMat=null,rigWoundMat=null;
  rig.traverse(o=>{
    if(!o.isMesh)return;
