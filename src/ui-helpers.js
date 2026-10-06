@@ -79,6 +79,8 @@ export function hideBossHud(bossHUD){
 }
 
 
+const sprintHudResult={pct:-1,color:"",state:""};
+
 export function renderSprintHud({
  sprintFill,
  sprintState,
@@ -95,7 +97,10 @@ export function renderSprintHud({
  if(shown!==previousPct)sprintFill.style.width=shown+"%";
  if(color!==previousColor)sprintFill.style.background=color;
  if(state!==previousState)sprintState.textContent=state;
- return {pct:shown,color,state};
+ sprintHudResult.pct=shown;
+ sprintHudResult.color=color;
+ sprintHudResult.state=state;
+ return sprintHudResult;
 }
 
 
