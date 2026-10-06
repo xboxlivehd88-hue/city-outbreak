@@ -1,3 +1,53 @@
+# LATEST LIVE STATE — 2026-10-06 — v459 — EXACT v457 GAME RESTORE — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=459`
+- v459 restore commit: `fd3a5515a0411146acf3c9d540ab38520c3ee84c`
+- v459 loader commit: `b9b07af9fbff210e2b373d11b0ad7eb4331e3b1b`
+- Current `src/game.js` content SHA: `dfbb183df16d8d6a5df8f103f66bc3584311f137`
+- That SHA is **exactly the same as v457**.
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- v456 was confirmed good by the user.
+- v457 introduced a rain-cover behavior issue: going under cover caused rain to stop globally, **but performance remained playable**.
+- v458 reverted to the exact v456 game code to restore the older rain behavior.
+- User tested v458 and reported it was **so laggy it was unplayable**, and explicitly asked to go back to v457.
+- Therefore v458 is rejected as the preferred live state because of severe performance regression.
+- v459 restores the exact v457 `src/game.js` byte-for-byte and only advances the loader to force cache refresh.
+
+## Important rain/performance decision
+
+Current preferred state is the v457 behavior because performance is more important than the rain-cover bug.
+
+v459 intentionally includes:
+- reusable `rainCoverOrigin` scratch vector;
+- `rainCoverRay.set(rainCoverOrigin.set(px,playerGroundY+1.35,pz),rainUp);`
+
+Do **not** automatically revert this again unless the user explicitly asks. The user chose v457 behavior over the laggy v458 state.
+
+## Verification
+
+- Current `src/game.js` SHA exactly matches v457: `dfbb183df16d8d6a5df8f103f66bc3584311f137`.
+- JavaScript parses successfully.
+- Native crawler conversion, PBD/ragdoll, grenade/spintop, spawn systems, weapons, and M240 audio remain unchanged.
+- Protected v324 recovery remains unchanged.
+
+## Next cleanup guidance
+
+Do not touch rain-cover logic next. Continue cleanup/performance work somewhere else, one isolated change at a time, after the user confirms v459 is playable again.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v458 — RAIN REGRESSION REVERT — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
