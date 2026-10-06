@@ -2042,10 +2042,10 @@ function rebuildGun(){
        m4Root.updateMatrixWorld(true);
        const acogBox=new THREE.Box3().setFromObject(m4AcogNode);
        const acogCenter=acogBox.getCenter(new THREE.Vector3());
-       const rifleAdsScale=.96,desiredRearLensZ=-.18;
+       const rifleAdsScale=.96,desiredRearLensZ=-.18,adsEyeYCorrection=-.034;
        m4AdsRootTarget.set(
          -ADS.rifle.x-m4RootScale*acogCenter.x,
-         -ADS.rifle.y/rifleAdsScale-m4RootScale*acogCenter.y,
+         -ADS.rifle.y/rifleAdsScale-m4RootScale*acogCenter.y+adsEyeYCorrection,
          (desiredRearLensZ-ADS.rifle.z)/rifleAdsScale-m4RootScale*acogBox.max.z
        );
      }else{
