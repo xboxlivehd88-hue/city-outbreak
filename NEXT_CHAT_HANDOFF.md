@@ -1,3 +1,72 @@
+# M4 TUNING PHASE — 2026-10-06 — v472 — ORIGINAL GLB ACOG RESTORED / THREE.JS MATERIAL FIX — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=472`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v472 gameplay/material-fix commit: `36afed664c22853e1a4b916e667b31ab5ebd457d`
+- v472 loader commit: `bacd8818502fa26973ddebffb6ab02feca2378d9`
+- Current `src/game.js` SHA: `20e5c4c0428fd24184e8fb2a2d300d4be469ea64`
+- Protected recovery remains **v324** unchanged.
+
+## What was learned from the actual GLB
+
+The user correctly pointed out that the GLB opens normally on their end and asked us to inspect the binary itself.
+
+A temporary repo-side diagnostic parsed the real GLB, then was removed.
+
+Confirmed:
+- scope node: `acog`;
+- scope mesh: `acog_optic.001_0`;
+- scope material: `optic.001`;
+- scope geometry is valid;
+- material uses `alphaMode: BLEND`;
+- material has emissive texture/factor;
+- emissive strength extension is **10.0**.
+
+So the broken-looking optic in-game is not bad GLB geometry. It is a Three.js rendering/material issue: the whole ACOG is being treated as transparent and heavily emissive, which causes first-person transparency/depth/glow artifacts.
+
+## v472 fix
+
+Remove the v471 fake/procedural replacement optic approach.
+
+Restore the original ACOG from the uploaded GLB and adjust only its runtime material:
+- keep original geometry/textures;
+- disable transparent blending on the whole optic mesh;
+- enable depth test/write;
+- use small alpha-test cutoff;
+- reduce emissive intensity to 0.15.
+
+Do not replace the ACOG geometry unless the user explicitly asks.
+
+## Approved placement baseline
+
+User said they like v470 placement for sure.
+
+Do not change:
+- hip pose;
+- scale;
+- rotation;
+- ADS blend target;
+- overall M4 placement.
+
+No recoil/damage/ammo/sound/reload/unrelated systems changed in v472.
+
+## Next test
+
+Ask user only:
+- does the original ACOG now look intact;
+- did v470 placement stay the same;
+- does ADS still behave normally.
+
+If optic still has an issue, work directly from exact node `acog`, mesh `acog_optic.001_0`, material `optic.001`.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v471 — BROKEN IMPORTED OPTIC REPLACED — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
