@@ -1546,7 +1546,7 @@ function zombieRouteWaypoint(z){
 
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 // External M4 Carbine visual. The GLB is the sole M4 viewmodel; rebuild when loaded.
-let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null;
+let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null,m4AdsRootTarget=new THREE.Vector3(.36,-.29,-1.28);
 new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
  m4ModelTemplate=gltf.scene;
  m4ModelTemplate.traverse(o=>{
@@ -2036,7 +2036,22 @@ function rebuildGun(){
      const m4RawBox=new THREE.Box3().setFromObject(m4Root);
      const m4RawSize=m4RawBox.getSize(new THREE.Vector3());
      const m4RawLength=Math.max(m4RawSize.x,m4RawSize.y,m4RawSize.z);
-     m4Root.scale.setScalar(m4RawLength>1e-5?3.45/m4RawLength:1);
+     const m4RootScale=m4RawLength>1e-5?3.45/m4RawLength:1;
+     const m4AcogNode=m4Root.getObjectByName("acog")||m4Root.getObjectByName("acog_optic.001_0");
+     if(m4AcogNode){
+       m4Root.updateMatrixWorld(true);
+       const acogBox=new THREE.Box3().setFromObject(m4AcogNode);
+       const acogCenter=acogBox.getCenter(new THREE.Vector3());
+       const rifleAdsScale=.96,desiredRearLensZ=-.18;
+       m4AdsRootTarget.set(
+         -ADS.rifle.x-m4RootScale*acogCenter.x,
+         -ADS.rifle.y/rifleAdsScale-m4RootScale*acogCenter.y,
+         (desiredRearLensZ-ADS.rifle.z)/rifleAdsScale-m4RootScale*acogBox.max.z
+       );
+     }else{
+       m4AdsRootTarget.set(.36,-.29,-1.28);
+     }
+     m4Root.scale.setScalar(m4RootScale);
      m4Root.rotation.set(THREE.MathUtils.degToRad(-8),0,THREE.MathUtils.degToRad(-6));
      m4Root.position.set(.54,-.56,-1.48);m4ViewRoot=m4Root;
 
@@ -2284,9 +2299,9 @@ function rebuildGun(){
 function setAim(v){
  aiming=!!v&&running&&!dying&&!between&&document.pointerLockElement===cv;
  if(!aiming){gun.visible=true;if(aimBlend<=.01)gun.scale.setScalar(1)}
- const scopedAim=aiming&&(weapon==="awm"||weapon==="rifle");
+ const scopedAim=aiming&&weapon==="awm";
  scopeOverlay.classList.toggle("show",scopedAim);
- scopeOverlay.classList.toggle("m4Scope",aiming&&weapon==="rifle");
+ scopeOverlay.classList.toggle("m4Scope",false);
  cross.style.opacity=aiming?"0":"1";
 }
 const WEAPON_CYCLE_ORDER=["pistol","rifle","smg","shotgun","dmr","grenadeLauncher","m240","awm"];
@@ -5514,9 +5529,9 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      m4ViewRoot.position.set(.36,-.25,-1.66);
      m4ViewRoot.rotation.set(0,0,0);
    }else{
-     m4ViewRoot.position.x=THREE.MathUtils.lerp(.54,.36,aimBlend);
-     m4ViewRoot.position.y=THREE.MathUtils.lerp(-.56,-.25,aimBlend);
-     m4ViewRoot.position.z=THREE.MathUtils.lerp(-1.48,-1.66,aimBlend);
+     m4ViewRoot.position.x=THREE.MathUtils.lerp(.54,m4AdsRootTarget.x,aimBlend);
+     m4ViewRoot.position.y=THREE.MathUtils.lerp(-.56,m4AdsRootTarget.y,aimBlend);
+     m4ViewRoot.position.z=THREE.MathUtils.lerp(-1.48,m4AdsRootTarget.z,aimBlend);
      m4ViewRoot.rotation.x=THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-8),0,aimBlend);
      m4ViewRoot.rotation.y=0;
      m4ViewRoot.rotation.z=THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-6),0,aimBlend);
@@ -5602,9 +5617,9 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  }
  updateReloadMagazineFX(rp);
  updateGrenadeLauncherReloadFX(rp);
- const fullScopeAim=aiming&&(weapon==="awm"||weapon==="rifle");
+ const fullScopeAim=aiming&&weapon==="awm";
  scopeOverlay.classList.toggle("show",fullScopeAim);
- scopeOverlay.classList.toggle("m4Scope",aiming&&weapon==="rifle");
+ scopeOverlay.classList.toggle("m4Scope",false);
  gun.visible=!fullScopeAim;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
 perfGuard(dt);capFX();
