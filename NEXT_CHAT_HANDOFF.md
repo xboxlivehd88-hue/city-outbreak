@@ -1,3 +1,65 @@
+# M4 TUNING PHASE — 2026-10-06 — v473 — TRUE MODEL-BASED ACOG ADS — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=473`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v473 true-ADS gameplay commit: `06944eb7cc3cd11e9fa7a6dbe816d727fd711cc8`
+- v473 loader commit: `c909e73b25f33ee2617f981ed731bced8cf389c9`
+- Current `src/game.js` SHA: `e5bcc7fe28a5579dd66eeb868f4b65a9fa698978`
+- Protected recovery remains **v324** unchanged.
+
+## Approved baseline
+
+User tested v472 and said **"perfect"**.
+
+Treat as approved:
+- real ACOG geometry/material appearance;
+- v470 hip placement;
+- M4 direction and scale.
+
+Do not change those while tuning ADS.
+
+## v473 request / behavior
+
+User asked to use the modeled ACOG as actual ADS by bringing it to the eye and seeing through it.
+
+v473:
+- disables the legacy M4 full-screen scope overlay;
+- keeps the M4 visible during ADS;
+- finds the actual `acog` node / `acog_optic.001_0` mesh;
+- measures its real bounds;
+- calculates full ADS position from that geometry;
+- centers the optic on the camera;
+- places rear lens about `0.18` in front of the eye;
+- keeps rifle FOV at 48 for first test;
+- preserves AWM overlay behavior.
+
+Hip pose remains exactly v470:
+- `.54,-.56,-1.48`
+- pitch `-8°`
+- roll `-6°`
+
+Full ADS rotation becomes zero as before, but position now uses the calculated real-scope target rather than the old `.36,-.25,-1.66` guess.
+
+## Next test
+
+Ask user to check:
+- real ACOG moves to eye;
+- centered correctly;
+- can see through modeled optic;
+- rear lens distance;
+- whether FOV 48 feels right;
+- approved hip placement is unchanged.
+
+If ADS is slightly off, tune only the ADS eye target/FOV. Do not disturb approved hip placement or replace the optic.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v472 — ORIGINAL GLB ACOG RESTORED / THREE.JS MATERIAL FIX — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
