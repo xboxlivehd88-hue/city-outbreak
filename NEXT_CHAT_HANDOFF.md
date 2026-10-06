@@ -1,3 +1,64 @@
+# M4 TUNING PHASE — 2026-10-06 — v469 — HIP-FIRE PLACEMENT CORRECTION — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=469`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v469 hip-pose commit: `f2e7ff414d7ca3fdd0d2e2d7127bf0445b2cd129`
+- v469 loader commit: `cd9dab90bba29b7968ea9ac8cbb7f86db251222f`
+- v469 Pages run: `37534672201` success
+- Current `src/game.js` SHA: `e6e84c74067bd5311f1716acfbe4f3f4d08d412e`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v468 result
+
+User screenshot showed:
+- rifle orientation now correct;
+- scope looks broken;
+- front of rifle feels too far away;
+- rifle looks held too high, like against the player's chin.
+
+## v469 fix
+
+Only the M4 hip-fire pose changed.
+
+Hip-fire now:
+- lowers M4 root Y from `-.25` to `-.42`;
+- moves M4 root Z from `-1.62` to `-1.85`.
+
+As ADS blends in:
+- Y smoothly returns to `-.25`;
+- Z smoothly returns to `-1.66`.
+
+Reload stays at:
+- Y `-.25`;
+- Z `-1.66`.
+
+So full ADS and reload placement remain unchanged.
+
+## Scope/optic rule
+
+The optic itself was **not changed yet**.
+
+First see how it looks after the corrected hip pose. If it still looks broken, make a separate M4-only optic fix from the user's next screenshot/ADS test.
+
+Do not combine optic changes with unrelated recoil/damage/reload work.
+
+## Next test
+
+Ask user to check:
+- whether rifle now looks shouldered rather than held at chin;
+- whether rear/stock is less oversized;
+- whether front no longer feels absurdly far away;
+- what optic looks like now;
+- ADS if possible.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v468 — REPLACEMENT M4 ORIENTATION FLIP — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
