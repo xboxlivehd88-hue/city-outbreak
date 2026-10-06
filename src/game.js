@@ -2398,9 +2398,6 @@ function createLastZombieMarker(){
 
 
 
-function rigEyeColor(kind){
- return kind==="radiated"?0x52ff62:(kind==="infected"||kind==="acidic")?0xff4141:kind==="boss"?0xf4f7ff:0xffdf43;
-}
 function rigOutfitColor(kind,seedish=0){
  const colors=[0x4a5549,0x5a5145,0x33495a,0x665e54,0x4b403f,0x3d474c];
  return colors[Math.abs(seedish)%colors.length];
@@ -3090,7 +3087,7 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
  if(!rig)return false;
  rig.name="RiggedZombieVisual";
  rig.position.set(0,0,0);
- const eye=rigEyeColor(kind), outfit=rigOutfitColor(kind,variant),ownedRigMaterials=[];
+ const eye=kind==="radiated"?0x52ff62:(kind==="infected"||kind==="acidic")?0xff4141:kind==="boss"?0xf4f7ff:0xffdf43, outfit=rigOutfitColor(kind,variant),ownedRigMaterials=[];
  let rigSkinMat=null,rigShirtMat=null,rigHairMat=null,rigWoundMat=null;
  rig.traverse(o=>{
    if(!o.isMesh)return;
