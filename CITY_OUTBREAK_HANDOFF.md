@@ -1,3 +1,79 @@
+# M4 TUNING PHASE — 2026-10-06 — v474 — ACOG ADS VERTICAL EYE-LINE CORRECTION — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=474`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v474 ADS vertical-fix commit: `58c5605ee155031b3360943a5e4670cdf211a267`
+- v474 loader commit: `6f3511eceaf966f0a6909648820a7d059eb71318`
+- Current `src/game.js` SHA: `0bbc70d1a44458a4d74d06a0697f937cc4778e50`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v473 result
+
+User tested true model-based ACOG ADS and said it was a **really good first try**.
+
+Screenshot/feedback confirmed:
+- real ACOG moves to the eye;
+- horizontal centering is already very close;
+- eye distance / scope size is already close;
+- hip placement remains approved;
+- primary remaining problem: ACOG viewing axis sits **way too high** on screen.
+
+The screenshot places the optic center roughly 200 pixels above the screen center at 1920×1080.
+
+## v474 change — vertical ADS only
+
+Only the calculated full-ADS ACOG eye line changes.
+
+The real GLB ACOG target calculation now adds:
+- `adsEyeYCorrection=-.034`
+
+This lowers the full-ADS M4/ACOG target while leaving:
+- X centering unchanged;
+- rear lens distance unchanged at about `0.18`;
+- rifle ADS FOV unchanged at `48`;
+- v470 hip placement unchanged;
+- ACOG material fix unchanged;
+- true model-based ADS path unchanged.
+
+The correction is based on the user's v473 screenshot and the current 48° ADS FOV / rear-lens distance rather than changing multiple transform values at once.
+
+## Intentionally unchanged
+
+v474 does not change:
+- M4 hip pose;
+- scale;
+- yaw/pitch/roll behavior outside the existing ADS blend;
+- scope distance;
+- FOV;
+- recoil;
+- damage/spread/fire rate;
+- ammo;
+- sound;
+- reload choreography;
+- temporary M4 starting loadout;
+- any unrelated weapon/game system.
+
+Verification:
+- exact v474 gameplay diff is limited to the ACOG target Y calculation;
+- full `src/game.js` syntax parse passed.
+
+## v474 test focus
+
+Check:
+1. ACOG is now centered vertically on the eye/screen;
+2. horizontal centering stays good;
+3. scope distance/size still feels good;
+4. player can naturally look through the modeled optic;
+5. hip placement remains exactly as approved.
+
+If it still needs adjustment, tune only the ADS eye target from the next screenshot.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v473 — TRUE MODEL-BASED ACOG ADS — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
