@@ -1,3 +1,91 @@
+# LATEST LIVE STATE — 2026-10-06 — v462 — BOSS HUD PER-FRAME ALLOCATION CLEANUP — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=462`
+- v462 cleanup commit: `124371bfd385e1f35038d79f4d65400c9edc18b5`
+- v462 loader/deploy commit: `f2467715179e7c7cd7cbdd0db414531273190406`
+- v462 successful Pages run: `37521541188` — succeeded on deployment attempt 3 after two GitHub-side HTTP 500 deploy failures; no code changed between attempts.
+- Current `src/game.js` content SHA: `06c50b9992a5bc0f88a5d2aa7f3c53a56b8ff891`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v461 and reported: **"everything looks good let move to the next step"**.
+- **v461 is therefore the latest user-confirmed good build.**
+- v462 is live but remains **unconfirmed** until the user tests it.
+- Keep the playable v459/v457 rain-cover behavior. Do not revert the `rainCoverOrigin` scratch-vector optimization unless the user explicitly asks.
+
+## v462 cleanup — reuse boss HUD render arguments
+
+Audit found:
+- `updateBossUI()` runs every active gameplay frame;
+- it created a fresh options object every call only to pass the same four DOM element references plus the current `boss` and `wave` values to `renderBossHud()`;
+- `renderBossHud()` consumes the object immediately and does not retain it.
+
+v462 changed only:
+- added one reusable `bossHudRenderArgs` object;
+- before each render, writes the current `currentBoss` reference and `wave` value into it;
+- calls the same `renderBossHud()` helper with the same effective values.
+
+Behavior intentionally unchanged:
+- boss HUD visibility;
+- boss name;
+- boss wave text;
+- boss HP bar math;
+- boss gameplay, health, attacks, rewards, spawning or AI.
+
+Verification:
+- full current `src/game.js` parses successfully;
+- exact v462 gameplay diff is limited to the boss HUD argument-object reuse;
+- loader is `./src/game.js?v=462`;
+- Pages run `37521541188` completed successfully;
+- the first two deploy attempts for that run failed only because GitHub Pages returned HTTP 500 while creating the deployment; attempt 3 succeeded with unchanged code;
+- rain/rain-cover, PBD/ragdoll, crawler conversion, zombie spawning/connectivity/anti-clumping, grenade/spintop, map/collision, gun transforms/ADS/recoil, M240 audio, and start/death/restart/shop/pause were not changed;
+- protected v324 recovery remains unchanged.
+
+## Cleanup finish estimate
+
+The broad cleanup is close to completion.
+
+Current estimate after v462:
+- roughly **2–4 additional worthwhile low-risk cleanup passes** remain;
+- likely candidates are remaining transient UI/performance bookkeeping allocations that can be removed without touching gameplay behavior;
+- once those are exhausted, stop cleanup rather than chasing micro-optimizations inside protected/risky systems.
+
+Do **not** optimize merely for the sake of changing code inside:
+- reload/viewmodel choreography;
+- PBD/ragdoll/crawler behavior;
+- zombie spawning/navigation/collision;
+- grenade/spintop;
+- map/collision;
+- weapon transforms/ADS/recoil;
+- M240 audio.
+
+Those remaining hotspots are not worth the regression risk for this cleanup phase.
+
+## v462 test focus
+
+User should confirm:
+1. game remains smooth/playable;
+2. boss HUD is hidden normally when there is no boss;
+3. if a boss wave is reached, boss name/health bar/wave text still behave normally;
+4. no unrelated visual/gameplay regression;
+5. rain behavior remains the same as v461/v459.
+
+## Next step after user test
+
+If v462 is good, continue with one isolated low-risk cleanup. Prefer a UI/performance-bookkeeping allocation target and keep all protected gameplay systems untouched.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v461 — STREETLAMP NEAREST-LIGHT SCRATCH CLEANUP — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
