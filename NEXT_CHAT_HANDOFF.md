@@ -1,3 +1,48 @@
+# LATEST LIVE STATE — 2026-10-06 — v452 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=452`
+- v452 cleanup commit: `1084126efffb2ad61204fd57938828e3c26d6b87`
+- v452 loader/deploy commit: `b84c10e50fa16e35f0a2314f0b17ff840cdae7ce`
+- v452 successful Pages run: `37494044485`
+- Current `src/game.js` content SHA: `ba8206645a825a850eb1d9554489fc762260535b`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v451 and reported: **"plays just fine"**.
+- v451 is therefore the latest user-confirmed gameplay baseline before this v452 cleanup.
+
+## v452 cleanup — inlined one-use ragdoll visual wrapper
+
+Audit proved:
+- `ragVisibleHolder(z)` had exactly two occurrences: its one-line definition and one call.
+- The helper only returned `z?.walkerVisual || null`.
+
+v452 changed only:
+- removed the one-line `ragVisibleHolder(z)` wrapper;
+- replaced its single call with the exact inline expression `z?.walkerVisual || null`.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v451 is one added line / two deleted lines in `src/game.js` plus the v452 loader bump in `index.html`;
+- no ragdoll parameters, timing, physics, crawler behavior, spawn logic, grenade logic, weapon behavior, or M240 audio were changed;
+- native crawler conversion, PBD/ragdoll markers, grenade/spintop, active zombie cap and other protected systems remain present.
+
+## Continue cleanup carefully
+
+The import audit is clean: every current import is still used. Continue with fresh proof for tiny one-call wrappers, duplicate glue, or low-risk no-op code before considering hot-path/performance refactors.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v451 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
