@@ -1,3 +1,53 @@
+# M4 TUNING PHASE — 2026-10-06 — v467 — REPLACEMENT M4 SCALE NORMALIZATION — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=467`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v467 scale-fix commit: `3b3a2d45da09d47a407e95bfb4cea98bebaf25e1`
+- v467 loader commit: `57bbc3aa8888a122cf10aa98974193568ef1e20c`
+- v467 Pages run: `37532220116` success
+- Current `src/game.js` SHA: `c6d007875d4544340a6dea8fea40a3b70e250e7c`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v466 problem
+
+User screenshot showed the replacement M4 massively oversized around the camera:
+- nearly full black screen;
+- only a dark weapon wedge/sliver visible;
+- HUD still visible.
+
+The replacement GLB itself was loading; the old M4's fixed `5.15` scale was incompatible with the new asset's authored size.
+
+## v467 fix
+
+Only the M4 visual scale was changed:
+- compute the cloned GLB's `Box3` bounds;
+- find its longest dimension;
+- normalize that longest dimension to about `3.45` first-person units.
+
+Orientation, position, ADS, recoil, damage, sound, reload and all unrelated systems remain unchanged.
+
+## Next test / next step
+
+The purpose of v467 is to make the complete new rifle visible so placement can be tuned.
+
+Ask the user to report or screenshot:
+- whether the blocked/black view is fixed;
+- whether the whole rifle is visible;
+- direction/orientation;
+- apparent size;
+- hip-fire placement;
+- ADS alignment.
+
+Then change one M4-only transform issue at a time.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v466 — NEW M4 GLB FULL VIEWMODEL REPLACEMENT — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
