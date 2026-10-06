@@ -1547,7 +1547,7 @@ function zombieRouteWaypoint(z){
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 // External M4 Carbine visual. The GLB is the sole M4 viewmodel; rebuild when loaded.
 let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null;
-new GLTFLoader().load("assets/classic_m4.glb.glb",gltf=>{
+new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
  m4ModelTemplate=gltf.scene;
  m4ModelTemplate.traverse(o=>{
    o.userData.externalWeaponAsset=true;
