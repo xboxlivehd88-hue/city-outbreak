@@ -1,3 +1,74 @@
+# M4 TUNING PHASE — 2026-10-06 — v471 — BROKEN IMPORTED OPTIC REPLACED — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=471`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v471 optic replacement commits:
+  - `672e5440a3ad3bb92de4b2309838bcf33a856967`
+  - `5bc5a8e6873dd0b0464a0d5b2fda7b0c54bdfcdc`
+- v471 loader commit: `4ba8eb387bdd049eccc3a7a3f493a90d2da5dd97`
+- v471 successful Pages run: `37537472601`
+- Current `src/game.js` SHA: `bd5527dd50f96c8a4179fa0eb75dce7188032576`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v470 result
+
+User supplied a screenshot and said:
+- **they like the v470 placement for sure**;
+- the imported scope/optic still looks very broken.
+
+Therefore v470's complete M4 pose is now the placement baseline and must not be changed while fixing the optic.
+
+## v471 change — optic only
+
+The v470 M4 placement is preserved exactly.
+
+The replacement GLB's broken imported optic is hidden:
+- semantic names are preferred: scope / optic / acog / lens / eyepiece / eyecup / reticle / sight;
+- if the exporter used generic names, a bounded top/rear spatial fallback removes the imported optic region only.
+
+A clean compact M4 optic is mounted procedurally in the replacement rifle's local coordinate space:
+- dark metal tube;
+- clean front/rear lens surfaces;
+- compact mount;
+- follows the rifle root naturally through hip, ADS blend and reload.
+
+The second v471 commit corrected transform-space handling before deployment so optic detection and placement are based on the rifle's raw local geometry rather than already-transformed camera coordinates.
+
+## Intentionally unchanged
+
+v471 does **not** change:
+- v470 hip placement;
+- M4 scale;
+- forward orientation;
+- ADS pose/blend;
+- recoil;
+- damage/spread/fire rate;
+- ammo;
+- sounds;
+- reload choreography;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- full `src/game.js` syntax parse passed;
+- v471 loader Pages run `37537472601` completed successfully.
+
+## v471 test focus
+
+Check only:
+1. v470 placement still looks the same;
+2. broken imported optic is gone;
+3. clean replacement optic sits properly on top of the rifle;
+4. ADS still behaves normally.
+
+If placement remains approved, do not alter it in the next step.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v470 — DEDICATED FIRST-PERSON M4 POSE — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
