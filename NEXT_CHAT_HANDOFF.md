@@ -1,3 +1,64 @@
+# LATEST LIVE STATE — 2026-10-06 — v461 — STREETLAMP NEAREST-LIGHT SCRATCH CLEANUP — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=461`
+- v461 cleanup commit: `e8661fb58c68cebd61a6ba4c0bf68d15a53d2848`
+- v461 loader/deploy commit: `36b64f14c6bf503f24fe88d3f151783205369b9f`
+- v461 successful Pages run: `37520364015`
+- Current `src/game.js` content SHA: `c611e4e700a26aac7a8bc784a149e527c921cc2e`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User moved on from v460 to the next cleanup step, so **v460 is now user-confirmed good**.
+- v461 is live but must remain **unconfirmed** until the user tests it.
+- Keep the playable v459/v457 rain-cover behavior. Do not revert the `rainCoverOrigin` scratch-vector optimization unless the user explicitly asks.
+
+## v461 cleanup — streetlamp nearest-light allocation removal
+
+Only the streetlamp real-light nearest-selection scratch work changed:
+
+- before: every ~220 ms, `updateStreetLampLighting()` used `.map()` to create one new `{i,d}` object per lamp head, sorted that new array, then used `.slice()` to create another temporary nearest-lights array;
+- now: one reusable `streetLampNearestScratch` array holds the same small `{i,d}` entries, rewrites their values, runs the exact same distance sort, and reads the first pool-size entries directly.
+
+Do not reinterpret this as a lighting retune. The following are unchanged:
+- lamp model/placement;
+- real spotlight count;
+- light range/intensity/angle/penumbra/decay;
+- glow and rare flicker behavior;
+- update interval;
+- squared-distance nearest-light math.
+
+Verification completed:
+- full `src/game.js` syntax parse passed;
+- exact gameplay diff is limited to the scratch declaration and nearest-light selection block;
+- v461 loader/deploy Pages run `37520364015` succeeded;
+- protected systems were not touched;
+- protected v324 recovery is unchanged.
+
+## v461 test focus
+
+Check:
+1. game stays smooth/playable;
+2. streetlamps look normal while walking around the city;
+3. nearby real lights transfer between lamp heads normally with no missing light, wrong lamp, or obvious popping;
+4. rare lamp flicker/intensity behavior is unchanged;
+5. rain behavior is unchanged from v460/v459.
+
+## Next step after user test
+
+If the user confirms v461 is good, continue cleanup/performance only with one isolated behavior-equivalent optimization at a time. Stay away from rain-cover logic and all protected gameplay systems unless specifically asked.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v460 — RAIN SPLASH ALLOCATION CLEANUP — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
