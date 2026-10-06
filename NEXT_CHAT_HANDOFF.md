@@ -1,3 +1,57 @@
+# M4 TUNING PHASE — 2026-10-06 — v471 — BROKEN IMPORTED OPTIC REPLACED — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=471`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v471 optic commits:
+  - `672e5440a3ad3bb92de4b2309838bcf33a856967`
+  - `5bc5a8e6873dd0b0464a0d5b2fda7b0c54bdfcdc`
+- v471 loader commit: `4ba8eb387bdd049eccc3a7a3f493a90d2da5dd97`
+- v471 Pages run: `37537472601` success
+- Current `src/game.js` SHA: `bd5527dd50f96c8a4179fa0eb75dce7188032576`
+- Protected recovery remains **v324** unchanged.
+
+## User-approved placement baseline
+
+User said they **like the v470 placement for sure**.
+
+Do not alter:
+- v470 hip position;
+- pitch/roll;
+- ADS blend target;
+- overall M4 placement
+
+unless the user explicitly asks.
+
+## v471 optic fix
+
+The imported replacement-GLB optic still looked visibly broken in v470.
+
+v471:
+- hides the bad imported optic assembly by semantic name where possible;
+- uses a bounded top/rear spatial fallback for generic mesh names;
+- mounts a new compact procedural optic in the rifle's local coordinate space;
+- keeps v470 placement unchanged.
+
+The second v471 commit corrected local-vs-transformed coordinate handling before live deployment.
+
+No recoil/damage/ammo/sound/reload/unrelated systems changed.
+
+## Next test
+
+Ask user only whether:
+- placement stayed the same;
+- broken optic is gone;
+- replacement optic looks correctly mounted;
+- ADS still behaves normally.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v470 — DEDICATED FIRST-PERSON M4 POSE — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
