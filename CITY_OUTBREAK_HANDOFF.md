@@ -1,3 +1,96 @@
+# M4 TUNING PHASE — 2026-10-06 — v472 — ORIGINAL GLB ACOG RESTORED / THREE.JS MATERIAL FIX — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=472`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v472 gameplay/material-fix commit: `36afed664c22853e1a4b916e667b31ab5ebd457d`
+- v472 loader commit: `bacd8818502fa26973ddebffb6ab02feca2378d9`
+- Current `src/game.js` SHA: `20e5c4c0428fd24184e8fb2a2d300d4be469ea64`
+- Protected recovery remains **v324** unchanged.
+
+## Critical GLB inspection result
+
+The user said the replacement GLB itself opens correctly on their end and asked us to inspect the actual binary instead of assuming the model was broken.
+
+A temporary GitHub Actions diagnostic parsed the binary `assets/ar-15_style_rifle.glb` directly, then the workflow was deleted.
+
+Confirmed GLB facts:
+- GLB version 2, about 12.75 MB;
+- source metadata identifies Sketchfab model **AR-15 style rifle**;
+- the scope is a real separate node named `acog`;
+- its mesh is `acog_optic.001_0`;
+- its material is `optic.001`;
+- the optic geometry/accessor bounds are valid;
+- there is no malformed/broken scope geometry in the GLB.
+
+The important exporter/material detail:
+- `optic.001` uses `alphaMode: BLEND`;
+- it also uses an emissive texture;
+- emissive factor is white;
+- `KHR_materials_emissive_strength` is **10.0**.
+
+That combination renders correctly in Sketchfab but is the likely cause of the broken-looking ACOG inside Three.js:
+- the whole ACOG mesh becomes one transparent object;
+- self-depth/transparency sorting can look wrong in first person;
+- emissive strength 10 greatly exaggerates the visual artifact.
+
+Therefore the problem is **our Three.js material handling, not the user's GLB geometry**.
+
+## v471 status
+
+v471's procedural replacement optic is **not the intended solution**.
+
+The user explicitly objected and asked us to inspect the real GLB. v472 removes the fake optic approach.
+
+## v472 fix
+
+v472 restores the original ACOG geometry from the uploaded GLB.
+
+Only the original ACOG material is corrected in-game:
+- detect exact mesh `acog_optic.001_0` / material `optic.001`;
+- clone that optic material only;
+- preserve its original textures/normal maps/geometry;
+- disable whole-mesh transparent blending;
+- restore normal depth test/write;
+- use a small alpha-test threshold for texture cutout behavior;
+- reduce emissive intensity from exported 10.0 to 0.15;
+- keep front-side rendering.
+
+The rest of the GLB is untouched.
+
+## Placement baseline remains approved v470
+
+User explicitly said they like the v470 placement.
+
+v472 does **not** change:
+- hip X/Y/Z;
+- M4 pitch/roll;
+- scale normalization;
+- forward orientation;
+- ADS blend target;
+- recoil;
+- damage/spread/fire rate;
+- ammo;
+- sounds;
+- reload choreography;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+## v472 test focus
+
+Check:
+1. v470 placement still looks exactly the same;
+2. the original GLB ACOG is back;
+3. the ACOG no longer looks split/broken/over-glowing;
+4. ADS still behaves normally.
+
+If optic appearance is still wrong, continue from the actual `acog` node/material rather than replacing the geometry.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v471 — BROKEN IMPORTED OPTIC REPLACED — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
