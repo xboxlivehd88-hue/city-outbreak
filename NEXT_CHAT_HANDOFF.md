@@ -1,3 +1,49 @@
+# LATEST LIVE STATE — 2026-10-06 — v453 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=453`
+- v453 cleanup commit: `6940b50c8094305e3d31d40cfb8bc48dc4153a21`
+- v453 loader/deploy commit: `b6a8f22c804d5368f77b55e502a11a36ada0d217`
+- v453 successful Pages run: `37495244154`
+- Current `src/game.js` content SHA: `817294c0365d63f5eb6da39d0bb91fb89c1ed86e`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v452 and reported: **"seems fine"**.
+- v452 is therefore the latest user-confirmed gameplay baseline before this v453 cleanup.
+
+## v453 cleanup — inlined one-use recent-spawn reset wrapper
+
+Audit proved:
+- `clearRecentZombieSpawns()` had exactly two occurrences: its one-line definition and one call at the start of `spawnWave()`.
+- The helper only executed `recentZombieSpawnPoints.length=0`.
+
+v453 changed only:
+- removed the one-line `clearRecentZombieSpawns()` wrapper;
+- inlined the exact same `recentZombieSpawnPoints.length=0` statement at its only call site.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v452 is one added line / two deleted lines in `src/game.js` plus the v453 loader bump in `index.html`;
+- spawn-angle distribution code remains present and unchanged;
+- no spawn distances, connectivity, anti-clumping, wave sizing, crawler/ragdoll behavior, grenade logic, weapon behavior, or M240 audio were changed;
+- protected v324 recovery remains unchanged.
+
+## Continue cleanup carefully
+
+Continue fresh proof for tiny one-call wrappers or duplicate glue only. The simple dead-code/import pass is now largely exhausted; do not make behavior-changing spawn or hot-path refactors under the cleanup label.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v452 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
