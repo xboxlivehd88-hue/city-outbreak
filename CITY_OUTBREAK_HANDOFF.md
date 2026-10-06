@@ -1,3 +1,80 @@
+# M4 TUNING PHASE — 2026-10-06 — v465 — TEMPORARY M4 STARTING LOADOUT — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=465`
+- v465 gameplay commit: `1a4bb5091c4d877524f7af81153ff6ccf3a86757`
+- v465 loader commit: `c3ba421d4d0acdb3ee6ee6785b7587853623cc7f`
+- Current `src/game.js` SHA: `1c3f27a55c4e315ce955192d4eee7890f09123ae`
+- **v464 remains the latest user-confirmed good baseline before this M4 tuning change.**
+- Protected recovery remains **v324** and must not be changed unless the user explicitly approves a new recovery checkpoint.
+
+## New phase: M4 tuning
+
+User wants to work specifically on the M4 and requested that the player temporarily spawn with it until the M4 is in a good spot.
+
+The user also said they will later upload a **new GLB file to replace the old M4 model** once this phase is underway.
+
+### v465 change — temporary M4 starting loadout
+
+Only the starting weapon/unlock state changed in two places:
+1. initial game state;
+2. full reset/restart state.
+
+Both now use:
+- `weapon="rifle"`
+- `unlocked.rifle=true`
+
+The M17 remains unlocked:
+- `unlocked.pistol=true`
+
+This means:
+- a new run starts with the M4 already in the player's hands;
+- restart/reset also starts with the M4;
+- the player can still switch to the M17;
+- the M4 does not need to be purchased before testing.
+
+No other M4 behavior changed in v465:
+- current M4 model is unchanged;
+- ADS/transforms are unchanged;
+- recoil is unchanged;
+- firing ray/spread/damage are unchanged;
+- ammo remains the existing rifle ammo state;
+- sounds are unchanged;
+- reload behavior is unchanged;
+- store code is otherwise unchanged.
+
+Verification:
+- full `src/game.js` syntax parse passed;
+- exact gameplay diff is limited to the two starting-loadout definitions;
+- no map, zombie, ragdoll, crawler, grenade, rain, collision, M240, boss, sprint, pause/shop, or other gameplay system was changed.
+
+## M4 tuning rule
+
+Until the user says the M4 is in a good spot:
+- keep the M4 as the temporary starting weapon;
+- make M4 changes one isolated step at a time;
+- do not disturb other approved weapons/systems;
+- when the user uploads the new M4 GLB, inspect the exact uploaded asset and current M4 loader/model code before replacing anything;
+- do not guess the new asset filename/path.
+
+Once the user explicitly says M4 tuning is finished, restore the intended permanent starting loadout as a separate isolated change.
+
+## v465 test focus
+
+User should confirm:
+1. starting a new game immediately gives them the M4;
+2. restart/reset also gives them the M4;
+3. M4 fires/reloads/ADS exactly as it did before;
+4. M17 is still available for switching;
+5. no unrelated gameplay regression.
+
+---
+
 # CLEANUP COMPLETE — 2026-10-06 — v464 USER-CONFIRMED GOOD — READ THIS FIRST
 
 This section supersedes older cleanup-status sections below. **GitHub main is authoritative.**
