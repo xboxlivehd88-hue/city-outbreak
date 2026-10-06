@@ -1,3 +1,71 @@
+# LATEST LIVE STATE — 2026-10-06 — v461 — STREETLAMP NEAREST-LIGHT SCRATCH CLEANUP — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=461`
+- v461 cleanup commit: `e8661fb58c68cebd61a6ba4c0bf68d15a53d2848`
+- v461 loader/deploy commit: `36b64f14c6bf503f24fe88d3f151783205369b9f`
+- v461 successful Pages run: `37520364015`
+- Current `src/game.js` content SHA: `c611e4e700a26aac7a8bc784a149e527c921cc2e`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User moved on from v460 to the next cleanup step, so **v460 is now user-confirmed good**.
+- v461 is live but must remain **unconfirmed** until the user tests it.
+- v459/v457 rain-cover behavior remains intentionally preferred for performance; do not revert the `rainCoverOrigin` scratch-vector optimization unless the user explicitly asks.
+
+## v461 cleanup — reuse streetlamp nearest-light scratch entries
+
+Audit found:
+- `updateStreetLampLighting()` rebuilt a temporary array of `{i,d}` objects with `.map()` and then created another temporary array with `.slice()` every ~220 ms;
+- those temporary allocations existed only to choose the same nearest real streetlamp spotlights.
+
+v461 changed only:
+- added one reusable `streetLampNearestScratch` array;
+- initializes its small entry objects only when the streetlamp-head count changes;
+- rewrites the same index and squared-distance values into those existing entries;
+- sorts the same entries with the exact same `a.d-b.d` comparator;
+- uses the first existing pool-size entries directly instead of creating a sliced copy.
+
+Behavior intentionally unchanged:
+- streetlamp head positions;
+- real spotlight pool size;
+- spotlight range, intensity, angle, penumbra and decay;
+- nearest-light squared-distance math and ordering;
+- lamp flicker/glow behavior;
+- player position inputs and update cadence.
+
+Verification:
+- full current `src/game.js` parses cleanly;
+- the v461 gameplay diff is limited to the scratch declaration and nearest-light selection block;
+- v461 loader is `./src/game.js?v=461`;
+- Pages run `37520364015` completed successfully for the v461 loader commit;
+- rain, rain-cover logic, PBD/ragdoll, crawler conversion, zombie spawning/connectivity/anti-clumping, grenade/spintop, map/collision, gun transforms/ADS/recoil, M240 audio, and start/death/restart/shop/pause were not changed;
+- protected v324 recovery remains unchanged.
+
+## Test focus
+
+User should confirm:
+- game remains smooth/playable;
+- streetlamps still look and light the scene normally while moving around;
+- nearby real streetlights follow the player exactly as before, with no popping, missing light, or wrong lamp selected;
+- normal rare lamp flicker/intensity behavior is unchanged;
+- rain behavior is unchanged from v460/v459.
+
+## Next cleanup guidance
+
+If v461 is good, continue with one more isolated low-risk allocation/performance cleanup outside protected gameplay systems and outside rain-cover logic.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v460 — RAIN SPLASH ALLOCATION CLEANUP — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
