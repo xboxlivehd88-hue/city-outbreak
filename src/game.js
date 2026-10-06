@@ -4063,7 +4063,6 @@ function ragBone(z,name){
  const wb=z?.walkerBones?.get(name);if(wb)return wb;
  return rigBone(z,name);
 }
-function ragVisibleHolder(z){return z?.walkerVisual||null}
 
 const BODY_PBD_KEYS=Object.freeze([
  "Hips","Spine","Chest","Neck","Head",
@@ -4655,7 +4654,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  // Death removes control; it does not erase momentum or add a fake stop first.
  const inheritedVX=THREE.MathUtils.clamp(Number.isFinite(z.motionVX)?z.motionVX:0,-6.5,6.5);
  const inheritedVZ=THREE.MathUtils.clamp(Number.isFinite(z.motionVZ)?z.motionVZ:0,-6.5,6.5);
- const directVisual=ragVisibleHolder(z);
+ const directVisual=z?.walkerVisual||null;
  const directVisibleBones=!!directVisual;
 
  const rag=z.ragdoll={
