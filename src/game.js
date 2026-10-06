@@ -326,13 +326,14 @@ function updateRainSplashes(dt){
    const spread=rainSplashSize[i]*(.28+p*1.15);
    const rise=Math.sin(p*Math.PI)*rainSplashSize[i]*.72;
    const x=rainSplashX[i],y=rainSplashY[i],z=rainSplashZ[i],j=i*24;
-   const verts=[
-     x,y,z, x+spread,y+rise,z,
-     x,y,z, x-spread,y+rise,z,
-     x,y,z, x,y+rise,z+spread,
-     x,y,z, x,y+rise,z-spread
-   ];
-   for(let k=0;k<24;k++)rainSplashPositions[j+k]=verts[k];
+   rainSplashPositions[j]=x;rainSplashPositions[j+1]=y;rainSplashPositions[j+2]=z;
+   rainSplashPositions[j+3]=x+spread;rainSplashPositions[j+4]=y+rise;rainSplashPositions[j+5]=z;
+   rainSplashPositions[j+6]=x;rainSplashPositions[j+7]=y;rainSplashPositions[j+8]=z;
+   rainSplashPositions[j+9]=x-spread;rainSplashPositions[j+10]=y+rise;rainSplashPositions[j+11]=z;
+   rainSplashPositions[j+12]=x;rainSplashPositions[j+13]=y;rainSplashPositions[j+14]=z;
+   rainSplashPositions[j+15]=x;rainSplashPositions[j+16]=y+rise;rainSplashPositions[j+17]=z+spread;
+   rainSplashPositions[j+18]=x;rainSplashPositions[j+19]=y;rainSplashPositions[j+20]=z;
+   rainSplashPositions[j+21]=x;rainSplashPositions[j+22]=y+rise;rainSplashPositions[j+23]=z-spread;
  }
  rainSplashAttr.needsUpdate=true;
  rainSplashMaterial.opacity=rainOpacity*.76;
