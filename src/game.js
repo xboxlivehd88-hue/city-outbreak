@@ -2506,9 +2506,6 @@ const ZOMBIE_RIG_PROFILES=Object.freeze({
  acidic:derivedRigProfile(),
  boss:derivedRigProfile()
 });
-function cloneShamblerRig(){
- return zombieRigAsset?SkeletonUtils.clone(zombieRigAsset.scene):null;
-}
 const RADIATED_GREEN_BONE_KEYS=Object.freeze([
  "Hips","Spine","Chest","Neck","Head",
  "L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm",
@@ -3089,7 +3086,7 @@ function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
  // Keep old procedural pieces as invisible hitboxes; the skinned rig is visual only.
  g.traverse(o=>{if(o.isMesh){o.visible=false;o.castShadow=false;o.receiveShadow=false}});
  if(hazardMist){hazardMist.visible=true;hazardMist.raycast=()=>{}};
- const rig=cloneShamblerRig();
+ const rig=zombieRigAsset?SkeletonUtils.clone(zombieRigAsset.scene):null;
  if(!rig)return false;
  rig.name="RiggedZombieVisual";
  rig.position.set(0,0,0);
