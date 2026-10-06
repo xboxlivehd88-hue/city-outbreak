@@ -1,3 +1,100 @@
+# M4 TUNING PHASE — 2026-10-06 — v476 — ACOG VIEW CLEANUP / FINAL ADS ZERO NUDGE — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=476`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v476 gameplay commit: `0f11aa9b4f5b452d3fcfb052e554e8f3015e1e8e`
+- v476 loader commit: `547bb3999857252fc87d4785441fade77e9e71fd`
+- Current `src/game.js` SHA: `abd72e7e112bc815ab1dd7963c8df3a08b3c5922`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v475 result
+
+User supplied a screenshot and said:
+- ADS is very close;
+- scope still looks a bit broken;
+- scope still sits a little high;
+- bullet hit lands just a hair above the iron sight.
+
+The screenshot shows:
+- real ACOG is now see-through;
+- horizontal alignment is good;
+- eye distance is good;
+- only a small additional vertical correction is needed;
+- the remaining scope artifact is consistent with our runtime material still forcing blended glass to write depth / use alpha-test behavior instead of behaving like the authored BLEND material.
+
+## v476 changes
+
+### 1. Small additional ACOG vertical correction
+
+ADS eye-line correction changed:
+- from `-.034`
+- to `-.042`
+
+This lowers only the full-ADS ACOG target a small amount.
+
+### 2. ACOG blended-depth cleanup
+
+Keep the real GLB ACOG and its transparency, but make the runtime material behave more like authored glTF `alphaMode: BLEND`:
+
+- `transparent=true`
+- `depthWrite=false`
+- `depthTest=true`
+- `alphaTest=0`
+- no forced front-side override
+- emissive intensity remains clamped at `.15`
+
+This is intended to clean up the remaining internal/split transparency artifact while preserving see-through glass.
+
+### 3. Tiny M4 ADS shot-zero correction
+
+The rifle ADS ray now uses:
+- `rifleAdsZeroY=-.008`
+
+Only while:
+- aiming;
+- weapon is `rifle`.
+
+This moves the impact point slightly downward so it lands on the sight instead of just above it.
+
+Hip-fire and every other weapon's ray remain unchanged.
+
+## Intentionally unchanged
+
+v476 does not change:
+- approved v470 hip placement;
+- horizontal ACOG alignment;
+- rear-lens distance;
+- ADS FOV 48;
+- scale/orientation;
+- recoil;
+- damage/spread/fire rate;
+- ammo;
+- sounds;
+- reload choreography;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- exact v476 gameplay diff contains only the three M4 ADS/material refinements above;
+- full `src/game.js` syntax parse passed.
+
+## v476 test focus
+
+Check:
+1. scope sits slightly lower and more naturally centered;
+2. see-through ACOG looks cleaner internally;
+3. bullet impact now lands on the sight instead of just above it;
+4. horizontal alignment and eye distance remain good;
+5. approved hip placement remains unchanged.
+
+If this is good, preserve these M4 placement/ADS values before moving on to the next M4 issue.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v475 — ORIGINAL ACOG GLASS TRANSPARENCY RESTORED — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
