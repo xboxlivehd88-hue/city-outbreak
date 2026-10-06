@@ -626,9 +626,6 @@ function samplePlayerGroundY(x,z,currentY){
 // Gameplay uses this deterministic RNG in many systems; keep it independent of map generation.
 let seed=73419;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 
-// Kept as a no-op because the existing runtime calls it later after pathing setup.
-function batchStaticCity(){}
-
 // v324: selective collision generated from the uploaded city's real wall geometry, with finer passage precision.
 // Only substantial near-vertical surfaces crossing player/zombie body height are used;
 // roads, floors, roofs and shallow curbs stay walkable.
@@ -1538,11 +1535,6 @@ function zombieRouteWaypoint(z){
  if(!z.navPath||z.navIndex>=z.navPath.length)return null;
  return z.navPath[z.navIndex];
 }
-
-// Batch the cars together with the static city so the improved vehicle detail
-// does not bring back the old draw-call problem. parkedCars groups stay as cheap
-// collision anchors after their meshes are merged into the city batches.
-batchStaticCity();
 
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 // External M4 Carbine visual. The GLB is the sole M4 viewmodel; rebuild when loaded.
