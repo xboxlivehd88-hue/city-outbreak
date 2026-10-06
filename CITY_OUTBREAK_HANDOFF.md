@@ -1,3 +1,66 @@
+# CLEANUP COMPLETE — 2026-10-06 — v464 USER-CONFIRMED GOOD — READ THIS FIRST
+
+This section supersedes older cleanup-status sections below. **GitHub main is authoritative.**
+
+## Cleanup phase status
+
+- **CLEANUP/PERFORMANCE PHASE IS COMPLETE.**
+- User tested v464 and reported: **"it works"**.
+- **v464 is the latest user-confirmed good build.**
+- Current live loader: `./src/game.js?v=464`
+- Current `src/game.js` SHA: `d81c5ba4f5e152ecafeb13b3f6b4f6dd4ae67d9c`
+- Current `src/ui-helpers.js` SHA: `023797b0e936474c622ce32599fe02a550c27076`
+- v464 successful gameplay Pages run: `37526091354`
+- v464 final documented-state Pages run before this note: `37526330902`
+
+## Final cleanup decision
+
+A final audit was performed after the user confirmed v464 good.
+
+The only remaining obvious low-risk allocation candidate is:
+- `getFxCounts:()=>({parts:parts.length,impacts:impacts.length,casings:casings.length})`
+- it is consumed by the performance HUD approximately once per second.
+
+That allocation is intentionally **not changed** because:
+- it is extremely low frequency;
+- the performance gain would be negligible;
+- making another code change solely to remove one tiny once-per-second object is not worth adding regression/deployment noise.
+
+Most other remaining allocation sites are inside protected/high-risk systems and must not be touched merely for micro-optimization:
+- reload/viewmodel choreography;
+- PBD/ragdoll/crawler behavior;
+- zombie spawning/connectivity/navigation/collision;
+- grenade/spintop;
+- map/collision;
+- gun transforms/ADS/recoil;
+- M240 audio;
+- start/death/restart/shop/pause.
+
+## Protected recovery
+
+Protected recovery remains **v324** and is unchanged:
+- gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+- protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+- loader `./src/game.js?v=324`
+
+Do not redefine this checkpoint unless the user explicitly approves a new recovery checkpoint.
+
+## What happens next
+
+Do not continue cleanup automatically.
+
+The next development work should be a **new feature/fix phase chosen by the user**, starting from user-confirmed-good v464.
+
+Before any new gameplay change:
+1. read the newest top sections of both handoff files;
+2. read `CURRENT_RECOVERY_CHECKPOINT.md`;
+3. read current `index.html`;
+4. read current `src/game.js`;
+5. read any module relevant to the requested change;
+6. make one isolated change at a time and preserve v464 as the latest confirmed-good cleanup baseline until the user confirms a newer build.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v464 — SPRINT HUD RETURN-OBJECT ALLOCATION CLEANUP — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
