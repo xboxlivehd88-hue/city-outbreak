@@ -1,3 +1,69 @@
+# M4 TUNING PHASE — 2026-10-06 — v468 — REPLACEMENT M4 ORIENTATION FLIP — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=468`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v468 orientation-fix commit: `16df10a4ccf392bc752ac34946d00cf50f138734`
+- v468 loader commit: `d651da078e308db717fb3662e29db4313cde6a7c`
+- Current `src/game.js` SHA: `815ff85b302473435355d65189d618430ba20864`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v467 result
+
+User supplied a screenshot of v467 and reported the replacement M4 was **pointed the wrong way**.
+
+The screenshot confirmed:
+- the v467 bounds-based scale normalization worked well enough to make the complete rifle visible;
+- the black/blocked-screen problem from v466 was gone;
+- the rifle was oriented 180° backward, with the front end pointing toward the player/camera.
+
+## v468 change
+
+Only M4 horizontal orientation changed:
+
+Before:
+- `m4Root.rotation.y=Math.PI`
+
+Now:
+- `m4Root.rotation.y=0`
+
+This removes the old asset's 180° Y rotation, which the replacement GLB does not need.
+
+## Intentionally unchanged
+
+v468 does **not** change:
+- bounds-based scale normalization;
+- hip-fire position;
+- ADS transforms;
+- recoil;
+- firing/spread/damage;
+- ammo;
+- sounds;
+- reload choreography;
+- magazine lookup;
+- temporary M4 starting loadout;
+- any unrelated weapon/game system.
+
+Verification:
+- exact v468 gameplay diff is one line;
+- full `src/game.js` syntax parse passed.
+
+## v468 test focus
+
+User should confirm:
+1. barrel now points away from the player;
+2. stock is toward the player;
+3. size remains reasonable;
+4. note where the rifle sits in hip-fire;
+5. test ADS only after orientation is confirmed.
+
+Do not combine position/ADS changes into the orientation fix. Make the next M4-only adjustment from the user's v468 screenshot/feedback.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v467 — REPLACEMENT M4 SCALE NORMALIZATION — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
