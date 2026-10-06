@@ -1,3 +1,51 @@
+# LATEST LIVE STATE — 2026-10-06 — v457 — PERFORMANCE CLEANUP IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=457`
+- v457 cleanup commit: `afacdc8ab76d9e9e38b434cfb0ea83561420769f`
+- v457 loader/deploy commit: `6301a22913f8472e4c6bbbd6d05b660c5f667b0c`
+- v457 successful Pages run: `37507139259`
+- Current `src/game.js` content SHA: `dfbb183df16d8d6a5df8f103f66bc3584311f137`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v456 and reported: **"everything seems fine to me"**.
+- v456 is therefore the latest user-confirmed gameplay baseline before this v457 cleanup.
+
+## v457 cleanup — reuse rain-cover ray origin vector
+
+The obvious dead-code/wrapper pass is essentially exhausted, so cleanup has moved into low-risk allocation reduction.
+
+Audit found:
+- `updateRainCover()` created a fresh `THREE.Vector3(px, playerGroundY+1.35, pz)` every rain-cover check.
+- The existing rain-cover logic only needs a temporary ray-origin vector.
+
+v457 changed only:
+- added one reusable `rainCoverOrigin` scratch vector next to the existing `rainUp` vector;
+- replaced the repeated `new THREE.Vector3(...)` allocation with `rainCoverOrigin.set(...)`.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v456 is two changed lines in `src/game.js` plus the v457 loader bump in `index.html`;
+- rain-cover ray coordinates and behavior are unchanged;
+- no rain intensity, splash, wind, lighting, city collision, spawn behavior, crawler/ragdoll logic, grenade logic, weapon behavior, or M240 audio were changed;
+- protected v324 recovery remains unchanged.
+
+## Continue cleanup carefully
+
+Continue with low-risk per-frame/per-check allocation cleanup only when the replacement is behavior-equivalent and easy to verify. Avoid speculative hot-path rewrites.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v456 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
