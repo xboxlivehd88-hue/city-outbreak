@@ -1,3 +1,88 @@
+# LATEST LIVE STATE — 2026-10-06 — v463 — SPRINT HUD PER-FRAME ARGUMENT CLEANUP — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=463`
+- v463 cleanup commit: `cf12e9f2a8b3eae2c91bdb21867cfabaf8d61ca8`
+- v463 loader commit: `a53c5a156991ff8211e18012ebdd2ab4fe8c37f5`
+- v463 Pages retrigger commit: `0bba34921b87c1242016f1d3ebe0599e4acf512f` — index-only comment, no gameplay change.
+- v463 successful Pages run: `37524511578`
+- Current `src/game.js` content SHA: `a345236d3c528bbe714623f994fc52729cb7c6f4`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v462 through a boss wave and reported: **"boss wave worked just fine"**.
+- **v462 is therefore the latest user-confirmed good build.**
+- v463 is live but remains **unconfirmed** until the user tests it.
+- Keep the playable v459/v457 rain-cover behavior. Do not revert the `rainCoverOrigin` scratch-vector optimization unless the user explicitly asks.
+
+## v463 cleanup — reuse sprint HUD render arguments
+
+Audit found:
+- `updateSprintUI()` is called every gameplay frame from `move()`;
+- it created a fresh argument object every call only to pass the same two DOM references plus current sprint values/state to `renderSprintHud()`;
+- the helper consumes that object immediately.
+
+v463 changed only:
+- added one reusable `sprintHudRenderArgs` object;
+- before each call, refreshes `energy`, `locked`, and the three previous-render values;
+- calls the same `renderSprintHud()` helper with the same effective values.
+
+Behavior intentionally unchanged:
+- sprint drain rate;
+- sprint recharge rate;
+- sprint lock/unlock behavior;
+- sprint speed;
+- sprint bar percentage;
+- sprint bar color;
+- READY / RECOVERING / percentage text.
+
+Verification:
+- full current `src/game.js` parses successfully;
+- exact v463 gameplay diff is limited to sprint HUD argument-object reuse;
+- loader is `./src/game.js?v=463`;
+- initial loader Pages run `37523689985` built successfully but remained stuck in GitHub's `github-pages` environment gate and was cancelled by the deployment retrigger;
+- no-code retrigger commit `0bba34921b87c1242016f1d3ebe0599e4acf512f` produced successful Pages run `37524511578`;
+- rain/rain-cover, PBD/ragdoll, crawler conversion, zombie spawning/connectivity/anti-clumping, grenade/spintop, map/collision, gun transforms/ADS/recoil, M240 audio, and start/death/restart/shop/pause were not changed;
+- protected v324 recovery remains unchanged.
+
+## Cleanup finish estimate
+
+The cleanup phase is now very close to finished.
+
+After v463, estimate **1–3 worthwhile low-risk passes remain**.
+
+The audit shows the remaining obvious allocation sites are increasingly low-value:
+- `renderSprintHud()` itself still returns one tiny object per frame;
+- performance HUD FX-count bookkeeping allocates only about once per second;
+- most other remaining hot allocations are inside protected/risky systems such as reload/viewmodel choreography, ragdoll/crawlers, spawning/navigation/collision, grenades, or weapon interactions.
+
+Stop cleanup once the remaining safe UI/performance bookkeeping wins are exhausted. Do not touch protected systems merely to remove tiny allocations.
+
+## v463 test focus
+
+User should confirm:
+1. game remains smooth/playable;
+2. sprint drains normally while running;
+3. sprint recharges normally;
+4. empty sprint still enters RECOVERING and unlocks normally;
+5. sprint HUD percentage/color/READY state look unchanged;
+6. boss, rain, and other gameplay remain unchanged.
+
+## Next step after user test
+
+If v463 is good, continue with at most one isolated low-risk UI/performance bookkeeping cleanup at a time. Reassess after each one whether cleanup is effectively complete.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v462 — BOSS HUD PER-FRAME ALLOCATION CLEANUP — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
