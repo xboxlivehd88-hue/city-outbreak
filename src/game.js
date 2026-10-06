@@ -2067,11 +2067,11 @@ function rebuildGun(){
            const fixed=mats.map(m=>{
              if(!m)return m;
              const c=m.clone();
-             c.transparent=false;
+             c.transparent=true;
              c.opacity=1;
              c.depthWrite=true;
              c.depthTest=true;
-             c.alphaTest=.12;
+             c.alphaTest=.02;
              if(c.emissive)c.emissive.setHex(0xffffff);
              if("emissiveIntensity" in c)c.emissiveIntensity=.15;
              c.side=THREE.FrontSide;
