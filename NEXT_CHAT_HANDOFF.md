@@ -1,3 +1,61 @@
+# CLEANUP COMPLETE — 2026-10-06 — v464 USER-CONFIRMED GOOD — READ THIS FIRST
+
+This section supersedes older cleanup-status sections below. **GitHub main is authoritative.**
+
+## Current live / confirmed state
+
+- **Cleanup/performance phase is complete.**
+- User tested v464 and said: **"it works"**.
+- **v464 is the latest user-confirmed good build.**
+- Loader: `./src/game.js?v=464`
+- Current `src/game.js` SHA: `d81c5ba4f5e152ecafeb13b3f6b4f6dd4ae67d9c`
+- Current `src/ui-helpers.js` SHA: `023797b0e936474c622ce32599fe02a550c27076`
+- v464 successful gameplay Pages run: `37526091354`
+- v464 documented-state Pages run before this completion note: `37526330902`
+
+## Why cleanup stops here
+
+Final audit after v464 confirmation found only one obvious safe allocation left:
+- the performance HUD's `getFxCounts()` callback creates one tiny object roughly once per second.
+
+Do **not** change it just to chase a microscopic allocation. The gain is negligible.
+
+Remaining meaningful allocation sites are mostly entangled with protected/high-risk systems:
+- reload/viewmodels;
+- PBD/ragdoll/crawlers;
+- zombie spawning/navigation/collision;
+- grenade/spintop;
+- map/collision;
+- gun transforms/ADS/recoil;
+- M240 audio;
+- start/death/restart/shop/pause.
+
+Do not resume cleanup automatically.
+
+## Protected recovery
+
+Protected recovery remains **v324**:
+- gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+- protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+- loader `./src/game.js?v=324`
+
+Never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Next-chat rule
+
+The next work is a new user-chosen feature/fix phase starting from confirmed-good v464.
+
+Before changing anything:
+- read the newest top sections of both handoff files;
+- read `CURRENT_RECOVERY_CHECKPOINT.md`;
+- read current `index.html`;
+- read current `src/game.js`;
+- read the relevant module(s);
+- make one isolated change at a time;
+- preserve v464 as the latest confirmed-good cleanup baseline until the user confirms a newer build.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v464 — SPRINT HUD RETURN-OBJECT ALLOCATION CLEANUP — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
