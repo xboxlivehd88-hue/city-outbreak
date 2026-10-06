@@ -1,3 +1,43 @@
+# M4 TUNING PHASE — 2026-10-06 — v477 — ADS REAR-DROP TEST ONLY — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=477`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v477 gameplay commit: `3140614df9ca37b76f0413f0edf717794167dfe6`
+- v477 loader commit: `ee4b44924de17e05e41e8e30c3bda084b4465f51`
+- Current `src/game.js` SHA: `1760f0847385de32f58735cb13910ffb89be3611`
+- Protected recovery remains **v324** unchanged.
+
+## User's chosen next step
+
+User chose **option 1 first**: lower the rear of the rifle while ADS.
+
+## v477 change
+
+Only the M4 pitch endpoint at full ADS changed:
+- from `0°`
+- to `-2.5°`
+
+Hip pitch stays `-8°`.
+
+No scope-material, ADS-target, eye-distance, FOV, zeroing, recoil, damage, reload, sound, or hip-placement changes.
+
+## Next test
+
+Ask user only whether:
+- the rear now sits lower enough;
+- reticle and iron sight line up better;
+- scope remains comfortably aligned to the eye.
+
+Keep this as a single-variable ADS test.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v476 — ACOG VIEW CLEANUP / FINAL ADS ZERO NUDGE — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
