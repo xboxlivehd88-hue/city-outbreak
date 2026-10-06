@@ -1,0 +1,60 @@
+name: Inspect M4 GLB
+on:
+  push:
+    paths:
+      - ".github/workflows/inspect-m4-glb.yml"
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse GLB structure
+        shell: python
+        run: |
+          import json, struct, pathlib
+          p=pathlib.Path("assets/ar-15_style_rifle.glb")
+          data=p.read_bytes()
+          magic,version,total=struct.unpack_from("<4sII",data,0)
+          print("FILE",p,"BYTES",len(data),"MAGIC",magic,"VERSION",version,"TOTAL",total)
+          off=12
+          json_obj=None
+          while off < len(data):
+              ln,typ=struct.unpack_from("<II",data,off); off+=8
+              chunk=data[off:off+ln]; off+=ln
+              if typ==0x4E4F534A:
+                  json_obj=json.loads(chunk.rstrip(b" \t\r\n\x00").decode("utf-8"))
+                  break
+          if json_obj is None:
+              raise SystemExit("No JSON chunk")
+          g=json_obj
+          print("ASSET",json.dumps(g.get("asset",{}),indent=2))
+          print("SCENE",g.get("scene"),"SCENES",json.dumps(g.get("scenes",[]),indent=2))
+          mats=g.get("materials",[])
+          print("MATERIALS")
+          for i,m in enumerate(mats):
+              print(i, json.dumps(m,sort_keys=True))
+          meshes=g.get("meshes",[])
+          acc=g.get("accessors",[])
+          print("MESHES")
+          for i,m in enumerate(meshes):
+              print("MESH",i,"NAME",repr(m.get("name","")))
+              for pi,pr in enumerate(m.get("primitives",[])):
+                  pos=pr.get("attributes",{}).get("POSITION")
+                  a=acc[pos] if isinstance(pos,int) and pos < len(acc) else {}
+                  mat=pr.get("material")
+                  matname=mats[mat].get("name","") if isinstance(mat,int) and mat<len(mats) else ""
+                  print("  PRIM",pi,"MAT",mat,repr(matname),"POS_ACC",pos,"MIN",a.get("min"),"MAX",a.get("max"),"MODE",pr.get("mode",4))
+          print("NODES")
+          for i,n in enumerate(g.get("nodes",[])):
+              print(i, json.dumps({
+                  "name":n.get("name",""),
+                  "mesh":n.get("mesh"),
+                  "children":n.get("children",[]),
+                  "translation":n.get("translation"),
+                  "rotation":n.get("rotation"),
+                  "scale":n.get("scale"),
+                  "matrix":n.get("matrix")
+              },sort_keys=True))
+          print("TEXTURES",len(g.get("textures",[])),"IMAGES",len(g.get("images",[])),"SAMPLERS",len(g.get("samplers",[])))
