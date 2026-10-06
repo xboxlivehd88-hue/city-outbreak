@@ -1,3 +1,51 @@
+# LATEST LIVE STATE — 2026-10-06 — v456 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=456`
+- v456 cleanup commit: `02780353b8abb5db27c9506006cee8b055edd744`
+- v456 loader/deploy commit: `e0aa7fc32f8cf6e128d197f90fcb1aeeb4c2473c`
+- v456 successful Pages run: `37502443553`
+- Current `src/game.js` content SHA: `e025864266c8e1642a4b5f2ab9b663149b1a0a4e`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v455 and reported: **"things look fine"**.
+- v455 is therefore the latest user-confirmed gameplay baseline before this v456 cleanup.
+
+## v456 cleanup — inlined one-use zombie outfit-color wrapper
+
+Audit proved:
+- `rigOutfitColor(kind,seedish)` had exactly two occurrences: its definition and one call.
+- The `kind` argument was unused.
+- The helper only selected one of the existing six outfit colors using `Math.abs(seedish)%6`.
+
+v456 changed only:
+- removed the four-line `rigOutfitColor()` wrapper;
+- inlined the exact same six-color palette lookup using the existing `variant` value at its only call site.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v455 is one added line / five deleted lines in `src/game.js` plus the v456 loader bump in `index.html`;
+- zombie outfit colors and variant selection are unchanged;
+- zombie eye colors remain unchanged;
+- no model selection, transforms, animations, hitboxes, crawler behavior, PBD/ragdoll physics, spawn behavior, grenade logic, weapon behavior, or M240 audio were changed;
+- protected v324 recovery remains unchanged.
+
+## Continue cleanup carefully
+
+The obvious tiny visual wrappers are now nearly exhausted. Re-audit current main before the next cleanup; prefer another exact one-use wrapper or duplicate glue rather than changing active gameplay math or hot paths.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v455 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
