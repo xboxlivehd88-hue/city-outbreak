@@ -2027,11 +2027,13 @@ function rebuildGun(){
 
  if(weapon==='rifle'){
    if(m4ModelTemplate){
-     // The supplied model is authored at roughly 0.67 m long. Scale it to the
-     // established first-person weapon space and turn its muzzle down -Z like every
-     // existing CITY OUTBREAK gun, without touching rifle gameplay values.
+     // Normalize the replacement GLB from its authored bounds into the established
+     // first-person M4 length. The previous 5.15 scale was specific to the old asset.
      const m4Root=m4ModelTemplate.clone(true);m4Root.name="ExternalM4Carbine";
-     m4Root.scale.setScalar(5.15);m4Root.rotation.y=Math.PI;m4Root.position.set(x,-.25,-1.66);m4ViewRoot=m4Root;
+     const m4RawSize=new THREE.Box3().setFromObject(m4Root).getSize(new THREE.Vector3());
+     const m4RawLength=Math.max(m4RawSize.x,m4RawSize.y,m4RawSize.z);
+     m4Root.scale.setScalar(m4RawLength>1e-5?3.45/m4RawLength:1);
+     m4Root.rotation.y=Math.PI;m4Root.position.set(x,-.25,-1.66);m4ViewRoot=m4Root;
      m4AdsOccluders=[];
      m4Root.traverse(o=>{
        o.userData.externalWeaponAsset=true;
