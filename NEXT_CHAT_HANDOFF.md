@@ -1,3 +1,66 @@
+# M4 TUNING PHASE — 2026-10-06 — v470 — DEDICATED FIRST-PERSON M4 POSE — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=470`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v470 pose commit: `4b84bcdd5cb7f3f49ee790540da5425a52ec9963`
+- v470 loader commit: `ad2f38fa61e77ade8245d81bc65ab3b111cbbf54`
+- v470 Pages run: `37535907982` success
+- Current `src/game.js` SHA: `1fe960e410eacaf73890b15f3276166ae6df9b84`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v469 result
+
+User screenshot showed the M4 still looked badly posed:
+- correct direction;
+- usable scale;
+- too centered/upright;
+- rear/stock crowded camera;
+- front perspective looked stretched;
+- optic still looked broken.
+
+User explicitly told us to **just do the fix** instead of explaining it.
+
+## v470 fix
+
+The replacement M4 now has its own first-person hip pose.
+
+Hip:
+- X `.54`
+- Y `-.56`
+- Z `-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+
+As ADS blends in, root returns to the existing centered ADS pose:
+- X `.36`
+- Y `-.25`
+- Z `-1.66`
+- rotation `0,0,0`
+
+Reload stays at the existing neutral root `.36,-.25,-1.66`, rotation zero.
+
+No recoil/damage/sound/ammo/ADS-FOV/reload choreography/unrelated systems changed.
+
+The optic itself is not modified yet. If it still looks malformed after this complete-gun pose correction, make the next build optic-only.
+
+## Next test
+
+Ask user to inspect:
+- shouldered lower/right hip pose;
+- whether chin-crowding is gone;
+- whether front perspective looks natural;
+- optic appearance;
+- ADS behavior.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v469 — HIP-FIRE PLACEMENT CORRECTION — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
