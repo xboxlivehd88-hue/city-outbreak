@@ -2030,20 +2030,17 @@ function rebuildGun(){
      // Normalize the replacement GLB from its authored bounds into the established
      // first-person M4 length. The previous 5.15 scale was specific to the old asset.
      const m4Root=m4ModelTemplate.clone(true);m4Root.name="ExternalM4Carbine";
+     m4Root.updateMatrixWorld(true);
      const m4RawBox=new THREE.Box3().setFromObject(m4Root);
      const m4RawSize=m4RawBox.getSize(new THREE.Vector3());
      const m4RawLength=Math.max(m4RawSize.x,m4RawSize.y,m4RawSize.z);
-     m4Root.scale.setScalar(m4RawLength>1e-5?3.45/m4RawLength:1);
-     m4Root.rotation.set(THREE.MathUtils.degToRad(-8),0,THREE.MathUtils.degToRad(-6));
-     m4Root.position.set(.54,-.56,-1.48);m4ViewRoot=m4Root;
 
      // The replacement GLB's supplied optic renders badly in first person. Remove
      // only the imported top/rear optic assembly and mount a clean compact optic
      // on the same rifle. Prefer semantic node names, with a bounded spatial fallback
      // for exporters that replaced useful node names with generic mesh IDs.
-     m4Root.updateMatrixWorld(true);
      const m4Meshes=[];m4Root.traverse(o=>{if(o.isMesh)m4Meshes.push(o)});
-     let importedOptic=m4Meshes.filter(o=>/(scope|optic|acog|lens|eyepiece|eyecup|reticle)/i.test(o.name||""));
+     let importedOptic=m4Meshes.filter(o=>/(scope|optic|acog|lens|eyepiece|eyecup|reticle|sight)/i.test(o.name||""));
      if(!importedOptic.length&&m4RawSize.y>1e-5&&m4RawSize.z>1e-5){
        const tmpBox=new THREE.Box3(),tmpCenter=new THREE.Vector3(),tmpSize=new THREE.Vector3();
        importedOptic=m4Meshes.filter(o=>{
@@ -2055,7 +2052,10 @@ function rebuildGun(){
      }
      for(const o of importedOptic)o.visible=false;
 
-     const cleanBaseBox=new THREE.Box3().setFromObject(m4Root),cleanBaseSize=cleanBaseBox.getSize(new THREE.Vector3()),cleanBaseCenter=cleanBaseBox.getCenter(new THREE.Vector3());
+     const cleanBaseBox=new THREE.Box3().makeEmpty(),tmpVisibleBox=new THREE.Box3();
+     for(const o of m4Meshes)if(o.visible){tmpVisibleBox.setFromObject(o);cleanBaseBox.union(tmpVisibleBox)}
+     if(cleanBaseBox.isEmpty())cleanBaseBox.copy(m4RawBox);
+     const cleanBaseCenter=cleanBaseBox.getCenter(new THREE.Vector3());
      const opticGroup=new THREE.Group();opticGroup.name="M4CleanOptic";
      const opticLen=Math.max(m4RawLength*.16,1e-4),opticRad=Math.max(m4RawLength*.036,1e-4);
      const opticZ=cleanBaseBox.max.z-m4RawLength*.40,opticY=cleanBaseBox.max.y+m4RawLength*.055,opticX=cleanBaseCenter.x;
@@ -2071,6 +2071,10 @@ function rebuildGun(){
      mount.position.set(opticX,opticY-opticRad*1.02,opticZ);opticGroup.add(mount);
      opticGroup.traverse(o=>{o.userData.externalWeaponAsset=false;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
      m4Root.add(opticGroup);
+
+     m4Root.scale.setScalar(m4RawLength>1e-5?3.45/m4RawLength:1);
+     m4Root.rotation.set(THREE.MathUtils.degToRad(-8),0,THREE.MathUtils.degToRad(-6));
+     m4Root.position.set(.54,-.56,-1.48);m4ViewRoot=m4Root;
 
      m4AdsOccluders=[];
      m4Root.traverse(o=>{
