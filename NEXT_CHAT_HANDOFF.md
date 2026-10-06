@@ -1,3 +1,64 @@
+# M4 TUNING PHASE — 2026-10-06 — v476 — ACOG VIEW CLEANUP / FINAL ADS ZERO NUDGE — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=476`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v476 gameplay commit: `0f11aa9b4f5b452d3fcfb052e554e8f3015e1e8e`
+- v476 loader commit: `547bb3999857252fc87d4785441fade77e9e71fd`
+- Current `src/game.js` SHA: `abd72e7e112bc815ab1dd7963c8df3a08b3c5922`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v475 result
+
+User screenshot showed:
+- real ACOG is now see-through;
+- ADS is very close;
+- scope still sits slightly high;
+- scope transparency still has a small internal artifact;
+- hit lands just a hair above the iron sight.
+
+## v476 changes
+
+Only three M4 ADS refinements:
+
+1. ACOG vertical target:
+   - `adsEyeYCorrection` from `-.034` to `-.042`.
+
+2. Real ACOG blend behavior:
+   - `transparent=true`
+   - `depthWrite=false`
+   - `depthTest=true`
+   - `alphaTest=0`
+   - remove forced side override
+   - emissive clamp stays `.15`.
+
+3. M4 ADS shot zero:
+   - `rifleAdsZeroY=-.008` only while aiming with rifle.
+
+Do not change:
+- v470 hip placement;
+- horizontal ADS alignment;
+- eye distance;
+- FOV 48;
+- recoil/damage/reload/sound;
+- other weapons.
+
+## Next test
+
+Ask user to confirm:
+- scope is now vertically centered;
+- glass looks cleaner;
+- impact lands on sight;
+- horizontal/eye distance stayed good;
+- hip placement remains approved.
+
+If good, preserve the current M4 pose/ADS values before moving to the next M4 issue.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v475 — ORIGINAL ACOG GLASS TRANSPARENCY RESTORED — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
