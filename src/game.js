@@ -5532,7 +5532,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      m4ViewRoot.position.x=THREE.MathUtils.lerp(.54,m4AdsRootTarget.x,aimBlend);
      m4ViewRoot.position.y=THREE.MathUtils.lerp(-.56,m4AdsRootTarget.y,aimBlend);
      m4ViewRoot.position.z=THREE.MathUtils.lerp(-1.48,m4AdsRootTarget.z,aimBlend);
-     m4ViewRoot.rotation.x=THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-8),0,aimBlend);
+     m4ViewRoot.rotation.x=THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-8),THREE.MathUtils.degToRad(-2.5),aimBlend);
      m4ViewRoot.rotation.y=0;
      m4ViewRoot.rotation.z=THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-6),0,aimBlend);
    }
