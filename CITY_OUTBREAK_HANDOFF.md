@@ -1,3 +1,50 @@
+# LATEST LIVE STATE — 2026-10-06 — v455 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=455`
+- v455 cleanup commit: `91ee037f4611165160d925f3bdf51281f5932e30`
+- v455 loader/deploy commit: `c518eb4e2266eb36cd9959f77a56389c6360a903`
+- v455 successful Pages run: `37498009800`
+- Current `src/game.js` content SHA: `d92904531c27475cadd7477a1a6b22ae7aa42e50`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v454 and reported: **"works fine"**.
+- v454 is therefore the latest user-confirmed gameplay baseline before this v455 cleanup.
+
+## v455 cleanup — inlined one-use zombie eye-color wrapper
+
+Audit proved:
+- `rigEyeColor(kind)` had exactly two occurrences: its definition and one call.
+- The helper only returned the existing eye-color ternary.
+
+v455 changed only:
+- removed the three-line `rigEyeColor(kind)` wrapper;
+- inlined the exact same eye-color expression at its only call site.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus confirmed-good v454 is one added line / four deleted lines in `src/game.js` plus the v455 loader bump in `index.html`;
+- zombie eye colors themselves are unchanged;
+- `rigOutfitColor()` remains untouched;
+- no model selection, transforms, animations, hitboxes, crawler behavior, PBD/ragdoll physics, spawn behavior, grenade logic, weapon behavior, or M240 audio were changed;
+- protected v324 recovery remains unchanged.
+
+## Continue cleanup carefully
+
+Continue with fresh proof for tiny one-call visual/setup wrappers only. `rigOutfitColor()` remains a likely next candidate; re-audit current main before changing it.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v454 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
