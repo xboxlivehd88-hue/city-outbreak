@@ -1,3 +1,57 @@
+# LATEST LIVE STATE — 2026-10-06 — v450 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=450`
+- v450 cleanup commit: `207c04117d196d568c215c96b9f2f1259e52370c`
+- v450 loader/deploy commit: `75f1d967846d7880efe4769c679d0e44d8e13d8f`
+- v450 successful Pages run: `37489433155`
+- Current `src/game.js` content SHA: `db5556a1a89bd9092584e5611b7730c1d8a0fb6d`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User last explicitly confirmed v448 good with: **"im good lets move on"**.
+- User then asked to continue through v449 and v450 before testing.
+- Therefore v448 remains the latest user-confirmed gameplay baseline; v449 + v450 are pending the user's combined live test.
+
+## v450 cleanup — removed obsolete procedural facade generator/cache
+
+Current-main audit proved:
+- `facadeMaterial` occurred exactly once: its own function definition, with zero callers.
+- `facadeMaterialCache` existed only in the declaration and inside that dead function.
+- Current city visuals come from the uploaded city GLB, not this old in-browser procedural facade generator.
+
+v450 removed:
+- the 76-line unused `facadeMaterial(base,variant)` function;
+- `facadeMaterialCache` from the declaration while preserving the live `buildingColliders=[]` array;
+- the three-line obsolete comment describing procedural building facades.
+
+Verification:
+- `src/game.js` parses successfully;
+- net diff versus current v449 main contains only `src/game.js` and the v450 loader change in `index.html`;
+- `buildingColliders` remains live;
+- native crawler conversion, PBD/ragdoll, M240 authored WAV path/state, grenade/spintop, live spawn/connectivity protections, active zombie cap and other protected systems remain present;
+- M240 audio was not modified.
+
+## Test focus
+
+Because v449 + v450 only remove unreachable old procedural-city helpers, the user mainly needs to verify:
+- the city/map loads with all expected buildings/textures;
+- no missing/white/black building surfaces appear;
+- collision, zombie spawning/pathing, weapons, grenades, crawlers/ragdolls, shop and round transitions still feel normal.
+
+If those are normal, continue the cleanup audit from current main and re-prove any next candidate before deletion.
+
+---
+
 # LATEST LIVE STATE — 2026-10-03 — v449 — CLEANUP AUDIT IN PROGRESS — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
