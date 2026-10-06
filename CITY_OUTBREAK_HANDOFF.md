@@ -1,3 +1,87 @@
+# LATEST LIVE STATE — 2026-10-06 — v464 — SPRINT HUD RETURN-OBJECT ALLOCATION CLEANUP — READ THIS FIRST
+
+This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
+
+## Current live build
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Current loader: `./src/game.js?v=464`
+- v464 sprint HUD helper cleanup commit: `7f5c24e5e8524b74e0c4348db48501815cb4fa4e`
+- v464 UI-helper cache-bust/game import commit: `7ca254845936987cbf240f9c999b1f7be0319083`
+- v464 loader/deploy commit: `ff2a8208f1997b30e3efe4ec2d3ddfebb3de8bb2`
+- v464 successful Pages run: `37526091354`
+- Current `src/game.js` content SHA: `d81c5ba4f5e152ecafeb13b3f6b4f6dd4ae67d9c`
+- Current `src/ui-helpers.js` content SHA: `023797b0e936474c622ce32599fe02a550c27076`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - never change this unless the user explicitly approves a new recovery checkpoint.
+
+## Latest test status
+
+- User tested v463 and reported: **"looks fine to me"**.
+- **v463 is therefore the latest user-confirmed good build.**
+- v464 is live but remains **unconfirmed** until the user tests it.
+- Preserve the current v459/v457 rain-cover behavior and the `rainCoverOrigin` scratch-vector optimization.
+
+## v464 cleanup — reuse sprint HUD result object
+
+Audit found:
+- v463 already stopped allocating the sprint HUD argument object every gameplay frame;
+- `renderSprintHud()` itself still returned a brand-new `{pct,color,state}` object every frame;
+- the return value is consumed immediately by the single runtime caller, `updateSprintUI()`.
+
+Verification before change:
+- all `src/*.js` files were checked;
+- `renderSprintHud` has one runtime caller in `game.js` plus its import, and one definition in `ui-helpers.js`.
+
+v464 changed only:
+- added one reusable module-level `sprintHudResult` object;
+- `renderSprintHud()` writes the same `pct`, `color`, and `state` values into that reusable object;
+- returns the same reusable object instead of allocating a new result object each frame;
+- bumped the `ui-helpers.js` import query to `?v=464` so the browser definitely loads the new helper.
+
+Behavior intentionally unchanged:
+- sprint drain/recharge rates;
+- sprint lock/unlock behavior;
+- sprint speed;
+- HUD percentage math;
+- HUD color thresholds;
+- READY / RECOVERING / percentage text;
+- `updateSprintUI()` caller behavior.
+
+Verification:
+- current `src/game.js` parses successfully;
+- current `src/ui-helpers.js` parses successfully;
+- exact diffs are limited to the reusable sprint result object and the helper import cache-bust;
+- Pages run `37526091354` completed successfully;
+- rain/rain-cover, PBD/ragdoll, crawler conversion, zombie spawning/connectivity/anti-clumping, grenade/spintop, map/collision, gun transforms/ADS/recoil, M240 audio, and start/death/restart/shop/pause were not changed;
+- protected v324 recovery remains unchanged.
+
+## Cleanup finish estimate
+
+After v464, estimate **0–2 worthwhile low-risk cleanup passes remain**.
+
+The remaining safe candidate is mainly low-frequency performance HUD bookkeeping. Most other remaining allocation sites are inside protected/high-risk systems and should not be touched for marginal gains.
+
+If v464 is good, reassess whether one final performance-bookkeeping cleanup is worthwhile. If not, declare the cleanup phase complete.
+
+## v464 test focus
+
+User should confirm:
+1. game remains smooth/playable;
+2. sprint drains and recharges normally;
+3. exhausting sprint still enters RECOVERING and unlocks normally;
+4. sprint HUD percentage, color, READY and RECOVERING states look unchanged;
+5. no boss/rain/unrelated regression.
+
+## Next step after user test
+
+If v464 is good, either do one final isolated low-frequency performance HUD bookkeeping cleanup or call cleanup complete if the remaining gain is too small to justify another change.
+
+---
+
 # LATEST LIVE STATE — 2026-10-06 — v463 — SPRINT HUD PER-FRAME ARGUMENT CLEANUP — READ THIS FIRST
 
 This section supersedes older "current live state" sections below. **GitHub main is authoritative.** Do not redefine the protected recovery checkpoint.
