@@ -1,3 +1,80 @@
+# M4 TUNING PHASE — 2026-10-06 — v475 — ORIGINAL ACOG GLASS TRANSPARENCY RESTORED — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=475`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v475 gameplay/material commit: `3194812a2c7fae48f0a881b8b24ca83362398d2e`
+- v475 loader commit: `13a8096ad6bc2d270a42198967b8550c70c4812a`
+- Current `src/game.js` SHA: `6d2332ae17c88e82b1f3602b00061491192ec480`
+- Protected recovery remains **v324** unchanged.
+
+## What the v474 screenshot proved
+
+User showed the real ACOG aligned in ADS but completely black/opaque through the lens and said they know the GLB itself can be viewed through.
+
+The cause is confirmed in our own runtime material override from v472:
+- we set the original ACOG material to `transparent=false`;
+- that stopped the earlier transparency/emissive artifact;
+- but it also made the modeled glass surface opaque.
+
+So the uploaded GLB was not at fault. Our v472 material override removed its see-through behavior.
+
+## v475 fix
+
+Only the runtime ACOG material transparency is corrected.
+
+Before:
+- `transparent=false`
+- `alphaTest=.12`
+
+Now:
+- `transparent=true`
+- `alphaTest=.02`
+
+Preserved from the v472 stabilization:
+- `opacity=1`
+- `depthWrite=true`
+- `depthTest=true`
+- emissive intensity reduced to `.15`
+- original GLB geometry/textures/material maps remain in use.
+
+This restores the GLB's intended lens transparency while keeping the strong Sketchfab emissive export from blowing out the optic in-game.
+
+## Intentionally unchanged
+
+v475 does not change:
+- v470 hip placement;
+- v474 vertical ADS correction;
+- horizontal ADS alignment;
+- rear-lens distance;
+- ADS FOV 48;
+- recoil;
+- damage/spread/fire rate;
+- ammo;
+- sound;
+- reload choreography;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- exact v475 gameplay diff is limited to two ACOG material lines;
+- full `src/game.js` syntax parse passed.
+
+## v475 test focus
+
+Check:
+1. real ACOG remains centered as in v474;
+2. lens is now actually see-through;
+3. hip-fire optic still looks correct;
+4. no return of the old glow/split artifact.
+
+If transparency is restored but the glass still needs tuning, adjust only the real ACOG material next.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v474 — ACOG ADS VERTICAL EYE-LINE CORRECTION — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
