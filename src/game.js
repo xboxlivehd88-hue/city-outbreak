@@ -3832,7 +3832,6 @@ let zombieSpawnAngleOffset=0;
 const ZOMBIE_SPAWN_GOLDEN_ANGLE=Math.PI*(3-Math.sqrt(5));
 const waveRemainingCount=()=>livingCount()+Math.max(0,waveTarget-waveSpawned);
 function spawnAngleDiff(a,b){return Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)))}
-function clearRecentZombieSpawns(){recentZombieSpawnPoints.length=0}
 function rememberZombieSpawn(p){
  recentZombieSpawnPoints.push({x:p.x,z:p.z});
  if(recentZombieSpawnPoints.length>RECENT_ZOMBIE_SPAWN_LIMIT)recentZombieSpawnPoints.shift();
@@ -3971,7 +3970,7 @@ function spawnQueuedZombies(){
  }
 }
 function spawnWave(){
- let d=diff(wave);currentBoss=null;clearRecentZombieSpawns();zombieSpawnAngleOffset=rnd()*Math.PI*2;
+ let d=diff(wave);currentBoss=null;recentZombieSpawnPoints.length=0;zombieSpawnAngleOffset=rnd()*Math.PI*2;
  if(isBossWave(wave)){
    const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
