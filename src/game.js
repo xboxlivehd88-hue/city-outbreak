@@ -5432,16 +5432,14 @@ function resolveZombiePlayerContact(z,oldx,oldz){
 }
 
 let sprintUiPct=-1,sprintUiColor="",sprintUiState="";
+const sprintHudRenderArgs={sprintFill,sprintState,energy:100,locked:false,previousPct:-1,previousColor:"",previousState:""};
 function updateSprintUI(){
- const next=renderSprintHud({
-  sprintFill,
-  sprintState,
-  energy:sprintEnergy,
-  locked:sprintLocked,
-  previousPct:sprintUiPct,
-  previousColor:sprintUiColor,
-  previousState:sprintUiState
- });
+ sprintHudRenderArgs.energy=sprintEnergy;
+ sprintHudRenderArgs.locked=sprintLocked;
+ sprintHudRenderArgs.previousPct=sprintUiPct;
+ sprintHudRenderArgs.previousColor=sprintUiColor;
+ sprintHudRenderArgs.previousState=sprintUiState;
+ const next=renderSprintHud(sprintHudRenderArgs);
  sprintUiPct=next.pct;
  sprintUiColor=next.color;
  sprintUiState=next.state;
