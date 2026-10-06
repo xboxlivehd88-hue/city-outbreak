@@ -1,3 +1,74 @@
+# M4 TUNING PHASE — 2026-10-06 — v477 — ADS REAR-DROP TEST ONLY — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=477`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v477 gameplay commit: `3140614df9ca37b76f0413f0edf717794167dfe6`
+- v477 loader commit: `ee4b44924de17e05e41e8e30c3bda084b4465f51`
+- Current `src/game.js` SHA: `1760f0847385de32f58735cb13910ffb89be3611`
+- Protected recovery remains **v324** unchanged.
+
+## User's requested next step
+
+After v476 the user said the rear of the gun still needs to come down while ADS and chose **option 1 first**.
+
+This build intentionally changes only one variable so the result is easy to judge.
+
+## v477 change
+
+Only the M4 full-ADS pitch endpoint changes:
+
+Before:
+- hip pitch = `-8°`
+- full ADS pitch = `0°`
+
+Now:
+- hip pitch = `-8°`
+- full ADS pitch = `-2.5°`
+
+Current line:
+- `m4ViewRoot.rotation.x = lerp(-8°, -2.5°, aimBlend)`
+
+Effect:
+- rear of rifle stays slightly lower at full ADS;
+- front of rifle rises relative to the rear;
+- reticle/iron-sight relationship can be judged without changing any other ADS variable.
+
+## Intentionally unchanged
+
+v477 does **not** change:
+- ACOG material;
+- ACOG vertical target correction;
+- horizontal alignment;
+- eye distance;
+- FOV 48;
+- rifle ADS shot zero;
+- approved v470 hip placement;
+- recoil;
+- damage/spread/fire rate;
+- reload;
+- sound;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- exact gameplay diff is one line;
+- full `src/game.js` syntax parse passed.
+
+## v477 test focus
+
+Check only:
+1. whether the rear of the rifle is now lower enough in ADS;
+2. whether the reticle lines up better with the iron sight;
+3. whether the scope still sits acceptably relative to the eye.
+
+Do not change scope material or shot zero until this pitch-only test is evaluated.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v476 — ACOG VIEW CLEANUP / FINAL ADS ZERO NUDGE — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
