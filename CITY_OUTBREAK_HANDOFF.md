@@ -1,3 +1,120 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v495 ANCHORED M4 ARM REACH / FASTER RELOAD TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v495**
+- Loader: `./src/game.js?v=495`
+- Active M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v495 gameplay commit: `9cab9f61d2fe3e05f22b26b1a77e57b84384c6ad`
+- v495 loader commit: `1124711cf9bef9dff37374c60b3197ba2f85eba9`
+- v495 `src/game.js` blob SHA: `a4294ace71915123e69f8c7e5c8846a5c7a7d17f`
+- v485-v494 were tested and rejected for reload behavior.
+- **v484 remains the last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## Why v494 was rejected
+
+User reported:
+1. the player arm still did not visually reach the player's body/belt;
+2. the reload had become too slow.
+
+The key structural cause was found in the procedural arm implementation:
+- the previous M4 reload moved the entire left-arm group;
+- shoulder, upper arm, forearm, and hand translated together;
+- therefore the hand could move downward, but the shoulder moved with it, so the arm never visually stretched from the player into a belt/body reach.
+
+## v495 isolated correction
+
+### Shoulder now stays anchored to the player
+The left M4 support arm now has explicit articulated references:
+- fixed left shoulder;
+- base elbow;
+- base hand position;
+- upper-arm mesh;
+- forearm mesh;
+- hand geometry.
+
+During M4 reload:
+- shoulder stays fixed;
+- elbow is solved between shoulder and the target hand position with a bend bias;
+- upper arm and forearm cylinders are reoriented/rescaled to their live endpoints;
+- hand geometry moves to the solved hand position;
+- after reload the normal approved hand/arm pose is restored.
+
+The magazine-follow phase now drives the **articulated hand position** instead of translating the whole left arm group.
+
+### Body/belt target corrected
+M4 body/pouch hand offset changed from:
+- `(-.42,-1.15,-.18)`
+
+to:
+- `(-.32,-.95,1.15)`
+
+Because negative Z is forward in this first-person setup, the old target was still far out in front of the player. The new +Z offset brings the hand back toward the torso/belt area while keeping it low.
+
+### Reload speed corrected
+M4 duration changed from:
+- `Math.max(2200,2800-reloadLevel*90)`
+
+to:
+- `Math.max(1700,2200-reloadLevel*90)`
+
+Base reload is now about **2.2 seconds** instead of 2.8 seconds.
+
+The deliberate charging sequence from v494 is preserved.
+
+## Preserved from v494
+- empty mag falls, bounces lightly, settles on ground, remains visible;
+- fresh loaded mag is created only after the hand reaches the body/pouch phase;
+- measured geometry-guided magazine insertion;
+- slower staged charging action;
+- bolt travel `24` authored Z units;
+- charging handle travel `30` authored Z units.
+
+## Locked v484 M4 values preserved
+Do not change unless explicitly asked:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+- current main and required handoffs/recovery files were re-read before editing;
+- v495 committed source passed a module-safe syntax parse after stripping static import lines;
+- post-write checks confirmed exactly one copy of:
+  - `RIFLE_ADS_ZERO_Y=.040`;
+  - unchanged M4 asset path;
+  - articulated M4 left-arm helper;
+  - articulated reset helper;
+  - fixed shoulder capture;
+  - magazine-to-articulated-hand follow;
+  - 2.2 s rifle reload timing;
+  - preserved bolt/charging-handle travel.
+
+## v495 user test target
+Reload with **R** and verify:
+1. shoulder stays visually connected to player;
+2. elbow bends and hand actually reaches back toward the body/belt;
+3. fresh mag comes back from that body reach;
+4. reload no longer feels excessively slow;
+5. dropped empty mag still reaches/settles on ground;
+6. charging still reads as deliberate rather than twitchy;
+7. approved v484 hip/ADS/shot alignment remains unchanged.
+
+Do not call v495 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v494 PHYSICAL / SLOWER M4 RELOAD TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
