@@ -1,3 +1,45 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v496 FASTER M4 RELOAD TIMING TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v496**
+- Loader: `./src/game.js?v=496`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v496 gameplay commit: `16e6d959ec69e9afd20314ff7a1d2b59fb71fcc0`
+- v496 loader commit: `1c6e43ea921efa8ce4681c2b1e5e519880895dfa`
+- v496 game blob: `b25f69adf2a053ceb6599320e205097d446a601a`
+- v485-v495 rejected for reload behavior.
+- **v484 remains last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains v324 unchanged.
+
+## v496 exact correction
+User said v495 reload was still too slow.
+
+Only M4 reload timing changed:
+- from `Math.max(1700,2200-reloadLevel*90)`
+- to `Math.max(1450,1800-reloadLevel*70)`
+
+Base reload is now about **1.8 seconds**.
+
+Preserved exactly:
+- anchored shoulder and articulated arm reach;
+- body/belt pickup;
+- physical old-mag drop/settle;
+- loaded spare pickup/carry;
+- measured magwell insertion;
+- staged charging;
+- bolt `24 Z`;
+- charging handle `30 Z`;
+- approved ADS/hip/shooting values.
+
+## Test target
+Reload and confirm the speed now feels right without losing the physical v495 choreography.
+
+Do not mark v496 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v495 ANCHORED M4 ARM REACH / FASTER RELOAD TEST — READ THIS FIRST
 
 GitHub main is authoritative.
