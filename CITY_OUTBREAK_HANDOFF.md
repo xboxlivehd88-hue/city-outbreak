@@ -1,3 +1,86 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v488 MODEL-SCALE M4 RELOAD TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v488**
+- Loader: `./src/game.js?v=488`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v488 gameplay commit: `03a440a4f8604c6e6e49689efd15fb35dc16bff6`
+- v488 loader commit: `3af2f3c7957aac6da09d360a8d8d640430cf4f63`
+- v488 `src/game.js` blob SHA: `8bb7f6cdbef51bdc1f56d51cdf9b08a6bbe6eaaa`
+- v485/v486/v487 were tested and rejected.
+- **v484 remains the last user-confirmed good baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## Why v487 looked unchanged
+
+The user supplied another video and correctly reported that v487 did not visibly improve the reload.
+
+The exact deployed GLB and deployed v487 source were inspected directly. The key discovery:
+- this Sketchfab/FBX GLB uses roughly **100-unit authored coordinates**;
+- prior reload movement values such as `.34`, `1.05`, `.38`, etc. were effectively microscopic after import transforms;
+- direct mesh bounds show:
+  - real magazine mesh height along Y: about **176 units**;
+  - bolt carrier length along Z: about **76 units**;
+  - `ar15.005` charging-handle-shaped part length along Z: about **125 units**.
+
+The deployed v487 `src/game.js` was confirmed byte-for-byte identical to GitHub before editing.
+
+## v488 changes — M4 reload only
+
+- Old seated magazine now visibly pulls downward by up to **34 authored Y units** before the drop.
+- Fresh replacement starts about **96 authored Y units** below the magwell.
+- It visibly travels to an alignment point **26 Y units** below the magwell, then seats to the exact saved home transform.
+- The fresh replacement itself becomes the new active/seated `playerReloadPart`.
+  - It is **not removed** and replaced by suddenly revealing the old hidden magazine.
+  - This prevents the “one drops / one stays / replacement never comes back” behavior.
+- Real bolt carrier now pulls rearward by **34 authored Z units**.
+- `ar15.005` charging-handle-shaped part now pulls rearward by **42 authored Z units**.
+- Charging movement spans a larger visible time window.
+- Left support hand performs a controlled rearward charging motion synchronized to the handle, then returns.
+- Right hand remains stable.
+
+## Locked v484 M4 values preserved
+Do not change unless explicitly asked:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+- v487 user video inspected frame-by-frame.
+- Exact deployed GLB parsed directly.
+- Exact deployed v487 game file Git blob matched GitHub: `600a92884d32e661161c7095fd27ea6dbb0cedfc`.
+- Patched v488 file passed `node --check`.
+- Locally calculated Git blob SHA for syntax-checked v488 file:
+  `8bb7f6cdbef51bdc1f56d51cdf9b08a6bbe6eaaa`
+- GitHub committed blob matched that SHA exactly.
+- Post-write checks confirmed approved `.040` ADS zero and M4 asset path remain unchanged.
+
+## v488 test target
+Reload with **R** and verify:
+1. old magazine visibly pulls free and drops;
+2. no seated duplicate remains;
+3. fresh magazine visibly rises from below and seats into the gun;
+4. that fresh magazine remains seated after reload;
+5. charging handle and bolt visibly pull rearward and return;
+6. support hand performs one controlled charge, not a wild sweep;
+7. normal hip pose and v484 ADS alignment return exactly.
+
+Do not call v488 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v487 M4 MAGAZINE/CHARGING AXIS FIX TEST — READ THIS FIRST
 
 This section supersedes older current-state sections below. **GitHub main is the source of truth.**
