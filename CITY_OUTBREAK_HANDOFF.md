@@ -1,3 +1,162 @@
+# M4 TUNING PHASE — 2026-10-07 — v478 — TRUE OPTICAL-AXIS ADS + TWO-PASS ACOG — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=478`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v478 gameplay commit: `3059db7d2fc70349175a77243fb9fee53ab307a8`
+- v478 loader commit: `0cbf57898ff846029d8935a368162f3118aa02e2`
+- v478 loader Pages run: `37706610309` — build/deploy succeeded.
+- Current `src/game.js` SHA: `7e205729b4f87389613c56f745362fafad3b796a`
+- Protected recovery remains **v324** unchanged.
+
+## User-provided v477 video result
+
+User uploaded a ~21.5 second gameplay video and explicitly reported:
+- while ADS, the scope/reticle is not actually lined up with the shot;
+- impacts do not land where the modeled sight is aimed;
+- the ACOG still looks broken at hip-fire even though the source GLB is known-good.
+
+The video confirms both issues.
+
+### ADS diagnosis
+
+Previous builds centered ADS using the **whole ACOG outer bounding box**.
+
+That is not the true optical center because the ACOG mesh includes:
+- housing;
+- mount;
+- knobs;
+- the actual tube/lens.
+
+v477 also added a manual `-2.5°` full-ADS pitch and retained a manual `rifleAdsZeroY=-.008` shot correction.
+
+Those separate guesses could not guarantee that:
+1. modeled optic axis;
+2. camera center;
+3. bullet ray
+
+all agreed.
+
+### Hip-fire ACOG diagnosis
+
+A temporary repo-side GLB diagnostic parsed the actual `acog_optic.001_0` geometry and `optic.001` texture alpha, then the diagnostic workflow was deleted.
+
+Important measured facts:
+- ACOG position geometry longitudinal range is local Y `-0.647548...` to `0.789419...`;
+- rear 5% aperture band mean is approximately local X `-0.02582`, local Z `0.04577`;
+- front 5% aperture band mean is approximately local X `-0.02496`, local Z `0.02683`;
+- the ACOG base-color PNG is 1024×1024;
+- **1,000,538 / 1,048,576 pixels are fully opaque alpha 255**;
+- only **44,627 pixels are below alpha 250**.
+
+Therefore the ACOG is overwhelmingly opaque housing with a small translucent glass area.
+
+Rendering the entire mesh as one transparent object was the reason hip-fire could show internal knobs/body geometry through the housing. The GLB geometry itself remains valid.
+
+Temporary detailed diagnostic workflow was removed in commit:
+- `f50098127dd849a33a0d4b0df4e0d7ed1529cb65`
+
+## v478 fix — ADS from the actual optical tube
+
+v478 no longer uses the ACOG outer-box center.
+
+At M4 rebuild:
+1. find exact mesh `acog_optic.001_0`;
+2. inspect its real position attribute;
+3. average the rear-most 5% of the tube vertices;
+4. average the front-most 5%;
+5. transform those aperture centers into M4-root space;
+6. build the real optical-axis vector from rear center to front center;
+7. calculate the quaternion that aligns that axis exactly with camera forward `(0,0,-1)`;
+8. solve the M4 root position so the actual rear aperture lands at screen center about `0.18` units in front of the eye.
+
+This replaces:
+- whole-housing box-center aiming;
+- the manual `adsEyeYCorrection`;
+- the v477 `-2.5°` ADS pitch guess.
+
+Hip pose remains the approved v470 pose and quaternion-slerps into the true optical-axis ADS quaternion.
+
+## v478 shot alignment
+
+The previous M4-only manual shot offset:
+- `rifleAdsZeroY=-.008`
+
+is removed.
+
+Once the modeled optical axis itself is centered on camera forward, the M4 ADS shot ray returns to true screen/camera center.
+
+The goal is now one shared line:
+- modeled ACOG optical axis;
+- screen center;
+- bullet ray.
+
+No independent visual-vs-hit offsets remain.
+
+## v478 fix — two-pass ACOG rendering
+
+The actual GLB ACOG remains in use.
+
+Instead of making the entire scope transparent:
+
+### Opaque body pass
+- original ACOG mesh;
+- `transparent=false`;
+- `depthWrite=true`;
+- `depthTest=true`;
+- `alphaTest=.985`;
+- `alphaToCoverage=true`;
+- emissive strength remains clamped to `.15`.
+
+This writes proper depth for the overwhelmingly opaque housing and prevents internal scope geometry from showing through it at hip.
+
+### Transparent glass pass
+- clone of the exact same ACOG geometry;
+- uses the original texture/material maps;
+- `transparent=true`;
+- `depthWrite=false`;
+- `depthTest=true`;
+- discards fully/near-opaque pixels in the shader and renders only the small translucent glass region;
+- emissive remains clamped to `.15`.
+
+This keeps the real modeled lens see-through without turning the entire housing into one transparent self-sorting object.
+
+## Intentionally unchanged
+
+v478 does not change:
+- approved v470 hip position;
+- M4 normalized overall size;
+- M4 forward orientation;
+- ADS FOV 48;
+- recoil;
+- damage/spread/fire rate;
+- ammo;
+- sounds;
+- reload choreography;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- full current `src/game.js` syntax parse passed;
+- exact v478 diff is limited to M4 optic-axis calculation, M4 ACOG body/glass rendering, removal of M4 manual ADS zero, and quaternion ADS blending;
+- protected v324 recovery remains unchanged.
+
+## v478 test focus
+
+User should verify from gameplay/video:
+1. at hip, the ACOG housing no longer looks split/open or shows internal knobs through itself;
+2. ADS moves the **real optical tube** directly to eye center;
+3. reticle/sight picture is centered without manual visual nudges;
+4. shots land exactly where the modeled ACOG is aimed;
+5. approved hip placement is otherwise unchanged.
+
+If any tiny ADS correction remains after v478, tune from the optical-axis result only. Do not reintroduce separate visual and bullet offsets.
+
+---
+
 # M4 TUNING PHASE — 2026-10-06 — v477 — ADS REAR-DROP TEST ONLY — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
