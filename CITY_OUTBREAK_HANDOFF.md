@@ -1,3 +1,110 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v494 PHYSICAL / SLOWER M4 RELOAD TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v494**
+- Loader: `./src/game.js?v=494`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v494 gameplay commit: `686f0fb16e813a7eb17787ecadd02f28502b1173`
+- v494 loader commit: `716762798d87a75327dea2dfa352dfc5fd018c8e`
+- v494 `src/game.js` blob SHA: `d3d234e45f7e79d7e88b3bc6fc961521aded2e6f`
+- v485-v493 were tested and rejected for reload behavior.
+- **v484 remains the last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## Why v493 was rejected
+
+User supplied a new video and reported three immersion problems:
+1. the empty magazine should visibly fall all the way to the ground;
+2. the fresh magazine still appeared magically in the support hand instead of coming from the player/body;
+3. the M4 charging action looked fake and too fast.
+
+Frame-by-frame review confirmed the charging portion occupied only a very short fraction of the ~1.55 s rifle reload.
+
+## v494 isolated M4 reload changes
+
+### Empty magazine now physically falls and settles
+- discarded M4 mag lifetime increased from ~2.15 s to **8 s**;
+- initial drop impulse reduced so it falls naturally rather than being thrown away;
+- spin reduced;
+- reload-mag ground impacts are counted;
+- after one/two small impacts the mag:
+  - stops translating;
+  - stops spinning;
+  - stays settled at ground height;
+- it remains visible on the ground for several seconds.
+
+### Fresh magazine now comes from below the player view
+- M4 pouch/body offset moved farther down/off-screen:
+  `(-.42,-1.15,-.18)`
+- fresh spare is **not created until p=.50**, after the empty support hand has already moved below the visible frame;
+- there is no visible spare before that moment;
+- loaded spare is created at the off-screen body/pouch position;
+- the same magazine then rises into view already in the hand;
+- measured v491 geometry still controls carry and magwell insertion.
+
+### M4 reload slowed for immersion
+- rifle reload timing changed from roughly:
+  `Math.max(1150,1550-reloadLevel*90)`
+- to:
+  `Math.max(2200,2800-reloadLevel*90)`
+- base reload is therefore about **2.8 s** before reload-speed upgrades.
+
+### Charging rebuilt as readable beats
+After mag seating:
+1. hand deliberately reaches the charging handle;
+2. handle/bolt pull rearward;
+3. short rearward hold;
+4. controlled forward release;
+5. hand returns to the fore-end.
+
+Model travel was reduced from exaggerated v493 values:
+- bolt: `34 -> 24` authored Z units
+- charging handle: `42 -> 30` authored Z units
+
+This should read as deliberate physical manipulation instead of a snap/twitch.
+
+## Locked v484 M4 values preserved
+Do not change unless user explicitly asks:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+- user v493 clip reviewed frame-by-frame;
+- exact deployed v493 Pages artifact used as local patch base;
+- local v494 passed `node --check`;
+- local Git blob SHA:
+  `d3d234e45f7e79d7e88b3bc6fc961521aded2e6f`
+- GitHub committed blob matched exactly;
+- post-write checks confirmed locked ADS zero, unchanged M4 asset, 2.8 s reload timing, off-screen spare creation, settling dropped-mag physics, and reduced/slower charge travel.
+
+## v494 user test target
+Reload with **R** and verify:
+1. empty mag visibly falls all the way to ground;
+2. it bounces/settles and remains there;
+3. empty hand disappears below view before a fresh mag appears;
+4. loaded spare rises naturally from below the player/body with the hand;
+5. same spare inserts into the M4;
+6. charging is slower and reads as reach → pull → hold → release;
+7. no fake snap/twitch;
+8. approved v484 hip/ADS/shot alignment remains unchanged.
+
+Do not call v494 confirmed-good until user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v493 LOWER M4 SPARE / LOADED-MAG PRESENTATION TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
