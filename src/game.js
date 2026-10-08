@@ -1726,7 +1726,7 @@ const HAND_POSES={
 };
 // M4 spare-mag pouch/grab point. This is a player-body location in gun-local
 // space: the support hand must physically reach here before the spare can move.
-const M4_RELOAD_POUCH_HAND_OFFSET=new THREE.Vector3(-.42,-1.15,-.18);
+const M4_RELOAD_POUCH_HAND_OFFSET=new THREE.Vector3(-.32,-.95,1.15);
 const M4_RELOAD_POUCH_GRIP_GUN=new THREE.Vector3(
  HAND_POSES.rifle.left[0]+M4_RELOAD_POUCH_HAND_OFFSET.x,
  HAND_POSES.rifle.left[1]+M4_RELOAD_POUCH_HAND_OFFSET.y,
@@ -1735,12 +1735,42 @@ const M4_RELOAD_POUCH_GRIP_GUN=new THREE.Vector3(
 function fpsArmSegment(a,b,r,mat,parent){
  const d=new THREE.Vector3().subVectors(b,a),len=d.length(),mid=new THREE.Vector3().addVectors(a,b).multiplyScalar(.5);
  const q=new THREE.Mesh(new THREE.CylinderGeometry(r*.90,r,len,8),mat);q.position.copy(mid);
- q.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.clone().normalize());q.castShadow=false;q.receiveShadow=false;parent.add(q);return q
+ q.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.clone().normalize());q.castShadow=false;q.receiveShadow=false;
+ q.userData.fpsBaseLength=len;parent.add(q);return q
 }
 function fpsHand(parent,hand,side,glove){
- const palm=new THREE.Mesh(new THREE.SphereGeometry(.105,9,7),glove);palm.scale.set(.92,1.00,1.30);palm.position.copy(hand);palm.castShadow=false;parent.add(palm);
- const thumb=new THREE.Mesh(new THREE.CylinderGeometry(.030,.038,.13,7),glove);thumb.position.set(hand.x+(side==='left'?.085:-.085),hand.y+.015,hand.z+.025);thumb.rotation.z=side==='left'?-.75:.75;thumb.rotation.x=.28;thumb.castShadow=false;parent.add(thumb);
- for(let i=0;i<3;i++){const f=new THREE.Mesh(new THREE.CylinderGeometry(.020,.024,.13,6),glove);f.position.set(hand.x+(i-1)*.045,hand.y-.035,hand.z-.060);f.rotation.x=Math.PI/2;f.castShadow=false;parent.add(f)}
+ const palm=new THREE.Mesh(new THREE.SphereGeometry(.105,9,7),glove);palm.scale.set(.92,1.00,1.30);palm.position.copy(hand);palm.userData.fpsHandOffset=palm.position.clone().sub(hand);palm.castShadow=false;parent.add(palm);
+ const thumb=new THREE.Mesh(new THREE.CylinderGeometry(.030,.038,.13,7),glove);thumb.position.set(hand.x+(side==='left'?.085:-.085),hand.y+.015,hand.z+.025);thumb.userData.fpsHandOffset=thumb.position.clone().sub(hand);thumb.rotation.z=side==='left'?-.75:.75;thumb.rotation.x=.28;thumb.castShadow=false;parent.add(thumb);
+ for(let i=0;i<3;i++){const f=new THREE.Mesh(new THREE.CylinderGeometry(.020,.024,.13,6),glove);f.position.set(hand.x+(i-1)*.045,hand.y-.035,hand.z-.060);f.userData.fpsHandOffset=f.position.clone().sub(hand);f.rotation.x=Math.PI/2;f.castShadow=false;parent.add(f)}
+}
+function setFpsArmSegmentPose(q,a,b){
+ if(!q)return;
+ const d=new THREE.Vector3().subVectors(b,a),len=Math.max(.001,d.length()),mid=new THREE.Vector3().addVectors(a,b).multiplyScalar(.5);
+ q.position.copy(mid);q.scale.y=len/(q.userData.fpsBaseLength||len);
+ q.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+}
+function setFpsHandPose(parent,hand){
+ if(!parent)return;
+ for(const q of parent.children)if(q.userData.fpsHandOffset)q.position.copy(hand).add(q.userData.fpsHandOffset);
+}
+function poseM4ReloadLeftArm(offset){
+ const r=playerHandRig;if(!r?.leftUpper||!r.leftFore||!r.leftShoulder||!r.leftHandBase)return;
+ r.left.position.set(0,0,0);r.left.rotation.set(0,0,0);
+ const hand=r.leftHandBase.clone().add(offset||new THREE.Vector3());
+ const reach=Math.min(1,(offset?.length?.()||0)/1.0);
+ const desiredElbow=r.leftShoulder.clone().lerp(hand,.55).add(new THREE.Vector3(-.13,.06,.08));
+ const elbow=r.leftElbowBase.clone().lerp(desiredElbow,reach);
+ setFpsArmSegmentPose(r.leftUpper,r.leftShoulder,elbow);
+ setFpsArmSegmentPose(r.leftFore,elbow,hand);
+ setFpsHandPose(r.left,hand);
+ r.leftGripAnchor.position.copy(hand);r.m4Articulated=true;
+}
+function resetM4ReloadLeftArm(){
+ const r=playerHandRig;if(!r?.m4Articulated)return;
+ r.left.position.set(0,0,0);r.left.rotation.set(0,0,0);
+ setFpsArmSegmentPose(r.leftUpper,r.leftShoulder,r.leftElbowBase);
+ setFpsArmSegmentPose(r.leftFore,r.leftElbowBase,r.leftHandBase);
+ setFpsHandPose(r.left,r.leftHandBase);r.leftGripAnchor.position.copy(r.leftHandBase);r.m4Articulated=false;
 }
 function addPlayerHands(){
  const pose=HAND_POSES[weapon]||HAND_POSES.rifle;
@@ -1752,8 +1782,9 @@ function addPlayerHands(){
  const rs=new THREE.Vector3(.80,-1.12,.08),ls=new THREE.Vector3(-.35,-1.08,.06),rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
  const rm=new THREE.Vector3().lerpVectors(rs,rh,.58),lm=new THREE.Vector3().lerpVectors(ls,lh,.58);
  fpsArmSegment(rs,rm,.105,sleeve,right);fpsArmSegment(rm,weapon==='pistol'?rh.clone().lerp(rm,.14):rh,.086,cuff,right);fpsHand(right,rh,'right',glove);
- fpsArmSegment(ls,lm,.105,sleeve,left);fpsArmSegment(lm,weapon==='pistol'?lh.clone().lerp(lm,.14):lh,.086,cuff,left);fpsHand(left,lh,'left',glove);
- playerHandRig={right,left,pose};
+ const leftUpper=fpsArmSegment(ls,lm,.105,sleeve,left),leftFore=fpsArmSegment(lm,weapon==='pistol'?lh.clone().lerp(lm,.14):lh,.086,cuff,left);fpsHand(left,lh,'left',glove);
+ const leftGripAnchor=new THREE.Object3D();leftGripAnchor.name="LeftHandGripAnchor";leftGripAnchor.position.copy(lh);gun.add(leftGripAnchor);
+ playerHandRig={right,left,pose,leftShoulder:ls.clone(),leftElbowBase:lm.clone(),leftHandBase:lh.clone(),leftUpper,leftFore,leftGripAnchor,m4Articulated:false};
 }
 function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 const DETACHABLE_RELOAD_WEAPONS=new Set(["rifle","smg","pistol","dmr","m240","awm"]);
@@ -1992,15 +2023,12 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
 
    // Lock the support hand to the measured lower grip point from the instant the
    // loaded spare emerges from below the frame through final seating.
-   reloadFreshMag.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
+   reloadFreshMag.updateMatrixWorld(true);gun.updateMatrixWorld(true);
    const magGripWorld=magGripLocal.clone().applyMatrix4(reloadFreshMag.matrixWorld);
-   const handGripWorld=new THREE.Vector3(...playerHandRig.pose.left);
-   playerHandRig.left.localToWorld(handGripWorld);
-   gun.updateMatrixWorld(true);
    const magGripGun=gun.worldToLocal(magGripWorld.clone());
-   const handGripGun=gun.worldToLocal(handGripWorld.clone());
-   playerHandRig.left.position.add(magGripGun.sub(handGripGun));
-   playerHandRig.left.updateMatrixWorld(true);
+   // Keep the shoulder fixed to the player and articulate elbow/forearm so the
+   // hand follows the magazine instead of translating the complete arm rig.
+   poseM4ReloadLeftArm(magGripGun.sub(playerHandRig.leftHandBase));
 
    if(rp.p>=.76){
      const oldSeatedMag=playerReloadPart;
@@ -5199,7 +5227,7 @@ function reload(w=weapon){
    };
    reloading=true;reloadWeapon=w;beginReloadMagazineFX();show("RELOADING");loadShell();return true
  }
- const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):w==="rifle"?Math.max(2200,2800-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
+ const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):w==="rifle"?Math.max(1700,2200-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
  reloading=true;reloadStartedAt=gameTimeNow();reloadDurationMs=duration;reloadWeapon=w;beginReloadMagazineFX();reloadS();show("RELOADING");
  gameTimeout(()=>{
    if(seq!==reloadSequence||!reloading||reloadWeapon!==w)return;
@@ -5811,6 +5839,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    m240ViewModel.position.copy(m240ViewBasePos).sub(m240RecoilPoint).applyQuaternion(m240RecoilQuat).add(m240RecoilPoint);
  }
  if(playerHandRig){
+   if(!(reloading&&reloadWeapon==="rifle"))resetM4ReloadLeftArm();
    // The imported M4 is much more realistic than the old block rifle. In ADS,
    // fade the procedural arms out so they do not form the giant V around the optic.
    // They remain fully visible at hip-fire and during reload.
@@ -5863,7 +5892,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
        // Return from the charging handle to the fore-end over the rest of reload.
        t=smoothReload01((p-.95)/.05);lx=.05*(1-t);ly=.03*(1-t);lz=.30*(1-t);rz=.08*(1-t);
      }
-     playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06,0,rz);
+     poseM4ReloadLeftArm(new THREE.Vector3(lx,ly,lz));
    }else if(reloading&&reloadWeapon==="grenadeLauncher"){
      const p=rp.p;let lx=0,ly=0,lz=0,lr=0,t=0;
      // Hand works the latch, drops to the pouch, carries the grenade to the open breech, then returns to the fore-end.
