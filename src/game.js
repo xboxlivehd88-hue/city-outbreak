@@ -1726,7 +1726,7 @@ const HAND_POSES={
 };
 // M4 spare-mag pouch/grab point. This is a player-body location in gun-local
 // space: the support hand must physically reach here before the spare can move.
-const M4_RELOAD_POUCH_HAND_OFFSET=new THREE.Vector3(-.40,-1.00,-.12);
+const M4_RELOAD_POUCH_HAND_OFFSET=new THREE.Vector3(-.42,-1.15,-.18);
 const M4_RELOAD_POUCH_GRIP_GUN=new THREE.Vector3(
  HAND_POSES.rifle.left[0]+M4_RELOAD_POUCH_HAND_OFFSET.x,
  HAND_POSES.rifle.left[1]+M4_RELOAD_POUCH_HAND_OFFSET.y,
@@ -1850,8 +1850,8 @@ function tossOldReloadMagazine(){
  }
  // Keep the discarded mag in the player's view for a moment instead of firing it off-screen.
  // Drop mostly straight down in camera space so it stays under the pistol on screen.
- const throwV=new THREE.Vector3(-.04,-.26,-.02).applyQuaternion(cam.quaternion);
- parts.push({q:oldMag,v:throwV,life:2.15,reloadMag:true,spin:new THREE.Vector3(4.2,3.1,5.0)});
+ const throwV=new THREE.Vector3(-.02,-.10,-.01).applyQuaternion(cam.quaternion);
+ parts.push({q:oldMag,v:throwV,life:8.0,reloadMag:true,reloadMagGroundHits:0,reloadMagSettled:false,spin:new THREE.Vector3(1.8,1.1,1.5)});
  if(reloadWeapon==="rifle")playerReloadPart.visible=false;
  playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadOldMagDropped=true;
 }
@@ -1900,7 +1900,7 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
    playerReloadPart.visible=true;playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
    playerReloadPart.traverse(o=>{o.visible=true});
    playerReloadPart.position.y-=34*pull;playerReloadPart.position.z+=2.5*pull;
-   if(rp.p>=.30)tossOldReloadMagazine();
+   if(rp.p>=.28)tossOldReloadMagazine();
  }
  if(reloadOldMagDropped&&!reloadMagInserted&&playerReloadPart){
    playerReloadPart.visible=false;
@@ -1911,18 +1911,17 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
  // the imported M4 hierarchy (so its baked FBX scale stays stable), but while it
  // is being carried we solve its world-space base position to the actual support
  // hand instead of faking a straight path under the rifle.
- if(rp.p>=.31&&!reloadFreshMag&&!reloadMagInserted){
+ if(rp.p>=.50&&!reloadFreshMag&&!reloadMagInserted){
    // Put the spare at the player's body/pouch immediately after the old mag drops.
    // It stays there while the empty support hand reaches down and does not begin
    // moving until the hand has actually arrived and grabbed it.
    const fresh=playerReloadPart.clone(true);fresh.name="FreshReloadMagazine";
    fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
-   // The spare is loaded. Force the real GLB cartridge group visible so it cannot
-   // read like the empty magazine that was just discarded. Keep the root hidden
-   // until the support hand is almost at the below-screen pouch position.
+   // The spare is loaded. It is created only after the support hand is already
+   // below the frame at the body/pouch, so it can rise naturally into view.
    const freshRounds=fresh.getObjectByName("bullets")||fresh.getObjectByName("bullets_bullets_0");
    if(freshRounds)freshRounds.traverse(o=>{o.visible=true});
-   fresh.visible=false;
+   fresh.visible=true;
    const insertParent=playerReloadPart.parent||m4ViewRoot||gun;
    insertParent.add(fresh);
    fresh.position.copy(home);fresh.quaternion.copy(targetQ);fresh.scale.copy(playerReloadPart.scale);
@@ -1966,54 +1965,44 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
      reloadFreshMag.userData.reloadGrabbed=false;
    }
 
-   // Until p=.50 the spare remains fixed at the body while the EMPTY support hand
-   // visibly reaches down to it. The pouch itself sits below the normal viewport,
-   // so do not reveal the spare until the hand is nearly there; it should emerge
-   // upward from the player's body, not float next to the camera.
-   if(rp.p<.50){
-     const pouchOriginWorld=reloadFreshMag.userData.reloadPouchOriginWorld;
-     reloadFreshMag.position.copy(insertParent.worldToLocal(pouchOriginWorld.clone()));
-     reloadFreshMag.quaternion.copy(targetQ);
-     reloadFreshMag.visible=rp.p>=.44;
-     const freshRounds=reloadFreshMag.getObjectByName("bullets")||reloadFreshMag.getObjectByName("bullets_bullets_0");
-     if(freshRounds)freshRounds.traverse(o=>{o.visible=true});
-   }else{
-     reloadFreshMag.visible=true;
-     const freshRounds=reloadFreshMag.getObjectByName("bullets")||reloadFreshMag.getObjectByName("bullets_bullets_0");
-     if(freshRounds)freshRounds.traverse(o=>{o.visible=true});
-     if(!reloadFreshMag.userData.reloadGrabbed){
-       reloadFreshMag.userData.reloadGrabbed=true;
-       reloadFreshMag.userData.reloadCarryStartWorld=reloadFreshMag.userData.reloadPouchOriginWorld.clone();
-     }
-
-     // Carry the SAME magazine from body/pouch to physically below the magwell.
-     if(rp.p<.75){
-       const t=smoothReload01((rp.p-.50)/.25);
-       const desiredWorld=reloadFreshMag.userData.reloadCarryStartWorld.clone().lerp(belowOriginWorld,t);
-       reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
-       reloadFreshMag.quaternion.copy(targetQ);
-     }else{
-       // Final insertion stays on the measured physical magazine axis.
-       const t=smoothReload01((rp.p-.75)/.11);
-       const desiredWorld=belowOriginWorld.clone().lerp(seatOriginWorld,t);
-       reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
-       reloadFreshMag.quaternion.copy(targetQ);
-     }
-
-     // After the grab, lock the support hand to the measured lower grip point so
-     // hand + magazine travel as one object all the way into the rifle.
-     reloadFreshMag.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
-     const magGripWorld=magGripLocal.clone().applyMatrix4(reloadFreshMag.matrixWorld);
-     const handGripWorld=new THREE.Vector3(...playerHandRig.pose.left);
-     playerHandRig.left.localToWorld(handGripWorld);
-     gun.updateMatrixWorld(true);
-     const magGripGun=gun.worldToLocal(magGripWorld.clone());
-     const handGripGun=gun.worldToLocal(handGripWorld.clone());
-     playerHandRig.left.position.add(magGripGun.sub(handGripGun));
-     playerHandRig.left.updateMatrixWorld(true);
+   // The support hand is already below the frame when the spare is created at
+   // p=.50. That is the actual off-screen grab moment: no visible magazine exists
+   // beforehand, so the loaded spare can only ENTER the frame by rising with the hand.
+   reloadFreshMag.visible=true;
+   const freshRounds=reloadFreshMag.getObjectByName("bullets")||reloadFreshMag.getObjectByName("bullets_bullets_0");
+   if(freshRounds)freshRounds.traverse(o=>{o.visible=true});
+   if(!reloadFreshMag.userData.reloadGrabbed){
+     reloadFreshMag.userData.reloadGrabbed=true;
+     reloadFreshMag.userData.reloadCarryStartWorld=reloadFreshMag.userData.reloadPouchOriginWorld.clone();
    }
 
-   if(rp.p>=.86){
+   // Carry the SAME magazine upward from the player's off-screen body/pouch.
+   if(rp.p<.66){
+     const t=smoothReload01((rp.p-.50)/.16);
+     const desiredWorld=reloadFreshMag.userData.reloadCarryStartWorld.clone().lerp(belowOriginWorld,t);
+     reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
+     reloadFreshMag.quaternion.copy(targetQ);
+   }else{
+     // Final insertion stays on the measured physical magazine axis.
+     const t=smoothReload01((rp.p-.66)/.10);
+     const desiredWorld=belowOriginWorld.clone().lerp(seatOriginWorld,t);
+     reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
+     reloadFreshMag.quaternion.copy(targetQ);
+   }
+
+   // Lock the support hand to the measured lower grip point from the instant the
+   // loaded spare emerges from below the frame through final seating.
+   reloadFreshMag.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
+   const magGripWorld=magGripLocal.clone().applyMatrix4(reloadFreshMag.matrixWorld);
+   const handGripWorld=new THREE.Vector3(...playerHandRig.pose.left);
+   playerHandRig.left.localToWorld(handGripWorld);
+   gun.updateMatrixWorld(true);
+   const magGripGun=gun.worldToLocal(magGripWorld.clone());
+   const handGripGun=gun.worldToLocal(handGripWorld.clone());
+   playerHandRig.left.position.add(magGripGun.sub(handGripGun));
+   playerHandRig.left.updateMatrixWorld(true);
+
+   if(rp.p>=.76){
      const oldSeatedMag=playerReloadPart;
      reloadFreshMag.position.copy(home);reloadFreshMag.quaternion.copy(targetQ);
      reloadFreshMag.visible=true;reloadFreshMag.traverse(o=>{o.visible=true});
@@ -2028,15 +2017,17 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
    }
  }
 
- // Preserve the v488 visible charging action after the hand-carried magazine seats.
+ // Slower four-beat charging action after the magazine seats:
+ // reach handle -> pull fully rearward -> short hold -> controlled release.
  let cycle=0;
- if(rp.p>=.86&&rp.p<.92)cycle=smoothReload01((rp.p-.86)/.06);
- else if(rp.p>=.92&&rp.p<.99)cycle=smoothReload01((.99-rp.p)/.07);
+ if(rp.p>=.82&&rp.p<.88)cycle=smoothReload01((rp.p-.82)/.06);
+ else if(rp.p>=.88&&rp.p<.91)cycle=1;
+ else if(rp.p>=.91&&rp.p<.95)cycle=smoothReload01((.95-rp.p)/.04);
  if(m4BoltCarrier&&m4BoltHome){
-   m4BoltCarrier.position.copy(m4BoltHome);m4BoltCarrier.position.z+=34*cycle;
+   m4BoltCarrier.position.copy(m4BoltHome);m4BoltCarrier.position.z+=24*cycle;
  }
  if(m4ChargingHandle&&m4ChargingHandleHome){
-   m4ChargingHandle.position.copy(m4ChargingHandleHome);m4ChargingHandle.position.z+=42*cycle;
+   m4ChargingHandle.position.copy(m4ChargingHandleHome);m4ChargingHandle.position.z+=30*cycle;
  }
 }
 function updateMP5ReloadMagazineFX(rp,home,targetQ){
@@ -5208,7 +5199,7 @@ function reload(w=weapon){
    };
    reloading=true;reloadWeapon=w;beginReloadMagazineFX();show("RELOADING");loadShell();return true
  }
- const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):w==="rifle"?Math.max(1150,1550-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
+ const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):w==="rifle"?Math.max(2200,2800-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
  reloading=true;reloadStartedAt=gameTimeNow();reloadDurationMs=duration;reloadWeapon=w;beginReloadMagazineFX();reloadS();show("RELOADING");
  gameTimeout(()=>{
    if(seq!==reloadSequence||!reloading||reloadWeapon!==w)return;
@@ -5836,28 +5827,42 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      // M4-only support-hand choreography. Return the support hand to the fore-end
      // BEFORE the bolt cycle so there is no end-of-reload arm snap or wild sweep.
      const p=rp.p;let lx=0,ly=0,lz=0,rz=0,t=0;
-     if(p<.18){t=smoothReload01(p/.18);lx=.06*t;ly=-.08*t;lz=.03*t;rz=-.08*t}
-     else if(p<.30){t=smoothReload01((p-.18)/.12);lx=.06-.08*t;ly=-.08-.18*t;lz=.03+.08*t;rz=-.08-.06*t}
-     else if(p<.46){
-       // Empty support hand leaves the rifle and reaches down to the player's body/pouch.
-       t=smoothReload01((p-.30)/.16);
+     if(p<.16){t=smoothReload01(p/.16);lx=.06*t;ly=-.08*t;lz=.03*t;rz=-.08*t}
+     else if(p<.28){t=smoothReload01((p-.16)/.12);lx=.06-.08*t;ly=-.08-.18*t;lz=.03+.08*t;rz=-.08-.06*t}
+     else if(p<.48){
+       // Empty hand leaves the rifle and disappears below the frame to the belt/body.
+       t=smoothReload01((p-.28)/.20);
        lx=THREE.MathUtils.lerp(-.02,M4_RELOAD_POUCH_HAND_OFFSET.x,t);
        ly=THREE.MathUtils.lerp(-.26,M4_RELOAD_POUCH_HAND_OFFSET.y,t);
        lz=THREE.MathUtils.lerp(.11,M4_RELOAD_POUCH_HAND_OFFSET.z,t);
        rz=THREE.MathUtils.lerp(-.14,-.30,t);
      }
      else if(p<.50){
-       // Brief readable grab beat: hand is on the spare while the magazine is still
-       // fixed at the body. The M4 reload FX starts carrying it only after p=.50.
+       // Off-screen grab beat. The loaded spare is created only at p=.50.
        lx=M4_RELOAD_POUCH_HAND_OFFSET.x;ly=M4_RELOAD_POUCH_HAND_OFFSET.y;lz=M4_RELOAD_POUCH_HAND_OFFSET.z;rz=-.30;
      }
-     else if(p<.86){
-       // updateM4ReloadMagazineFX() runs after this and locks the hand to the
-       // magazine's measured grip point during the carry + insertion.
+     else if(p<.76){
+       // Reload FX locks the hand to the loaded spare while it rises from below
+       // the screen and enters the magwell.
        lx=M4_RELOAD_POUCH_HAND_OFFSET.x;ly=M4_RELOAD_POUCH_HAND_OFFSET.y;lz=M4_RELOAD_POUCH_HAND_OFFSET.z;rz=-.30;
      }
-     else if(p<.92){t=smoothReload01((p-.86)/.06);lx=.08*t;ly=.07*t;lz=.48*t;rz=.10*t}
-     else if(p<.99){t=smoothReload01((p-.92)/.07);lx=.08*(1-t);ly=.07*(1-t);lz=.48*(1-t);rz=.10*(1-t)}
+     else if(p<.82){
+       // Deliberate reach to the charging handle after the magazine is seated.
+       t=smoothReload01((p-.76)/.06);lx=.05*t;ly=.03*t;lz=.30*t;rz=.08*t;
+     }
+     else if(p<.88){
+       // Pull the handle rearward with the hand instead of snapping the model alone.
+       t=smoothReload01((p-.82)/.06);lx=.05;ly=.03;lz=THREE.MathUtils.lerp(.30,.43,t);rz=.08;
+     }
+     else if(p<.91){lx=.05;ly=.03;lz=.43;rz=.08}
+     else if(p<.95){
+       // Follow the handle forward during the controlled release.
+       t=smoothReload01((p-.91)/.04);lx=.05;ly=.03;lz=THREE.MathUtils.lerp(.43,.30,t);rz=.08;
+     }
+     else{
+       // Return from the charging handle to the fore-end over the rest of reload.
+       t=smoothReload01((p-.95)/.05);lx=.05*(1-t);ly=.03*(1-t);lz=.30*(1-t);rz=.08*(1-t);
+     }
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06,0,rz);
    }else if(reloading&&reloadWeapon==="grenadeLauncher"){
      const p=rp.p;let lx=0,ly=0,lz=0,lr=0,t=0;
@@ -5946,10 +5951,25 @@ for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;
 }
 for(let i=casings.length-1;i>=0;i--){let c=casings[i];c.life-=dt;c.v.y-=4.5*dt;c.q.position.addScaledVector(c.v,dt);c.q.rotation.x+=c.spin*dt;c.q.rotation.z+=c.spin*.7*dt;if(c.q.position.y<.04){c.q.position.y=.04;c.v.y*=-.22;c.v.x*=.72;c.v.z*=.72}if(c.life<=0){scene.remove(c.q);casings.splice(i,1)}}
 for(let i=impacts.length-1;i>=0;i--){let p=impacts[i];p.life-=dt;p.v.y-=3*dt;p.q.position.addScaledVector(p.v,dt);if(p.life<=0){scene.remove(p.q);impacts.splice(i,1)}}
-for(let i=parts.length-1;i>=0;i--){let p=parts[i];p.life-=dt;p.v.y-=5*dt;p.q.position.addScaledVector(p.v,dt);
+for(let i=parts.length-1;i>=0;i--){let p=parts[i];p.life-=dt;
+if(!p.reloadMagSettled)p.v.y-=5*dt;
+p.q.position.addScaledVector(p.v,dt);
 if(p.limb||p.reloadMag){
- const sp=p.spin,sx=sp?sp.x:4,sy=sp?sp.y:5,sz=sp?sp.z:3;p.q.rotation.x+=sx*dt;p.q.rotation.y+=sy*dt;p.q.rotation.z+=sz*dt;
- if(p.q.position.y<.08){p.q.position.y=.08;p.v.y*=-.20;p.v.x*=.68;p.v.z*=.68;if(sp)sp.multiplyScalar(.62)}
+ const sp=p.spin,sx=sp?sp.x:4,sy=sp?sp.y:5,sz=sp?sp.z:3;
+ if(!p.reloadMagSettled){p.q.rotation.x+=sx*dt;p.q.rotation.y+=sy*dt;p.q.rotation.z+=sz*dt}
+ if(p.q.position.y<.08){
+   p.q.position.y=.08;
+   if(p.reloadMag){
+     p.reloadMagGroundHits=(p.reloadMagGroundHits||0)+1;
+     if(p.reloadMagGroundHits>=2||Math.abs(p.v.y)<.35){
+       p.v.set(0,0,0);if(sp)sp.set(0,0,0);p.reloadMagSettled=true;
+     }else{
+       p.v.y*=-.16;p.v.x*=.58;p.v.z*=.58;if(sp)sp.multiplyScalar(.48);
+     }
+   }else{
+     p.v.y*=-.20;p.v.x*=.68;p.v.z*=.68;if(sp)sp.multiplyScalar(.62);
+   }
+ }
 }
 if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math.min(1.2,cam.rotation.z+dt*.5);cam.position.y=Math.max(.25,cam.position.y-dt*.55);return}if(!running)return;updateHealthRegen(dt);move(dt);updateDrops(dt);if(between){return}for(let z of zombies){
  if(!z.dead)continue;
