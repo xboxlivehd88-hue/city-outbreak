@@ -1,3 +1,58 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v491 GEOMETRY-GUIDED M4 INSERTION TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v491**
+- Loader: `./src/game.js?v=491`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v491 gameplay commit: `6b14d88117cbc6fd085be42b59fae4cee279ca4a`
+- v491 loader commit: `88227ecb0e2bbd502a69e53e047347580c0902f3`
+- v491 game blob: `21e0bba01837a8d53cc36838c0299d1d89b85e7d`
+- v485-v490 rejected for reload behavior.
+- **v484 remains last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains v324 unchanged.
+
+## Why v490 failed
+The new user video confirmed v490 was still aligning the exported magazine node origin rather than the physical top of the visible magazine.
+
+Direct GLB mesh measurement:
+- top-center ≈ `(0.0005, 0.055, 0.0306)`
+- lower grip ≈ `(-0.003, 0.45, -1.61)`
+- mesh Z span ≈ `-1.7312 .. 0.0336`
+
+## v491 exact correction
+- builds the seated magazine world transform from saved home position/quaternion/scale;
+- transforms the measured physical magazine top and grip into world space;
+- derives the true insertion axis from grip → top;
+- places the fresh magazine so its measured grip sits in the support hand;
+- carries it from the player's hand to a staging position physically below the magwell;
+- inserts from there to the exact seated transform along the measured magazine axis;
+- keeps the support hand attached to the measured grip point the entire time;
+- preserves old-mag hiding/removal and visible charging motion.
+
+## Preserve locked v484 M4 values
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`.
+
+## Test target
+Reload and confirm the visible magazine top now reaches the actual magwell opening and inserts along its own axis without climbing the side or snapping.
+
+Do not mark v491 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v490 UNDER-MAGWELL M4 INSERTION TEST — READ THIS FIRST
 
 GitHub main is authoritative.
