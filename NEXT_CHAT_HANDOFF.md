@@ -1,3 +1,64 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v493 LOWER M4 SPARE / LOADED-MAG TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v493**
+- Loader: `./src/game.js?v=493`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v493 gameplay commit: `10cd2fc99a541bee7749d62cabafe58768e3947b`
+- v493 loader commit: `24d9a6bf971d9c982e512b91c82ee51d0b829967`
+- v493 game blob: `1077c332c22f1fd54f17513ff1b201a0d6860215`
+- v485-v492 rejected for reload behavior.
+- **v484 remains last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains v324 unchanged.
+
+## Why v492 failed
+The user video showed the spare was too close to the camera/player and visually read like an empty/floating magazine.
+
+## v493 correction
+- body/pouch hand offset changed from `(-.30,-.72,.60)` to `(-.40,-1.00,-.12)`;
+- spare now sits lower, farther left, and farther away from the camera;
+- spare root remains hidden until about `p=.44`, when the hand is almost at the below-screen pouch point;
+- it should emerge upward from the body/belt rather than float beside the camera;
+- if the M4 was actually empty, the dropped old mag hides its real GLB `bullets` group;
+- fresh spare explicitly forces the real `bullets` group visible so it reads as loaded;
+- v491 geometry-guided insertion and visible charging remain unchanged.
+
+## Preserve locked v484 M4 values
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`.
+
+## Validation
+- v492 user clip reviewed frame-by-frame.
+- exact v492 Pages artifact used as patch base;
+- v493 passed `node --check`;
+- local Git blob SHA exactly matched committed GitHub blob:
+  `1077c332c22f1fd54f17513ff1b201a0d6860215`.
+
+## Test target
+Reload and confirm:
+- spare no longer floats close to camera;
+- empty hand reaches below view;
+- loaded spare emerges upward from body/belt;
+- insertion/charging stay smooth;
+- normal hip and ADS return to approved v484 state.
+
+Do not mark v493 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v492 M4 BODY/POUCH PICKUP TEST — READ THIS FIRST
 
 GitHub main is authoritative.
