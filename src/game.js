@@ -1910,76 +1910,79 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
 
  if(reloadFreshMag&&!reloadMagInserted){
    const insertParent=reloadFreshMag.parent||m4ViewRoot||gun;
+   insertParent.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
 
-   // Carry phase: lock the lower/base portion of the real magazine to the support
-   // hand's true rendered world position. The mesh's long axis is local Z and the
-   // base is near z=-1.55 in the source GLB.
-   if(!reloadFreshAttached){
-     insertParent.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
+   // Use measured points from the ACTUAL magazine mesh rather than its exported
+   // object origin. The top point is what must enter the magwell; the lower point
+   // is where the support hand visually carries the magazine.
+   const magTopLocal=new THREE.Vector3(.0005,.055,.0306);
+   const magGripLocal=new THREE.Vector3(-.003,.45,-1.61);
+
+   // Build the exact seated world transform from the saved home transform without
+   // relying on the hidden old magazine's current animated position.
+   const seatLocalMatrix=new THREE.Matrix4().compose(home,targetQ,playerReloadPart.scale);
+   const seatWorldMatrix=insertParent.matrixWorld.clone().multiply(seatLocalMatrix);
+   const seatOriginWorld=new THREE.Vector3().setFromMatrixPosition(seatWorldMatrix);
+   const seatTopWorld=magTopLocal.clone().applyMatrix4(seatWorldMatrix);
+   const seatGripWorld=magGripLocal.clone().applyMatrix4(seatWorldMatrix);
+   const insertAxisWorld=seatTopWorld.clone().sub(seatGripWorld).normalize();
+   const magLengthWorld=seatTopWorld.distanceTo(seatGripWorld);
+   const belowDistance=Math.max(.20,magLengthWorld*.24);
+   const belowOriginWorld=seatOriginWorld.clone().addScaledVector(insertAxisWorld,-belowDistance);
+
+   // First carry frame: seat-orient the real magazine, then move its measured
+   // lower grip point exactly into the rendered support hand.
+   if(!reloadFreshMag.userData.reloadCarryStartWorld){
      reloadFreshMag.position.copy(home);reloadFreshMag.quaternion.copy(targetQ);reloadFreshMag.scale.copy(playerReloadPart.scale);
      reloadFreshMag.updateMatrixWorld(true);
-
      const handWorld=new THREE.Vector3(...playerHandRig.pose.left);
      playerHandRig.left.localToWorld(handWorld);
-     const magBaseWorld=reloadFreshMag.localToWorld(new THREE.Vector3(0,0,-1.55));
-     const magOriginWorld=reloadFreshMag.getWorldPosition(new THREE.Vector3());
-     const desiredOriginWorld=magOriginWorld.add(handWorld.sub(magBaseWorld));
-     reloadFreshMag.position.copy(insertParent.worldToLocal(desiredOriginWorld));
-
-     // Once the hand reaches the rifle, freeze the hand-carried transform as the
-     // insertion start so the magazine visibly transfers from hand -> magwell.
-     if(rp.p>=.67){
-       reloadFreshInsertStart=reloadFreshMag.position.clone();
-       reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();
-       reloadFreshAttached=true;
-     }
+     const currentGripWorld=magGripLocal.clone().applyMatrix4(reloadFreshMag.matrixWorld);
+     const currentOriginWorld=reloadFreshMag.getWorldPosition(new THREE.Vector3());
+     const carryOriginWorld=currentOriginWorld.add(handWorld.sub(currentGripWorld));
+     reloadFreshMag.position.copy(insertParent.worldToLocal(carryOriginWorld.clone()));
+     reloadFreshMag.userData.reloadCarryStartWorld=carryOriginWorld.clone();
    }
 
-   if(reloadFreshAttached&&reloadFreshInsertStart){
-     // Two-stage final approach. First move laterally/forward while the magazine
-     // remains LOW, until its X/Z are directly under the saved magwell position.
-     // Only then raise it straight up on Y. This prevents the replacement from
-     // climbing the outside of the receiver and snapping into place.
-     const below=home.clone();
-     below.y=Math.min(reloadFreshInsertStart.y,home.y-34);
-     below.x=home.x;below.z=home.z;
+   // Carry the magazine from the player's hand to a point physically below the
+   // magwell. This ends with the REAL magazine top centered on the insertion axis.
+   if(rp.p<.76){
+     const t=smoothReload01((rp.p-.46)/.30);
+     const startWorld=reloadFreshMag.userData.reloadCarryStartWorld;
+     const desiredWorld=startWorld.clone().lerp(belowOriginWorld,t);
+     reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
+     reloadFreshMag.quaternion.copy(targetQ);
+   }else{
+     // Final insertion is constrained to the magazine's measured physical long
+     // axis: no receiver-side climb and no origin-based snap.
+     const t=smoothReload01((rp.p-.76)/.10);
+     const desiredWorld=belowOriginWorld.clone().lerp(seatOriginWorld,t);
+     reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
+     reloadFreshMag.quaternion.copy(targetQ);
+   }
 
-     if(rp.p<.76){
-       const t=smoothReload01((rp.p-.67)/.09);
-       reloadFreshMag.position.x=THREE.MathUtils.lerp(reloadFreshInsertStart.x,below.x,t);
-       reloadFreshMag.position.y=THREE.MathUtils.lerp(reloadFreshInsertStart.y,below.y,t);
-       reloadFreshMag.position.z=THREE.MathUtils.lerp(reloadFreshInsertStart.z,below.z,t);
-       reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
-     }else{
-       const t=smoothReload01((rp.p-.76)/.10);
-       reloadFreshMag.position.lerpVectors(below,home,t);
-       reloadFreshMag.quaternion.copy(targetQ);
-     }
+   // Keep the support hand attached to the measured lower magazine grip point
+   // throughout carry + insertion.
+   reloadFreshMag.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
+   const magGripWorld=magGripLocal.clone().applyMatrix4(reloadFreshMag.matrixWorld);
+   const handGripWorld=new THREE.Vector3(...playerHandRig.pose.left);
+   playerHandRig.left.localToWorld(handGripWorld);
+   gun.updateMatrixWorld(true);
+   const magGripGun=gun.worldToLocal(magGripWorld.clone());
+   const handGripGun=gun.worldToLocal(handGripWorld.clone());
+   playerHandRig.left.position.add(magGripGun.sub(handGripGun));
+   playerHandRig.left.updateMatrixWorld(true);
 
-     // Keep the support hand physically attached to the magazine base during the
-     // entire under-magwell alignment and straight-up insertion.
-     const insertParent=reloadFreshMag.parent||m4ViewRoot||gun;
-     insertParent.updateMatrixWorld(true);reloadFreshMag.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
-     const magGripWorld=reloadFreshMag.localToWorld(new THREE.Vector3(0,0,-1.55));
-     const handGripWorld=new THREE.Vector3(...playerHandRig.pose.left);
-     playerHandRig.left.localToWorld(handGripWorld);
-     gun.updateMatrixWorld(true);
-     const magGripGun=gun.worldToLocal(magGripWorld.clone());
-     const handGripGun=gun.worldToLocal(handGripWorld.clone());
-     playerHandRig.left.position.add(magGripGun.sub(handGripGun));
-     playerHandRig.left.updateMatrixWorld(true);
-
-     if(rp.p>=.86){
-       // The hand-carried replacement becomes the actual seated magazine.
-       const oldSeatedMag=playerReloadPart;
-       reloadFreshMag.position.copy(home);reloadFreshMag.quaternion.copy(targetQ);
-       reloadFreshMag.visible=true;reloadFreshMag.traverse(o=>{o.visible=true});
-       playerReloadPart=reloadFreshMag;
-       playerReloadPart.userData.reloadHome=home.clone();playerReloadPart.userData.reloadHomeQuat=targetQ.clone();
-       if(oldSeatedMag&&oldSeatedMag!==playerReloadPart&&oldSeatedMag.parent)oldSeatedMag.parent.remove(oldSeatedMag);
-       reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;reloadMagInserted=true;
-       tone(520,.030,"square",.055);tone(760,.020,"square",.040,.025);
-     }
+   if(rp.p>=.86){
+     const oldSeatedMag=playerReloadPart;
+     reloadFreshMag.position.copy(home);reloadFreshMag.quaternion.copy(targetQ);
+     reloadFreshMag.visible=true;reloadFreshMag.traverse(o=>{o.visible=true});
+     delete reloadFreshMag.userData.reloadCarryStartWorld;
+     playerReloadPart=reloadFreshMag;
+     playerReloadPart.userData.reloadHome=home.clone();playerReloadPart.userData.reloadHomeQuat=targetQ.clone();
+     if(oldSeatedMag&&oldSeatedMag!==playerReloadPart&&oldSeatedMag.parent)oldSeatedMag.parent.remove(oldSeatedMag);
+     reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;reloadMagInserted=true;
+     tone(520,.030,"square",.055);tone(760,.020,"square",.040,.025);
    }
  }
 
