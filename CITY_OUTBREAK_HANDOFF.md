@@ -1,3 +1,70 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v497 WEAPON SLOT REMAP TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v497**
+- Loader: `./src/game.js?v=497`
+- v497 gameplay commit: `03d87497e1a70a18ced026eeaef60649b8dd5a3a`
+- v497 loader commit: `d02ff2d926b2b0277944468c9639dcabf9efadad`
+- v497 game blob SHA: `7e62e938c05e7d44a0d8f87c8bc78ae45052cdeb`
+- v496 reload behavior is otherwise preserved exactly.
+- **v484 remains the last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## v497 isolated change — weapon lineup / key binds
+
+Requested number-key mapping is now:
+
+1. M17 SIG — `pistol`
+2. M4 CARBINE — `rifle`
+3. Shotgun — `shotgun`
+4. MP5 — `smg`
+5. M240 LMG — `m240`
+6. DMR — `dmr`
+7. Grenade Launcher — `grenadeLauncher`
+8. AWM ULTIMATE — `awm`
+
+Exact hotkey map:
+`{Digit1:"pistol",Digit2:"rifle",Digit3:"shotgun",Digit4:"smg",Digit5:"m240",Digit6:"dmr",Digit7:"grenadeLauncher",Digit8:"awm"}`
+
+Mouse-wheel cycle order was changed to the same lineup:
+`["pistol","rifle","shotgun","smg","m240","dmr","grenadeLauncher","awm"]`
+
+The controls modal already said only `Weapons 1 — 8`, so no stale per-weapon labels existed there.
+
+## Preserved from v496
+- M4 reload timing remains `Math.max(1450,1800-reloadLevel*70)`;
+- anchored/articulated M4 support arm remains;
+- physical old-mag drop/settle remains;
+- body pickup, measured insertion, staged charging remain;
+- M4 asset unchanged;
+- `RIFLE_ADS_ZERO_Y=.040` unchanged.
+
+## Validation
+- required current handoff/recovery/index/game files were re-read first;
+- committed v497 source passed syntax parse;
+- requested hotkey map exists exactly once;
+- requested wheel order exists exactly once;
+- M4 ADS zero and reload timing remain unchanged.
+
+## v497 user test target
+Verify number keys:
+- 1 M17
+- 2 M4
+- 3 Shotgun
+- 4 MP5
+- 5 M240
+- 6 DMR
+- 7 Grenade Launcher
+- 8 AWM
+
+Also verify mouse-wheel cycling follows that same order, skipping locked weapons as before.
+
+Do not call v497 confirmed-good until user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v496 FASTER M4 RELOAD TIMING TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
