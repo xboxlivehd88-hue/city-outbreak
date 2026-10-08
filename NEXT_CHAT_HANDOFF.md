@@ -1,3 +1,78 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v485 M4 REAL RELOAD TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current state
+
+- Test build: **v485**
+- Loader: `./src/game.js?v=485`
+- M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v485 gameplay commit: `16304fe6429dec5e3eaabfcfeae28b9e123152cc`
+- v485 loader commit: `76acec2815529e4e92fe506cd4d4794c6d9ad887`
+- v485 `src/game.js` SHA: `01ef1e420946ad214871308c81521ff477810b91`
+- **v484 remains the last user-confirmed good baseline** until v485 is tested.
+- Protected recovery remains **v324** unchanged.
+
+## v485 scope: M4 reload only
+
+The GLB has no built-in animation clips or skeletal skins, but it does contain separate real parts:
+- `magazine`
+- `bolt carrier`
+
+v485 fixes the old incorrect magazine lookup and uses those actual nodes.
+
+Reload sequence now:
+- rifle moves into a reload-only inward/upward cant;
+- real-model magazine pulls down and a world-transform-preserving clone drops away;
+- support hand carries a fresh clone of the same real magazine;
+- fresh magazine lines up below the real magwell;
+- fresh magazine seats straight upward;
+- real seated magazine is restored;
+- actual `bolt carrier` cycles at the end;
+- rifle returns to the exact approved normal hip/ADS transforms.
+
+M4 reload timing is now base `1550 ms`, with a `1150 ms` minimum from reload upgrades.
+
+## Preserve the approved v484 M4 baseline
+
+Do not change:
+- hip position `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`.
+
+The v485 reload transforms are active only while reloading.
+
+## Validation
+
+- Deployed v484 artifact GLB was inspected directly.
+- Confirmed `0` animations and `0` skins.
+- Confirmed exact nodes `magazine` and `bolt carrier`.
+- Staged v485 JS passed `node --check`.
+- Staged/committed Git blob SHA matched exactly: `01ef1e420946ad214871308c81521ff477810b91`.
+- Post-commit checks preserved the approved `.040` ADS zero and `ar-15_style_rifle.glb?v=466`.
+
+## User test target
+
+Have the user press **R** and verify:
+- old magazine visibly exits/drops;
+- fresh magazine follows the support hand and seats cleanly;
+- bolt carrier visibly cycles;
+- normal hip pose returns exactly;
+- ADS remains aligned exactly as v484.
+
+Do not mark v485 confirmed-good until the user reports the test result.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v484 USER-CONFIRMED GOOD M4 ADS BASELINE — READ THIS FIRST
 
 This section supersedes older current-state sections below. **GitHub main is authoritative.**
