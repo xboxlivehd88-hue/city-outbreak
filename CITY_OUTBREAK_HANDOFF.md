@@ -1,3 +1,71 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v500 WIDER SHOTGUN HIP CIRCLE / HIDE IN ADS — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v500**
+- Loader: `./src/game.js?v=500`
+- CSS: `./src/game.css?v=500`
+- v500 gameplay commit: `c980e88056b1fddbd73aa32ba84783a8cb002145`
+- v500 game blob SHA: `84470aa33f616fe937e58d0d0fb98db251a215c5`
+- v500 CSS commit: `0d4d46e3cc886bfc0c451ec811be8bc2f36da2b7`
+- v500 CSS blob SHA: `2f2e4a78f551c1d51f52d38e8d73016af6752f20`
+- v500 loader/index commit: `1e77a31ae39ed384426e67aef14b97dea4299573`
+- v499 was tested and rejected only because the hip circle needed to be wider and the reticle should disappear in ADS.
+- v498 shotgun starting loadout remains approved.
+- v497 weapon order remains approved.
+- M4 remains locked/preserved.
+- Protected recovery remains **v324** unchanged.
+
+## v500 isolated shotgun reticle correction
+Shotgun only:
+- hip-fire reticle remains a circle;
+- hip-fire diameter increased from **54 px** to **72 px**;
+- shotgun reticle now disappears completely whenever ADS is active;
+- the old `+` bars remain disabled for the shotgun.
+
+Other weapons keep their previous reticle behavior.
+
+## Important: shotgun mechanics unchanged
+The actual shotgun definition remains:
+`shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.090,pellets:8,body:.72,recoil:.22,baseMag:8}`
+
+No changes to:
+- pellet spread;
+- damage;
+- recoil;
+- ADS transform;
+- model;
+- sound;
+- reload behavior.
+
+## Preserved approved state
+- Shotgun active on spawn;
+- M17 unlocked;
+- M4 locked/not in spawn loadout;
+- approved v497 number-key order;
+- all approved M4 shooting/ADS/reload work;
+- `RIFLE_ADS_ZERO_Y=.040`.
+
+## Validation
+- required current handoff/recovery/index/game/CSS files were re-read before editing;
+- committed game source passed syntax parse;
+- shotgun hip reticle is exactly 72 px in source/CSS;
+- shotgun reticle uses ADS visibility off;
+- shotgun mechanics definition is unchanged;
+- M4 ADS zero is unchanged.
+
+## v500 user test target
+With the shotgun:
+1. hip-fire shows a noticeably wider circular reticle;
+2. pressing ADS makes the reticle disappear completely;
+3. releasing ADS restores the wide circle;
+4. M17 and other weapon reticles are unchanged.
+
+Do not mark v500 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v499 SHOTGUN CIRCLE RETICLE TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
