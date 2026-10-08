@@ -1,3 +1,129 @@
+# M4 TUNING PHASE — 2026-10-07 — v479 — VIDEO-BASED ADS ZERO + RECOIL CORRECTION — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=479`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v478 optical-axis / two-pass ACOG baseline commit: `3059db7d2fc70349175a77243fb9fee53ab307a8`
+- v479 ADS-recoil prep commit: `95309a80a2074338ebd5cc95fa464af330b6eacf`
+- v479 final gameplay commit: `bfde34ec1566cbd8224905fef51cd44472c24426`
+- v479 loader commit: `1ef7f488a3b174f366e9949c29e742c75a5e0250`
+- Current `src/game.js` SHA: `73d416aa34164c6051c90078339fec1dd0f66f1b`
+- Protected recovery remains **v324** unchanged.
+
+## User-provided v478 video result
+
+User uploaded a ~51 second gameplay video recorded from the live v478 URL:
+- `?v=478-37706847064`
+
+User explicitly reported:
+- while ADS, the hit/impact is **a little low compared with the reticle**;
+- M4 recoil while ADS is **out of control**.
+
+The video confirms both.
+
+This means the v478 structural fixes should remain:
+- true optical-axis ADS from the real ACOG aperture geometry;
+- removal of the old `-0.008` downward shot offset;
+- two-pass ACOG body/glass rendering;
+- approved v470 hip placement.
+
+The new issues are fine-tuning on top of that correct structure.
+
+## v479 change 1 — tiny ADS zero raise
+
+v478 returned the rifle ADS shot ray to camera center.
+
+The v478 video still shows impact just slightly below the modeled reticle, so v479 adds a very small upward rifle-only ADS zero:
+
+- `rifleAdsZeroY = +0.003`
+
+Only applies when:
+- `aiming===true`
+- `weapon==="rifle"`
+
+Effect:
+- raises M4 ADS impact slightly;
+- hip-fire ray is unchanged;
+- every other weapon is unchanged.
+
+This is deliberately much smaller than the old v476/v477 `-0.008` correction.
+
+## v479 change 2 — calm M4 ADS recoil
+
+The old M4 whole-gun recoil was still applied at full strength through the ACOG.
+
+At each shot the existing rifle recoil value could kick the complete ADS viewmodel sharply, making automatic fire through the optic hard to control.
+
+v479 now smoothly scales only the M4 viewmodel recoil as ADS comes in:
+
+- hip-fire M4 recoil scale = `1.0`
+- full-ADS M4 recoil scale = `0.22`
+- blend follows `aimBlend`
+
+Current behavior:
+- `rifleAdsRecoilScale = lerp(1, 0.22, aimBlend)`
+- whole-gun recoil uses that scale only for the rifle.
+
+This keeps:
+- hip-fire recoil unchanged;
+- base rifle recoil state unchanged;
+- other weapons unchanged;
+- no camera recoil system was added or removed.
+
+## Preserved v478 fixes
+
+Do not regress these:
+
+### Real optical-axis ADS
+- exact ACOG mesh: `acog_optic.001_0`;
+- rear/front 5% aperture bands define the real optical axis;
+- ADS quaternion aligns that axis camera-forward;
+- rear aperture remains solved near `0.18` units in front of the eye.
+
+### Two-pass ACOG
+- opaque housing pass;
+- transparent glass pass;
+- prevents the overwhelmingly opaque scope body from self-sorting as one transparent mesh at hip.
+
+### Approved placement
+- v470 hip placement remains the baseline;
+- no new hip position/scale/orientation changes in v479.
+
+## Intentionally unchanged
+
+v479 does **not** change:
+- M4 hip placement;
+- ACOG geometry;
+- ACOG optical-axis calculation;
+- ACOG eye distance;
+- rifle ADS FOV;
+- base M4 damage/spread/fire rate;
+- reload choreography;
+- sound;
+- ammo;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- latest v479 gameplay diff is limited to rifle ADS zero and ADS viewmodel recoil scale;
+- full `src/game.js` syntax parse passed.
+
+## v479 test focus
+
+User should check:
+1. ADS impact/hit now lands on the reticle instead of slightly low;
+2. automatic-fire recoil through the ACOG is much calmer and controllable;
+3. true optical-axis ADS remains aligned;
+4. hip-fire ACOG still renders cleanly;
+5. approved hip placement remains unchanged.
+
+If impact is still slightly off, adjust only `rifleAdsZeroY` from the next video/screenshot. If recoil needs one more adjustment, change only the rifle ADS recoil scale.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v478 — TRUE OPTICAL-AXIS ADS + TWO-PASS ACOG — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
