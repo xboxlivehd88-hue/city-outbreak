@@ -1,3 +1,109 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v486 M4 RELOAD FIX TEST — READ THIS FIRST
+
+This section supersedes older current-state sections below. **GitHub main is the source of truth.**
+
+## Current test state
+
+- Test build: **v486**
+- Loader: `./src/game.js?v=486`
+- Active M4 asset remains: `assets/ar-15_style_rifle.glb?v=466`
+- v486 gameplay commit: `c85458ed89b97455c589e71f1dd0208b8869de21`
+- v486 loader commit: `2c17b1a101e867098bf9a8bde6a36e4df83338cc`
+- Current v486 `src/game.js` blob SHA: `ac1c7b158d58b5878dcf6a2ed561753aebaf6d0e`
+- **v484 remains the last user-confirmed good baseline** until the user approves a later reload build.
+- v485 was tested and **not approved**.
+- Protected recovery remains **v324** unchanged.
+
+## Why v485 was rejected
+
+The user supplied a video and reported:
+- the magazine drops, but visible bullets remain floating where the magazine came from;
+- near the end of reload / charging phase, the arms/geometry go all over the place.
+
+Frame-by-frame review plus direct inspection of the deployed GLB showed three exact causes:
+
+1. `bullets` is a separate sibling node under `RootNode`, not a child of `magazine`.
+   - v485 moved the real `magazine` but left the `bullets` node behind.
+2. The imported magazine node carries unusual FBX-authored scale/transform data.
+   - v485 temporarily parented a fresh cloned magazine to the procedural support-hand group.
+   - that caused the clone to inherit incompatible scale and produced huge black stretched polygons during reload.
+3. The generic detachable-magazine hand path leaves `pull=1` until reload completion.
+   - that caused an abrupt support-arm return near the bolt-cycle/end phase.
+
+## v486 M4 reload fixes
+
+v486 is still an isolated M4 reload change.
+
+### Cartridge / magazine assembly
+- Finds the real `bullets` node.
+- Reparents `bullets` under the real `magazine` using `Object3D.attach()` after world matrices are updated.
+- This preserves the original visible cartridge placement while making the cartridges travel with the magazine.
+- Dropped old-mag clone now contains both magazine + cartridges.
+- Fresh replacement clone also contains both magazine + cartridges.
+
+### Fresh-mag scale stability
+- Fresh M4 magazine is **no longer parented to the procedural hand**.
+- It stays in the same imported-model coordinate space as the seated magazine.
+- It uses the real magazine's local scale/orientation.
+- It starts below the magwell, is guided upward, then seats into the exact magazine home transform.
+- This removes the giant black stretched geometry seen in the user's v485 video.
+
+### M4-only arm choreography
+- M4 now has a dedicated support-hand reload path instead of the generic detachable-mag path.
+- Support hand reaches/pulls, dips for replacement, guides the new magazine, and returns to the fore-end **before** the bolt cycle.
+- Right/firing hand is held stable during M4 reload.
+- This removes the end-of-reload arm snap/wild sweep.
+
+### Bolt carrier
+- The real `bolt carrier` node remains the charging/bolt visual.
+- It cycles only after the new magazine seats.
+- Arm choreography is already back in its normal position during that bolt movement.
+
+## Locked M4 baseline preserved
+
+Do **not** change unless user explicitly asks:
+- hip position `(.54,-.56,-1.48)`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- M4 asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+
+- User video inspected frame-by-frame.
+- Deployed GLB hierarchy confirmed exact siblings:
+  - `magazine`
+  - `bullets`
+  - `bolt carrier`
+- GLB still has 0 embedded animations and 0 skins.
+- Staged v486 JS passed `node --check`.
+- Locally syntax-checked Git blob SHA matched committed GitHub blob exactly:
+  - `ac1c7b158d58b5878dcf6a2ed561753aebaf6d0e`
+- Loader bumped only after gameplay commit.
+
+## v486 user test target
+
+Fire several rounds and reload with **R**. Verify:
+1. magazine and visible cartridges leave together;
+2. no bullets remain floating under the receiver;
+3. no huge black stretched polygons appear;
+4. support arm moves smoothly and is back on the fore-end before bolt cycling;
+5. bolt carrier cycles without the arms flying around;
+6. rifle returns to exact v484 hip pose;
+7. v484 ADS bullet / hit-marker alignment remains perfect.
+
+Do not mark v486 confirmed-good until user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v485 M4 REAL-MAGAZINE / BOLT RELOAD TEST — READ THIS FIRST
 
 This section supersedes older current-state sections below. **GitHub main is the source of truth.**
