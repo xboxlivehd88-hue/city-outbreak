@@ -2560,9 +2560,8 @@ function updateCrosshairVisual(){
  const shotgunReticle=weapon==="shotgun";
  cross.classList.toggle("shotgun",shotgunReticle);
  if(shotgunReticle){
-   const size=THREE.MathUtils.lerp(54,24,aimBlend);
-   cross.style.setProperty("--shotgun-reticle-size",size.toFixed(1)+"px");
-   cross.style.opacity="1";
+   cross.style.setProperty("--shotgun-reticle-size","72px");
+   cross.style.opacity=aiming?"0":"1";
  }else{
    cross.style.removeProperty("--shotgun-reticle-size");
    cross.style.opacity=aiming?"0":"1";
