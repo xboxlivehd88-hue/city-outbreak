@@ -1,3 +1,23 @@
+# USER-CONFIRMED GOOD — 2026-10-08 — v497 WEAPON SLOT LINEUP APPROVED
+
+The user tested v497 and replied **"great"**.
+
+Treat v497 weapon-slot mapping as approved/current:
+1. M17
+2. M4
+3. Shotgun
+4. MP5
+5. M240
+6. DMR
+7. Grenade Launcher
+8. AWM
+
+Mouse-wheel cycling uses the same order.
+
+No gameplay code changed in this confirmation update.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v497 WEAPON SLOT REMAP TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
