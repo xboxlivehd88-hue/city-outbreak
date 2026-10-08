@@ -1,3 +1,75 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v486 M4 RELOAD FIX TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current state
+
+- Test build: **v486**
+- Loader: `./src/game.js?v=486`
+- M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v486 gameplay commit: `c85458ed89b97455c589e71f1dd0208b8869de21`
+- v486 loader commit: `2c17b1a101e867098bf9a8bde6a36e4df83338cc`
+- v486 `src/game.js` blob SHA: `ac1c7b158d58b5878dcf6a2ed561753aebaf6d0e`
+- **v484 remains the last user-confirmed good baseline.**
+- v485 was tested and rejected because cartridges stayed behind and fresh-mag/arm geometry blew up during reload.
+- Protected recovery remains **v324** unchanged.
+
+## v486 fixes the exact v485 video issues
+
+Direct deployed-GLB inspection confirmed:
+- `magazine` and `bullets` are separate sibling nodes;
+- `bolt carrier` is a separate real node;
+- the imported magazine uses unusual baked FBX transforms/scaling.
+
+v486:
+- reparents `bullets` under the real `magazine` while preserving world placement;
+- therefore old/fresh magazine clones carry the visible cartridges with them;
+- keeps the fresh M4 magazine in the imported rifle's coordinate space instead of attaching it to the procedural hand;
+- removes the giant black stretched polygons caused by scale inheritance;
+- adds M4-only support-hand choreography;
+- returns support hand to the fore-end before the bolt cycle;
+- holds the firing/right hand stable during the M4 reload;
+- keeps the real `bolt carrier` cycle after magazine insertion.
+
+## Preserve locked v484 M4 values
+
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`.
+
+## Validation
+
+- User v485 video inspected frame-by-frame.
+- GLB hierarchy checked directly from the deployed Pages artifact.
+- v486 staged JS passed `node --check`.
+- Exact staged Git blob SHA matched the GitHub commit:
+  `ac1c7b158d58b5878dcf6a2ed561753aebaf6d0e`.
+
+## Test target
+
+Reload M4 and confirm:
+- magazine + cartridges drop together;
+- no floating bullets;
+- no giant black polygons;
+- support hand behaves smoothly;
+- bolt cycles with hands stable;
+- hip and ADS return to the approved v484 state.
+
+Do not call v486 good until the user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v485 M4 REAL RELOAD TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
