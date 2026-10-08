@@ -5227,7 +5227,7 @@ function reload(w=weapon){
    };
    reloading=true;reloadWeapon=w;beginReloadMagazineFX();show("RELOADING");loadShell();return true
  }
- const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):w==="rifle"?Math.max(1700,2200-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
+ const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):w==="rifle"?Math.max(1450,1800-reloadLevel*70):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
  reloading=true;reloadStartedAt=gameTimeNow();reloadDurationMs=duration;reloadWeapon=w;beginReloadMagazineFX();reloadS();show("RELOADING");
  gameTimeout(()=>{
    if(seq!==reloadSequence||!reloading||reloadWeapon!==w)return;
