@@ -1,3 +1,71 @@
+# M4 TUNING PHASE — 2026-10-07 — v479 — VIDEO-BASED ADS ZERO + RECOIL CORRECTION — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=479`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v478 optical-axis / two-pass ACOG baseline commit: `3059db7d2fc70349175a77243fb9fee53ab307a8`
+- v479 ADS-recoil prep commit: `95309a80a2074338ebd5cc95fa464af330b6eacf`
+- v479 final gameplay commit: `bfde34ec1566cbd8224905fef51cd44472c24426`
+- v479 loader commit: `1ef7f488a3b174f366e9949c29e742c75a5e0250`
+- Current `src/game.js` SHA: `73d416aa34164c6051c90078339fec1dd0f66f1b`
+- Protected recovery remains **v324** unchanged.
+
+## User-provided v478 video
+
+User tested live v478 from:
+- `?v=478-37706847064`
+
+They reported:
+- ADS hit/impact is a little **low** compared with the reticle;
+- M4 ADS recoil is **out of control**.
+
+The video confirms both.
+
+## v479 fixes
+
+### ADS shot zero
+Add a tiny rifle-only ADS correction:
+- `rifleAdsZeroY=+0.003`
+
+Only applies while aiming with the M4.
+
+This raises impact slightly toward the modeled reticle.
+
+### ADS recoil
+Reduce only the M4 viewmodel recoil as ADS blends in:
+- hip recoil scale = `1.0`
+- full ADS recoil scale = `0.22`
+- smooth `lerp(1,0.22,aimBlend)`
+
+This leaves hip recoil and other weapons unchanged.
+
+## Preserve v478 structure
+
+Do not regress:
+- real ACOG optical-axis alignment;
+- rear/front 5% aperture calculation;
+- removal of old `-0.008` shot offset;
+- two-pass ACOG body/glass rendering;
+- approved v470 hip placement;
+- ~0.18 rear-lens eye distance.
+
+## Next test
+
+Ask user to check:
+- hit lands on reticle instead of slightly low;
+- automatic ADS recoil is now controlled;
+- scope remains aligned;
+- hip ACOG still looks clean.
+
+If one is still slightly off, tune only that single value next.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v478 — TRUE OPTICAL-AXIS ADS + TWO-PASS ACOG — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
