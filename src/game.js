@@ -2556,16 +2556,28 @@ function rebuildGun(){
  gun.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
 }
 
+function updateCrosshairVisual(){
+ const shotgunReticle=weapon==="shotgun";
+ cross.classList.toggle("shotgun",shotgunReticle);
+ if(shotgunReticle){
+   const size=THREE.MathUtils.lerp(54,24,aimBlend);
+   cross.style.setProperty("--shotgun-reticle-size",size.toFixed(1)+"px");
+   cross.style.opacity="1";
+ }else{
+   cross.style.removeProperty("--shotgun-reticle-size");
+   cross.style.opacity=aiming?"0":"1";
+ }
+}
 function setAim(v){
  aiming=!!v&&running&&!dying&&!between&&document.pointerLockElement===cv;
  if(!aiming){gun.visible=true;if(aimBlend<=.01)gun.scale.setScalar(1)}
  const scopedAim=aiming&&weapon==="awm";
  scopeOverlay.classList.toggle("show",scopedAim);
  scopeOverlay.classList.toggle("m4Scope",false);
- cross.style.opacity=aiming?"0":"1";
+ updateCrosshairVisual();
 }
 const WEAPON_CYCLE_ORDER=["pistol","rifle","shotgun","smg","m240","dmr","grenadeLauncher","awm"];
-function setWeapon(w){if(reloading||!unlocked[w])return;stopAuto();setAim(false);weapon=w;rebuildGun();weaponNameEl.textContent=wd().name;show(wd().name);ui()}
+function setWeapon(w){if(reloading||!unlocked[w])return;stopAuto();setAim(false);weapon=w;rebuildGun();updateCrosshairVisual();weaponNameEl.textContent=wd().name;show(wd().name);ui()}
 function cycleWeapon(dir){
  if(reloading)return;
  const available=WEAPON_CYCLE_ORDER.filter(w=>unlocked[w]);
@@ -5748,7 +5760,7 @@ function updateSprintUI(){
  sprintUiColor=next.color;
  sprintUiState=next.state;
 }
-function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9.5:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
+function move(dt){aimBlend+=(aiming?1:-1)*dt*8;aimBlend=Math.max(0,Math.min(1,aimBlend));updateCrosshairVisual();const ac=ads(),targetFov=aiming?ac.fov:70,newFov=cam.fov+(targetFov-cam.fov)*Math.min(1,dt*10);if(Math.abs(newFov-cam.fov)>.015){cam.fov=newFov;cam.updateProjectionMatrix()}let f=(keys.w?1:0)-(keys.s?1:0),r=(keys.d?1:0)-(keys.a?1:0),len=Math.hypot(f,r)||1,moving=!!(f||r);let sprinting=moving&&keys.shift&&!sprintLocked&&sprintEnergy>0;if(sprinting){sprintEnergy=Math.max(0,sprintEnergy-33.34*dt);if(sprintEnergy<=0){sprintEnergy=0;sprintLocked=true;sprinting=false}}else{sprintEnergy=Math.min(100,sprintEnergy+14*dt);if(sprintLocked&&sprintEnergy>=100)sprintLocked=false}updateSprintUI();if(moving){f/=len;r/=len;let sp=sprinting?9.5:5,fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);let oldx=px,oldz=pz;px+=(fx*f+rx*r)*sp*dt;pz+=(fz*f+rz*r)*sp*dt;
 for(const c of parkedCars){
  if(carPointCollision(c,px,pz,.38)){
    const tx=px,tz=pz;
