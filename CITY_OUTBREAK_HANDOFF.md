@@ -1,3 +1,73 @@
+# M4 TUNING PHASE — 2026-10-07 — v484 — ADS HIT MARKER / BULLET RAY SYNC FIX — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=484`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v484 gameplay commit: `4a9745b8235093856286f9453daca0c0f77514f4`
+- v484 loader commit: `25c4ae400ac636427415747109d1e7b6ef978cdd`
+- Current `src/game.js` SHA: `f72de72b3a9daea3b2b10bd3805862e90f813979`
+- Protected recovery remains **v324** unchanged.
+
+## Why the user saw no movement
+
+User correctly reported that even after waiting, the visible M4 ADS hit marker appeared to stay in the same place.
+
+Root cause:
+- the actual M4 bullet ray had been moved upward using `rifleAdsZeroY`;
+- but `hitMark()` still hard-coded the rifle's visible hit marker to `top: 50%`;
+- therefore the bullet ray could move while the on-screen marker remained visually frozen at screen center.
+
+This is why the previous calibration looked like it was not changing.
+
+## v484 fix
+
+Create one shared M4 ADS zero constant:
+
+- `RIFLE_ADS_ZERO_Y = .040`
+
+Use it for both:
+
+1. the actual rifle ADS bullet ray;
+2. the visible M4 ADS hit-marker position.
+
+The M4 hit marker top is now calculated from the same normalized-device-coordinate Y value:
+- CSS top = `50 - RIFLE_ADS_ZERO_Y * 50`
+- with `.040`, marker renders at approximately `48%` instead of `50%`.
+
+This guarantees the visible marker and real bullet ray cannot drift apart during further tuning.
+
+## Intentionally unchanged
+
+v484 does **not** change:
+- M4 scope/ACOG geometry;
+- current ACOG rendering/material behavior;
+- optical-axis alignment;
+- hip placement;
+- ADS eye distance;
+- FOV;
+- recoil;
+- damage/spread/fire rate;
+- reload;
+- sound;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- full `src/game.js` syntax parse passed;
+- exact gameplay diff is limited to shared M4 ADS zero constant + hit-marker sync + ray using same constant.
+
+## v484 test focus
+
+Check one thing only:
+- when the M4 hits while ADS, does the visible hit marker now appear at the same upward-adjusted point as the real shot zero instead of remaining stuck at screen center?
+
+If still off, adjust **only `RIFLE_ADS_ZERO_Y`**. The marker and shot ray will now move together automatically.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v483 — VISIBLE ADS IMPACT CORRECTION — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
