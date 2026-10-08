@@ -1,3 +1,39 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v500 WIDER SHOTGUN HIP CIRCLE / HIDE IN ADS — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v500**
+- Loader: `./src/game.js?v=500`
+- CSS: `./src/game.css?v=500`
+- v500 game commit: `c980e88056b1fddbd73aa32ba84783a8cb002145`
+- v500 game blob: `84470aa33f616fe937e58d0d0fb98db251a215c5`
+- v500 CSS commit: `0d4d46e3cc886bfc0c451ec811be8bc2f36da2b7`
+- v500 CSS blob: `2f2e4a78f551c1d51f52d38e8d73016af6752f20`
+- v500 index commit: `1e77a31ae39ed384426e67aef14b97dea4299573`
+
+## v500 exact change
+Shotgun only:
+- hip circle increased **54 px → 72 px**;
+- ADS now hides the shotgun reticle completely;
+- releasing ADS restores the circle;
+- shotgun `+` bars remain disabled.
+
+No shotgun mechanics changed.
+
+## Preserved
+- v498 shotgun starting loadout;
+- v497 weapon order;
+- all M4 work;
+- shotgun stats: spread `.090`, pellets `8`, body `.72`, recoil `.22`, base mag `8`, rate `520`.
+
+## Test target
+Confirm wider hip circle and no reticle during shotgun ADS.
+
+Do not mark v500 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v499 SHOTGUN CIRCLE RETICLE TEST — READ THIS FIRST
 
 GitHub main is authoritative.
