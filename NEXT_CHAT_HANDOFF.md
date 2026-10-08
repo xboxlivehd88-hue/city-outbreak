@@ -1,3 +1,74 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v492 M4 BODY/POUCH PICKUP TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v492**
+- Loader: `./src/game.js?v=492`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v492 gameplay commit: `3f19615ac68a8ba89f00138c494abbe940f6ab30`
+- v492 loader commit: `0d19d753f8bf9316bfa39de11b70e71a92fef0a3`
+- v492 game blob: `50add9c99be7a19098334b47c2c1b2c03b75a53d`
+- v485-v491 rejected for reload behavior.
+- **v484 remains last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains v324 unchanged.
+
+## Why v491 failed
+User video showed the replacement magazine materialized directly in the support hand after the old mag dropped. There was no readable body/pouch pickup.
+
+## v492 exact correction
+- adds a fixed M4 body/pouch spare-mag anchor;
+- old mag drops at about `p=.30`;
+- spare magazine is already at body/pouch at about `p=.31`;
+- empty support hand reaches down to it through about `p=.46`;
+- brief grab/hold beat `.46-.50`;
+- spare magazine remains fixed until `p=.50`;
+- only after the grab does the same magazine move with the hand;
+- carry phase `.50-.75`;
+- measured geometry-guided insertion `.75-.86`;
+- charging remains after seating.
+
+Support-hand body offset:
+`(-.30,-.72,.60)`
+
+Preserved measured M4 magazine points:
+- top-center `(0.0005,0.055,0.0306)`
+- lower grip `(-0.003,0.45,-1.61)`
+
+## Preserve locked v484 M4 values
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`.
+
+## Validation
+- v491 user video reviewed frame-by-frame.
+- v491 deployed Pages artifact used as exact patch base.
+- v492 passed `node --check`.
+- local syntax-checked Git blob SHA exactly matched committed GitHub blob:
+  `50add9c99be7a19098334b47c2c1b2c03b75a53d`.
+
+## Test target
+Reload and confirm:
+- empty hand reaches body;
+- spare is visibly at body/pouch first;
+- hand grabs that spare;
+- same magazine then comes up with the hand;
+- insertion and charging remain smooth.
+
+Do not mark v492 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v491 GEOMETRY-GUIDED M4 INSERTION TEST — READ THIS FIRST
 
 GitHub main is authoritative.
