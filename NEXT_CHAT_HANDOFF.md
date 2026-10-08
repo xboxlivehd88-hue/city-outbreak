@@ -1,3 +1,46 @@
+# M4 TUNING PHASE — 2026-10-07 — v480 — ADS IMPACT RAISED TO USER-MARKED RETICLE POINT — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=480`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v480 gameplay commit: `4569ffb25120ee741d6a53e172d8940002b9d4f7`
+- v480 loader commit: `e6c1d7f8f5cf2df9d908fa566ce53e1e8e2679cc`
+- Current `src/game.js` SHA: `662a4d0c56c419d86bd18348e2ad6be61d2bf202`
+- Protected recovery remains **v324** unchanged.
+
+## User's latest request
+
+In the v479 video, user marked the desired ADS impact point with the red arrow and said the hit marker should be there.
+
+## v480 change
+
+Only:
+- `rifleAdsZeroY` changes from `+0.003` to `+0.006`.
+
+This raises only the M4 ADS impact slightly.
+
+Preserve:
+- v479 recoil reduction;
+- true ACOG optical-axis ADS;
+- two-pass ACOG rendering;
+- approved hip placement;
+- eye distance/FOV;
+- recoil/damage/reload/sound;
+- other weapons.
+
+## Next test
+
+Ask user only whether the M4 ADS hit now lands at the red-arrow/reticle point.
+
+If still off, tune only `rifleAdsZeroY`.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v479 — VIDEO-BASED ADS ZERO + RECOIL CORRECTION — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
