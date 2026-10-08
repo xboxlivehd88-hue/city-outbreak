@@ -1,3 +1,70 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v496 FASTER M4 RELOAD TIMING TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v496**
+- Loader: `./src/game.js?v=496`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v496 gameplay commit: `16e6d959ec69e9afd20314ff7a1d2b59fb71fcc0`
+- v496 loader commit: `1c6e43ea921efa8ce4681c2b1e5e519880895dfa`
+- v496 `src/game.js` blob SHA: `b25f69adf2a053ceb6599320e205097d446a601a`
+- v485-v495 were tested and rejected for reload behavior.
+- **v484 remains the last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## Why v495 was rejected
+User said the reload still felt too slow.
+
+## v496 isolated correction
+Only M4 reload duration changed.
+
+Previous:
+`Math.max(1700,2200-reloadLevel*90)`
+
+Now:
+`Math.max(1450,1800-reloadLevel*70)`
+
+Base M4 reload is now about **1.8 seconds** instead of 2.2 seconds.
+
+Everything else from v495 is intentionally preserved:
+- anchored shoulder / articulated elbow and forearm;
+- body/belt reach;
+- physical dropped-mag fall and ground settle;
+- off-body loaded spare pickup;
+- measured geometry-guided insertion;
+- staged charging choreography;
+- bolt travel `24 Z`;
+- charging-handle travel `30 Z`.
+
+## Locked v484 M4 values preserved
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`.
+
+## Validation
+- required current files re-read before edit;
+- committed v496 source passed syntax parse;
+- timing marker exists exactly once;
+- approved ADS zero, M4 asset, articulated arm helper, bolt travel, and charging-handle travel remain unchanged.
+
+## v496 test target
+Reload with **R** and verify the reload now feels fast enough while preserving the v495 physical choreography.
+
+Do not mark v496 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v495 ANCHORED M4 ARM REACH / FASTER RELOAD TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
