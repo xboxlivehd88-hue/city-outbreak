@@ -1,3 +1,61 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v489 HAND-CARRIED M4 MAGAZINE TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v489**
+- Loader: `./src/game.js?v=489`
+- M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v489 gameplay commit: `aceb1afeef8f30690efe27d978e7f9171e7f2a32`
+- v489 loader commit: `ecaf258ee375128e843f0f4c1471fe08389ad09b`
+- v489 game blob: `aefdc68ce62e4be30761db61548e5ffc5cffd8c1`
+- v485/v486/v487/v488 rejected for reload behavior.
+- **v484 remains last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains v324 unchanged.
+
+## Exact v489 correction
+User video showed v488 was much better but still wrong in two ways:
+- dumped mag while a magazine still appeared seated;
+- fresh mag did not visibly travel with the player/support hand into the gun.
+
+v489:
+- forces old seated magazine root + meshes hidden every frame after release;
+- removes that old seated node from the rifle hierarchy after the replacement seats;
+- keeps fresh mag inside M4 hierarchy for scale stability;
+- computes the actual rendered support-hand world position each frame;
+- locks the real magazine base (local z about `-1.55`) to that hand during the carry phase;
+- at p≈.67 transfers from hand-carried motion into the magwell insertion path;
+- seats the same fresh magazine at p≈.86 and makes it the active `playerReloadPart`;
+- retains v488 visible bolt/charging-handle travel after insertion.
+
+## Preserve locked v484 M4 values
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`.
+
+## Test target
+Reload and confirm:
+- rifle becomes visibly empty after old mag release;
+- replacement magazine is visibly in the support hand;
+- support hand + mag travel together from player/body to rifle;
+- fresh mag transfers into magwell and remains seated;
+- charging action remains visible and controlled;
+- normal hip and ADS return to approved v484 state.
+
+Do not mark v489 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v488 MODEL-SCALE M4 RELOAD TEST — READ THIS FIRST
 
 GitHub main is authoritative.
