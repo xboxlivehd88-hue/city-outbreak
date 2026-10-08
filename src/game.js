@@ -1726,7 +1726,7 @@ const HAND_POSES={
 };
 // M4 spare-mag pouch/grab point. This is a player-body location in gun-local
 // space: the support hand must physically reach here before the spare can move.
-const M4_RELOAD_POUCH_HAND_OFFSET=new THREE.Vector3(-.30,-.72,.60);
+const M4_RELOAD_POUCH_HAND_OFFSET=new THREE.Vector3(-.40,-1.00,-.12);
 const M4_RELOAD_POUCH_GRIP_GUN=new THREE.Vector3(
  HAND_POSES.rifle.left[0]+M4_RELOAD_POUCH_HAND_OFFSET.x,
  HAND_POSES.rifle.left[1]+M4_RELOAD_POUCH_HAND_OFFSET.y,
@@ -1828,6 +1828,12 @@ function tossOldReloadMagazine(){
  if(!detachableMagazineReload()||reloadOldMagDropped||!playerReloadPart.parent)return;
  const oldMag=playerReloadPart.clone(true);oldMag.name="DiscardedMagazine";oldMag.visible=true;
  oldMag.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+ // If the M4 was actually fired empty, make the discarded magazine visually empty
+ // as well. Tactical reloads keep whatever rounds were still in the old magazine.
+ if(reloadWeapon==="rifle"&&ammoState.rifle&&ammoState.rifle.mag===0){
+   const spentRounds=oldMag.getObjectByName("bullets")||oldMag.getObjectByName("bullets_bullets_0");
+   if(spentRounds)spentRounds.traverse(o=>{o.visible=false});
+ }
  // MP5 magazine lives inside the imported MP5 hierarchy. Preserve its exact
  // world transform when cloning it out for the drop. Other weapons keep the proven path.
  if(reloadWeapon==="smg"||reloadWeapon==="rifle"){
@@ -1911,6 +1917,12 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
    // moving until the hand has actually arrived and grabbed it.
    const fresh=playerReloadPart.clone(true);fresh.name="FreshReloadMagazine";
    fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+   // The spare is loaded. Force the real GLB cartridge group visible so it cannot
+   // read like the empty magazine that was just discarded. Keep the root hidden
+   // until the support hand is almost at the below-screen pouch position.
+   const freshRounds=fresh.getObjectByName("bullets")||fresh.getObjectByName("bullets_bullets_0");
+   if(freshRounds)freshRounds.traverse(o=>{o.visible=true});
+   fresh.visible=false;
    const insertParent=playerReloadPart.parent||m4ViewRoot||gun;
    insertParent.add(fresh);
    fresh.position.copy(home);fresh.quaternion.copy(targetQ);fresh.scale.copy(playerReloadPart.scale);
@@ -1955,12 +1967,20 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
    }
 
    // Until p=.50 the spare remains fixed at the body while the EMPTY support hand
-   // visibly reaches down to it. At p=.50 the grab occurs; only then can the spare move.
+   // visibly reaches down to it. The pouch itself sits below the normal viewport,
+   // so do not reveal the spare until the hand is nearly there; it should emerge
+   // upward from the player's body, not float next to the camera.
    if(rp.p<.50){
      const pouchOriginWorld=reloadFreshMag.userData.reloadPouchOriginWorld;
      reloadFreshMag.position.copy(insertParent.worldToLocal(pouchOriginWorld.clone()));
      reloadFreshMag.quaternion.copy(targetQ);
+     reloadFreshMag.visible=rp.p>=.44;
+     const freshRounds=reloadFreshMag.getObjectByName("bullets")||reloadFreshMag.getObjectByName("bullets_bullets_0");
+     if(freshRounds)freshRounds.traverse(o=>{o.visible=true});
    }else{
+     reloadFreshMag.visible=true;
+     const freshRounds=reloadFreshMag.getObjectByName("bullets")||reloadFreshMag.getObjectByName("bullets_bullets_0");
+     if(freshRounds)freshRounds.traverse(o=>{o.visible=true});
      if(!reloadFreshMag.userData.reloadGrabbed){
        reloadFreshMag.userData.reloadGrabbed=true;
        reloadFreshMag.userData.reloadCarryStartWorld=reloadFreshMag.userData.reloadPouchOriginWorld.clone();
