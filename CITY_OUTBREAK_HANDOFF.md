@@ -1,3 +1,113 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v487 M4 MAGAZINE/CHARGING AXIS FIX TEST — READ THIS FIRST
+
+This section supersedes older current-state sections below. **GitHub main is the source of truth.**
+
+## Current test state
+
+- Test build: **v487**
+- Loader: `./src/game.js?v=487`
+- Active M4 asset remains: `assets/ar-15_style_rifle.glb?v=466`
+- v487 gameplay commit: `d6d3e843d9d6cef99bb4655f46cd789f0fbcf5ab`
+- v487 loader commit: `5fb6b4be85ed2f6f43bdae8ccf0695b5acc952f9`
+- Current v487 `src/game.js` blob SHA: `600a92884d32e661161c7095fd27ea6dbb0cedfc`
+- **v484 remains the last user-confirmed good baseline** until a later reload build is approved.
+- v485 and v486 were tested and rejected.
+- Protected recovery remains **v324** unchanged.
+
+## Why v486 was rejected
+
+User video showed:
+- the dumped magazine looked good;
+- one magazine still appeared to remain;
+- the replacement magazine did not visibly return into the gun;
+- the rifle still did not visibly get charged.
+
+Frame-by-frame review plus direct GLB geometry inspection identified the model-space axis mistake:
+- the magazine body is authored primarily along **Z** and inserts/removes along Z;
+- the rifle/receiver/bolt is authored lengthwise along **Y**;
+- v486 still moved the fresh magazine mostly on Y and moved the bolt carrier on Z.
+
+## v487 isolated reload corrections
+
+### Old magazine visibility
+- When the rifle magazine is dumped, the real seated `magazine` root is now explicitly set `visible=false`.
+- Its mesh descendants are also hidden.
+- This prevents the original seated magazine from visually remaining behind while the dropped clone falls.
+
+### Replacement magazine
+- Fresh replacement still stays in the imported M4 coordinate space to avoid the v485 scale blow-up.
+- It now starts below the magwell on **model-space Z**:
+  - `fresh.position.z -= 1.05`
+- Alignment point is also on Z:
+  - `align.z -= .32`
+- It then seats directly back into the exact saved home transform.
+- At seating completion, the real magazine root and descendants are explicitly made visible again.
+
+### Charging action
+- Direct GLB geometry inspection confirmed the rifle longitudinal axis is **Y**.
+- The real `bolt carrier` now moves rearward on Y:
+  - `position.y -= .38 * cycle`
+- The separate `ar15.005` node is treated as the external charging-handle part and moves rearward on Y with the bolt:
+  - `position.y -= .46 * cycle`
+- Both parts return to their exact saved home positions after the charge.
+- Hands remain on the stabilized v486 M4-only choreography during this phase; no large charging-arm sweep was reintroduced.
+
+## GLB geometry evidence used
+
+Current deployed M4 GLB has no animations/skins and contains separate nodes:
+- `magazine`
+- `bullets`
+- `bolt carrier`
+- `ar15.005`
+
+Direct position bounds show:
+- magazine mesh extends mainly down Z;
+- bolt carrier / receiver geometry extends mainly along Y;
+- `ar15.005` is a long, thin receiver-top part appropriate for the visible charging action.
+
+## Locked M4 baseline preserved
+
+Do **not** change unless explicitly requested:
+- hip position `(.54,-.56,-1.48)`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- M4 asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+
+Post-write source checks confirmed:
+- `RIFLE_ADS_ZERO_Y=.040` still appears exactly once;
+- M4 asset path remains unchanged;
+- fresh-mag Z-axis path exists exactly once;
+- bolt Y-axis charging movement exists exactly once;
+- `ar15.005` charging-handle binding exists exactly once;
+- committed v487 game blob is `600a92884d32e661161c7095fd27ea6dbb0cedfc`.
+
+## v487 user test target
+
+Fire several rounds and reload with **R**. Verify:
+1. only the dumped old magazine leaves the gun;
+2. no second seated magazine remains visible after the dump;
+3. fresh magazine visibly travels back up into the magwell;
+4. magazine is present again after reload;
+5. external charging handle / bolt visibly pull rearward and return;
+6. hands remain controlled during the charge;
+7. rifle returns to exact v484 hip pose;
+8. v484 ADS shot / marker synchronization remains perfect.
+
+Do not call v487 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v486 M4 RELOAD FIX TEST — READ THIS FIRST
 
 This section supersedes older current-state sections below. **GitHub main is the source of truth.**
