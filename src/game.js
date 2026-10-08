@@ -1886,18 +1886,22 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
    playerReloadPart.position.y-=.34*pull;playerReloadPart.position.z+=.035*pull;
    if(rp.p>=.30)tossOldReloadMagazine();
  }
- if(rp.p>=.48&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
- if(rp.p>=.62&&reloadFreshMag&&!reloadFreshAttached){
-   playerHandRig.left.updateMatrixWorld(true);
+ if(rp.p>=.48&&!reloadFreshMag&&!reloadMagInserted){
+   // Keep the replacement magazine in the SAME imported-model coordinate space as
+   // the real seated magazine. Attaching this FBX-authored node to the procedural
+   // hand temporarily amplified its baked scale and produced giant black polygons.
+   const fresh=playerReloadPart.clone(true);fresh.name="FreshReloadMagazine";fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    const insertParent=playerReloadPart.parent||m4ViewRoot||gun;
-   insertParent.updateMatrixWorld(true);insertParent.attach(reloadFreshMag);
-   reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
+   insertParent.add(fresh);
+   fresh.position.copy(home);fresh.position.y-=1.10;fresh.position.z+=.06;
+   fresh.quaternion.copy(targetQ);fresh.scale.copy(playerReloadPart.scale);
+   reloadFreshMag=fresh;reloadFreshInsertStart=fresh.position.clone();reloadFreshInsertQuat=fresh.quaternion.clone();reloadFreshAttached=true;
  }
  if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
-   // First line the replacement up below the magwell, then drive it straight in.
-   const align=home.clone();align.y-=.38;align.z+=.020;
+   // First guide the replacement toward a point below the magwell, then seat it.
+   const align=home.clone();align.y-=.42;align.z+=.025;
    if(rp.p<.75){
-     const t=smoothReload01((rp.p-.62)/.13);
+     const t=smoothReload01((rp.p-.48)/.27);
      reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,align,t);
      reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
    }else{
@@ -2198,7 +2202,15 @@ function rebuildGun(){
      // to the rifle so it follows the approved hip/ADS transforms, then animate
      // clones for the discard/fresh-mag phases. The bolt carrier is also a real node.
      const m4Mag=m4Root.getObjectByName("magazine")||m4Root.getObjectByName("magazine_ar 15 2_0");
+     const m4Bullets=m4Root.getObjectByName("bullets")||m4Root.getObjectByName("bullets_bullets_0");
      if(m4Mag){
+       // The exported cartridges are a separate sibling node, not children of the
+       // magazine. Reparent them under the real magazine while preserving their
+       // exact world transform so the rounds leave/return WITH the magazine.
+       if(m4Bullets&&m4Bullets!==m4Mag){
+         m4Root.updateMatrixWorld(true);m4Mag.updateMatrixWorld(true);m4Bullets.updateMatrixWorld(true);
+         m4Mag.attach(m4Bullets);
+       }
        m4Mag.userData.externalWeaponAsset=true;
        m4Mag.userData.reloadHome=m4Mag.position.clone();m4Mag.userData.reloadHomeQuat=m4Mag.quaternion.clone();
        playerReloadPart=m4Mag;
@@ -5702,7 +5714,17 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    // Earlier negative ADS Z values pushed the entire rifle farther away and exposed
    // the receiver/stock from behind, which is why v160-v163 looked progressively wrong.
    if(weapon==="rifle")for(const o of m4AdsOccluders)o.visible=aimBlend<.62||reloading;
-   if(reloading&&reloadWeapon==="grenadeLauncher"){
+   if(reloading&&reloadWeapon==="rifle"){
+     // M4-only support-hand choreography. Return the support hand to the fore-end
+     // BEFORE the bolt cycle so there is no end-of-reload arm snap or wild sweep.
+     const p=rp.p;let lx=0,ly=0,lz=0,rz=0,t=0;
+     if(p<.18){t=smoothReload01(p/.18);lx=.06*t;ly=-.08*t;lz=.03*t;rz=-.08*t}
+     else if(p<.36){t=smoothReload01((p-.18)/.18);lx=.06-.08*t;ly=-.08-.18*t;lz=.03+.08*t;rz=-.08-.06*t}
+     else if(p<.52){t=smoothReload01((p-.36)/.16);lx=-.02-.08*t;ly=-.26-.18*t;lz=.11+.06*t;rz=-.14-.06*t}
+     else if(p<.76){t=smoothReload01((p-.52)/.24);lx=-.10+.14*t;ly=-.44+.25*t;lz=.17-.10*t;rz=-.20+.08*t}
+     else if(p<.88){t=smoothReload01((p-.76)/.12);lx=.04*(1-t);ly=-.19*(1-t);lz=.07*(1-t);rz=-.12*(1-t)}
+     playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06,0,rz);
+   }else if(reloading&&reloadWeapon==="grenadeLauncher"){
      const p=rp.p;let lx=0,ly=0,lz=0,lr=0,t=0;
      // Hand works the latch, drops to the pouch, carries the grenade to the open breech, then returns to the fore-end.
      if(p<.18){t=smoothReload01(p/.18);lx=.08*t;ly=.08*t;lz=.08*t;lr=-.10*t}
@@ -5727,8 +5749,12 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      playerHandRig.left.position.set(ro[0]*h-.10*pouch,ro[1]*h-.24*pull-.48*pouch,ro[2]*h+.05*pull+.22*pouch);
      playerHandRig.left.rotation.set(.10*h+.11*pouch,0,-.18*h-.09*pouch);
    }
-   playerHandRig.right.position.set(0,-.025*rp.arch,.02*rp.arch);
-   playerHandRig.right.rotation.set(.04*rp.arch,0,.05*rp.arch);
+   if(reloading&&reloadWeapon==="rifle"){
+     playerHandRig.right.position.set(0,0,0);playerHandRig.right.rotation.set(0,0,0);
+   }else{
+     playerHandRig.right.position.set(0,-.025*rp.arch,.02*rp.arch);
+     playerHandRig.right.rotation.set(.04*rp.arch,0,.05*rp.arch);
+   }
  }
  updateReloadMagazineFX(rp);
  updateGrenadeLauncherReloadFX(rp);
