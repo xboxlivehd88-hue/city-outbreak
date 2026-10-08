@@ -5091,8 +5091,9 @@ function fire(){
    // Shift only the SMG ADS ray slightly left/down; hip fire and other weapons are untouched.
    const smgAdsZeroX=(aiming&&weapon==="smg")?-.018:0;
    const smgAdsZeroY=(aiming&&weapon==="smg")?-.025:0;
+   const rifleAdsZeroY=(aiming&&weapon==="rifle")?.003:0;
    const sx=aimX+smgAdsZeroX+(Math.random()-.5)*wd().spread*adsSpread,
-         sy=aimY+pistolAdsZero+smgAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
+         sy=aimY+pistolAdsZero+smgAdsZeroY+rifleAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
    const cityHit=firstCityProjectileHit(ray.ray.origin,ray.ray.direction,80);
    let hit=ray.intersectObjects(rayTargets,false)[0];
@@ -5562,7 +5563,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
- const rifleAdsRecoilScale=weapon==="rifle"?THREE.MathUtils.lerp(1,.30,aimBlend):1;
+ const rifleAdsRecoilScale=weapon==="rifle"?THREE.MathUtils.lerp(1,.22,aimBlend):1;
  const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil*rifleAdsRecoilScale;
  gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+rp.arch*.09;
  gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08-rp.arch*(weapon==="m240"?.12:.18);
