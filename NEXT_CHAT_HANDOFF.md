@@ -1,3 +1,128 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v484 USER-CONFIRMED GOOD M4 ADS BASELINE — READ THIS FIRST
+
+This section supersedes older current-state sections below. **GitHub main is authoritative.**
+
+## Current live / confirmed state
+
+- Loader: `./src/game.js?v=484`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v484 gameplay commit: `4a9745b8235093856286f9453daca0c0f77514f4`
+- v484 loader commit: `25c4ae400ac636427415747109d1e7b6ef978cdd`
+- Current `src/game.js` SHA: `f72de72b3a9daea3b2b10bd3805862e90f813979`
+- Last verified successful Pages run before this handoff note: `37712032872`
+- Protected recovery remains **v324** unchanged:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+
+## Latest user confirmation
+
+After v484 synchronized the M4 ADS bullet ray and visible hit marker, user said:
+
+> **"perfect i need a new chat hand off"**
+
+Treat **v484 as the latest user-confirmed good baseline**.
+
+Do not change the current M4 ADS zero/alignment unless the user explicitly asks.
+
+The M4 tuning phase is not explicitly declared complete, so the temporary M4 starting loadout must remain until the user says tuning is finished.
+
+## Current M4 baseline to preserve
+
+### Model / loadout
+
+- M4 runtime model: `assets/ar-15_style_rifle.glb?v=466`
+- player currently spawns/restarts with M4:
+  - `weapon="rifle"`
+  - `unlocked.rifle=true`
+- M17 remains unlocked.
+
+### Approved hip pose
+
+- root position: `.54,-.56,-1.48`
+- hip rotation: `-8° pitch, 0° yaw, -6° roll`
+
+User explicitly liked this placement earlier. Do not casually retune it.
+
+### True model-based ACOG ADS
+
+Current source uses the real GLB ACOG:
+- node `acog`
+- mesh `acog_optic.001_0`
+
+ADS is calculated from the actual optic geometry:
+- samples rear/front aperture bands from the ACOG mesh;
+- computes optical axis;
+- rotates optical axis to camera forward `(0,0,-1)`;
+- targets rear aperture at about `z=-.18`;
+- blends from approved hip pose into the calculated ADS pose;
+- M4 remains visible in ADS;
+- no fake M4 full-screen scope overlay;
+- rifle ADS FOV remains `48`;
+- AWM scope overlay remains unchanged.
+
+### ACOG rendering
+
+Current source already contains the two-pass ACOG fix:
+- opaque housing pass with high alpha cutoff;
+- transparent glass pass with near-opaque pixels discarded;
+- glass depth-write disabled;
+- emissive intensity clamped to `.15`.
+
+Do not replace the user's real ACOG geometry.
+
+### v484 ADS zero / hit-marker sync
+
+Shared constant:
+- `RIFLE_ADS_ZERO_Y=.040`
+
+It drives both:
+- actual M4 ADS ray;
+- visible M4 ADS hit-marker position.
+
+This fixed the issue where the shot moved but the visible hit marker stayed at screen center.
+
+User called the result **perfect**.
+
+## Current weapon values relevant to M4
+
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`
+- ADS FOV `48`
+- ADS rear aperture distance `-.18`
+- ADS zero `.040`
+
+## Important caution
+
+Do not infer unresolved issues from old handoff sections.
+
+Current main is authoritative.
+
+The user previously mentioned strong M4 recoil in an earlier test, but no later dedicated recoil-tuning commit is present after the current baseline. Because the user ended with **"perfect"**, do not proactively change recoil unless they ask again.
+
+Do not restore the original starting loadout until the user explicitly says M4 tuning is finished.
+
+## New-chat startup procedure
+
+Before any change:
+1. read newest top of `CITY_OUTBREAK_HANDOFF.md`;
+2. read newest top of `NEXT_CHAT_HANDOFF.md`;
+3. read `CURRENT_RECOVERY_CHECKPOINT.md`;
+4. read current `index.html`;
+5. read current `src/game.js`;
+6. inspect any relevant module/asset;
+7. make one isolated change only;
+8. commit directly to `main`;
+9. bump loader;
+10. validate syntax/diff;
+11. verify final Pages success;
+12. update both handoffs.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v484 — ADS HIT MARKER / BULLET RAY SYNC FIX — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
