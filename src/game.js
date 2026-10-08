@@ -5562,7 +5562,8 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
- const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil;
+ const rifleAdsRecoilScale=weapon==="rifle"?THREE.MathUtils.lerp(1,.30,aimBlend):1;
+ const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil*rifleAdsRecoilScale;
  gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+rp.arch*.09;
  gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08-rp.arch*(weapon==="m240"?.12:.18);
  gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt;
