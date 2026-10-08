@@ -1583,7 +1583,7 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
 
 // v501: user-supplied replacement pump shotgun GLB. It is a static asset with
 // separate real nodes for base, shell, trigger, inserter and pump.
-let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunTrigger=null,shotgunInserter=null;
+let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunShellTemplate=null,shotgunTrigger=null,shotgunInserter=null;
 new GLTFLoader().load("assets/shotgun_test.glb?v=501",gltf=>{
  shotgunModelTemplate=gltf.scene;
  shotgunModelTemplate.traverse(o=>{
@@ -1743,7 +1743,7 @@ function bevelBox(w,hh,d,mat,x,y,z,parent=gun){
 const HAND_POSES={
  rifle:{left:[.18,-.45,-1.72],right:[.36,-.62,-.74],reload:[.10,-.16,.50]},
  smg:{left:[.22,-.54,-1.72],right:[.50,-.68,-1.18],reload:[.10,-.18,.31]},
- shotgun:{left:[.17,-.43,-1.83],right:[.36,-.61,-.72],reload:[.08,-.14,.63]},
+ shotgun:{left:[.34,-.30,-1.18],right:[.39,-.40,-.82],reload:[.08,-.14,.63]},
  pistol:{left:[.31,-.38,-.84],right:[.40,-.36,-.82],reload:[.14,-.13,.07]},
  dmr:{left:[.17,-.46,-2.00],right:[.36,-.63,-.80],reload:[.10,-.16,.66]},
  grenadeLauncher:{left:[.17,-.46,-1.58],right:[.36,-.62,-.76],reload:[.09,-.13,.58]},
@@ -2222,7 +2222,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunTrigger=null;shotgunInserter=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -2470,6 +2470,15 @@ function rebuildGun(){
      shotgunTrigger=root.getObjectByName("trigger")||root.getObjectByName("trigger_shotgun_0");
      shotgunInserter=root.getObjectByName("inserter")||root.getObjectByName("inserter_shotgun_0");
      if(shotgunPump)shotgunPumpHome=shotgunPump.position.clone();
+     // The source GLB includes one loose display shell hanging below the receiver.
+     // Keep an exact copy for the future pump-ejection / shell-by-shell reload actor,
+     // but never show that loose shell on the idle shotgun.
+     if(shotgunShell){
+       shotgunShellTemplate=shotgunShell.clone(true);
+       shotgunShellTemplate.name="ShotgunShellTemplate";
+       shotgunShellTemplate.traverse(o=>{o.visible=true;o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+       shotgunShell.visible=false;
+     }
      document.documentElement.dataset.shotgunViewmodel="shotgun-test-glb";
    }
  }else if(weapon==='pistol'){
