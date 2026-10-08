@@ -1,3 +1,40 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v501 SHOTGUN GLB REPLACEMENT TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v501**
+- Loader: `./src/game.js?v=501`
+- Asset: `assets/shotgun_test.glb?v=501`
+- game commit: `ca424f13dba0d8320aabf21d9111127f1f877026`
+- game blob: `9f8b7a3106324d2deacddce25b7e8d0213bf3fd0`
+- loader commit: `3f2b7cdc7d083d98c51dabff1d83f90610062810`
+
+## GLB facts
+- 4.8 MB static glTF 2.0
+- 14 nodes / 5 meshes / no animations or skins
+- separate named parts: base, shell, trigger, inserter, pump
+
+## v501 change
+- procedural shotgun removed;
+- uploaded GLB is sole shotgun model;
+- rotated Y 180° so +Z barrel faces game-forward -Z;
+- normalized to 3.25-unit length;
+- initial placement preserves old shotgun footprint;
+- real pump/shell/trigger/inserter references saved for later animation.
+
+No shotgun mechanics changed.
+v500 reticle behavior remains:
+- 72 px hip circle;
+- hidden in ADS.
+
+## Test target
+Confirm model orientation, scale, hip position, ADS visibility, and that no old shotgun geometry remains.
+
+Do not mark v501 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v500 WIDER SHOTGUN HIP CIRCLE / HIDE IN ADS — READ THIS FIRST
 
 GitHub main is authoritative.
