@@ -1,3 +1,42 @@
+# M4 TUNING PHASE — 2026-10-07 — v482 — ADS IMPACT RAISED ONE MORE STEP — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=482`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v482 gameplay commit: `daa2c5de8de91f35a1454b9b3dfd7a1bd4d96df3`
+- v482 loader commit: `94e14a4b19fad8506b1389774fd8186a27957a2c`
+- Current `src/game.js` SHA: `71a925b5b5ce32b7671cf41008eb29a27c6b5b06`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v481 result
+
+User provided a newer ADS test video and said:
+- impact is still slightly low;
+- alignment is getting close.
+
+v481 used:
+- `rifleAdsZeroY=+0.009`
+
+## v482 change
+
+Only:
+- `rifleAdsZeroY` from `+0.009` to `+0.012`.
+
+No scope placement/material, FOV, recoil, damage, reload, sound, hip placement, or unrelated weapon changes.
+
+## Next test
+
+Ask user only whether the M4 ADS impact now lands at the marked reticle point.
+
+If still slightly off, continue changing only `rifleAdsZeroY`.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v481 — ADS IMPACT RAISED FURTHER TO USER-MARKED POINT — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
