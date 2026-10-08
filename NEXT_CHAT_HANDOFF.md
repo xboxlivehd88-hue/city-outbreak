@@ -1,3 +1,59 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v488 MODEL-SCALE M4 RELOAD TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v488**
+- Loader: `./src/game.js?v=488`
+- M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v488 gameplay commit: `03a440a4f8604c6e6e49689efd15fb35dc16bff6`
+- v488 loader commit: `3af2f3c7957aac6da09d360a8d8d640430cf4f63`
+- v488 game blob: `8bb7f6cdbef51bdc1f56d51cdf9b08a6bbe6eaaa`
+- v485/v486/v487 rejected.
+- **v484 remains last user-confirmed good baseline.**
+- Protected recovery remains v324 unchanged.
+
+## Exact v488 correction
+The deployed GLB was parsed directly. It uses ~100-unit FBX coordinates, so previous sub-unit reload offsets were visually negligible.
+
+v488:
+- pulls old magazine down **34 Y units** before drop;
+- starts fresh magazine **96 Y units** below magwell;
+- guides it to **26 Y units** below magwell, then seats it;
+- keeps the fresh replacement itself as the new seated/active magazine;
+- moves real bolt carrier **+34 Z units** rearward;
+- moves `ar15.005` charging-handle-shaped part **+42 Z units** rearward;
+- gives support hand one controlled synchronized charging pull;
+- keeps right hand stable.
+
+The user specifically needs to see a materially different reload now: visible incoming fresh magazine and visible charging action.
+
+## Preserve locked v484 M4 values
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`.
+
+## Validation
+- New user video inspected frame-by-frame.
+- Deployed v487 source and deployed GLB inspected directly.
+- v488 passed `node --check`.
+- Syntax-checked local v488 Git blob SHA exactly matched committed GitHub blob:
+  `8bb7f6cdbef51bdc1f56d51cdf9b08a6bbe6eaaa`.
+
+Do not mark v488 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v487 M4 MAGAZINE/CHARGING AXIS FIX TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
