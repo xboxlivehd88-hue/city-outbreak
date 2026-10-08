@@ -1546,7 +1546,7 @@ function zombieRouteWaypoint(z){
 
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 // External M4 Carbine visual. The GLB is the sole M4 viewmodel; rebuild when loaded.
-let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null,m4AdsRootTarget=new THREE.Vector3(.36,-.29,-1.28),m4AdsRootQuatTarget=new THREE.Quaternion();
+let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null,m4BoltCarrier=null,m4BoltHome=null,m4AdsRootTarget=new THREE.Vector3(.36,-.29,-1.28),m4AdsRootQuatTarget=new THREE.Quaternion();
 const m4HipQuat=new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(-8),0,THREE.MathUtils.degToRad(-6),"XYZ"));
 new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
  m4ModelTemplate=gltf.scene;
@@ -1773,10 +1773,13 @@ function clearReloadMagazineFX(showReal=true){
  if(launcherChamberRound)launcherChamberRound.visible=false;
  reloadOldMagDropped=false;reloadMagInserted=false;
  if(showReal&&playerReloadPart){
-   if(playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});else playerReloadPart.visible=true;
+   if(playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});
+   else if(playerReloadPart.userData.externalWeaponAsset)playerReloadPart.traverse(o=>{o.visible=true});
+   else playerReloadPart.visible=true;
    if(playerReloadPart.userData.reloadHome)playerReloadPart.position.copy(playerReloadPart.userData.reloadHome);
    if(playerReloadPart.userData.reloadHomeQuat)playerReloadPart.quaternion.copy(playerReloadPart.userData.reloadHomeQuat);
  }
+ if(m4BoltCarrier&&m4BoltHome)m4BoltCarrier.position.copy(m4BoltHome);
 }
 function beginReloadMagazineFX(){
  clearReloadMagazineFX(true);
@@ -1818,7 +1821,9 @@ function tossOldReloadMagazine(){
  oldMag.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
  // MP5 magazine lives inside the imported MP5 hierarchy. Preserve its exact
  // world transform when cloning it out for the drop. Other weapons keep the proven path.
- if(reloadWeapon==="smg"){
+ if(reloadWeapon==="smg"||reloadWeapon==="rifle"){
+   // Imported M4/MP5 magazines live inside their model hierarchies. Preserve the
+   // exact current WORLD transform when cloning them out for the discarded-mag drop.
    playerReloadPart.updateMatrixWorld(true);
    const magWorld=playerReloadPart.matrixWorld.clone();
    scene.add(oldMag);
@@ -1842,16 +1847,16 @@ function spawnFreshReloadMagazine(){
  // Local coordinates here are relative to the hand itself. Do not add the hand's
  // gun-space pose a second time; that was placing the fresh magazine far away.
  const homeQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
- if(reloadWeapon==="rifle"){
-   // The M4 magazine home quaternion is gun-local. Convert that orientation into
-   // left-hand local space so the fresh magazine is already aligned with the real
-   // magwell while the player is carrying it, instead of rotating sideways later.
-   fresh.position.set(.02,.10,-.015);
-   gun.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
-   const gunWorldQ=new THREE.Quaternion(),handWorldQ=new THREE.Quaternion();
-   gun.getWorldQuaternion(gunWorldQ);playerHandRig.left.getWorldQuaternion(handWorldQ);
-   const magWorldQ=gunWorldQ.clone().multiply(homeQ);
+ if(reloadWeapon==="rifle"&&m4ViewRoot){
+   // The real M4 magazine remains parented to the imported rifle so it follows
+   // hip/ADS/reload motion correctly. Convert its current WORLD orientation into
+   // support-hand local space and preserve the M4 root scale while it is carried.
+   fresh.position.set(.02,.12,-.015);
+   m4ViewRoot.updateMatrixWorld(true);playerReloadPart.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
+   const magWorldQ=new THREE.Quaternion(),handWorldQ=new THREE.Quaternion();
+   playerReloadPart.getWorldQuaternion(magWorldQ);playerHandRig.left.getWorldQuaternion(handWorldQ);
    fresh.quaternion.copy(handWorldQ.clone().invert().multiply(magWorldQ));
+   fresh.scale.multiplyScalar(m4ViewRoot.scale.x);
  }else if(reloadWeapon==="smg"&&mp5ViewRoot){
    // MP5 magazine home is local to the baked MP5 geometry, not to the support hand.
    // Convert the real seated magazine's WORLD orientation into hand-local space so
@@ -1869,6 +1874,52 @@ function spawnFreshReloadMagazine(){
    fresh.quaternion.copy(homeQ);fresh.rotation.z+=.08;
  }
  reloadFreshMag=fresh;reloadFreshAttached=false;
+}
+function updateM4ReloadMagazineFX(rp,home,targetQ){
+ // M4-specific reload uses the real imported magazine and bolt-carrier nodes.
+ // The seated magazine stays parented to the rifle so normal hip/ADS transforms
+ // remain exact; discarded/fresh clones preserve the model's world transform.
+ if(!reloadOldMagDropped&&home){
+   const pull=rp.pull||0;
+   playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
+   playerReloadPart.traverse(o=>{o.visible=true});
+   playerReloadPart.position.y-=.34*pull;playerReloadPart.position.z+=.035*pull;
+   if(rp.p>=.30)tossOldReloadMagazine();
+ }
+ if(rp.p>=.48&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
+ if(rp.p>=.62&&reloadFreshMag&&!reloadFreshAttached){
+   playerHandRig.left.updateMatrixWorld(true);
+   const insertParent=playerReloadPart.parent||m4ViewRoot||gun;
+   insertParent.updateMatrixWorld(true);insertParent.attach(reloadFreshMag);
+   reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
+ }
+ if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
+   // First line the replacement up below the magwell, then drive it straight in.
+   const align=home.clone();align.y-=.38;align.z+=.020;
+   if(rp.p<.75){
+     const t=smoothReload01((rp.p-.62)/.13);
+     reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,align,t);
+     reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
+   }else{
+     const t=smoothReload01((rp.p-.75)/.09);
+     reloadFreshMag.position.lerpVectors(align,home,t);
+     reloadFreshMag.quaternion.copy(targetQ);
+   }
+   if(rp.p>=.84){
+     if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
+     reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
+     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.traverse(o=>{o.visible=true});reloadMagInserted=true;
+     tone(520,.030,"square",.055);tone(760,.020,"square",.040,.025);
+   }
+ }
+ // After the new magazine seats, visibly cycle the model's real bolt carrier.
+ // The rifle's authored longitudinal axis is Z; +Z is toward the stock/rear.
+ if(m4BoltCarrier&&m4BoltHome){
+   let cycle=0;
+   if(rp.p>=.86&&rp.p<.92)cycle=smoothReload01((rp.p-.86)/.06);
+   else if(rp.p>=.92&&rp.p<.98)cycle=smoothReload01((.98-rp.p)/.06);
+   m4BoltCarrier.position.copy(m4BoltHome);m4BoltCarrier.position.z+=.22*cycle;
+ }
 }
 function updateMP5ReloadMagazineFX(rp,home,targetQ){
  // MP5-only reload: keep the magazine in the support hand through insertion.
@@ -1915,6 +1966,10 @@ function updateMP5ReloadMagazineFX(rp,home,targetQ){
 function updateReloadMagazineFX(rp){
  if(!reloading||!detachableMagazineReload())return;
  const home=playerReloadPart.userData.reloadHome,targetQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
+ if(reloadWeapon==="rifle"){
+   updateM4ReloadMagazineFX(rp,home,targetQ);
+   return;
+ }
  if(reloadWeapon==="smg"){
    updateMP5ReloadMagazineFX(rp,home,targetQ);
    return;
@@ -2004,7 +2059,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -2139,15 +2194,17 @@ function rebuildGun(){
        m4AcogMesh.parent?.add(glass);
      }
      gun.add(m4Root);
-     // Detach the model's real magazine into gun-local space so the existing
-     // drop / fresh-mag / insert animation can keep working with the new visual.
-     const m4Mag=m4Root.getObjectByName("Magazine_m4_0")||m4Root.getObjectByName("Magazine");
+     // Use the actual named parts from this GLB. Keep the real magazine parented
+     // to the rifle so it follows the approved hip/ADS transforms, then animate
+     // clones for the discard/fresh-mag phases. The bolt carrier is also a real node.
+     const m4Mag=m4Root.getObjectByName("magazine")||m4Root.getObjectByName("magazine_ar 15 2_0");
      if(m4Mag){
-       gun.updateMatrixWorld(true);m4Root.updateMatrixWorld(true);gun.attach(m4Mag);
        m4Mag.userData.externalWeaponAsset=true;
        m4Mag.userData.reloadHome=m4Mag.position.clone();m4Mag.userData.reloadHomeQuat=m4Mag.quaternion.clone();
        playerReloadPart=m4Mag;
      }
+     m4BoltCarrier=m4Root.getObjectByName("bolt carrier")||m4Root.getObjectByName("bolt carrier_ar15 1_0");
+     if(m4BoltCarrier)m4BoltHome=m4BoltCarrier.position.clone();
    }
  }else if(weapon==='smg'){
    if(mp5ModelTemplate){
@@ -5021,7 +5078,7 @@ function reload(w=weapon){
    };
    reloading=true;reloadWeapon=w;beginReloadMagazineFX();show("RELOADING");loadShell();return true
  }
- const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
+ const duration=w==="grenadeLauncher"?Math.max(1100,1550-reloadLevel*90):w==="pistol"?Math.max(1250,1750-reloadLevel*90):w==="rifle"?Math.max(1150,1550-reloadLevel*90):DETACHABLE_RELOAD_WEAPONS.has(w)?Math.max(760,1120-reloadLevel*90):Math.max(420,950-reloadLevel*120);
  reloading=true;reloadStartedAt=gameTimeNow();reloadDurationMs=duration;reloadWeapon=w;beginReloadMagazineFX();reloadS();show("RELOADING");
  gameTimeout(()=>{
    if(seq!==reloadSequence||!reloading||reloadWeapon!==w)return;
@@ -5582,8 +5639,12 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    // classic_m4 geometry placement. Hip-fire sits lower/right with a mild downward
    // pitch and roll, then blends back to the existing centered ADS pose.
    if(reloading){
-     m4ViewRoot.position.set(.36,-.25,-1.66);
-     m4ViewRoot.rotation.set(0,0,0);
+     // M4 reload presentation: bring the rifle slightly inward/up and cant the
+     // magwell toward the player. This exists only during reload; approved hip/ADS
+     // transforms below remain untouched.
+     const reloadQ=new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(-4),THREE.MathUtils.degToRad(-8),THREE.MathUtils.degToRad(-22),"XYZ"));
+     m4ViewRoot.position.set(.54-.08*rp.arch,-.56+.10*rp.arch,-1.48+.10*rp.arch);
+     m4ViewRoot.quaternion.slerpQuaternions(m4HipQuat,reloadQ,rp.arch);
    }else{
      m4ViewRoot.position.x=THREE.MathUtils.lerp(.54,m4AdsRootTarget.x,aimBlend);
      m4ViewRoot.position.y=THREE.MathUtils.lerp(-.56,m4AdsRootTarget.y,aimBlend);
