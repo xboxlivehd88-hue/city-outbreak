@@ -1,3 +1,51 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v502 SHOTGUN HAND ALIGNMENT / LOOSE SHELL CLEANUP — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v502**
+- Loader: `./src/game.js?v=502`
+- Shotgun asset remains `assets/shotgun_test.glb?v=501`
+- v502 gameplay commit: `840303d5c3733e2269580ea43d16ee78755e1c07`
+- v502 game blob: `8d6e3d6dda4c4b4dbb5c1f68ae7081f44d5640a6`
+- v502 loader commit: `c7de27c9501e0ece2b66f65709a1b219e288d93f`
+- v501 shotgun GLB replacement remains the model baseline.
+- v500 reticle behavior is preserved.
+
+## v502 exact change
+Shotgun hand pose:
+- left: `[.34,-.30,-1.18]`
+- right: `[.39,-.40,-.82]`
+
+This moves:
+- support hand onto the actual pump;
+- firing hand toward the real trigger/grip.
+
+The GLB's loose `shell` node is hidden on the idle shotgun.
+
+Before hiding it, an exact clone is saved as:
+- `shotgunShellTemplate`
+
+Use that real shell model next for:
+- shell-by-shell reload;
+- pump-cycle ejection.
+
+## Preserved
+- shotgun GLB scale/placement;
+- 72 px hip circle;
+- reticle hidden in ADS;
+- shotgun stats/mechanics;
+- v498 starting loadout;
+- v497 weapon order;
+- all approved M4 work.
+
+## Test target
+Confirm hands physically grip the shotgun and the loose shell is gone.
+
+Do not mark v502 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v501 SHOTGUN GLB REPLACEMENT TEST — READ THIS FIRST
 
 GitHub main is authoritative.
