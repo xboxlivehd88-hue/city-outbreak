@@ -5091,7 +5091,7 @@ function fire(){
    // Shift only the SMG ADS ray slightly left/down; hip fire and other weapons are untouched.
    const smgAdsZeroX=(aiming&&weapon==="smg")?-.018:0;
    const smgAdsZeroY=(aiming&&weapon==="smg")?-.025:0;
-   const rifleAdsZeroY=(aiming&&weapon==="rifle")?.003:0;
+   const rifleAdsZeroY=(aiming&&weapon==="rifle")?.006:0;
    const sx=aimX+smgAdsZeroX+(Math.random()-.5)*wd().spread*adsSpread,
          sy=aimY+pistolAdsZero+smgAdsZeroY+rifleAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
