@@ -1,3 +1,100 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v490 UNDER-MAGWELL M4 INSERTION TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v490**
+- Loader: `./src/game.js?v=490`
+- Active M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v490 gameplay commits:
+  - `29e3884b603e0fd936b9bd086fd4ac9496624ee9`
+  - scope correction `0ebac8cf3afe5860046302f06dbdf8fe33bdbc70`
+- v490 loader commit: `1cad74713377e91bb35deb82d9db00e4102752c9`
+- Current v490 `src/game.js` blob SHA: `4a6faccccc8c5105082e102e73e5d59bc4d4eb26`
+- v485/v486/v487/v488/v489 were tested and rejected for reload behavior.
+- **v484 remains the last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## Why v489 was rejected
+
+User said v489 was on a great path, but the replacement magazine:
+- traveled upward along the side of the rifle;
+- then appeared/snapped into the M4 instead of entering the magwell continuously.
+
+Frame-by-frame review of the user's v489 clip confirmed the final hand→gun transfer used one diagonal interpolation from the hand-carried magazine position directly to the magwell alignment point. That path crossed the receiver side.
+
+## v490 isolated reload correction
+
+### Two-stage final insertion
+The hand-carried magazine now uses a strict two-stage final approach:
+
+1. **Low alignment phase**
+   - magazine remains low;
+   - its X and Z move into exact alignment with the saved magwell home position;
+   - Y remains at or below `home.y - 34`;
+   - this moves the mag beneath the rifle instead of diagonally up the receiver side.
+
+2. **Straight-up insertion phase**
+   - once X/Z are centered under the magwell, only Y changes;
+   - magazine moves directly from the below-magwell point into the exact saved home transform;
+   - no diagonal receiver-crossing path remains.
+
+### Support hand follows magazine continuously
+- During both final approach stages, the support hand is mathematically re-solved to the actual magazine base each frame.
+- The real magazine base point (`local z≈-1.55`) drives hand placement.
+- This keeps the hand physically attached to the magazine while it moves underneath and then straight upward into the magwell.
+
+### Existing good v489/v488 behavior preserved
+- old seated magazine forced hidden after release;
+- old seated hidden node removed after fresh mag seats;
+- fresh replacement becomes the active/seated `playerReloadPart`;
+- visible bolt carrier charging action retained;
+- visible charging-handle-shaped `ar15.005` motion retained.
+
+## Locked v484 M4 values preserved
+Do not change unless user explicitly asks:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+Post-write checks on the committed v490 source confirmed:
+- `RIFLE_ADS_ZERO_Y=.040` still appears exactly once;
+- M4 asset path remains unchanged;
+- under-magwell X/Z alignment exists exactly once;
+- support-hand-to-magazine-base follow exists;
+- old seated node removal remains present;
+- bolt and charging-handle travel remain present.
+
+Current committed v490 game blob:
+`4a6faccccc8c5105082e102e73e5d59bc4d4eb26`
+
+## v490 user test target
+Reload with **R** and verify:
+1. old magazine drops cleanly;
+2. rifle is visibly empty;
+3. fresh magazine is visibly carried by support hand;
+4. fresh mag moves **under** the magwell first, not up the side of the receiver;
+5. hand stays attached to the mag during that move;
+6. mag then moves straight upward into the magwell;
+7. no visual snap/teleport at seating;
+8. charging action remains visible and controlled;
+9. normal hip pose and approved v484 ADS alignment return exactly.
+
+Do not call v490 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v489 HAND-CARRIED M4 MAGAZINE TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
