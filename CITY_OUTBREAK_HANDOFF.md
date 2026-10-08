@@ -1,3 +1,78 @@
+# M4 TUNING PHASE — 2026-10-07 — v480 — ADS IMPACT RAISED TO USER-MARKED RETICLE POINT — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=480`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v480 gameplay commit: `4569ffb25120ee741d6a53e172d8940002b9d4f7`
+- v480 loader commit: `e6c1d7f8f5cf2df9d908fa566ce53e1e8e2679cc`
+- Current `src/game.js` SHA: `662a4d0c56c419d86bd18348e2ad6be61d2bf202`
+- Protected recovery remains **v324** unchanged.
+
+## User's latest correction
+
+User supplied a v479 video and explicitly indicated that, while ADS, the bullet hit point should be at the **red-arrow / reticle point**.
+
+v479 already had:
+- true optical-axis ACOG ADS;
+- two-pass ACOG body/glass rendering;
+- calmer full-ADS M4 recoil;
+- rifle-only ADS zero `+0.003`.
+
+The user wants the impact slightly higher.
+
+## v480 change
+
+Only the M4 ADS shot zero changes:
+
+Before:
+- `rifleAdsZeroY=+0.003`
+
+Now:
+- `rifleAdsZeroY=+0.006`
+
+Only applies while:
+- `aiming===true`
+- `weapon==="rifle"`
+
+Effect:
+- raises the M4 ADS impact a small additional amount toward the user-marked red-arrow/reticle point;
+- hip-fire shot ray remains unchanged;
+- every other weapon remains unchanged.
+
+## Intentionally unchanged
+
+v480 does **not** change:
+- v479 M4 ADS recoil reduction;
+- true ACOG optical-axis alignment;
+- ACOG rendering/material structure;
+- hip placement;
+- eye distance;
+- FOV;
+- recoil base value;
+- damage/spread/fire rate;
+- reload;
+- sound;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- exact v480 gameplay diff is one line;
+- full `src/game.js` syntax parse passed.
+
+## v480 test focus
+
+Check only:
+1. ADS impact now lands at the user-marked reticle point;
+2. recoil remains as controlled as v479;
+3. ACOG alignment/rendering remain unchanged.
+
+If the impact is still slightly off, adjust only `rifleAdsZeroY` next.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v479 — VIDEO-BASED ADS ZERO + RECOIL CORRECTION — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
