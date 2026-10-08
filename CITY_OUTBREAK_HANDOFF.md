@@ -1,3 +1,78 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v499 SHOTGUN CIRCLE RETICLE TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v499**
+- Loader: `./src/game.js?v=499`
+- CSS: `./src/game.css?v=499`
+- v499 gameplay commit: `68183e7df95381c96a7a3064647d84d1e369129e`
+- v499 game blob SHA: `cb0b5ee94ad038d9f2fb0a4c2c4e7ca9dc1771ac`
+- v499 CSS commit: `e7b8d63e6eae59392a8431c7948b482cb8c762da`
+- v499 CSS blob SHA: `637027f71689438e46cee56d2cde34b18a7cb848`
+- v499 loader/index commit: `3ae68aa4111cc4eb187651e58e80e0ddea7722ef`
+- v498 shotgun starting loadout was user-approved as **perfect** before this reticle change.
+- v497 weapon-slot lineup remains user-confirmed good.
+- M4 work remains locked/preserved.
+- Protected recovery remains **v324** unchanged.
+
+## v499 isolated shotgun change — circular crosshair
+User requested the shotgun crosshair be a circle rather than a `+`, because hip-fire represents a wider pellet spread than ADS.
+
+Shotgun reticle now:
+- uses a white circular outline;
+- hides the old horizontal/vertical `+` bars;
+- stays visible during shotgun ADS instead of disappearing;
+- smoothly shrinks with `aimBlend`.
+
+Current visual sizes:
+- hip-fire: **54 px** diameter;
+- full ADS: **24 px** diameter.
+
+Exact size interpolation:
+`THREE.MathUtils.lerp(54,24,aimBlend)`
+
+Other weapons keep the prior crosshair behavior:
+- normal `+` when hip-firing;
+- crosshair hidden during ADS where that was already the behavior.
+
+## Important: no shotgun mechanics changed yet
+The actual shotgun definition remains exactly:
+`shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.090,pellets:8,body:.72,recoil:.22,baseMag:8}`
+
+No pellet spread, damage, recoil, ADS transform, model, sound, or reload behavior changed in v499.
+
+## Preserved approved state
+- temporary shotgun tuning loadout from v498:
+  - Shotgun active on spawn;
+  - M17 unlocked;
+  - M4 locked/not in spawn loadout;
+- approved v497 number-key lineup;
+- M4 `RIFLE_ADS_ZERO_Y=.040`;
+- all approved M4 transforms/reload work.
+
+## Validation
+- required current handoff/recovery/index/game/CSS files were re-read before editing;
+- committed game source passed syntax parse;
+- dynamic shotgun reticle helper exists exactly once;
+- 54→24 px interpolation exists exactly once;
+- shotgun circle CSS exists exactly once;
+- shotgun `+` pseudo-elements are disabled exactly once;
+- shotgun mechanics definition remains unchanged;
+- M4 `.040` ADS zero remains unchanged.
+
+## v499 user test target
+With the shotgun:
+1. hip-fire reticle is a **circle**, not a `+`;
+2. hip circle is visibly wider;
+3. hold ADS and the circle smoothly tightens;
+4. the circle remains visible in ADS;
+5. switch to M17 and confirm its old crosshair behavior is unchanged.
+
+Do not mark v499 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v498 SHOTGUN TUNING START LOADOUT — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
