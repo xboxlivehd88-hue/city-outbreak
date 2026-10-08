@@ -1580,6 +1580,32 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
  });
  if(weapon==="pistol")rebuildGun();
 },undefined,err=>console.warn("M17 GLB load failed; M17 viewmodel unavailable",err));
+
+// v501: user-supplied replacement pump shotgun GLB. It is a static asset with
+// separate real nodes for base, shell, trigger, inserter and pump.
+let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunTrigger=null,shotgunInserter=null;
+new GLTFLoader().load("assets/shotgun_test.glb?v=501",gltf=>{
+ shotgunModelTemplate=gltf.scene;
+ shotgunModelTemplate.traverse(o=>{
+   o.userData.externalWeaponAsset=true;
+   if(o.isMesh){
+     o.castShadow=false;o.receiveShadow=false;
+     const mats=Array.isArray(o.material)?o.material:[o.material];
+     for(const mat of mats)if(mat)for(const key of ["map","normalMap","roughnessMap","metalnessMap"]){
+       const tx=mat[key];if(tx){tx.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tx.needsUpdate=true}
+     }
+   }
+ });
+ console.log("CITY OUTBREAK: shotgun_test.glb loaded",{
+   animations:gltf.animations?.map(a=>a.name)||[],
+   pump:!!shotgunModelTemplate.getObjectByName("pump"),
+   shell:!!shotgunModelTemplate.getObjectByName("shell"),
+   trigger:!!shotgunModelTemplate.getObjectByName("trigger"),
+   inserter:!!shotgunModelTemplate.getObjectByName("inserter")
+ });
+ if(weapon==="shotgun")rebuildGun();
+},undefined,err=>console.warn("Shotgun GLB load failed; shotgun viewmodel unavailable",err));
+
 // Supplied animated MP5 GLB. Use it as the SMG viewmodel while preserving existing MP5 gameplay.
 let mp5ModelTemplate=null,mp5Animations=[],mp5ViewRoot=null,mp5RecoilPivot=null;
 new GLTFLoader().load("assets/animated_mp5.glb",gltf=>{
@@ -2196,7 +2222,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunTrigger=null;shotgunInserter=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -2421,12 +2447,31 @@ function rebuildGun(){
      document.documentElement.dataset.mp5Viewmodel="clean-baked-mp5";
    }
   }else if(weapon==='shotgun'){
-   // Pump shotgun with twin tubes, ribbed fore-end, receiver and shoulder stock.
-   stock(-.42,wood);part(.37,.30,.86,metal,-.30,-1.10);grip(-.61,-.72,-.30,wood);
-   cyl(.058,1.72,steel,x,-.235,-2.42);cyl(.052,1.38,dark,x,-.37,-2.26);muzzleBrake(-3.26,.075);
-   let pump=part(.46,.31,.62,wood,-.32,-1.82);for(let zz=-2.04;zz<-1.55;zz+=.085)box(.49,.035,.035,dark,x,-.31,zz,gun);
-   box(.055,.045,1.55,dark,x,-.11,-2.27,gun);frontSight(-3.02,-.11);
-   box(.02,.12,.28,dark,x+.20,-.30,-1.05,gun);
+   if(shotgunModelTemplate){
+     const root=shotgunModelTemplate.clone(true);root.name="ExternalShotgunGLB";
+     // Source barrel points +Z. CITY OUTBREAK first-person forward is -Z.
+     root.rotation.y=Math.PI;
+     root.updateMatrixWorld(true);
+     const rawBox=new THREE.Box3().setFromObject(root),rawSize=rawBox.getSize(new THREE.Vector3());
+     // Match the established procedural shotgun length so the first replacement
+     // pass changes the model, not the weapon's overall first-person footprint.
+     const targetLength=3.25;
+     root.scale.setScalar(targetLength/Math.max(.001,rawSize.z));
+     root.updateMatrixWorld(true);
+     const scaledBox=new THREE.Box3().setFromObject(root),center=scaledBox.getCenter(new THREE.Vector3());
+     // Old shotgun occupied roughly muzzle -3.3 -> butt -0.1 with its receiver
+     // centered around x=.36 / y=-.32. Preserve that as the initial GLB pose.
+     root.position.set(x-center.x,-.32-center.y,-1.70-center.z);
+     root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+     gun.add(root);
+     shotgunViewRoot=root;
+     shotgunPump=root.getObjectByName("pump")||root.getObjectByName("pump_shotgun_0");
+     shotgunShell=root.getObjectByName("shell")||root.getObjectByName("shell_shotgun_0");
+     shotgunTrigger=root.getObjectByName("trigger")||root.getObjectByName("trigger_shotgun_0");
+     shotgunInserter=root.getObjectByName("inserter")||root.getObjectByName("inserter_shotgun_0");
+     if(shotgunPump)shotgunPumpHome=shotgunPump.position.clone();
+     document.documentElement.dataset.shotgunViewmodel="shotgun-test-glb";
+   }
  }else if(weapon==='pistol'){
    if(m17ModelTemplate){
      const m17Root=m17ModelTemplate.clone(true);m17Root.name="ExternalM17SIG";
@@ -2543,7 +2588,7 @@ function rebuildGun(){
  }
  // Shared procedural trigger/receiver details belong only to the remaining
  // procedural weapons. The M4, MP5 and M17 GLBs already contain their own hardware.
- const externalViewmodel=weapon==='rifle'||weapon==='smg'||weapon==='pistol';
+ const externalViewmodel=weapon==='rifle'||weapon==='smg'||weapon==='pistol'||weapon==='shotgun';
  if(!externalViewmodel){
    if(weapon!=='pistol'){
      const guard=new THREE.Mesh(new THREE.TorusGeometry(.11,.025,8,16,Math.PI),dark);guard.rotation.z=Math.PI;guard.position.set(x,-.48,weapon==='shotgun'?-1.02:-.94);gun.add(guard);
