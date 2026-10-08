@@ -1,3 +1,96 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v493 LOWER M4 SPARE / LOADED-MAG PRESENTATION TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v493**
+- Loader: `./src/game.js?v=493`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v493 gameplay commit: `10cd2fc99a541bee7749d62cabafe58768e3947b`
+- v493 loader commit: `24d9a6bf971d9c982e512b91c82ee51d0b829967`
+- v493 `src/game.js` blob SHA: `1077c332c22f1fd54f17513ff1b201a0d6860215`
+- v485-v492 were tested and rejected for reload behavior.
+- **v484 remains the last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## Why v492 was rejected
+
+User video showed the new spare pickup was still visually wrong:
+- the spare appeared too close to the player/camera;
+- it looked oversized/floating rather than like a magazine coming from the body;
+- from that side-on view it also read like the same empty magazine rather than a loaded replacement.
+
+Frame-by-frame review confirmed the pouch anchor's Z offset `+.60` was pulling the spare toward the camera.
+
+## v493 isolated correction
+
+### Lower/farther body pickup
+M4 spare pickup offset changed from:
+- `(-.30,-.72,.60)`
+
+to:
+- `(-.40,-1.00,-.12)`
+
+This moves the spare:
+- farther left;
+- substantially lower;
+- farther away from the camera instead of toward it.
+
+The spare is still created after the old mag drops, but its root remains hidden until about `p=.44`, when the support hand is nearly at the below-screen pouch point. It should therefore **rise from below the screen with the hand** instead of floating next to the camera.
+
+### Loaded vs empty magazine distinction
+- If the M4 was actually fired empty (`ammoState.rifle.mag===0`), the discarded old magazine's real GLB `bullets` group is hidden.
+- Tactical reloads preserve remaining rounds visually.
+- The fresh spare explicitly forces the real GLB `bullets` / `bullets_bullets_0` group visible before and during pickup/carry.
+- This makes the replacement read as a loaded spare rather than the empty magazine that was just dropped.
+
+### Preserved from v491/v492
+- actual body/pouch reach and grab timing;
+- measured magazine top/grip geometry;
+- physical-axis magwell insertion;
+- old seated-mag removal;
+- fresh mag becomes active `playerReloadPart`;
+- visible bolt/charging-handle action.
+
+## Locked v484 M4 values preserved
+Do not change unless explicitly asked:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+- v492 user video inspected frame-by-frame.
+- Exact v492 Pages artifact used as local patch base.
+- v493 local file passed `node --check`.
+- Local Git blob SHA: `1077c332c22f1fd54f17513ff1b201a0d6860215`
+- GitHub committed blob matched exactly.
+- Post-write checks confirmed locked ADS zero, asset path, measured insertion geometry, bolt/charging action, lower pouch offset, fresh loaded rounds, and empty-old-mag logic.
+
+## v493 user test target
+Reload with **R** and verify:
+1. old mag drops;
+2. support hand reaches down below the normal view;
+3. spare does not float close to the camera;
+4. spare emerges upward from the body/belt area with the hand;
+5. replacement visibly looks loaded;
+6. same spare continues into the working geometry-guided insertion;
+7. charging remains visible and controlled;
+8. approved v484 hip/ADS/shot alignment is unchanged.
+
+Do not call v493 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v492 M4 BODY/POUCH PICKUP TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
