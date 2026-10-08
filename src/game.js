@@ -1546,7 +1546,8 @@ function zombieRouteWaypoint(z){
 
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 // External M4 Carbine visual. The GLB is the sole M4 viewmodel; rebuild when loaded.
-let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null,m4AdsRootTarget=new THREE.Vector3(.36,-.29,-1.28);
+let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null,m4AdsRootTarget=new THREE.Vector3(.36,-.29,-1.28),m4AdsRootQuatTarget=new THREE.Quaternion();
+const m4HipQuat=new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(-8),0,THREE.MathUtils.degToRad(-6),"XYZ"));
 new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
  m4ModelTemplate=gltf.scene;
  m4ModelTemplate.traverse(o=>{
@@ -2037,22 +2038,51 @@ function rebuildGun(){
      const m4RawSize=m4RawBox.getSize(new THREE.Vector3());
      const m4RawLength=Math.max(m4RawSize.x,m4RawSize.y,m4RawSize.z);
      const m4RootScale=m4RawLength>1e-5?3.45/m4RawLength:1;
+
+     // Use the real optical tube axis rather than the ACOG's whole outer bounding box.
+     // The knobs/mount make the outer-box center different from the actual sight line.
      const m4AcogNode=m4Root.getObjectByName("acog")||m4Root.getObjectByName("acog_optic.001_0");
-     if(m4AcogNode){
+     let m4AcogMesh=m4Root.getObjectByName("acog_optic.001_0");
+     if(!m4AcogMesh&&m4AcogNode)m4AcogNode.traverse(o=>{if(!m4AcogMesh&&o.isMesh)m4AcogMesh=o});
+     if(m4AcogMesh?.geometry?.attributes?.position){
        m4Root.updateMatrixWorld(true);
-       const acogBox=new THREE.Box3().setFromObject(m4AcogNode);
-       const acogCenter=acogBox.getCenter(new THREE.Vector3());
-       const rifleAdsScale=.96,desiredRearLensZ=-.18,adsEyeYCorrection=-.042;
-       m4AdsRootTarget.set(
-         -ADS.rifle.x-m4RootScale*acogCenter.x,
-         -ADS.rifle.y/rifleAdsScale-m4RootScale*acogCenter.y+adsEyeYCorrection,
-         (desiredRearLensZ-ADS.rifle.z)/rifleAdsScale-m4RootScale*acogBox.max.z
-       );
+       const pos=m4AcogMesh.geometry.attributes.position;
+       if(!m4AcogMesh.geometry.boundingBox)m4AcogMesh.geometry.computeBoundingBox();
+       const lb=m4AcogMesh.geometry.boundingBox;
+       const yr=Math.max(1e-6,lb.max.y-lb.min.y);
+       const rearCut=lb.min.y+yr*.05,frontCut=lb.max.y-yr*.05;
+       const rear=new THREE.Vector3(),front=new THREE.Vector3(),tmp=new THREE.Vector3();
+       let rn=0,fn=0;
+       for(let i=0;i<pos.count;i++){
+         const ly=pos.getY(i);
+         if(ly<=rearCut){
+           tmp.set(pos.getX(i),ly,pos.getZ(i));
+           m4AcogMesh.localToWorld(tmp);
+           rear.add(tmp);rn++;
+         }
+         if(ly>=frontCut){
+           tmp.set(pos.getX(i),ly,pos.getZ(i));
+           m4AcogMesh.localToWorld(tmp);
+           front.add(tmp);fn++;
+         }
+       }
+       if(rn&&fn){
+         rear.multiplyScalar(1/rn);front.multiplyScalar(1/fn);
+         const opticalAxis=front.clone().sub(rear).normalize();
+         m4AdsRootQuatTarget.setFromUnitVectors(opticalAxis,new THREE.Vector3(0,0,-1));
+         const rotatedRear=rear.clone().applyQuaternion(m4AdsRootQuatTarget).multiplyScalar(m4RootScale);
+         const rifleAdsScale=.96,desiredRear=new THREE.Vector3(0,0,-.18);
+         const gunAdsPos=new THREE.Vector3(ADS.rifle.x*rifleAdsScale,ADS.rifle.y,ADS.rifle.z);
+         m4AdsRootTarget.copy(desiredRear.sub(gunAdsPos).multiplyScalar(1/rifleAdsScale).sub(rotatedRear));
+       }else{
+         m4AdsRootTarget.set(.36,-.29,-1.28);m4AdsRootQuatTarget.identity();
+       }
      }else{
-       m4AdsRootTarget.set(.36,-.29,-1.28);
+       m4AdsRootTarget.set(.36,-.29,-1.28);m4AdsRootQuatTarget.identity();
      }
+
      m4Root.scale.setScalar(m4RootScale);
-     m4Root.rotation.set(THREE.MathUtils.degToRad(-8),0,THREE.MathUtils.degToRad(-6));
+     m4Root.quaternion.copy(m4HipQuat);
      m4Root.position.set(.54,-.56,-1.48);m4ViewRoot=m4Root;
 
      m4AdsOccluders=[];
@@ -2061,28 +2091,52 @@ function rebuildGun(){
        if(o.isMesh){
          o.castShadow=false;o.receiveShadow=false;
          const n=(o.name||"").toLowerCase();
-         const mats=Array.isArray(o.material)?o.material:[o.material];
-         const isOriginalAcog=n==="acog_optic.001_0"||n.includes("acog")||mats.some(m=>(m?.name||"").toLowerCase()==="optic.001");
-         if(isOriginalAcog){
-           const fixed=mats.map(m=>{
-             if(!m)return m;
-             const c=m.clone();
-             c.transparent=true;
-             c.opacity=1;
-             c.depthWrite=false;
-             c.depthTest=true;
-             c.alphaTest=0;
-             if(c.emissive)c.emissive.setHex(0xffffff);
-             if("emissiveIntensity" in c)c.emissiveIntensity=.15;
-             c.needsUpdate=true;
-             return c;
-           });
-           o.material=Array.isArray(o.material)?fixed:fixed[0];
-           o.renderOrder=0;
-         }
          if(n.includes("stock")||n.includes("butt"))m4AdsOccluders.push(o);
        }
      });
+
+     // The ACOG texture is ~95% fully opaque housing with only a small translucent
+     // glass region. Render those as two passes so the transparent glass cannot make
+     // the housing self-sort and reveal internal knobs/geometry at hip-fire.
+     if(m4AcogMesh){
+       const sourceMats=Array.isArray(m4AcogMesh.material)?m4AcogMesh.material:[m4AcogMesh.material];
+       const clampOpticMaterial=(m)=>{
+         if(!m)return m;
+         const c=m.clone();
+         if(c.emissive)c.emissive.setHex(0xffffff);
+         if("emissiveIntensity" in c)c.emissiveIntensity=.15;
+         c.needsUpdate=true;
+         return c;
+       };
+       const bodyMats=sourceMats.map(m=>{
+         const c=clampOpticMaterial(m);if(!c)return c;
+         c.transparent=false;c.opacity=1;c.depthWrite=true;c.depthTest=true;
+         c.alphaTest=.985;c.alphaToCoverage=true;c.needsUpdate=true;
+         return c;
+       });
+       m4AcogMesh.material=Array.isArray(m4AcogMesh.material)?bodyMats:bodyMats[0];
+       m4AcogMesh.renderOrder=0;
+
+       const glass=m4AcogMesh.clone();
+       glass.name=(m4AcogMesh.name||"acog_optic")+"_GlassPass";
+       const glassMats=sourceMats.map(m=>{
+         const c=clampOpticMaterial(m);if(!c)return c;
+         c.transparent=true;c.opacity=1;c.depthWrite=false;c.depthTest=true;c.alphaTest=.005;
+         c.onBeforeCompile=shader=>{
+           shader.fragmentShader=shader.fragmentShader.replace(
+             "#include <alphatest_fragment>",
+             "#include <alphatest_fragment>\nif ( diffuseColor.a >= 0.985 ) discard;"
+           );
+         };
+         c.customProgramCacheKey=()=> "m4AcogGlassV478";
+         c.needsUpdate=true;
+         return c;
+       });
+       glass.material=Array.isArray(m4AcogMesh.material)?glassMats:glassMats[0];
+       glass.castShadow=false;glass.receiveShadow=false;glass.renderOrder=2;
+       glass.userData.externalWeaponAsset=true;
+       m4AcogMesh.parent?.add(glass);
+     }
      gun.add(m4Root);
      // Detach the model's real magazine into gun-local space so the existing
      // drop / fresh-mag / insert animation can keep working with the new visual.
@@ -5037,9 +5091,8 @@ function fire(){
    // Shift only the SMG ADS ray slightly left/down; hip fire and other weapons are untouched.
    const smgAdsZeroX=(aiming&&weapon==="smg")?-.018:0;
    const smgAdsZeroY=(aiming&&weapon==="smg")?-.025:0;
-   const rifleAdsZeroY=(aiming&&weapon==="rifle")?-.008:0;
    const sx=aimX+smgAdsZeroX+(Math.random()-.5)*wd().spread*adsSpread,
-         sy=aimY+pistolAdsZero+smgAdsZeroY+rifleAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
+         sy=aimY+pistolAdsZero+smgAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
    const cityHit=firstCityProjectileHit(ray.ray.origin,ray.ray.direction,80);
    let hit=ray.intersectObjects(rayTargets,false)[0];
@@ -5532,9 +5585,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      m4ViewRoot.position.x=THREE.MathUtils.lerp(.54,m4AdsRootTarget.x,aimBlend);
      m4ViewRoot.position.y=THREE.MathUtils.lerp(-.56,m4AdsRootTarget.y,aimBlend);
      m4ViewRoot.position.z=THREE.MathUtils.lerp(-1.48,m4AdsRootTarget.z,aimBlend);
-     m4ViewRoot.rotation.x=THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-8),THREE.MathUtils.degToRad(-2.5),aimBlend);
-     m4ViewRoot.rotation.y=0;
-     m4ViewRoot.rotation.z=THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-6),0,aimBlend);
+     m4ViewRoot.quaternion.slerpQuaternions(m4HipQuat,m4AdsRootQuatTarget,aimBlend);
    }
  }
  if(weapon==="smg"&&mp5ViewRoot){
