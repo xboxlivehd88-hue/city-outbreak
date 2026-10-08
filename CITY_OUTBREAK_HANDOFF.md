@@ -1,3 +1,90 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v498 SHOTGUN TUNING START LOADOUT — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v498**
+- Loader: `./src/game.js?v=498`
+- v498 gameplay commit: `bd21b29dee421163ba18930b7d455a9db0aad0a2`
+- v498 game blob SHA: `1bf441ec33f2e6bf608ea260fe1659ad13828fd6`
+- v498 index/loader commit: `521421204228a17251da9bd03b7d86ff9c41aecd`
+- v497 weapon-slot lineup remains user-confirmed good.
+- **M4 work is locked/preserved; shotgun is now the active tuning focus.**
+- Protected recovery remains **v324** unchanged.
+
+## v498 isolated change — temporary shotgun tuning loadout
+
+The user asked to shift focus to the shotgun and work on it the same way the M4 was tuned.
+
+Temporary starting loadout is now:
+- **M17 unlocked**
+- **Shotgun unlocked**
+- **Shotgun active on spawn**
+- **M4 locked / not in starting loadout**
+
+Initial active state:
+- `weapon="shotgun"`
+- `magSize=8`
+- shotgun ammo remains `8 / 30`
+
+Both the initial game state and the full reset/new-run state use this same loadout.
+
+The visible starting HUD was updated to:
+- `8 / 30`
+- `SHOTGUN`
+
+## Approved v497 weapon slots preserved
+1. M17
+2. M4
+3. Shotgun
+4. MP5
+5. M240
+6. DMR
+7. Grenade Launcher
+8. AWM
+
+Mouse-wheel order remains the same approved lineup.
+
+## M4 preservation rule
+Do not change the approved M4 work while tuning the shotgun unless the user explicitly asks.
+
+In particular, preserve:
+- M4 asset and transforms;
+- approved v484 shooting/ADS baseline;
+- `RIFLE_ADS_ZERO_Y=.040`;
+- v496 reload timing/choreography;
+- physical M4 mag drop/body pickup/insertion/charging work.
+
+The M4 can still be unlocked through the store; it is simply removed from the temporary spawn loadout during shotgun tuning.
+
+## Current shotgun baseline before new tuning
+Current shotgun definition remains unchanged in v498:
+`shotgun:{name:"SHOTGUN",rate:520,hold:9999,spread:.090,pellets:8,body:.72,recoil:.22,baseMag:8}`
+
+No shotgun transforms, ADS, damage, recoil, spread, sound, or reload behavior were changed yet. v498 changes only which weapons the player starts with.
+
+## Validation
+- required handoff/recovery/index/game files were re-read before editing;
+- committed v498 game source passed syntax parse;
+- initial and reset loadouts both resolve to Shotgun + M17 with M4 locked;
+- v497 hotkey map remains unchanged;
+- M4 `.040` ADS zero remains unchanged;
+- starting HUD matches shotgun active state.
+
+## v498 user test target
+Start/restart a run and verify:
+1. player starts holding the Shotgun;
+2. Shotgun is available on key 3;
+3. M17 is available on key 1;
+4. M4 is not unlocked at spawn;
+5. all approved v497 key assignments remain correct.
+
+Once confirmed, continue shotgun tuning one isolated change at a time.
+
+Do not mark v498 confirmed-good until the user tests it.
+
+---
+
 # USER-CONFIRMED GOOD — 2026-10-08 — v497 WEAPON SLOT LINEUP APPROVED
 
 The user tested v497 and replied **"great"**.
