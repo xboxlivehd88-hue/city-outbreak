@@ -1681,6 +1681,7 @@ const weaponDefs={
  m240:{name:"M240 LMG",rate:78,hold:78,spread:.010,pellets:1,body:1.20,recoil:.09,baseMag:100},
  awm:{name:"AWM ULTIMATE",rate:1150,hold:9999,spread:.00055,pellets:1,body:8.0,recoil:.30,baseMag:5}
 };
+const RIFLE_ADS_ZERO_Y=.040;
 const ADS={
  rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0},
  smg:{x:-.36,y:-.050,z:1.28,fov:55,rx:-.01},
@@ -4114,7 +4115,7 @@ function hitMark(head=false){
   // Keep the M17 hit marker visually centered on screen. This does not change
   // the pistol's approved ADS firing ray / zero.
   hitmarker.style.left=(aiming&&weapon==="smg")?"49.1%":"50%";
-  hitmarker.style.top=(aiming&&weapon==="smg")?"51.25%":"50%";
+  hitmarker.style.top=(aiming&&weapon==="smg")?"51.25%":(aiming&&weapon==="rifle")?(50-RIFLE_ADS_ZERO_Y*50)+"%":"50%";
   hitmarker.classList.toggle("head",head);
   hitmarker.classList.add("show");
   clearTimeout(hitTimer);
@@ -5091,7 +5092,7 @@ function fire(){
    // Shift only the SMG ADS ray slightly left/down; hip fire and other weapons are untouched.
    const smgAdsZeroX=(aiming&&weapon==="smg")?-.018:0;
    const smgAdsZeroY=(aiming&&weapon==="smg")?-.025:0;
-   const rifleAdsZeroY=(aiming&&weapon==="rifle")?.040:0;
+   const rifleAdsZeroY=(aiming&&weapon==="rifle")?RIFLE_ADS_ZERO_Y:0;
    const sx=aimX+smgAdsZeroX+(Math.random()-.5)*wd().spread*adsSpread,
          sy=aimY+pistolAdsZero+smgAdsZeroY+rifleAdsZeroY+(Math.random()-.5)*wd().spread*adsSpread;
    rayAim.set(sx,sy);ray.setFromCamera(rayAim,cam);
