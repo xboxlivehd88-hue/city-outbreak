@@ -1,3 +1,47 @@
+# M4 TUNING PHASE — 2026-10-07 — v484 — ADS HIT MARKER / BULLET RAY SYNC FIX — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=484`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v484 gameplay commit: `4a9745b8235093856286f9453daca0c0f77514f4`
+- v484 loader commit: `25c4ae400ac636427415747109d1e7b6ef978cdd`
+- Current `src/game.js` SHA: `f72de72b3a9daea3b2b10bd3805862e90f813979`
+- Protected recovery remains **v324** unchanged.
+
+## Root cause of "it didn't move"
+
+The user was right that the visible marker looked stuck.
+
+- the real M4 ADS bullet ray had been moved by `rifleAdsZeroY`;
+- the UI hit marker was still hard-coded to screen center (`top: 50%`);
+- so the ray could move while the marker visually stayed put.
+
+## v484 fix
+
+Use one shared constant:
+
+- `RIFLE_ADS_ZERO_Y=.040`
+
+Both the actual bullet ray and visible M4 ADS hit marker now use this same value.
+
+At `.040`, the marker renders around `top: 48%` instead of `50%`.
+
+Do not alter scope placement/material, recoil, FOV, hip pose, or other weapons for this test.
+
+## Next test
+
+Ask only:
+- does the visible M4 ADS hit marker now move with the actual shot zero instead of staying at screen center?
+
+If not exactly aligned, tune only `RIFLE_ADS_ZERO_Y`; both marker and ray will move together automatically.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v483 — VISIBLE ADS IMPACT CORRECTION — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
