@@ -1,3 +1,86 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v485 M4 REAL-MAGAZINE / BOLT RELOAD TEST — READ THIS FIRST
+
+This section supersedes older current-state sections below. **GitHub main is the source of truth.**
+
+## Current test state
+
+- Test build: **v485**
+- Loader: `./src/game.js?v=485`
+- Active M4 asset remains: `assets/ar-15_style_rifle.glb?v=466`
+- v485 gameplay commit: `16304fe6429dec5e3eaabfcfeae28b9e123152cc`
+- v485 loader commit: `76acec2815529e4e92fe506cd4d4794c6d9ad887`
+- Current v485 `src/game.js` blob SHA: `01ef1e420946ad214871308c81521ff477810b91`
+- Previous user-confirmed good baseline remains **v484** until the user tests v485.
+- Protected recovery remains **v324** unchanged:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+
+## What changed in v485 — M4 reload only
+
+The user asked to implement the full M4 reload using the real parts in the uploaded GLB.
+
+Direct inspection of the deployed `assets/ar-15_style_rifle.glb` confirmed:
+- there are **0 embedded animation clips**;
+- there are **0 skins**;
+- the real detachable magazine node is named exactly `magazine`;
+- the real bolt-carrier node is named exactly `bolt carrier`.
+
+Important discovery: the previous M4 reload hookup searched for `Magazine_m4_0` / `Magazine`, which do not exist in this GLB, so it could not actually bind the real magazine.
+
+v485 now:
+- binds the real `magazine` node;
+- keeps the seated real magazine parented to the imported M4 so approved hip/ADS transforms remain intact;
+- visibly pulls and drops a cloned old magazine while preserving its exact world transform;
+- creates a fresh clone from the real magazine;
+- carries the fresh magazine through the support-hand reload path;
+- lines it up below the real magwell and seats it straight upward;
+- restores the real seated magazine at insertion;
+- binds the real `bolt carrier` node and visibly cycles it after the fresh magazine seats;
+- adds a small insertion clack using the existing tone system;
+- gives M4 reload its own duration: base `1550 ms`, minimum `1150 ms` with reload upgrades;
+- adds a reload-only rifle presentation/cant so the magwell is easier to see.
+
+## Locked M4 values preserved
+
+Do **not** retune these unless the user explicitly asks:
+- approved hip position `(.54,-.56,-1.48)`
+- hip pitch `-8°`
+- hip yaw `0°`
+- hip roll `-6°`
+- ADS FOV `48`
+- shared M4 ADS bullet/hit-marker zero `RIFLE_ADS_ZERO_Y=.040`
+- M4 asset `assets/ar-15_style_rifle.glb?v=466`
+- weapon values: rate `105`, hold `190`, spread `.004`, body damage `1`, recoil `.105`, base mag `12`.
+
+The reload-only rifle transform blends from/to the approved hip pose and does not replace the locked normal hip/ADS transforms.
+
+## Validation performed before push
+
+- The exact v484 Pages artifact was inspected to confirm the GLB node names.
+- Staged v485 `src/game.js` passed `node --check`.
+- Git blob SHA of the syntax-checked staged file matched GitHub after commit: `01ef1e420946ad214871308c81521ff477810b91`.
+- Post-write checks confirmed one copy each of:
+  - `RIFLE_ADS_ZERO_Y=.040`
+  - `assets/ar-15_style_rifle.glb?v=466`
+  - real `magazine` lookup
+  - real `bolt carrier` lookup
+  - `updateM4ReloadMagazineFX`.
+
+## What to test
+
+Reload the M4 with **R** and specifically watch:
+1. rifle cants inward/up without disturbing the normal hip pose afterward;
+2. old real-model magazine visibly pulls free and drops;
+3. support hand retrieves a fresh copy of that same magazine;
+4. fresh magazine aligns under the magwell and seats cleanly;
+5. real bolt carrier cycles near the end;
+6. after reload, the M4 returns exactly to the approved v484 hip/ADS positions;
+7. ADS hit marker and bullets still match the user-approved v484 alignment.
+
+Do not call v485 user-confirmed good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v484 USER-CONFIRMED GOOD M4 ADS BASELINE — READ THIS FIRST
 
 This section supersedes older current-state sections below. **GitHub main is the source of truth.**
