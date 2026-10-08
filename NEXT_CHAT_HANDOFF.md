@@ -1,3 +1,21 @@
+# USER-CONFIRMED GOOD — 2026-10-08 — v497 WEAPON SLOT LINEUP APPROVED
+
+User tested v497 and said **"great"**.
+
+Approved weapon order:
+1 M17
+2 M4
+3 Shotgun
+4 MP5
+5 M240
+6 DMR
+7 Grenade Launcher
+8 AWM
+
+Mouse-wheel order matches. No gameplay code change in this confirmation update.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v497 WEAPON SLOT REMAP TEST — READ THIS FIRST
 
 GitHub main is authoritative.
