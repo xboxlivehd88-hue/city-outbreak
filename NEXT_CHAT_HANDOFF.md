@@ -1,3 +1,72 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v494 PHYSICAL / SLOWER M4 RELOAD TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v494**
+- Loader: `./src/game.js?v=494`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v494 gameplay commit: `686f0fb16e813a7eb17787ecadd02f28502b1173`
+- v494 loader commit: `716762798d87a75327dea2dfa352dfc5fd018c8e`
+- v494 game blob: `d3d234e45f7e79d7e88b3bc6fc961521aded2e6f`
+- v485-v493 rejected for reload behavior.
+- **v484 remains last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains v324 unchanged.
+
+## Why v493 failed
+User video showed:
+- empty mag did not read as a real object falling/settling on the ground;
+- fresh spare still effectively appeared in the hand;
+- charge looked fake and too fast.
+
+## v494 exact correction
+- discarded M4 mag now has an 8 s lifetime, reduced throw/spin, real gravity, small bounce, then settles and stops on the ground;
+- M4 body/pouch offset moved to `(-.42,-1.15,-.18)`;
+- fresh spare is not created until `p=.50`, after the empty support hand is already below the visible frame;
+- same loaded spare then rises from below view with the hand and uses the preserved geometry-guided insertion;
+- base M4 reload increased to about **2.8 s**:
+  `Math.max(2200,2800-reloadLevel*90)`;
+- charging is now staged as:
+  reach → pull → hold → controlled release → return;
+- charge travel reduced:
+  - bolt `24` authored Z units
+  - charging handle `30` authored Z units.
+
+## Preserve locked v484 M4 values
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`.
+
+## Validation
+- user clip reviewed frame-by-frame;
+- exact deployed v493 artifact used as patch base;
+- v494 passed `node --check`;
+- syntax-checked local Git blob SHA exactly matched committed GitHub blob:
+  `d3d234e45f7e79d7e88b3bc6fc961521aded2e6f`.
+
+## Test target
+Confirm:
+- old mag hits ground and stays;
+- empty hand disappears below view before new mag appears;
+- loaded spare rises from body with hand;
+- insertion remains smooth;
+- charge is slower and physically readable;
+- normal hip and ADS remain approved v484 behavior.
+
+Do not mark v494 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v493 LOWER M4 SPARE / LOADED-MAG TEST — READ THIS FIRST
 
 GitHub main is authoritative.
