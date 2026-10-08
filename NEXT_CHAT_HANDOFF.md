@@ -1,3 +1,61 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v490 UNDER-MAGWELL M4 INSERTION TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v490**
+- Loader: `./src/game.js?v=490`
+- M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v490 gameplay commits:
+  - `29e3884b603e0fd936b9bd086fd4ac9496624ee9`
+  - scope correction `0ebac8cf3afe5860046302f06dbdf8fe33bdbc70`
+- v490 loader commit: `1cad74713377e91bb35deb82d9db00e4102752c9`
+- v490 game blob: `4a6faccccc8c5105082e102e73e5d59bc4d4eb26`
+- v485/v486/v487/v488/v489 rejected for reload behavior.
+- **v484 remains last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains v324 unchanged.
+
+## Exact v490 correction
+User said v489 was much better, but the replacement mag moved up the side of the rifle and then appeared in the M4.
+
+The cause was the final transfer using one diagonal path from the hand-carried mag position toward the magwell.
+
+v490 now:
+- keeps the fresh mag low first;
+- aligns its X/Z directly under the saved magwell home position;
+- keeps Y at or below `home.y - 34` during that alignment;
+- then raises the magazine straight upward on Y into the magwell;
+- keeps the support hand mathematically attached to the magazine base through both stages;
+- preserves old-mag hiding/removal, fresh-mag seating, and visible charging motion.
+
+## Preserve locked v484 M4 values
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`.
+
+## Test target
+Reload and confirm:
+- fresh magazine goes under the magwell first;
+- it does not climb the receiver side;
+- support hand remains attached to it;
+- magazine then inserts straight upward with no snap;
+- charging remains visible and controlled;
+- normal hip and ADS return to approved v484 state.
+
+Do not mark v490 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v489 HAND-CARRIED M4 MAGAZINE TEST — READ THIS FIRST
 
 GitHub main is authoritative.
