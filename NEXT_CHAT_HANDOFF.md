@@ -1,3 +1,47 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v499 SHOTGUN CIRCLE RETICLE TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v499**
+- Loader: `./src/game.js?v=499`
+- CSS: `./src/game.css?v=499`
+- v499 game commit: `68183e7df95381c96a7a3064647d84d1e369129e`
+- v499 game blob: `cb0b5ee94ad038d9f2fb0a4c2c4e7ca9dc1771ac`
+- v499 CSS commit: `e7b8d63e6eae59392a8431c7948b482cb8c762da`
+- v499 CSS blob: `637027f71689438e46cee56d2cde34b18a7cb848`
+- v499 index/loader commit: `3ae68aa4111cc4eb187651e58e80e0ddea7722ef`
+- v498 shotgun spawn loadout was user-approved as **perfect**.
+- v497 weapon order remains user-confirmed good.
+- M4 remains locked/preserved.
+
+## v499 exact shotgun reticle change
+- shotgun `+` replaced with a circular white reticle;
+- hip-fire diameter: **54 px**;
+- full ADS diameter: **24 px**;
+- diameter smoothly interpolates with `aimBlend`;
+- shotgun reticle remains visible in ADS;
+- other weapons retain prior crosshair behavior.
+
+No shotgun mechanics changed:
+- spread `.090`;
+- pellets `8`;
+- body `.72`;
+- recoil `.22`;
+- base mag `8`;
+- rate `520`.
+
+## Test target
+Confirm:
+- shotgun hip-fire shows wide circle;
+- shotgun ADS shows tighter circle;
+- circle stays visible through ADS;
+- M17 still uses its old crosshair behavior.
+
+Do not mark v499 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v498 SHOTGUN TUNING START LOADOUT — READ THIS FIRST
 
 GitHub main is authoritative.
