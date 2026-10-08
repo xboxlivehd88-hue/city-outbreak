@@ -1,3 +1,37 @@
+# M4 TUNING PHASE — 2026-10-07 — v481 — ADS IMPACT RAISED FURTHER TO USER-MARKED POINT — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=481`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v481 gameplay commit: `797350820946ee05acd9b22c2a195d63db6132fd`
+- v481 loader commit: `566a1530bdbf673c31d5cb9de6252de6416fcf4c`
+- Current `src/game.js` SHA: `8f5f1f4998c9980b75c3cea84bab3f06fe1b4bcd`
+- Protected recovery remains **v324** unchanged.
+
+## User's latest correction
+
+User said the M4 ADS hit marker still needs to move **up further** toward the marked reticle point.
+
+## v481 change
+
+Only:
+- `rifleAdsZeroY` from `+0.006` to `+0.009`.
+
+No scope-placement, scope-material, FOV, recoil, damage, reload, sound, hip-placement, or unrelated weapon changes.
+
+## Next test
+
+Ask user only whether the M4 ADS impact now lands at the marked reticle point.
+
+If still slightly off, continue changing only `rifleAdsZeroY`.
+
+Temporary M4 starting loadout remains active.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v480 — ADS IMPACT RAISED TO USER-MARKED RETICLE POINT — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
