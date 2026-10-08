@@ -1936,16 +1936,37 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
    }
 
    if(reloadFreshAttached&&reloadFreshInsertStart){
-     const align=home.clone();align.y-=26;align.z+=1.5;
-     if(rp.p<.77){
-       const t=smoothReload01((rp.p-.67)/.10);
-       reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,align,t);
+     // Two-stage final approach. First move laterally/forward while the magazine
+     // remains LOW, until its X/Z are directly under the saved magwell position.
+     // Only then raise it straight up on Y. This prevents the replacement from
+     // climbing the outside of the receiver and snapping into place.
+     const below=home.clone();
+     below.y=Math.min(reloadFreshInsertStart.y,home.y-34);
+     below.x=home.x;below.z=home.z;
+
+     if(rp.p<.76){
+       const t=smoothReload01((rp.p-.67)/.09);
+       reloadFreshMag.position.x=THREE.MathUtils.lerp(reloadFreshInsertStart.x,below.x,t);
+       reloadFreshMag.position.y=THREE.MathUtils.lerp(reloadFreshInsertStart.y,below.y,t);
+       reloadFreshMag.position.z=THREE.MathUtils.lerp(reloadFreshInsertStart.z,below.z,t);
        reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
      }else{
-       const t=smoothReload01((rp.p-.77)/.09);
-       reloadFreshMag.position.lerpVectors(align,home,t);
+       const t=smoothReload01((rp.p-.76)/.10);
+       reloadFreshMag.position.lerpVectors(below,home,t);
        reloadFreshMag.quaternion.copy(targetQ);
      }
+
+     // Keep the support hand physically attached to the magazine base during the
+     // entire under-magwell alignment and straight-up insertion.
+     insertParent.updateMatrixWorld(true);reloadFreshMag.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
+     const magGripWorld=reloadFreshMag.localToWorld(new THREE.Vector3(0,0,-1.55));
+     const handGripWorld=new THREE.Vector3(...playerHandRig.pose.left);
+     playerHandRig.left.localToWorld(handGripWorld);
+     gun.updateMatrixWorld(true);
+     const magGripGun=gun.worldToLocal(magGripWorld.clone());
+     const handGripGun=gun.worldToLocal(handGripWorld.clone());
+     playerHandRig.left.position.add(magGripGun.sub(handGripGun));
+     playerHandRig.left.updateMatrixWorld(true);
 
      if(rp.p>=.86){
        // The hand-carried replacement becomes the actual seated magazine.
@@ -5773,8 +5794,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      else if(p<.36){t=smoothReload01((p-.18)/.18);lx=.06-.08*t;ly=-.08-.18*t;lz=.03+.08*t;rz=-.08-.06*t}
      else if(p<.52){t=smoothReload01((p-.36)/.16);lx=-.02-.08*t;ly=-.26-.18*t;lz=.11+.06*t;rz=-.14-.06*t}
      else if(p<.67){t=smoothReload01((p-.52)/.15);lx=-.10+.12*t;ly=-.44+.22*t;lz=.17-.07*t;rz=-.20+.06*t}
-     else if(p<.77){t=smoothReload01((p-.67)/.10);lx=.02+.08*t;ly=-.22+.13*t;lz=.10-.05*t;rz=-.14+.05*t}
-     else if(p<.86){t=smoothReload01((p-.77)/.09);lx=.10*(1-t);ly=-.09*(1-t);lz=.05*(1-t);rz=-.09*(1-t)}
+     else if(p<.86){lx=.02;ly=-.22;lz=.10;rz=-.14}
      else if(p<.92){t=smoothReload01((p-.86)/.06);lx=.08*t;ly=.07*t;lz=.48*t;rz=.10*t}
      else if(p<.99){t=smoothReload01((p-.92)/.07);lx=.08*(1-t);ly=.07*(1-t);lz=.48*(1-t);rz=.10*(1-t)}
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06,0,rz);
