@@ -1,3 +1,85 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v501 SHOTGUN GLB REPLACEMENT TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v501**
+- Loader: `./src/game.js?v=501`
+- Shotgun asset: `assets/shotgun_test.glb?v=501`
+- v501 gameplay commit: `ca424f13dba0d8320aabf21d9111127f1f877026`
+- v501 game blob SHA: `9f8b7a3106324d2deacddce25b7e8d0213bf3fd0`
+- v501 loader/index commit: `3f2b7cdc7d083d98c51dabff1d83f90610062810`
+- v500 shotgun reticle behavior is preserved.
+- v498 shotgun starting loadout remains approved.
+- v497 weapon order remains approved.
+- M4 remains locked/preserved.
+- Protected recovery remains **v324** unchanged.
+
+## Uploaded shotgun GLB inspection
+Exact asset:
+- `assets/shotgun_test.glb`
+- size: 4,800,952 bytes
+- glTF 2.0
+- 14 nodes
+- 5 meshes
+- 0 animations
+- 0 skins
+
+Named real parts:
+- `base`
+- `shell`
+- `trigger`
+- `inserter`
+- `pump`
+
+The model is static, but those parts are separate nodes and are intentionally retained for future pump/reload animation work.
+
+## v501 isolated change — replace shotgun model
+- old procedural shotgun geometry removed;
+- uploaded `shotgun_test.glb` is now the sole visible shotgun model;
+- source barrel points +Z, so the viewmodel is rotated 180° around Y to face game-forward -Z;
+- model is normalized at runtime to a **3.25-unit overall shotgun length**;
+- initial placement preserves the old shotgun footprint approximately:
+  - center X `.36`
+  - center Y `-.32`
+  - center Z `-1.70`
+  - muzzle remains around the prior ~`-3.3` first-person depth;
+- real pump/shell/trigger/inserter nodes are saved for future animation.
+
+## Preserved
+No shotgun gameplay mechanics changed:
+`rate:520, spread:.090, pellets:8, body:.72, recoil:.22, baseMag:8`
+
+Also preserved:
+- v500 72 px hip circle;
+- reticle hidden during shotgun ADS;
+- shotgun active starting loadout;
+- M17 on key 1 / shotgun key 3;
+- all approved M4 work;
+- `RIFLE_ADS_ZERO_Y=.040`.
+
+## Validation
+- required handoff/recovery/index/game files re-read first;
+- deployed Pages artifact used to inspect the actual binary GLB;
+- GLB hierarchy and authored axis verified;
+- committed v501 source passed syntax parse;
+- old procedural shotgun branch no longer exists;
+- shotgun GLB loader exists exactly once;
+- real pump reference exists;
+- shotgun stats and v500 reticle behavior unchanged.
+
+## v501 user test target
+Check only the new shotgun model:
+1. correct orientation (barrel forward);
+2. reasonable hip-fire size and position;
+3. no old procedural shotgun geometry visible;
+4. ADS remains functional;
+5. hands still appear with the shotgun.
+
+Do not call v501 confirmed-good until user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v500 WIDER SHOTGUN HIP CIRCLE / HIDE IN ADS — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
