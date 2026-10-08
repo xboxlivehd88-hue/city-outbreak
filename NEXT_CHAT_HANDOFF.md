@@ -1,3 +1,73 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v495 ANCHORED M4 ARM REACH / FASTER RELOAD TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v495**
+- Loader: `./src/game.js?v=495`
+- M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v495 gameplay commit: `9cab9f61d2fe3e05f22b26b1a77e57b84384c6ad`
+- v495 loader commit: `1124711cf9bef9dff37374c60b3197ba2f85eba9`
+- v495 game blob: `a4294ace71915123e69f8c7e5c8846a5c7a7d17f`
+- v485-v494 rejected for reload behavior.
+- **v484 remains last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains v324 unchanged.
+
+## v495 exact correction
+The previous M4 reload translated the complete procedural left-arm group, so the shoulder moved with the hand and the arm never truly reached the player/body.
+
+v495 now:
+- keeps the left shoulder fixed;
+- articulates/rescales upper arm and forearm between shoulder → elbow → hand;
+- bends elbow toward the belt/body target;
+- moves only the actual hand endpoint to the reload target;
+- restores the normal arm geometry after reload;
+- magazine carry now follows the articulated hand rather than translating the full arm.
+
+Body/pouch offset changed to:
+`(-.32,-.95,1.15)`
+
+This brings the hand back toward the torso/belt instead of leaving it far forward.
+
+M4 reload speed changed from about 2.8 s to about **2.2 s**:
+`Math.max(1700,2200-reloadLevel*90)`
+
+Preserved:
+- physical empty-mag ground drop/settle;
+- fresh-mag off-body pickup phase;
+- measured magazine insertion;
+- staged charging;
+- bolt `24 Z`;
+- charging handle `30 Z`.
+
+## Preserve locked v484 M4 values
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`.
+
+## Test target
+Reload and confirm:
+- shoulder stays attached to player;
+- arm actually bends/reaches to body/belt;
+- reload is noticeably faster without making charging twitchy;
+- old mag still reaches ground;
+- fresh mag still comes from body;
+- normal hip/ADS return to approved v484 state.
+
+Do not mark v495 good until user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v494 PHYSICAL / SLOWER M4 RELOAD TEST — READ THIS FIRST
 
 GitHub main is authoritative.
