@@ -1878,58 +1878,60 @@ function spawnFreshReloadMagazine(){
  reloadFreshMag=fresh;reloadFreshAttached=false;
 }
 function updateM4ReloadMagazineFX(rp,home,targetQ){
- // M4-specific reload uses the real imported magazine and bolt-carrier nodes.
- // The seated magazine stays parented to the rifle so normal hip/ADS transforms
- // remain exact; discarded/fresh clones preserve the model's world transform.
+ // Exact GLB geometry inspection shows this FBX-authored model uses ~100-unit
+ // coordinates: magazine travel is on Y and bolt/charging-handle travel is on Z.
+ // Earlier sub-unit offsets were effectively invisible after the import transforms.
  if(!reloadOldMagDropped&&home){
    const pull=rp.pull||0;
    playerReloadPart.visible=true;playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
    playerReloadPart.traverse(o=>{o.visible=true});
-   // In this GLB the magazine body runs down -Z. Pull it slightly out of the
-   // magwell on that authored axis before releasing the dropped clone.
-   playerReloadPart.position.z-=.34*pull;playerReloadPart.position.y-=.035*pull;
+   playerReloadPart.position.y-=34*pull;playerReloadPart.position.z+=2.5*pull;
    if(rp.p>=.30)tossOldReloadMagazine();
  }
- if(rp.p>=.48&&!reloadFreshMag&&!reloadMagInserted){
-   // Keep the replacement in the imported rifle's coordinate space. The magazine
-   // inserts along model-space Z, not Y.
+ if(rp.p>=.46&&!reloadFreshMag&&!reloadMagInserted){
+   // Create the replacement in the SAME imported-model parent space. Start it
+   // roughly half a magazine-length below the magwell so the return is unmistakable.
    const fresh=playerReloadPart.clone(true);fresh.name="FreshReloadMagazine";fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    const insertParent=playerReloadPart.parent||m4ViewRoot||gun;
    insertParent.add(fresh);
-   fresh.position.copy(home);fresh.position.z-=1.05;fresh.position.y-=.04;
+   fresh.position.copy(home);fresh.position.y-=96;fresh.position.z+=3;
    fresh.quaternion.copy(targetQ);fresh.scale.copy(playerReloadPart.scale);
+   fresh.userData.externalWeaponAsset=true;
+   fresh.userData.reloadHome=home.clone();fresh.userData.reloadHomeQuat=targetQ.clone();
    reloadFreshMag=fresh;reloadFreshInsertStart=fresh.position.clone();reloadFreshInsertQuat=fresh.quaternion.clone();reloadFreshAttached=true;
  }
  if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
-   // Guide the fresh magazine to a point directly below the magwell on its true
-   // authored insertion axis, then push it home.
-   const align=home.clone();align.z-=.32;
-   if(rp.p<.75){
-     const t=smoothReload01((rp.p-.48)/.27);
+   const align=home.clone();align.y-=26;align.z+=1.5;
+   if(rp.p<.72){
+     const t=smoothReload01((rp.p-.46)/.26);
      reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,align,t);
      reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
    }else{
-     const t=smoothReload01((rp.p-.75)/.09);
+     const t=smoothReload01((rp.p-.72)/.10);
      reloadFreshMag.position.lerpVectors(align,home,t);
      reloadFreshMag.quaternion.copy(targetQ);
    }
-   if(rp.p>=.84){
-     if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
-     reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
-     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.visible=true;playerReloadPart.traverse(o=>{o.visible=true});reloadMagInserted=true;
+   if(rp.p>=.82){
+     // The replacement itself becomes the new seated/active magazine. Do not
+     // remove it and suddenly reveal the old hidden one.
+     reloadFreshMag.position.copy(home);reloadFreshMag.quaternion.copy(targetQ);
+     reloadFreshMag.visible=true;reloadFreshMag.traverse(o=>{o.visible=true});
+     playerReloadPart=reloadFreshMag;
+     playerReloadPart.userData.reloadHome=home.clone();playerReloadPart.userData.reloadHomeQuat=targetQ.clone();
+     reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;reloadMagInserted=true;
      tone(520,.030,"square",.055);tone(760,.020,"square",.040,.025);
    }
  }
- // The rifle itself is authored lengthwise on Y. Pull the real external charging
- // handle and internal bolt carrier rearward together, then let both run forward.
+ // Charge the rifle with model-scale movement. +Z is rearward/toward the player
+ // in the approved first-person M4 orientation.
  let cycle=0;
- if(rp.p>=.86&&rp.p<.93)cycle=smoothReload01((rp.p-.86)/.07);
- else if(rp.p>=.93&&rp.p<.995)cycle=smoothReload01((.995-rp.p)/.065);
+ if(rp.p>=.82&&rp.p<.90)cycle=smoothReload01((rp.p-.82)/.08);
+ else if(rp.p>=.90&&rp.p<.985)cycle=smoothReload01((.985-rp.p)/.085);
  if(m4BoltCarrier&&m4BoltHome){
-   m4BoltCarrier.position.copy(m4BoltHome);m4BoltCarrier.position.y-=.38*cycle;
+   m4BoltCarrier.position.copy(m4BoltHome);m4BoltCarrier.position.z+=34*cycle;
  }
  if(m4ChargingHandle&&m4ChargingHandleHome){
-   m4ChargingHandle.position.copy(m4ChargingHandleHome);m4ChargingHandle.position.y-=.46*cycle;
+   m4ChargingHandle.position.copy(m4ChargingHandleHome);m4ChargingHandle.position.z+=42*cycle;
  }
 }
 function updateMP5ReloadMagazineFX(rp,home,targetQ){
@@ -5732,8 +5734,10 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      if(p<.18){t=smoothReload01(p/.18);lx=.06*t;ly=-.08*t;lz=.03*t;rz=-.08*t}
      else if(p<.36){t=smoothReload01((p-.18)/.18);lx=.06-.08*t;ly=-.08-.18*t;lz=.03+.08*t;rz=-.08-.06*t}
      else if(p<.52){t=smoothReload01((p-.36)/.16);lx=-.02-.08*t;ly=-.26-.18*t;lz=.11+.06*t;rz=-.14-.06*t}
-     else if(p<.76){t=smoothReload01((p-.52)/.24);lx=-.10+.14*t;ly=-.44+.25*t;lz=.17-.10*t;rz=-.20+.08*t}
-     else if(p<.88){t=smoothReload01((p-.76)/.12);lx=.04*(1-t);ly=-.19*(1-t);lz=.07*(1-t);rz=-.12*(1-t)}
+     else if(p<.72){t=smoothReload01((p-.52)/.20);lx=-.10+.14*t;ly=-.44+.25*t;lz=.17-.10*t;rz=-.20+.08*t}
+     else if(p<.82){t=smoothReload01((p-.72)/.10);lx=.04*(1-t);ly=-.19*(1-t);lz=.07*(1-t);rz=-.12*(1-t)}
+     else if(p<.90){t=smoothReload01((p-.82)/.08);lx=.08*t;ly=.07*t;lz=.48*t;rz=.10*t}
+     else if(p<.985){t=smoothReload01((p-.90)/.085);lx=.08*(1-t);ly=.07*(1-t);lz=.48*(1-t);rz=.10*(1-t)}
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06,0,rz);
    }else if(reloading&&reloadWeapon==="grenadeLauncher"){
      const p=rp.p;let lx=0,ly=0,lz=0,lr=0,t=0;
