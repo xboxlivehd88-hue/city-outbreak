@@ -1724,6 +1724,14 @@ const HAND_POSES={
  m240:{left:[.15,-.45,-2.03],right:[.36,-.64,-.82],reload:[.32,-.18,.55]},
  awm:{left:[.16,-.46,-2.08],right:[.36,-.64,-.82],reload:[.10,-.14,.70]}
 };
+// M4 spare-mag pouch/grab point. This is a player-body location in gun-local
+// space: the support hand must physically reach here before the spare can move.
+const M4_RELOAD_POUCH_HAND_OFFSET=new THREE.Vector3(-.30,-.72,.60);
+const M4_RELOAD_POUCH_GRIP_GUN=new THREE.Vector3(
+ HAND_POSES.rifle.left[0]+M4_RELOAD_POUCH_HAND_OFFSET.x,
+ HAND_POSES.rifle.left[1]+M4_RELOAD_POUCH_HAND_OFFSET.y,
+ HAND_POSES.rifle.left[2]+M4_RELOAD_POUCH_HAND_OFFSET.z
+);
 function fpsArmSegment(a,b,r,mat,parent){
  const d=new THREE.Vector3().subVectors(b,a),len=d.length(),mid=new THREE.Vector3().addVectors(a,b).multiplyScalar(.5);
  const q=new THREE.Mesh(new THREE.CylinderGeometry(r*.90,r,len,8),mat);q.position.copy(mid);
@@ -1897,7 +1905,10 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
  // the imported M4 hierarchy (so its baked FBX scale stays stable), but while it
  // is being carried we solve its world-space base position to the actual support
  // hand instead of faking a straight path under the rifle.
- if(rp.p>=.46&&!reloadFreshMag&&!reloadMagInserted){
+ if(rp.p>=.31&&!reloadFreshMag&&!reloadMagInserted){
+   // Put the spare at the player's body/pouch immediately after the old mag drops.
+   // It stays there while the empty support hand reaches down and does not begin
+   // moving until the hand has actually arrived and grabbed it.
    const fresh=playerReloadPart.clone(true);fresh.name="FreshReloadMagazine";
    fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    const insertParent=playerReloadPart.parent||m4ViewRoot||gun;
@@ -1905,21 +1916,19 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
    fresh.position.copy(home);fresh.quaternion.copy(targetQ);fresh.scale.copy(playerReloadPart.scale);
    fresh.userData.externalWeaponAsset=true;
    fresh.userData.reloadHome=home.clone();fresh.userData.reloadHomeQuat=targetQ.clone();
+   delete fresh.userData.reloadCarryStartWorld;delete fresh.userData.reloadPouchOriginWorld;delete fresh.userData.reloadGrabbed;
    reloadFreshMag=fresh;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
  }
 
  if(reloadFreshMag&&!reloadMagInserted){
    const insertParent=reloadFreshMag.parent||m4ViewRoot||gun;
-   insertParent.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
+   insertParent.updateMatrixWorld(true);gun.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
 
-   // Use measured points from the ACTUAL magazine mesh rather than its exported
-   // object origin. The top point is what must enter the magwell; the lower point
-   // is where the support hand visually carries the magazine.
+   // Measured points from the ACTUAL M4 magazine mesh.
    const magTopLocal=new THREE.Vector3(.0005,.055,.0306);
    const magGripLocal=new THREE.Vector3(-.003,.45,-1.61);
 
-   // Build the exact seated world transform from the saved home transform without
-   // relying on the hidden old magazine's current animated position.
+   // Exact seated world transform and physical insertion axis from the mesh.
    const seatLocalMatrix=new THREE.Matrix4().compose(home,targetQ,playerReloadPart.scale);
    const seatWorldMatrix=insertParent.matrixWorld.clone().multiply(seatLocalMatrix);
    const seatOriginWorld=new THREE.Vector3().setFromMatrixPosition(seatWorldMatrix);
@@ -1930,54 +1939,67 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
    const belowDistance=Math.max(.20,magLengthWorld*.24);
    const belowOriginWorld=seatOriginWorld.clone().addScaledVector(insertAxisWorld,-belowDistance);
 
-   // First carry frame: seat-orient the real magazine, then move its measured
-   // lower grip point exactly into the rendered support hand.
-   if(!reloadFreshMag.userData.reloadCarryStartWorld){
+   // Establish the spare at a fixed BODY/POUCH point. This happens before the
+   // hand reaches it, so the magazine no longer materializes inside the hand.
+   if(!reloadFreshMag.userData.reloadPouchOriginWorld){
      reloadFreshMag.position.copy(home);reloadFreshMag.quaternion.copy(targetQ);reloadFreshMag.scale.copy(playerReloadPart.scale);
      reloadFreshMag.updateMatrixWorld(true);
-     const handWorld=new THREE.Vector3(...playerHandRig.pose.left);
-     playerHandRig.left.localToWorld(handWorld);
+     const pouchGripWorld=M4_RELOAD_POUCH_GRIP_GUN.clone();
+     gun.localToWorld(pouchGripWorld);
      const currentGripWorld=magGripLocal.clone().applyMatrix4(reloadFreshMag.matrixWorld);
      const currentOriginWorld=reloadFreshMag.getWorldPosition(new THREE.Vector3());
-     const carryOriginWorld=currentOriginWorld.add(handWorld.sub(currentGripWorld));
-     reloadFreshMag.position.copy(insertParent.worldToLocal(carryOriginWorld.clone()));
-     reloadFreshMag.userData.reloadCarryStartWorld=carryOriginWorld.clone();
+     const pouchOriginWorld=currentOriginWorld.add(pouchGripWorld.sub(currentGripWorld));
+     reloadFreshMag.position.copy(insertParent.worldToLocal(pouchOriginWorld.clone()));
+     reloadFreshMag.userData.reloadPouchOriginWorld=pouchOriginWorld.clone();
+     reloadFreshMag.userData.reloadGrabbed=false;
    }
 
-   // Carry the magazine from the player's hand to a point physically below the
-   // magwell. This ends with the REAL magazine top centered on the insertion axis.
-   if(rp.p<.76){
-     const t=smoothReload01((rp.p-.46)/.30);
-     const startWorld=reloadFreshMag.userData.reloadCarryStartWorld;
-     const desiredWorld=startWorld.clone().lerp(belowOriginWorld,t);
-     reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
+   // Until p=.50 the spare remains fixed at the body while the EMPTY support hand
+   // visibly reaches down to it. At p=.50 the grab occurs; only then can the spare move.
+   if(rp.p<.50){
+     const pouchOriginWorld=reloadFreshMag.userData.reloadPouchOriginWorld;
+     reloadFreshMag.position.copy(insertParent.worldToLocal(pouchOriginWorld.clone()));
      reloadFreshMag.quaternion.copy(targetQ);
    }else{
-     // Final insertion is constrained to the magazine's measured physical long
-     // axis: no receiver-side climb and no origin-based snap.
-     const t=smoothReload01((rp.p-.76)/.10);
-     const desiredWorld=belowOriginWorld.clone().lerp(seatOriginWorld,t);
-     reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
-     reloadFreshMag.quaternion.copy(targetQ);
-   }
+     if(!reloadFreshMag.userData.reloadGrabbed){
+       reloadFreshMag.userData.reloadGrabbed=true;
+       reloadFreshMag.userData.reloadCarryStartWorld=reloadFreshMag.userData.reloadPouchOriginWorld.clone();
+     }
 
-   // Keep the support hand attached to the measured lower magazine grip point
-   // throughout carry + insertion.
-   reloadFreshMag.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
-   const magGripWorld=magGripLocal.clone().applyMatrix4(reloadFreshMag.matrixWorld);
-   const handGripWorld=new THREE.Vector3(...playerHandRig.pose.left);
-   playerHandRig.left.localToWorld(handGripWorld);
-   gun.updateMatrixWorld(true);
-   const magGripGun=gun.worldToLocal(magGripWorld.clone());
-   const handGripGun=gun.worldToLocal(handGripWorld.clone());
-   playerHandRig.left.position.add(magGripGun.sub(handGripGun));
-   playerHandRig.left.updateMatrixWorld(true);
+     // Carry the SAME magazine from body/pouch to physically below the magwell.
+     if(rp.p<.75){
+       const t=smoothReload01((rp.p-.50)/.25);
+       const desiredWorld=reloadFreshMag.userData.reloadCarryStartWorld.clone().lerp(belowOriginWorld,t);
+       reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
+       reloadFreshMag.quaternion.copy(targetQ);
+     }else{
+       // Final insertion stays on the measured physical magazine axis.
+       const t=smoothReload01((rp.p-.75)/.11);
+       const desiredWorld=belowOriginWorld.clone().lerp(seatOriginWorld,t);
+       reloadFreshMag.position.copy(insertParent.worldToLocal(desiredWorld));
+       reloadFreshMag.quaternion.copy(targetQ);
+     }
+
+     // After the grab, lock the support hand to the measured lower grip point so
+     // hand + magazine travel as one object all the way into the rifle.
+     reloadFreshMag.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
+     const magGripWorld=magGripLocal.clone().applyMatrix4(reloadFreshMag.matrixWorld);
+     const handGripWorld=new THREE.Vector3(...playerHandRig.pose.left);
+     playerHandRig.left.localToWorld(handGripWorld);
+     gun.updateMatrixWorld(true);
+     const magGripGun=gun.worldToLocal(magGripWorld.clone());
+     const handGripGun=gun.worldToLocal(handGripWorld.clone());
+     playerHandRig.left.position.add(magGripGun.sub(handGripGun));
+     playerHandRig.left.updateMatrixWorld(true);
+   }
 
    if(rp.p>=.86){
      const oldSeatedMag=playerReloadPart;
      reloadFreshMag.position.copy(home);reloadFreshMag.quaternion.copy(targetQ);
      reloadFreshMag.visible=true;reloadFreshMag.traverse(o=>{o.visible=true});
      delete reloadFreshMag.userData.reloadCarryStartWorld;
+     delete reloadFreshMag.userData.reloadPouchOriginWorld;
+     delete reloadFreshMag.userData.reloadGrabbed;
      playerReloadPart=reloadFreshMag;
      playerReloadPart.userData.reloadHome=home.clone();playerReloadPart.userData.reloadHomeQuat=targetQ.clone();
      if(oldSeatedMag&&oldSeatedMag!==playerReloadPart&&oldSeatedMag.parent)oldSeatedMag.parent.remove(oldSeatedMag);
@@ -5795,10 +5817,25 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      // BEFORE the bolt cycle so there is no end-of-reload arm snap or wild sweep.
      const p=rp.p;let lx=0,ly=0,lz=0,rz=0,t=0;
      if(p<.18){t=smoothReload01(p/.18);lx=.06*t;ly=-.08*t;lz=.03*t;rz=-.08*t}
-     else if(p<.36){t=smoothReload01((p-.18)/.18);lx=.06-.08*t;ly=-.08-.18*t;lz=.03+.08*t;rz=-.08-.06*t}
-     else if(p<.52){t=smoothReload01((p-.36)/.16);lx=-.02-.08*t;ly=-.26-.18*t;lz=.11+.06*t;rz=-.14-.06*t}
-     else if(p<.67){t=smoothReload01((p-.52)/.15);lx=-.10+.12*t;ly=-.44+.22*t;lz=.17-.07*t;rz=-.20+.06*t}
-     else if(p<.86){lx=.02;ly=-.22;lz=.10;rz=-.14}
+     else if(p<.30){t=smoothReload01((p-.18)/.12);lx=.06-.08*t;ly=-.08-.18*t;lz=.03+.08*t;rz=-.08-.06*t}
+     else if(p<.46){
+       // Empty support hand leaves the rifle and reaches down to the player's body/pouch.
+       t=smoothReload01((p-.30)/.16);
+       lx=THREE.MathUtils.lerp(-.02,M4_RELOAD_POUCH_HAND_OFFSET.x,t);
+       ly=THREE.MathUtils.lerp(-.26,M4_RELOAD_POUCH_HAND_OFFSET.y,t);
+       lz=THREE.MathUtils.lerp(.11,M4_RELOAD_POUCH_HAND_OFFSET.z,t);
+       rz=THREE.MathUtils.lerp(-.14,-.30,t);
+     }
+     else if(p<.50){
+       // Brief readable grab beat: hand is on the spare while the magazine is still
+       // fixed at the body. The M4 reload FX starts carrying it only after p=.50.
+       lx=M4_RELOAD_POUCH_HAND_OFFSET.x;ly=M4_RELOAD_POUCH_HAND_OFFSET.y;lz=M4_RELOAD_POUCH_HAND_OFFSET.z;rz=-.30;
+     }
+     else if(p<.86){
+       // updateM4ReloadMagazineFX() runs after this and locks the hand to the
+       // magazine's measured grip point during the carry + insertion.
+       lx=M4_RELOAD_POUCH_HAND_OFFSET.x;ly=M4_RELOAD_POUCH_HAND_OFFSET.y;lz=M4_RELOAD_POUCH_HAND_OFFSET.z;rz=-.30;
+     }
      else if(p<.92){t=smoothReload01((p-.86)/.06);lx=.08*t;ly=.07*t;lz=.48*t;rz=.10*t}
      else if(p<.99){t=smoothReload01((p-.92)/.07);lx=.08*(1-t);ly=.07*(1-t);lz=.48*(1-t);rz=.10*(1-t)}
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06,0,rz);
