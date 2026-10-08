@@ -1,3 +1,113 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v492 M4 BODY/POUCH PICKUP TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v492**
+- Loader: `./src/game.js?v=492`
+- Active M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v492 gameplay commit: `3f19615ac68a8ba89f00138c494abbe940f6ab30`
+- v492 loader commit: `0d19d753f8bf9316bfa39de11b70e71a92fef0a3`
+- Current v492 `src/game.js` blob SHA: `50add9c99be7a19098334b47c2c1b2c03b75a53d`
+- v485-v491 were tested and rejected for reload behavior.
+- **v484 remains the last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## Why v491 was rejected
+
+The user supplied a new video and reported that after the old magazine dropped, the replacement magazine simply appeared in the player's hand instead of being grabbed from the player's body.
+
+Frame-by-frame review confirmed:
+- the support hand moved downward;
+- the fresh magazine was created directly at/with the hand during that motion;
+- there was no readable body/pouch magazine waiting point and no actual grab beat.
+
+The geometry-guided insertion work from v491 was not the reported problem in this test and is preserved.
+
+## v492 isolated M4 reload correction
+
+### Real body/pouch pickup phase
+v492 adds a dedicated M4 spare-mag body/pouch anchor:
+- support-hand group offset: `(-.30,-.72,.60)`
+- corresponding physical grip point in gun-local space is derived from the approved rifle hand pose.
+
+Reload sequence is now:
+
+1. old magazine releases/drops at about `p=.30`;
+2. spare magazine is placed at the fixed body/pouch point at about `p=.31`;
+3. that spare remains fixed at the body while the **empty** support hand reaches down to it;
+4. the hand reaches the pouch by about `p=.46`;
+5. there is a brief grab/hold beat from about `.46-.50`;
+6. **only after `p=.50`** does that exact same spare magazine begin moving;
+7. from `.50-.75`, hand + magazine travel together from body/pouch toward the measured below-magwell position;
+8. from `.75-.86`, v491's measured physical-axis insertion seats the magazine;
+9. charging begins after seating.
+
+### No more mag materializing in hand
+- The fresh magazine exists at the body/pouch before the support hand arrives.
+- Before `p=.50`, it is not mathematically attached to the hand and cannot move with the hand.
+- After `p=.50`, the support hand is locked to the magazine's measured lower grip point and carries it as one object.
+
+### Preserved from v491
+- measured physical magazine top-center:
+  `(0.0005, 0.055, 0.0306)`
+- measured lower grip point:
+  `(-0.003, 0.45, -1.61)`
+- physical insertion axis derived from those mesh points;
+- old seated magazine hidden/removed correctly;
+- fresh replacement becomes active `playerReloadPart`;
+- visible bolt/charging-handle action retained.
+
+## Locked v484 M4 values preserved
+Do not change unless explicitly asked:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+- User v491 video inspected frame-by-frame.
+- Exact deployed v491 Pages artifact was downloaded and used as the patch base.
+- Locally patched v492 file passed `node --check`.
+- Locally computed Git blob SHA:
+  `50add9c99be7a19098334b47c2c1b2c03b75a53d`
+- GitHub committed v492 blob matched that SHA **exactly**.
+- Post-write checks confirmed exactly one copy of:
+  - `RIFLE_ADS_ZERO_Y=.040`
+  - unchanged M4 asset path
+  - M4 body/pouch hand offset
+  - body/pouch grip anchor
+  - `p=.31` spare creation
+  - `p=.50` grab transition
+  - measured physical magazine top point
+  - old seated-mag removal
+  - bolt and charging-handle travel.
+
+## v492 user test target
+Reload with **R** and verify:
+1. old magazine drops;
+2. rifle becomes empty;
+3. empty support hand visibly reaches down toward the player's body;
+4. spare magazine is waiting at the body/pouch area rather than appearing in the hand;
+5. hand reaches and grabs it;
+6. same magazine then comes up with the hand toward the rifle;
+7. geometry-guided magwell insertion remains smooth;
+8. charging remains visible and controlled;
+9. approved v484 hip/ADS/shot alignment remains unchanged.
+
+Do not call v492 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v491 GEOMETRY-GUIDED M4 INSERTION TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
