@@ -1,3 +1,95 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v489 HAND-CARRIED M4 MAGAZINE TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v489**
+- Loader: `./src/game.js?v=489`
+- Active M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v489 gameplay commit: `aceb1afeef8f30690efe27d978e7f9171e7f2a32`
+- v489 loader commit: `ecaf258ee375128e843f0f4c1471fe08389ad09b`
+- v489 `src/game.js` blob SHA: `aefdc68ce62e4be30761db61548e5ffc5cffd8c1`
+- v485/v486/v487/v488 were tested and rejected for reload behavior.
+- **v484 remains the last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## Why v488 was rejected
+
+The user supplied a new video. v488 was materially better, but two reload problems remained:
+1. the dumped magazine looked good while a magazine still appeared to remain in the M4;
+2. the fresh magazine did not visibly travel with the player/support hand from the body back into the gun.
+
+Frame-by-frame review confirmed the replacement was still following a precomputed path under the rifle rather than the actual support hand.
+
+## v489 isolated M4 reload correction
+
+### Old seated magazine
+- The real seated magazine is visible only until release.
+- After the old-mag drop starts, the original seated magazine root and its mesh descendants are **forced hidden every frame** until the replacement seats.
+- When the replacement finally seats, the old hidden seated node is removed from the rifle hierarchy so it cannot remain as a hidden duplicate across later reloads.
+
+### Fresh magazine is now truly hand-carried
+- The fresh magazine still stays parented inside the imported M4 hierarchy so the FBX scale remains stable.
+- However, during the carry phase its position is solved in world space against the actual rendered support hand.
+- The code uses the real support-hand world position from `playerHandRig.left`.
+- The base/lower portion of the real magazine (`local z≈-1.55`) is locked to that support-hand position.
+- This makes the magazine visually travel **with the player's hand**, from the player's body/pouch area toward the rifle.
+- At reload progress `p≈.67`, the current hand-carried transform is frozen as the insertion start.
+- The magazine then transfers from the hand to an alignment point below the magwell, and finally seats into the exact saved home transform at `p≈.86`.
+- The fresh replacement itself becomes the new active/seated `playerReloadPart`.
+
+### Charging action retained
+- v488 model-scale charging is preserved:
+  - bolt carrier rearward movement: `+34 Z units`
+  - charging-handle-shaped `ar15.005`: `+42 Z units`
+- Charging timing was shifted to begin after the new magazine seats.
+- Support-hand timing was adjusted to finish insertion before the charging pull.
+
+## Locked v484 M4 values preserved
+Do not change unless user explicitly asks:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+Post-write source checks on v489 confirmed exactly one copy each of:
+- `RIFLE_ADS_ZERO_Y=.040`
+- M4 asset path `ar-15_style_rifle.glb?v=466`
+- forced hidden-old-mag guard
+- true support-hand world-position lock
+- magazine base lock point `(0,0,-1.55)`
+- old seated node removal
+- bolt carrier `+34 Z`
+- charging handle `+42 Z`
+
+Committed v489 game blob:
+`aefdc68ce62e4be30761db61548e5ffc5cffd8c1`
+
+## v489 user test target
+Reload with **R** and verify:
+1. old magazine pulls free and drops;
+2. the rifle is visibly empty after that release;
+3. fresh magazine is visibly carried by the support hand from the player/body area;
+4. hand and magazine move together toward the M4;
+5. magazine transfers from hand into the magwell and remains seated;
+6. charging handle/bolt still pull rearward and return;
+7. no duplicate magazine remains;
+8. normal hip pose and approved v484 ADS alignment return exactly.
+
+Do not call v489 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v488 MODEL-SCALE M4 RELOAD TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
