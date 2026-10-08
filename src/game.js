@@ -1546,7 +1546,7 @@ function zombieRouteWaypoint(z){
 
 const gun=new THREE.Group();cam.add(gun);scene.add(cam);let muzzle;
 // External M4 Carbine visual. The GLB is the sole M4 viewmodel; rebuild when loaded.
-let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null,m4BoltCarrier=null,m4BoltHome=null,m4AdsRootTarget=new THREE.Vector3(.36,-.29,-1.28),m4AdsRootQuatTarget=new THREE.Quaternion();
+let m4ModelTemplate=null,m4AdsOccluders=[],m4ViewRoot=null,m4BoltCarrier=null,m4BoltHome=null,m4ChargingHandle=null,m4ChargingHandleHome=null,m4AdsRootTarget=new THREE.Vector3(.36,-.29,-1.28),m4AdsRootQuatTarget=new THREE.Quaternion();
 const m4HipQuat=new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(-8),0,THREE.MathUtils.degToRad(-6),"XYZ"));
 new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
  m4ModelTemplate=gltf.scene;
@@ -1780,6 +1780,7 @@ function clearReloadMagazineFX(showReal=true){
    if(playerReloadPart.userData.reloadHomeQuat)playerReloadPart.quaternion.copy(playerReloadPart.userData.reloadHomeQuat);
  }
  if(m4BoltCarrier&&m4BoltHome)m4BoltCarrier.position.copy(m4BoltHome);
+ if(m4ChargingHandle&&m4ChargingHandleHome)m4ChargingHandle.position.copy(m4ChargingHandleHome);
 }
 function beginReloadMagazineFX(){
  clearReloadMagazineFX(true);
@@ -1837,6 +1838,7 @@ function tossOldReloadMagazine(){
  // Drop mostly straight down in camera space so it stays under the pistol on screen.
  const throwV=new THREE.Vector3(-.04,-.26,-.02).applyQuaternion(cam.quaternion);
  parts.push({q:oldMag,v:throwV,life:2.15,reloadMag:true,spin:new THREE.Vector3(4.2,3.1,5.0)});
+ if(reloadWeapon==="rifle")playerReloadPart.visible=false;
  playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadOldMagDropped=true;
 }
 function spawnFreshReloadMagazine(){
@@ -1881,25 +1883,27 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
  // remain exact; discarded/fresh clones preserve the model's world transform.
  if(!reloadOldMagDropped&&home){
    const pull=rp.pull||0;
-   playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
+   playerReloadPart.visible=true;playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
    playerReloadPart.traverse(o=>{o.visible=true});
-   playerReloadPart.position.y-=.34*pull;playerReloadPart.position.z+=.035*pull;
+   // In this GLB the magazine body runs down -Z. Pull it slightly out of the
+   // magwell on that authored axis before releasing the dropped clone.
+   playerReloadPart.position.z-=.34*pull;playerReloadPart.position.y-=.035*pull;
    if(rp.p>=.30)tossOldReloadMagazine();
  }
  if(rp.p>=.48&&!reloadFreshMag&&!reloadMagInserted){
-   // Keep the replacement magazine in the SAME imported-model coordinate space as
-   // the real seated magazine. Attaching this FBX-authored node to the procedural
-   // hand temporarily amplified its baked scale and produced giant black polygons.
+   // Keep the replacement in the imported rifle's coordinate space. The magazine
+   // inserts along model-space Z, not Y.
    const fresh=playerReloadPart.clone(true);fresh.name="FreshReloadMagazine";fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    const insertParent=playerReloadPart.parent||m4ViewRoot||gun;
    insertParent.add(fresh);
-   fresh.position.copy(home);fresh.position.y-=1.10;fresh.position.z+=.06;
+   fresh.position.copy(home);fresh.position.z-=1.05;fresh.position.y-=.04;
    fresh.quaternion.copy(targetQ);fresh.scale.copy(playerReloadPart.scale);
    reloadFreshMag=fresh;reloadFreshInsertStart=fresh.position.clone();reloadFreshInsertQuat=fresh.quaternion.clone();reloadFreshAttached=true;
  }
  if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
-   // First guide the replacement toward a point below the magwell, then seat it.
-   const align=home.clone();align.y-=.42;align.z+=.025;
+   // Guide the fresh magazine to a point directly below the magwell on its true
+   // authored insertion axis, then push it home.
+   const align=home.clone();align.z-=.32;
    if(rp.p<.75){
      const t=smoothReload01((rp.p-.48)/.27);
      reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,align,t);
@@ -1912,17 +1916,20 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
    if(rp.p>=.84){
      if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
      reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
-     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.traverse(o=>{o.visible=true});reloadMagInserted=true;
+     playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.visible=true;playerReloadPart.traverse(o=>{o.visible=true});reloadMagInserted=true;
      tone(520,.030,"square",.055);tone(760,.020,"square",.040,.025);
    }
  }
- // After the new magazine seats, visibly cycle the model's real bolt carrier.
- // The rifle's authored longitudinal axis is Z; +Z is toward the stock/rear.
+ // The rifle itself is authored lengthwise on Y. Pull the real external charging
+ // handle and internal bolt carrier rearward together, then let both run forward.
+ let cycle=0;
+ if(rp.p>=.86&&rp.p<.93)cycle=smoothReload01((rp.p-.86)/.07);
+ else if(rp.p>=.93&&rp.p<.995)cycle=smoothReload01((.995-rp.p)/.065);
  if(m4BoltCarrier&&m4BoltHome){
-   let cycle=0;
-   if(rp.p>=.86&&rp.p<.92)cycle=smoothReload01((rp.p-.86)/.06);
-   else if(rp.p>=.92&&rp.p<.98)cycle=smoothReload01((.98-rp.p)/.06);
-   m4BoltCarrier.position.copy(m4BoltHome);m4BoltCarrier.position.z+=.22*cycle;
+   m4BoltCarrier.position.copy(m4BoltHome);m4BoltCarrier.position.y-=.38*cycle;
+ }
+ if(m4ChargingHandle&&m4ChargingHandleHome){
+   m4ChargingHandle.position.copy(m4ChargingHandleHome);m4ChargingHandle.position.y-=.46*cycle;
  }
 }
 function updateMP5ReloadMagazineFX(rp,home,targetQ){
@@ -2063,7 +2070,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -2217,6 +2224,10 @@ function rebuildGun(){
      }
      m4BoltCarrier=m4Root.getObjectByName("bolt carrier")||m4Root.getObjectByName("bolt carrier_ar15 1_0");
      if(m4BoltCarrier)m4BoltHome=m4BoltCarrier.position.clone();
+     // This unnamed exported part has the long/thin receiver-top geometry of the
+     // AR charging handle. Move it with the bolt so the charge is visible externally.
+     m4ChargingHandle=m4Root.getObjectByName("ar15.005")||m4Root.getObjectByName("ar15.005_ar15 1_0");
+     if(m4ChargingHandle)m4ChargingHandleHome=m4ChargingHandle.position.clone();
    }
  }else if(weapon==='smg'){
    if(mp5ModelTemplate){
