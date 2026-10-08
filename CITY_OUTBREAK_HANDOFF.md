@@ -1,3 +1,155 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v484 USER-CONFIRMED GOOD M4 ADS BASELINE — READ THIS FIRST
+
+This section supersedes older current-state sections below. **GitHub main is the source of truth.**
+
+## Exact current live state
+
+- Repo: `xboxlivehd88-hue/city-outbreak`
+- Branch: `main`
+- Loader: `./src/game.js?v=484`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v484 gameplay commit: `4a9745b8235093856286f9453daca0c0f77514f4`
+- v484 loader commit: `25c4ae400ac636427415747109d1e7b6ef978cdd`
+- Current `src/game.js` SHA: `f72de72b3a9daea3b2b10bd3805862e90f813979`
+- Current pre-handoff main commit: `1c4c52c3828bbce76b1bf54a0f888b2e82187da5`
+- Verified successful Pages run for that state: `37712032872`
+- Protected recovery remains **v324**:
+  - gameplay commit `afddcebb47e06a82b4196638716f05e6f1adc941`
+  - protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`
+  - do not change this checkpoint unless the user explicitly asks.
+
+## Latest user confirmation
+
+After the v484 ADS hit-marker / bullet-ray synchronization fix, the user said:
+
+> **"perfect i need a new chat hand off"**
+
+Therefore:
+- **v484 is the latest user-confirmed good baseline**;
+- preserve the current M4 ADS/shot alignment unless the user explicitly asks to change it;
+- the M4 tuning phase is **not explicitly declared finished**, so keep the temporary M4 starting loadout in place until the user says tuning is complete.
+
+## Current M4 implementation — preserve this baseline
+
+### Model / starting loadout
+
+- M4 uses the user's uploaded `assets/ar-15_style_rifle.glb`.
+- Old `classic_m4.glb.glb` is no longer the runtime M4 model.
+- New game and full restart currently start with:
+  - `weapon="rifle"`
+  - `unlocked.rifle=true`
+  - M17 remains unlocked.
+- This is intentionally temporary for M4 tuning.
+
+### Approved hip pose
+
+Current M4 hip root:
+- position `(.54, -.56, -1.48)`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+
+The user previously explicitly liked this placement. Do not alter it casually.
+
+### Real ACOG / ADS
+
+The actual GLB ACOG is used, not a fake overlay.
+
+Current code:
+- identifies `acog` / `acog_optic.001_0`;
+- computes the real rear/front aperture centers from the ACOG mesh geometry;
+- derives the true optical axis;
+- rotates that optical axis to camera forward (`0,0,-1`);
+- places the rear aperture about `0.18` first-person units in front of the eye;
+- blends from approved hip pose to this calculated ADS target;
+- M4 stays visible in ADS;
+- old M4 full-screen scope overlay is disabled;
+- AWM scope behavior remains unchanged;
+- rifle ADS FOV remains `48`.
+
+### ACOG hip rendering
+
+Current source already contains the later ACOG two-pass rendering fix:
+- source texture is mostly opaque housing with a small translucent glass region;
+- opaque body pass:
+  - `transparent=false`
+  - `depthWrite=true`
+  - `alphaTest=.985`
+  - `alphaToCoverage=true`
+- transparent glass pass:
+  - cloned ACOG mesh
+  - `transparent=true`
+  - `depthWrite=false`
+  - `alphaTest=.005`
+  - shader discards near-opaque pixels (`alpha >= .985`)
+- optic emissive intensity is clamped to `.15`.
+
+This was specifically added to prevent the whole ACOG from self-sorting / showing internal geometry at hip-fire. Do not replace the real ACOG geometry.
+
+### M4 ADS shot / visible hit-marker sync — v484
+
+The current shared constant is:
+
+- `RIFLE_ADS_ZERO_Y = .040`
+
+It is used by **both**:
+1. the actual M4 ADS bullet ray;
+2. the visible M4 ADS hit-marker position.
+
+The visible marker was previously stuck at screen-center even while the shot ray moved. v484 fixed that mismatch by driving both from the same constant.
+
+Current behavior:
+- M4 ADS ray uses `RIFLE_ADS_ZERO_Y`;
+- M4 hit marker top uses `50 - RIFLE_ADS_ZERO_Y * 50` percent;
+- at `.040`, marker is around `48%` top.
+
+User said **"perfect"** after this synchronization fix. Preserve `.040` unless they explicitly ask to retune it.
+
+## Important current M4 values
+
+- weapon definition remains:
+  - rate `105`
+  - hold `190`
+  - spread `.004`
+  - body damage `1`
+  - recoil `.105`
+  - base mag `12`
+- rifle ADS FOV: `48`
+- hip pose: `.54,-.56,-1.48`, rotation `-8°,0°,-6°`
+- rear ACOG eye distance target: `-0.18`
+- shared M4 ADS zero: `.040`
+
+## Known caution for next chat
+
+Do **not** assume every historic M4 complaint is still active just because it appears in older sections.
+
+The only authoritative current state is current `main` + this newest top section.
+
+Also:
+- user previously complained about strong recoil during M4 ADS, but no separate recoil-tuning commit is present after the current v484 baseline;
+- because the user ended this chat with **"perfect"**, do not proactively change recoil in the new chat unless they bring it up again;
+- do not restore the normal starting loadout until the user explicitly says M4 tuning is finished.
+
+## Required workflow in the new chat
+
+Before changing anything:
+1. read the newest top sections of `CITY_OUTBREAK_HANDOFF.md`;
+2. read `NEXT_CHAT_HANDOFF.md`;
+3. read `CURRENT_RECOVERY_CHECKPOINT.md`;
+4. read current `index.html`;
+5. read current `src/game.js`;
+6. read any relevant module/asset path;
+7. make one isolated change at a time;
+8. commit directly to `main`;
+9. bump loader version;
+10. verify syntax/diff;
+11. verify final GitHub Pages run succeeds;
+12. update both handoffs again.
+
+Never work from old chat assumptions instead of current GitHub main.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v484 — ADS HIT MARKER / BULLET RAY SYNC FIX — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
