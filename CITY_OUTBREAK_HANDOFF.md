@@ -1,3 +1,75 @@
+# M4 TUNING PHASE — 2026-10-07 — v481 — ADS IMPACT RAISED FURTHER TO USER-MARKED POINT — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=481`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v481 gameplay commit: `797350820946ee05acd9b22c2a195d63db6132fd`
+- v481 loader commit: `566a1530bdbf673c31d5cb9de6252de6416fcf4c`
+- Current `src/game.js` SHA: `8f5f1f4998c9980b75c3cea84bab3f06fe1b4bcd`
+- Protected recovery remains **v324** unchanged.
+
+## User's latest correction
+
+User said the M4 ADS hit marker still needs to be moved **up further** to the user-marked red-arrow/reticle point.
+
+Current v480 already used:
+- `rifleAdsZeroY=+0.006`
+
+That was still slightly too low.
+
+## v481 change
+
+Only the M4 ADS shot zero changes:
+
+Before:
+- `rifleAdsZeroY=+0.006`
+
+Now:
+- `rifleAdsZeroY=+0.009`
+
+Only applies while:
+- `aiming===true`
+- `weapon==="rifle"`
+
+Effect:
+- raises the M4 ADS impact another small step toward the user-marked reticle point;
+- hip-fire shot ray remains unchanged;
+- all other weapons remain unchanged.
+
+## Intentionally unchanged
+
+v481 does **not** change:
+- current M4 ADS recoil behavior;
+- true ACOG optical-axis alignment;
+- ACOG rendering/material structure;
+- v470 hip placement;
+- eye distance;
+- FOV;
+- recoil base value;
+- damage/spread/fire rate;
+- reload;
+- sound;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- exact v481 gameplay diff is one line;
+- full `src/game.js` syntax parse passed.
+
+## v481 test focus
+
+Check only:
+1. M4 ADS impact lands at the user-marked reticle point;
+2. recoil remains as in the current baseline;
+3. ACOG alignment/rendering remain unchanged.
+
+If impact is still low/high, adjust only `rifleAdsZeroY` next.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v480 — ADS IMPACT RAISED TO USER-MARKED RETICLE POINT — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
