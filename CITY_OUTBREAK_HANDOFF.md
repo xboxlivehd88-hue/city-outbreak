@@ -1,3 +1,72 @@
+# M4 TUNING PHASE — 2026-10-07 — v483 — VISIBLE ADS IMPACT CORRECTION — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=483`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v483 gameplay commit: `03ddd83adaa123d6ba80d812e0e21840178680c1`
+- v483 loader commit: `f016e15f577420b246f1628c940c79c009f1f56c`
+- Current `src/game.js` SHA: `c586e0efef8fd0319a90eabde4c33260515447d9`
+- Protected recovery remains **v324** unchanged.
+
+## Why v483 exists
+
+User said the ADS impact looked like it had not moved at all and correctly challenged the previous changes.
+
+The video being tested showed v481. The recent zero changes were:
+- v480: `+0.006`
+- v481: `+0.009`
+- v482: `+0.012`
+
+Each step was only `+0.003` normalized-device-coordinate Y, which is only about 1–2 pixels on a 1080p view. Visually, those increments were effectively imperceptible.
+
+That was the problem: the correct shot-ray variable was being changed, but by far too little.
+
+## v483 change
+
+Only the M4 ADS shot zero changes:
+
+Before:
+- `rifleAdsZeroY=+0.012`
+
+Now:
+- `rifleAdsZeroY=+0.040`
+
+This is a deliberately visible upward correction so the next test can clearly show whether the impact is moving toward the marked reticle point.
+
+Only applies while:
+- `aiming===true`
+- `weapon==="rifle"`
+
+## Intentionally unchanged
+
+v483 does **not** change:
+- ACOG placement;
+- ACOG material/rendering;
+- hip placement;
+- ADS eye distance;
+- FOV;
+- recoil;
+- damage/spread/fire rate;
+- reload;
+- sound;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- exact gameplay diff is one line;
+- full `src/game.js` syntax parse passed.
+
+## v483 test focus
+
+Check only whether the M4 ADS impact now moves visibly upward toward the marked reticle point.
+
+If it overshoots or is still low, adjust only `rifleAdsZeroY` from this now-visible baseline.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v482 — ADS IMPACT RAISED ONE MORE STEP — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
