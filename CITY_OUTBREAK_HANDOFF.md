@@ -1,3 +1,117 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v491 GEOMETRY-GUIDED M4 INSERTION TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v491**
+- Loader: `./src/game.js?v=491`
+- Active M4 asset unchanged: `assets/ar-15_style_rifle.glb?v=466`
+- v491 gameplay commit: `6b14d88117cbc6fd085be42b59fae4cee279ca4a`
+- v491 loader commit: `88227ecb0e2bbd502a69e53e047347580c0902f3`
+- Current v491 `src/game.js` blob SHA: `21e0bba01837a8d53cc36838c0299d1d89b85e7d`
+- v485-v490 were tested and rejected for reload behavior.
+- **v484 remains the last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains **v324** unchanged.
+
+## Why v490 was rejected
+
+The user supplied a new v490 video and reported the reload was still broken.
+
+Frame-by-frame review confirmed:
+- the magazine still did not enter the physical mouth of the magwell cleanly;
+- origin-based positioning was still visually offset from the actual magazine geometry.
+
+The exact deployed M4 GLB was parsed again. The key issue was that previous math still aligned the exported **magazine node origin**, but that origin is not centered on the physical top/opening of the visible magazine.
+
+## Measured real magazine geometry
+
+Direct POSITION-accessor inspection of `magazine_ar 15 2_0` gave these measured local-space points:
+
+- physical magazine top-center ≈ `(0.0005, 0.055, 0.0306)`
+- lower hand/grip area ≈ `(-0.003, 0.45, -1.61)`
+
+The magazine mesh spans roughly:
+- X: `-0.1136 .. 0.1136`
+- Y: `-0.1006 .. 0.7300`
+- Z: `-1.7312 .. 0.0336`
+
+These values come from the actual GLB mesh, not guessed node axes.
+
+## v491 isolated reload correction
+
+### Physical top of magazine drives insertion
+- v491 no longer uses the magazine node origin as the insertion reference.
+- It builds the exact seated world transform from the saved home position/quaternion/scale.
+- It transforms the **measured physical magazine top-center** into world space.
+- It also transforms the measured lower grip point into world space.
+
+### Real physical insertion axis
+- v491 derives the insertion direction from:
+  - measured grip world point → measured top world point.
+- This produces the actual magazine long-axis direction in the current tilted first-person rifle pose.
+- The below-magwell staging position is computed along that measured physical axis.
+
+### Carry → below magwell → seat
+- The fresh magazine is first positioned so its measured lower grip point is exactly at the rendered support hand.
+- That world-space position is saved as the carry start.
+- From the player's body/hand, the magazine travels toward a **physically correct point below the seated top**, not toward the node origin.
+- Final insertion then moves from that below point to the exact seated world transform along the physical magazine axis.
+- The support hand remains attached to the measured lower grip point throughout carry and insertion.
+
+### Existing good behavior preserved
+- old seated mag hidden after release;
+- hidden old node removed once replacement seats;
+- fresh replacement itself becomes active `playerReloadPart`;
+- v488+ visible bolt/charging-handle movement retained;
+- no changes to approved shooting/ADS tuning.
+
+## Locked v484 M4 values preserved
+Do not change unless explicitly asked:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body damage `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`
+
+## Validation
+Committed v491 source checks confirmed exactly one copy each of:
+- `RIFLE_ADS_ZERO_Y=.040`
+- unchanged M4 asset path
+- measured physical top point
+- measured hand/grip point
+- physical insertion-axis derivation
+- world-space seated transform
+- old seated-mag removal
+- bolt movement
+- charging-handle movement
+
+Current v491 game blob:
+`21e0bba01837a8d53cc36838c0299d1d89b85e7d`
+
+## v491 user test target
+Reload with **R** and verify:
+1. old mag drops cleanly;
+2. rifle becomes visibly empty;
+3. fresh mag stays with support hand;
+4. fresh mag approaches the actual underside of the magwell;
+5. visible top of magazine lines up with the physical magwell opening;
+6. mag inserts along its own long axis without climbing the receiver side;
+7. no snap/teleport at seating;
+8. charging remains visible and controlled;
+9. normal hip pose and approved v484 ADS alignment return exactly.
+
+Do not call v491 confirmed-good until the user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v490 UNDER-MAGWELL M4 INSERTION TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
