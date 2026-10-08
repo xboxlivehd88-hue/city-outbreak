@@ -1958,6 +1958,7 @@ function updateM4ReloadMagazineFX(rp,home,targetQ){
 
      // Keep the support hand physically attached to the magazine base during the
      // entire under-magwell alignment and straight-up insertion.
+     const insertParent=reloadFreshMag.parent||m4ViewRoot||gun;
      insertParent.updateMatrixWorld(true);reloadFreshMag.updateMatrixWorld(true);playerHandRig.left.updateMatrixWorld(true);
      const magGripWorld=reloadFreshMag.localToWorld(new THREE.Vector3(0,0,-1.55));
      const handGripWorld=new THREE.Vector3(...playerHandRig.pose.left);
