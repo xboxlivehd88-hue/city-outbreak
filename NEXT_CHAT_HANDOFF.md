@@ -1,3 +1,41 @@
+# M4 TUNING PHASE — 2026-10-07 — v483 — VISIBLE ADS IMPACT CORRECTION — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live state
+
+- Loader: `./src/game.js?v=483`
+- v483 gameplay commit: `03ddd83adaa123d6ba80d812e0e21840178680c1`
+- v483 loader commit: `f016e15f577420b246f1628c940c79c009f1f56c`
+- Current `src/game.js` SHA: `c586e0efef8fd0319a90eabde4c33260515447d9`
+- Protected recovery remains **v324** unchanged.
+
+## Why the previous movement looked unchanged
+
+Recent M4 ADS zero values were:
+- v480 `+0.006`
+- v481 `+0.009`
+- v482 `+0.012`
+
+Those `+0.003` steps are only about 1–2 pixels at 1080p, so the user was right that they looked effectively unchanged.
+
+## v483 change
+
+Only:
+- `rifleAdsZeroY` from `+0.012` to `+0.040`.
+
+This is intentionally a visible upward movement for the next calibration test.
+
+No scope placement/material, recoil, FOV, damage, reload, sound, hip placement, or unrelated weapon changes.
+
+## Next test
+
+Ask only whether the M4 ADS impact visibly moved upward toward the marked reticle point.
+
+If off, tune only `rifleAdsZeroY` from this baseline.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v482 — ADS IMPACT RAISED ONE MORE STEP — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
