@@ -1,3 +1,47 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v497 WEAPON SLOT REMAP TEST — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v497**
+- Loader: `./src/game.js?v=497`
+- v497 gameplay commit: `03d87497e1a70a18ced026eeaef60649b8dd5a3a`
+- v497 loader commit: `d02ff2d926b2b0277944468c9639dcabf9efadad`
+- v497 game blob: `7e62e938c05e7d44a0d8f87c8bc78ae45052cdeb`
+- v496 reload behavior otherwise preserved.
+- **v484 remains last user-confirmed good shooting/ADS baseline.**
+- Protected recovery remains v324 unchanged.
+
+## Weapon slot lineup
+1 M17 / pistol
+2 M4 / rifle
+3 Shotgun
+4 MP5 / smg
+5 M240
+6 DMR
+7 Grenade Launcher
+8 AWM
+
+Exact hotkeys:
+`{Digit1:"pistol",Digit2:"rifle",Digit3:"shotgun",Digit4:"smg",Digit5:"m240",Digit6:"dmr",Digit7:"grenadeLauncher",Digit8:"awm"}`
+
+Mouse-wheel order now matches:
+`["pistol","rifle","shotgun","smg","m240","dmr","grenadeLauncher","awm"]`
+
+Locked weapons are still skipped by mouse-wheel cycling as before.
+
+## Preserved
+- v496 M4 reload timing;
+- articulated arm/body pickup;
+- physical old-mag drop;
+- measured insertion;
+- staged charging;
+- approved M4 ADS/hip/shooting values.
+
+Do not mark v497 good until user tests the number keys and wheel order.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v496 FASTER M4 RELOAD TIMING TEST — READ THIS FIRST
 
 GitHub main is authoritative.
