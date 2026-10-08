@@ -1,3 +1,73 @@
+# M4 TUNING PHASE — 2026-10-07 — v482 — ADS IMPACT RAISED ONE MORE STEP — READ THIS FIRST
+
+This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
+
+## Current live build
+
+- Loader: `./src/game.js?v=482`
+- Active M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v482 gameplay commit: `daa2c5de8de91f35a1454b9b3dfd7a1bd4d96df3`
+- v482 loader commit: `94e14a4b19fad8506b1389774fd8186a27957a2c`
+- Current `src/game.js` SHA: `71a925b5b5ce32b7671cf41008eb29a27c6b5b06`
+- Protected recovery remains **v324** unchanged.
+
+## User-observed v481 result
+
+User supplied a newer ADS test video and said:
+- impact is **still not quite at the marked reticle point**;
+- it is **getting close**.
+
+Current v481 value:
+- `rifleAdsZeroY=+0.009`
+
+The new video still shows the M4 ADS impact slightly low relative to the desired reticle point.
+
+## v482 change
+
+Only the M4 ADS shot zero changes:
+
+Before:
+- `rifleAdsZeroY=+0.009`
+
+Now:
+- `rifleAdsZeroY=+0.012`
+
+This is the same small +0.003 step used in the previous tuning passes.
+
+Only applies while:
+- `aiming===true`
+- `weapon==="rifle"`
+
+## Intentionally unchanged
+
+v482 does **not** change:
+- current M4 ADS recoil baseline;
+- ACOG optical-axis alignment;
+- ACOG rendering/material handling;
+- v470 hip placement;
+- eye distance;
+- FOV;
+- recoil base value;
+- damage/spread/fire rate;
+- reload;
+- sound;
+- temporary M4 starting loadout;
+- unrelated weapons/game systems.
+
+Verification:
+- exact v482 gameplay diff is one line;
+- full `src/game.js` syntax parse passed.
+
+## v482 test focus
+
+Check only:
+1. M4 ADS impact now lands at the user-marked reticle point;
+2. no change to recoil or scope placement/rendering.
+
+If impact is still slightly low/high, continue adjusting only `rifleAdsZeroY`.
+
+---
+
 # M4 TUNING PHASE — 2026-10-07 — v481 — ADS IMPACT RAISED FURTHER TO USER-MARKED POINT — READ THIS FIRST
 
 This section supersedes older current-phase/status sections below. **GitHub main is authoritative.**
