@@ -1,3 +1,90 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v502 SHOTGUN HAND ALIGNMENT / LOOSE SHELL CLEANUP — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current test state
+- Test build: **v502**
+- Loader: `./src/game.js?v=502`
+- Shotgun asset remains `assets/shotgun_test.glb?v=501`
+- v502 gameplay commit: `840303d5c3733e2269580ea43d16ee78755e1c07`
+- v502 game blob: `8d6e3d6dda4c4b4dbb5c1f68ae7081f44d5640a6`
+- v502 loader commit: `c7de27c9501e0ece2b66f65709a1b219e288d93f`
+- v501 GLB replacement remains the model baseline.
+- v500 shotgun reticle remains preserved.
+- v498 shotgun starting loadout remains approved.
+- v497 weapon order remains approved.
+- M4 remains locked/preserved.
+- Protected recovery remains **v324** unchanged.
+
+## Why v501 needed correction
+User screenshot showed:
+- support hand/arm was too low/far forward and did not actually grip the pump;
+- firing hand was also too low relative to the real trigger/grip area;
+- the GLB's loose source shell was permanently visible/floating under the receiver.
+
+## v502 isolated corrections
+
+### Real-geometry hand alignment
+Shotgun hand pose changed from:
+- left `[.17,-.43,-1.83]`
+- right `[.36,-.61,-.72]`
+
+to:
+- left `[.34,-.30,-1.18]`
+- right `[.39,-.40,-.82]`
+
+These targets were chosen from the actual transformed GLB geometry:
+- left hand moves onto the real pump/fore-end region;
+- right hand moves up toward the real trigger/grip region.
+
+### Loose shell removed from idle shotgun
+The source GLB's separate real node:
+- `shell` / `shell_shotgun_0`
+
+is no longer visible on the idle viewmodel.
+
+The exact shell node is cloned before hiding and retained as:
+- `shotgunShellTemplate`
+
+That template is intentionally reserved for the next mechanical step:
+- shell-by-shell reload actor;
+- spent-shell ejection during the real pump cycle.
+
+Do **not** replace it with generic procedural shell geometry unless required.
+
+## Not changed in v502
+- shotgun model scale/placement;
+- shotgun ADS transform;
+- shotgun reticle:
+  - 72 px hip circle;
+  - hidden in ADS;
+- shotgun mechanics:
+  `rate:520, spread:.090, pellets:8, body:.72, recoil:.22, baseMag:8`
+- M4 and all approved weapon work.
+
+## Validation
+- required current handoff/recovery/index/game files re-read before editing;
+- user screenshot inspected;
+- source GLB geometry/hierarchy re-checked;
+- committed v502 source passed syntax parse;
+- updated shotgun hand pose exists exactly once;
+- real shell clone exists exactly once;
+- idle source shell hide exists exactly once;
+- v500 reticle, shotgun stats, and M4 `.040` zero remain unchanged.
+
+## v502 user test target
+Check:
+1. support hand now actually contacts/grips the wooden pump;
+2. firing hand sits naturally at trigger/grip;
+3. no loose red shotgun shell floats under the receiver;
+4. model placement and reticle remain unchanged.
+
+Once hand placement is approved, use `shotgunShellTemplate` for proper shell loading/ejection tied to pump mechanics.
+
+Do not mark v502 confirmed-good until user tests it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v501 SHOTGUN GLB REPLACEMENT TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
