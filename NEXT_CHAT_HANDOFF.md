@@ -1,3 +1,57 @@
+# NEW-CHAT HANDOFF — 2026-10-08 — v498 SHOTGUN TUNING START LOADOUT — READ THIS FIRST
+
+GitHub main is authoritative.
+
+## Current state
+- Test build: **v498**
+- Loader: `./src/game.js?v=498`
+- v498 gameplay commit: `bd21b29dee421163ba18930b7d455a9db0aad0a2`
+- v498 game blob: `1bf441ec33f2e6bf608ea260fe1659ad13828fd6`
+- v498 index/loader commit: `521421204228a17251da9bd03b7d86ff9c41aecd`
+- v497 weapon order remains user-confirmed good.
+- **Shotgun is now the active tuning focus. M4 is preserved/locked.**
+
+## Temporary starting loadout
+- M17 unlocked
+- Shotgun unlocked
+- Shotgun active on spawn
+- M4 locked/not in starting loadout
+- Shotgun ammo starts `8 / 30`
+
+Both initial game state and reset/new-run state use that loadout.
+
+Starting HUD now shows:
+- `SHOTGUN`
+- `8 / 30`
+
+## Approved weapon slots remain
+1 M17
+2 M4
+3 Shotgun
+4 MP5
+5 M240
+6 DMR
+7 Grenade Launcher
+8 AWM
+
+## Preserve M4
+Do not change M4 unless explicitly requested:
+- approved shooting/ADS;
+- `RIFLE_ADS_ZERO_Y=.040`;
+- v496 reload work;
+- asset/transforms.
+
+## Shotgun baseline
+No shotgun mechanics were tuned yet in v498. Current definition remains:
+`rate:520, hold:9999, spread:.090, pellets:8, body:.72, recoil:.22, baseMag:8`
+
+## Test target
+Confirm player starts with Shotgun + M17 and no M4, then proceed with shotgun tuning one isolated change at a time.
+
+Do not mark v498 good until user approves it.
+
+---
+
 # USER-CONFIRMED GOOD — 2026-10-08 — v497 WEAPON SLOT LINEUP APPROVED
 
 User tested v497 and said **"great"**.
