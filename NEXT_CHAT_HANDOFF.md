@@ -1,3 +1,75 @@
+# NEW-CHAT HANDOFF — 2026-10-07 — v487 M4 MAGAZINE/CHARGING AXIS FIX TEST — READ THIS FIRST
+
+GitHub main is authoritative. This section supersedes older current-state notes below.
+
+## Current state
+
+- Test build: **v487**
+- Loader: `./src/game.js?v=487`
+- M4 asset: `assets/ar-15_style_rifle.glb?v=466`
+- v487 gameplay commit: `d6d3e843d9d6cef99bb4655f46cd789f0fbcf5ab`
+- v487 loader commit: `5fb6b4be85ed2f6f43bdae8ccf0695b5acc952f9`
+- v487 `src/game.js` blob SHA: `600a92884d32e661161c7095fd27ea6dbb0cedfc`
+- **v484 remains the last user-confirmed good baseline.**
+- v485 and v486 were tested and rejected.
+- Protected recovery remains **v324** unchanged.
+
+## v486 rejection
+
+User video showed:
+- old mag drop looked good;
+- a magazine still appeared to remain;
+- replacement did not visibly return into the magwell;
+- charging action was not visible.
+
+The remaining problem was model-space axes:
+- magazine insertion axis = **Z**
+- rifle / bolt axis = **Y**
+
+## v487 fixes
+
+- Real seated M4 magazine root is explicitly hidden when old mag is dumped.
+- Fresh magazine stays in the imported M4 coordinate system.
+- Fresh magazine starts below the magwell on Z and travels back to its exact home position:
+  - start `z -= 1.05`
+  - align `z -= .32`
+- At insertion completion, the real magazine root + descendants are made visible again.
+- Real `bolt carrier` now pulls rearward on Y by `.38 * cycle`.
+- Separate `ar15.005` receiver-top/charging-handle part now pulls rearward on Y by `.46 * cycle`.
+- Bolt and charging handle return to saved home positions after the cycle.
+- No large charging-arm sweep was reintroduced; hands stay controlled.
+
+## Preserve locked v484 M4 values
+
+Do not change:
+- hip `.54,-.56,-1.48`
+- pitch `-8°`
+- yaw `0°`
+- roll `-6°`
+- ADS FOV `48`
+- `RIFLE_ADS_ZERO_Y=.040`
+- rate `105`
+- hold `190`
+- spread `.004`
+- body `1`
+- recoil `.105`
+- base mag `12`
+- asset `assets/ar-15_style_rifle.glb?v=466`.
+
+## Test target
+
+Reload and confirm:
+- old mag dumps cleanly;
+- no seated duplicate remains;
+- new mag visibly comes back into the gun;
+- charging handle/bolt pull rearward and return;
+- hands stay controlled;
+- normal hip and ADS return to the approved v484 state.
+
+Do not call v487 good until the user approves it.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-07 — v486 M4 RELOAD FIX TEST — READ THIS FIRST
 
 GitHub main is authoritative. This section supersedes older current-state notes below.
