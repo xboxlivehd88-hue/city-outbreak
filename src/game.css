@@ -76,8 +76,10 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 #restart{display:none}
 /* Restore the original invisible hitbox over the start artwork's SETTINGS
    control. The expanded settings menu uses this EXISTING button. */
-#showControls{position:absolute;right:1.0%;top:.8%;width:6.4%;height:10.6%;padding:0;border:0;background:transparent;color:transparent;box-shadow:none;opacity:.01;pointer-events:auto;z-index:3}
-#showControls:focus-visible{outline:2px solid #b2edff;outline-offset:2px;opacity:.75}
+/* The artwork has two baked icon drawings. Keep only the real SETTINGS
+   icon interactive: its location is left of the old CONTROLS drawing. */
+#showSettings{position:absolute;right:6.3%;top:1%;width:5.7%;height:11.2%;padding:0;border:0;background:transparent;color:transparent;box-shadow:none;opacity:.01;pointer-events:auto;z-index:3}
+#showSettings:focus-visible{outline:2px solid #b2edff;outline-offset:2px;opacity:.75}
 #controlsModal{position:absolute;inset:0;z-index:4;display:none;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:#020405c7;backdrop-filter:blur(4px)}
 #controlsModal.show{display:flex}
 #controlsPanel{width:min(560px,92vw);max-height:82vh;overflow:auto;background:#0a0d0ff2;border:1px solid #ffffff30;border-radius:16px;padding:20px 22px;box-shadow:0 20px 70px #000c}
@@ -155,3 +157,15 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 #graphicsAdvancedModal #controlsCard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px;row-gap:6px;padding:8px 3px 14px}
 #graphicsAdvancedModal #controlsCard .controlRow{font-size:12px}
 @media(max-width:560px){.graphicsSettingsPreset{gap:8px;padding:9px 10px}.graphicsSettingsPreset select{min-width:130px;font-size:11px}.graphicsSettingsPreset label{font-size:11px}#graphicsAdvancedModal #controlsCard{grid-template-columns:1fr}.graphicsTab{font-size:9px!important}}
+
+
+/* v522: The extra CONTROLS drawing is baked into the opening JPG. Mask
+   only its upper-right corner with a shifted section of the SAME artwork.
+   A soft left/bottom edge avoids adding another visible button or panel.
+   The artwork source is unchanged, and the original SETTINGS icon remains. */
+#startScreen::before{
+ content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+ background:url("../assets/city-outbreak-start-v153.jpg.jpg") calc(50% + 16vw) top/cover no-repeat;
+ clip-path:inset(0 0 86.5% 93.3%);
+ opacity:1;
+}
