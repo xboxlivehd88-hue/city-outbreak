@@ -1,3 +1,34 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v517 CHAMBER SHELL ONLY WHEN SHOTGUN IS EMPTY — READ FIRST
+
+**GitHub `main` is authoritative. This newest section supersedes older current build notes.**
+
+## User instruction and latest gameplay state
+- User approved v516's first side-chamber / subsequent bottom-feed shotgun animation and clarified: **"the only time a single shell goes in the right side of the shotgun is when there are no more rounds in the gun."**
+- **v517** gameplay commit `94f60786ebf4fbe988cf84aa4dbc61cc0bc658f2`, `src/game.js` blob `ef37b99b7e411eb4a461a2a567dd69106e02a9c9`.
+- Loader `./src/game.js?v=517`, commit `3f9c7ebf6124b39564884fcdbe78ef111469415c`.
+- User has NOT visually approved v517; only logic validation so far. Protected v324 recovery untouched.
+
+## Only change in gameplay — shotgun reload mode initialization
+- At start of `reload(w="shotgun")`, changed `shotgunReloadShellIndex=0` to `shotgunReloadShellIndex=a.mag===0?0:1`.
+- This reuses ALL existing v516 mechanics unchanged:
+  - Shotgun **completely empty (0 in magazine)**: `shotgunReloadShellIndex===0` for FIRST shell, which uses user-approved canted side-chamber feed. Once inserted, counter increments and shotgun smoothly returns to LEVEL for any remaining rounds loaded from the bottom.
+  - Shotgun **has at least one round remaining (1 to capacity−1)**: index begins at 1; the entire reload uses BOTTOM magazine feed and shotgun never intentionally rotates sideways.
+- Each shell still increases `a.mag`, decreases reserve, and increments `shotgunReloadShellIndex` only after insertion. Shell rate, visual hand paths, audio, ammo quantities unchanged.
+- v516 gun roll/level easing, arm motion, red reload cartridge actor, bottom GLB inserter-based port unchanged. v514 approved shotgun GLB spent shell 0.19 scale/direction unchanged. M4 and every other weapon unchanged.
+
+## Validation
+- Fetched both latest handoffs, protected `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html` and complete `src/game.js` from live `main`.
+- Complete JS passed syntax parser; verified exact v516 roll, side/bottom paths, v514 spent shell and M4 ADS zero retained.
+- Dry-run mode checks for magazine amounts 0, 1, 2, 5 and 7: only 0 starts with side-chamber; all others and every later shell select bottom. No in-browser visual verification yet.
+- Gameplay + loader committed to main. Both handoff files updated as part of v517.
+
+## User test
+Fire shotgun empty and reload: first shell side chamber, shotgun rolls level, later shells feed from bottom. Then reload with e.g. 3–5 shells still in gun: ALL shells feed from the bottom with NO initial side-chamber cant. Confirm gun stays level on partial reload and previous approved ejection remains.
+
+Continue direct GitHub edits with version bump and updated handoffs. Preserve protected v324 checkpoint.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v516 SHOTGUN LEVELS AFTER FIRST SHELL, BOTTOM LOAD REMAINS — READ FIRST
 
 **GitHub main is authoritative. This top entry supersedes older current build notes.**
