@@ -1691,123 +1691,104 @@ const FX={
  grenadeDustMat:new THREE.MeshStandardMaterial({color:0x5c5142,roughness:.86}),
  grenadeFlashMat:new THREE.MeshStandardMaterial({color:0xd29a46,roughness:.58,emissive:0x542b08,emissiveIntensity:.30})
 };
-// v527: One GLB explosion visual for both grenades, without ground-patch growth.
-// The visual is completely separate from the existing damage, knockback and audio.
-// Filter only distinguishable flat ground/crater meshes so the airborne explosion
-// remains. If the GLB is solely a ground patch, fall back to the old particles.
-const EXPLOSION_GLB_URL="assets/floor_smashedexploded.glb?v=527";
-let explosionGlbTemplate=null,explosionGlbAnimations=[],explosionGlbScale=1;
-const activeExplosionGlbs=[];
-new GLTFLoader().load(EXPLOSION_GLB_URL,gltf=>{
- const root=gltf.scene,allMeshes=[];
- root.updateMatrixWorld(true);
- const overallBounds=new THREE.Box3();
- root.traverse(node=>{
-   if(!node.isMesh||!node.geometry)return;
-   if(!node.geometry.boundingBox)node.geometry.computeBoundingBox();
-   const box=node.geometry.boundingBox?.clone().applyMatrix4(node.matrixWorld);
-   if(!box||box.isEmpty())return;
-   const size=box.getSize(new THREE.Vector3());
-   allMeshes.push({node,box,size});
-   overallBounds.union(box);
- });
- if(!allMeshes.length||overallBounds.isEmpty()){
-   console.warn("CITY OUTBREAK: explosion GLB has no visible geometry; using original particles");
-   return;
+// v528: Immediate explosion-only VFX; absolutely NO floor, crater or growth stage.
+// The uploaded floor_smashedexploded.glb stays in assets for future editing, but
+// is intentionally NOT loaded here: its ground-building sequence was unwanted.
+// Shared textures + short-lived sprites keep this efficient on low-end systems.
+// Explosion damage, falloff, projectile physics, sound and ragdoll are unaffected.
+let explosionBurstTextures=null;
+const activeExplosionBursts=[];
+function makeExplosionBurstTexture(smoke){
+ const canvas=document.createElement("canvas");
+ canvas.width=96;canvas.height=96;
+ const ctx=canvas.getContext("2d");
+ const grad=ctx.createRadialGradient(48,48,2,48,48,47);
+ if(smoke){
+   grad.addColorStop(0,"rgba(255,255,255,.87)");
+   grad.addColorStop(.33,"rgba(255,255,255,.62)");
+   grad.addColorStop(.70,"rgba(255,255,255,.22)");
+ }else{
+   grad.addColorStop(0,"rgba(255,255,255,1)");
+   grad.addColorStop(.25,"rgba(255,255,255,.96)");
+   grad.addColorStop(.61,"rgba(255,255,255,.48)");
  }
- const total=overallBounds.getSize(new THREE.Vector3());
- const totalWidth=Math.max(total.x,total.z,.001);
- const groundMeshes=allMeshes.filter(({node,box,size})=>{
-   const footprint=Math.max(size.x,size.z);
-   const flat=size.y<=Math.max(.06,footprint*.10);
-   const low=box.min.y<=overallBounds.min.y+Math.max(.08,total.y*.13);
-   const broad=footprint>=totalWidth*.38;
-   const materials=Array.isArray(node.material)?node.material:[node.material];
-   const labels=[node.name,node.geometry.name,...materials.map(m=>m?.name)].join(" ");
-   const namedGround=/(?:floor|ground|crater|terrain|groundpatch|surface)/i.test(labels);
-   return low&&((flat&&broad)||(namedGround&&size.y<=footprint*.25));
- });
- // Do not accidentally erase the only explosion mesh: use original backup FX
- // if the file cannot provide a separate airborne explosion component.
- if(groundMeshes.length===allMeshes.length){
-   console.warn("CITY OUTBREAK: GLB appears to be a ground-only effect; using original explosion particles");
-   return;
- }
- for(const {node} of groundMeshes)node.visible=false;
- const visibleBounds=new THREE.Box3();
- for(const {node,box} of allMeshes)if(node.visible)visibleBounds.union(box);
- const size=visibleBounds.getSize(new THREE.Vector3());
- const maxDimension=Math.max(size.x,size.y,size.z);
- if(!Number.isFinite(maxDimension)||maxDimension<=.0001){
-   console.warn("CITY OUTBREAK: explosion GLB has no isolated explosion geometry");
-   return;
- }
- const center=visibleBounds.getCenter(new THREE.Vector3());
- const anchor=new THREE.Group();
- anchor.position.set(-center.x,-visibleBounds.min.y,-center.z);
- anchor.add(root);
- const template=new THREE.Group();
- template.name="ExplosionGLBTemplate";
- template.add(anchor);
- explosionGlbTemplate=template;
- explosionGlbAnimations=gltf.animations||[];
- explosionGlbScale=1/maxDimension;
- console.log("CITY OUTBREAK: explosion-only GLB ready",{
-   removedGroundMeshes:groundMeshes.length,visibleMeshes:allMeshes.length-groundMeshes.length,
-   animations:explosionGlbAnimations.map(clip=>clip.name),
-   size:[size.x,size.y,size.z]
- });
-},undefined,e=>console.warn("CITY OUTBREAK: explosion GLB unavailable; using original particles",e));
-function clearExplosionGlbs(){
- for(const e of activeExplosionGlbs){
-   e.mixer?.stopAllAction();
-   if(e.object.parent)e.object.parent.remove(e.object);
- }
- activeExplosionGlbs.length=0;
+ grad.addColorStop(1,"rgba(255,255,255,0)");
+ ctx.fillStyle=grad;ctx.fillRect(0,0,96,96);
+ const texture=new THREE.CanvasTexture(canvas);
+ texture.colorSpace=THREE.SRGBColorSpace;
+ return texture;
 }
-function spawnExplosionGlb(position,isLauncher){
- if(!explosionGlbTemplate)return false;
+function clearExplosionBurst(burst){
+ for(const particle of burst.particles)particle.sprite.material.dispose();
+ if(burst.group.parent)burst.group.parent.remove(burst.group);
+}
+function clearExplosionGlbs(){
+ for(const burst of activeExplosionBursts)clearExplosionBurst(burst);
+ activeExplosionBursts.length=0;
+}
+function spawnExplosionBurst(position,isLauncher){
+ if(!explosionBurstTextures){
+   explosionBurstTextures={
+     fire:makeExplosionBurstTexture(false),
+     smoke:makeExplosionBurstTexture(true)
+   };
+ }
  const limit=graphicsQuality==="low"?2:graphicsQuality==="medium"?3:4;
- while(activeExplosionGlbs.length>=limit){
-   const removed=activeExplosionGlbs.shift();
-   removed.mixer?.stopAllAction();
-   if(removed.object.parent)removed.object.parent.remove(removed.object);
+ while(activeExplosionBursts.length>=limit)clearExplosionBurst(activeExplosionBursts.shift());
+ const group=new THREE.Group();
+ group.name=isLauncher?"LauncherExplosionBurst":"GrenadeExplosionBurst";
+ group.position.copy(position);
+ scene.add(group);
+ const particles=[];
+ const radius=isLauncher?2.05:2.45;
+ const add=(kind,x,y,z,size,color,opacity,vx,vy,vz,life)=>{
+   const smoke=kind==="smoke";
+   const sprite=new THREE.Sprite(new THREE.SpriteMaterial({
+     map:smoke?explosionBurstTextures.smoke:explosionBurstTextures.fire,
+     color,transparent:true,opacity,
+     depthWrite:false,depthTest:true,
+     blending:smoke?THREE.NormalBlending:THREE.AdditiveBlending
+   }));
+   sprite.position.set(x,y,z);
+   sprite.scale.set(size,size,1); // final size immediately; never animate scale
+   group.add(sprite);
+   particles.push({sprite,velocity:new THREE.Vector3(vx,vy,vz),opacity,life,age:0,smoke});
+ };
+ // One immediate fireball at the impact point. No floor meshes or ground decals.
+ add("fire",0,.85,0,radius*1.20,0xffe0a1,.98,0,.75,0,.23);
+ add("fire",0,1.35,0,radius*.93,0xff852a,.85,0,1.4,0,.36);
+ const count=Math.max(7,cosmeticParticleCount(isLauncher?22:30));
+ for(let i=0;i<count;i++){
+   const smoke=i>=Math.floor(count*.72);
+   const angle=Math.random()*Math.PI*2;
+   const radial=.18+Math.random()*.75;
+   const outward=(smoke?1.15:2.15)+Math.random()*(smoke?1.0:2.9);
+   const base=.2+Math.random()*1.25;
+   const size=(smoke?.73:.52)+Math.random()*(smoke?.90:.95);
+   const color=smoke?0x44403c:(i%5===0?0xffdc7c:i%3===0?0xffaa38:0xe84916);
+   add(smoke?"smoke":"fire",
+       Math.cos(angle)*radial,base,Math.sin(angle)*radial,
+       size,color,smoke?.66:.87,
+       Math.cos(angle)*outward,(smoke?1.25:2.4)+Math.random()*2.0,
+       Math.sin(angle)*outward,smoke?.85:.35+Math.random()*.22);
  }
- const object=SkeletonUtils.clone(explosionGlbTemplate);
- object.name=isLauncher?"LauncherExplosionGLB":"GrenadeExplosionGLB";
- object.position.copy(position);
- object.position.y+=.025;
- object.traverse(node=>{
-   if(node.isMesh){node.castShadow=false;node.receiveShadow=false}
- });
- // Spawn at its FINAL size immediately. No enlargement, pop or scale animation
- // is added by CITY OUTBREAK; only the asset's own explosion animation plays.
- const diameter=isLauncher?4.2:4.8;
- object.scale.setScalar(explosionGlbScale*diameter);
- scene.add(object);
- let mixer=null,duration=1.35;
- if(explosionGlbAnimations.length){
-   mixer=new THREE.AnimationMixer(object);
-   duration=Math.min(5,Math.max(1.0,...explosionGlbAnimations.map(clip=>clip.duration+.18)));
-   for(const clip of explosionGlbAnimations){
-     const action=mixer.clipAction(clip);
-     action.setLoop(THREE.LoopOnce,1);
-     action.clampWhenFinished=true;
-     action.play();
-   }
- }
- activeExplosionGlbs.push({object,mixer,life:duration,t:0});
- return true;
+ activeExplosionBursts.push({group,particles,age:0,life:1.0});
 }
 function updateExplosionGlbs(dt){
- for(let i=activeExplosionGlbs.length-1;i>=0;i--){
-   const fx=activeExplosionGlbs[i];
-   fx.t+=dt;
-   fx.mixer?.update(dt);
-   if(fx.t>=fx.life){
-     fx.mixer?.stopAllAction();
-     if(fx.object.parent)fx.object.parent.remove(fx.object);
-     activeExplosionGlbs.splice(i,1);
+ for(let i=activeExplosionBursts.length-1;i>=0;i--){
+   const fx=activeExplosionBursts[i];
+   fx.age+=dt;
+   for(const p of fx.particles){
+     p.age+=dt;
+     const t=Math.min(1,p.age/p.life);
+     // Animation only fades and moves airborne fire/smoke. No scaling whatsoever.
+     p.sprite.material.opacity=p.opacity*Math.pow(1-t,p.smoke?1.4:1.8);
+     p.sprite.position.addScaledVector(p.velocity,dt);
+     p.velocity.multiplyScalar(Math.exp(-dt*(p.smoke?1.6:3.2)));
+   }
+   if(fx.age>=fx.life){
+     clearExplosionBurst(fx);
+     activeExplosionBursts.splice(i,1);
    }
  }
 }
@@ -5941,9 +5922,7 @@ function blastReact(z,origin,strength=1){
 function explodeLauncherRound(g){
  noise(.34,.95,1100);tone(46,.42,"sine",.48);tone(92,.20,"square",.20);
  const p=g.q.position.clone();scene.remove(g.q);
- if(!spawnExplosionGlb(p,true)){
-  for(let i=0;i<cosmeticParticleCount(34);i++){let q=new THREE.Mesh(FX.explosionGeo,i%4?FX.launcherDustMat:FX.launcherFlashMat);q.scale.setScalar(.40+rnd()*1.0);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*12,rnd()*7,(rnd()-.5)*12),life:.30+rnd()*.45})}
- }
+ spawnExplosionBurst(p,true);
  for(const z of living()){
    const d=z.g.position.distanceTo(p);
    if(d<6.5){
@@ -5978,9 +5957,7 @@ function radiatedSpinTopTarget(z){
 function explodeGrenade(g){
  noise(.42,.95,900);tone(48,.45,"sine",.42);
  const p=g.q.position.clone();scene.remove(g.q);
- if(!spawnExplosionGlb(p,false)){
-  for(let i=0;i<cosmeticParticleCount(55);i++){let q=new THREE.Mesh(FX.explosionGeo,i%3?FX.grenadeDustMat:FX.grenadeFlashMat);q.scale.setScalar(.45+rnd()*1.15);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*10,rnd()*7,(rnd()-.5)*10),life:.45+rnd()*.55})}
- }
+ spawnExplosionBurst(p,false);
  for(const z of living()){
    const d=z.g.position.distanceTo(p);
    if(d<7.5){

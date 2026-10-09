@@ -1,3 +1,18 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v528 GUARANTEED EXPLOSION-ONLY, NO FLOOR / CRATER GLB — READ FIRST
+
+**Live GitHub main authoritative. User rejected v526 AND v527: "still has that gound built then explodes why did you even have it do that?" Their intended visual is ONLY an immediate explosion, NO built-up ground patch and NO artificial growth. v525 title / settings menu remains approved; preserve.**
+
+## v528 implementation
+- v526/v527 mistake: the uploaded `assets/floor_smashedexploded.glb` is a mixed staged ground/explosion scene, and v527 heuristic filtering could not reliably isolate the ground component. The model bytes remain safely IN GITHUB but are **no longer loaded or rendered as grenade explosion VFX**. This is a deliberate fallback to guarantee the unwanted ground stage cannot return. Don't claim it is now using the user's GLB animation.
+- Replaced the GLB VFX section in `src/game.js` with a short, immediate THREE.Sprite fireball/embers/smoke effect (~1 second); sprites use once-generated shared 96px radial CanvasTextures, fixed scale from the first frame, and only move upwards/outwards + fade. **No ground mesh, decal, crater, terrain animation, scale-up, or delayed buildup.**
+- Both `explodeGrenade()` and `explodeLauncherRound()` now call `spawnExplosionBurst(p, false/true)` directly. Their damage, blast radii, knockdown/ragdoll calls, projectile trajectories, sound and fuse logic were not modified. Low/Medium/High settings change cosmetic sprite count and simultaneous effect cap only.
+- Existing `updateExplosionGlbs(dt)` / `clearExplosionGlbs()` function names retained for minimal integration diff but now only update/remove short-lived sprite effects, clearing on reset, and pause naturally freezes effects. No external GLB loading overhead anymore. `index.html` game.js loader bumped to `v=528`; CSS remains v525 and opening artwork unchanged.
+- **Important limitation:** This is a guaranteed ground-free procedural explosion, NOT a reconstruction of the exact GLB's explosion component. To use the exact uploaded explosion without ground, user will ultimately need the animation separated in the source GLB or reliable mesh/clip inspection; current 9.7 MB binary inaccessible to GitHub text connector.
+- Validation: compare preserved damage formulas in BOTH explosion routines; code syntax passed; confirm no live GLB usage; verify handoffs, unchanged CSS, protected v324 checkpoint. User should test immediately at https://xboxlivehd88-hue.github.io/city-outbreak/?v=528-direct-explosion
+- Test: G hand grenade and grenade-launcher impact (weapon 7 once purchased). New fireball should appear on detonation *immediately*, disappear in ~1s, and never create flat ground. Confirm original weapon gameplay and zombies still react. Do not claim visual approval until user confirms.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v527 EXPLOSION ONLY, NO EXPANDING GROUND PATCH — READ FIRST
 
 **GitHub `main` authoritative. User disliked v526 grenade effects because they grow into a huge patch of ground before exploding. Their explicit instruction: "i dont need the growth i just want the explosion". Preserve user-approved v525 start-screen artwork and all five Settings tabs.**
