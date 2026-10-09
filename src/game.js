@@ -1691,27 +1691,60 @@ const FX={
  grenadeDustMat:new THREE.MeshStandardMaterial({color:0x5c5142,roughness:.86}),
  grenadeFlashMat:new THREE.MeshStandardMaterial({color:0xd29a46,roughness:.58,emissive:0x542b08,emissiveIntensity:.30})
 };
-// v526: One reusable user-supplied GLB replaces both grenade explosion visuals.
-// Damage, radius, knockback and sound remain in the original weapon functions.
-// Only the visual model is loaded here; the old cheap particles remain as fallback
-// while the model loads or if it cannot be displayed.
-const EXPLOSION_GLB_URL="assets/floor_smashedexploded.glb?v=526";
+// v527: One GLB explosion visual for both grenades, without ground-patch growth.
+// The visual is completely separate from the existing damage, knockback and audio.
+// Filter only distinguishable flat ground/crater meshes so the airborne explosion
+// remains. If the GLB is solely a ground patch, fall back to the old particles.
+const EXPLOSION_GLB_URL="assets/floor_smashedexploded.glb?v=527";
 let explosionGlbTemplate=null,explosionGlbAnimations=[],explosionGlbScale=1;
 const activeExplosionGlbs=[];
 new GLTFLoader().load(EXPLOSION_GLB_URL,gltf=>{
- const root=gltf.scene;
- const bounds=new THREE.Box3().setFromObject(root);
- const size=bounds.getSize(new THREE.Vector3());
- const maxDimension=Math.max(size.x,size.y,size.z);
- if(!Number.isFinite(maxDimension)||maxDimension<=.0001){
-   console.warn("CITY OUTBREAK: explosion GLB has no usable geometry; using backup particles");
+ const root=gltf.scene,allMeshes=[];
+ root.updateMatrixWorld(true);
+ const overallBounds=new THREE.Box3();
+ root.traverse(node=>{
+   if(!node.isMesh||!node.geometry)return;
+   if(!node.geometry.boundingBox)node.geometry.computeBoundingBox();
+   const box=node.geometry.boundingBox?.clone().applyMatrix4(node.matrixWorld);
+   if(!box||box.isEmpty())return;
+   const size=box.getSize(new THREE.Vector3());
+   allMeshes.push({node,box,size});
+   overallBounds.union(box);
+ });
+ if(!allMeshes.length||overallBounds.isEmpty()){
+   console.warn("CITY OUTBREAK: explosion GLB has no visible geometry; using original particles");
    return;
  }
- // Retain original GLB orientation and animation targets. Offset with a parent
- // so each instance pivots around the bottom-centre of the artwork.
- const center=bounds.getCenter(new THREE.Vector3());
+ const total=overallBounds.getSize(new THREE.Vector3());
+ const totalWidth=Math.max(total.x,total.z,.001);
+ const groundMeshes=allMeshes.filter(({node,box,size})=>{
+   const footprint=Math.max(size.x,size.z);
+   const flat=size.y<=Math.max(.06,footprint*.10);
+   const low=box.min.y<=overallBounds.min.y+Math.max(.08,total.y*.13);
+   const broad=footprint>=totalWidth*.38;
+   const materials=Array.isArray(node.material)?node.material:[node.material];
+   const labels=[node.name,node.geometry.name,...materials.map(m=>m?.name)].join(" ");
+   const namedGround=/(?:floor|ground|crater|terrain|groundpatch|surface)/i.test(labels);
+   return low&&((flat&&broad)||(namedGround&&size.y<=footprint*.25));
+ });
+ // Do not accidentally erase the only explosion mesh: use original backup FX
+ // if the file cannot provide a separate airborne explosion component.
+ if(groundMeshes.length===allMeshes.length){
+   console.warn("CITY OUTBREAK: GLB appears to be a ground-only effect; using original explosion particles");
+   return;
+ }
+ for(const {node} of groundMeshes)node.visible=false;
+ const visibleBounds=new THREE.Box3();
+ for(const {node,box} of allMeshes)if(node.visible)visibleBounds.union(box);
+ const size=visibleBounds.getSize(new THREE.Vector3());
+ const maxDimension=Math.max(size.x,size.y,size.z);
+ if(!Number.isFinite(maxDimension)||maxDimension<=.0001){
+   console.warn("CITY OUTBREAK: explosion GLB has no isolated explosion geometry");
+   return;
+ }
+ const center=visibleBounds.getCenter(new THREE.Vector3());
  const anchor=new THREE.Group();
- anchor.position.set(-center.x,-bounds.min.y,-center.z);
+ anchor.position.set(-center.x,-visibleBounds.min.y,-center.z);
  anchor.add(root);
  const template=new THREE.Group();
  template.name="ExplosionGLBTemplate";
@@ -1719,11 +1752,12 @@ new GLTFLoader().load(EXPLOSION_GLB_URL,gltf=>{
  explosionGlbTemplate=template;
  explosionGlbAnimations=gltf.animations||[];
  explosionGlbScale=1/maxDimension;
- console.log("CITY OUTBREAK: explosion GLB ready",{
-   asset:EXPLOSION_GLB_URL,animations:explosionGlbAnimations.map(clip=>clip.name),
+ console.log("CITY OUTBREAK: explosion-only GLB ready",{
+   removedGroundMeshes:groundMeshes.length,visibleMeshes:allMeshes.length-groundMeshes.length,
+   animations:explosionGlbAnimations.map(clip=>clip.name),
    size:[size.x,size.y,size.z]
  });
-},undefined,e=>console.warn("CITY OUTBREAK: explosion GLB unavailable; using backup particles",e));
+},undefined,e=>console.warn("CITY OUTBREAK: explosion GLB unavailable; using original particles",e));
 function clearExplosionGlbs(){
  for(const e of activeExplosionGlbs){
    e.mixer?.stopAllAction();
@@ -1746,9 +1780,10 @@ function spawnExplosionGlb(position,isLauncher){
  object.traverse(node=>{
    if(node.isMesh){node.castShadow=false;node.receiveShadow=false}
  });
- const diameter=isLauncher?6.5:7.7;
- const finalScale=explosionGlbScale*diameter;
- object.scale.setScalar(finalScale*.30);
+ // Spawn at its FINAL size immediately. No enlargement, pop or scale animation
+ // is added by CITY OUTBREAK; only the asset's own explosion animation plays.
+ const diameter=isLauncher?4.2:4.8;
+ object.scale.setScalar(explosionGlbScale*diameter);
  scene.add(object);
  let mixer=null,duration=1.35;
  if(explosionGlbAnimations.length){
@@ -1761,7 +1796,7 @@ function spawnExplosionGlb(position,isLauncher){
      action.play();
    }
  }
- activeExplosionGlbs.push({object,mixer,life:duration,t:0,scale:finalScale});
+ activeExplosionGlbs.push({object,mixer,life:duration,t:0});
  return true;
 }
 function updateExplosionGlbs(dt){
@@ -1769,10 +1804,6 @@ function updateExplosionGlbs(dt){
    const fx=activeExplosionGlbs[i];
    fx.t+=dt;
    fx.mixer?.update(dt);
-   // Quick pop gives unanimated crater/explosion meshes a visible impact beat.
-   const rise=Math.min(1,fx.t/.16);
-   const smooth=rise*rise*(3-2*rise);
-   fx.object.scale.setScalar(fx.scale*(.30+.70*smooth));
    if(fx.t>=fx.life){
      fx.mixer?.stopAllAction();
      if(fx.object.parent)fx.object.parent.remove(fx.object);

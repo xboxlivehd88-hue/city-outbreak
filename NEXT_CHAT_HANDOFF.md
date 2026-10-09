@@ -1,3 +1,18 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v527 EXPLOSION ONLY, NO EXPANDING GROUND PATCH — READ FIRST
+
+**GitHub `main` authoritative. User disliked v526 grenade effects because they grow into a huge patch of ground before exploding. Their explicit instruction: "i dont need the growth i just want the explosion". Preserve user-approved v525 start-screen artwork and all five Settings tabs.**
+
+## v527 changes
+- In `src/game.js`, removed v526's 0.30→1.00 explosion-GLB scaling during the first 0.16s. New visual effect appears at FINAL size immediately; no custom growth, pop or expanding crater timing.
+- Both hand grenade and grenade launcher still use the same uploaded `assets/floor_smashedexploded.glb`, now loaded as `?v=527`. At one-time model load, the scene is scanned for **separate low, broad, very flat ground/floor/crater meshes**, by conservative geometry and names. They are hidden, leaving the remaining visible explosion geometry and its original GLB animation. Bounds/scale are recomputed from retained visible geometry so the ground does not make the blast tiny or enormous.
+- If the GLB is a **single, inseparable ground-only mesh**, the code intentionally uses the original cheap explosion particles rather than display the user's disliked ground patch. There is NO guarantee model components can be separated without inspecting binary internals. New visual sizes target 4.2 units launcher / 4.8 units grenade, reduced from v526 6.5 / 7.7. Effect instances still share GLB geometry and are capped according to graphics quality.
+- Original explosion SOUND, gameplay DAMAGE, radii, zombie impulses, and ragdoll routines are **unchanged**; `explodeLauncherRound()` and `explodeGrenade()` call the same `spawnExplosionGlb()` introduced in v526. Reset/pause cleanup remains. `index.html` loader only bumped JS to `src/game.js?v=527`; existing CSS, image and controls untouched. Protected v324 checkpoint never edited.
+- JavaScript syntax / code inspection passed, but the 9.7MB binary GLB was inaccessible to direct inspection through the GitHub text connector. This is a targeted best-effort visual correction; user live visual confirmation required. Do not claim perfect look before test.
+- Test link after successful Pages deploy: https://xboxlivehd88-hue.github.io/city-outbreak/?v=527-explosion-only
+- Ask user to throw a grenade (G), fire the grenade launcher (7, once unlocked), look for direct blast without expanding floor slab, and verify zombie knockdowns. If the GLB's embedded animation still grows ground, investigate separating/replacing the specific track; do not change gameplay or approved menu.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v526 NEW GLB EXPLOSIONS FOR BOTH GRENADES — READ FIRST
 
 **Live GitHub `main` authoritative. User approved v525 including widescreen title + START/SETTINGS alignment. Do not change that UI. User uploaded `assets/floor_smashedexploded.glb` for BOTH hand grenade and grenade-launcher explosion visuals.**
