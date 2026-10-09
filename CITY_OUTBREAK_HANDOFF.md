@@ -1,3 +1,49 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v504 SHOTGUN LEFT CANT / RIGHT-SIDE TUBE RELOAD — READ FIRST
+
+GitHub `main` is authoritative. This top section supersedes all older current-state notes.
+
+## Latest user direction
+User approved the v503 shotgun direction ("ok i like it") and asked for the shotgun itself to be turned **onto its left side during reload**, exposing its **right-side shell-loading area**. They explicitly want implementation in GitHub, not more proposals/questions.
+
+## Latest test build — NOT YET USER-CONFIRMED
+- v504: `./src/game.js?v=504` via `index.html`
+- v504 gameplay commit: `8e6f83e9dcd22417a456ac8234db38d4cbab2f30`
+- v504 game blob: `0da91e4e0adeb9bcf635b45168ebbe65d64a7244`
+- Loader commit: `98931d10f6e3083195e709d560002f27ca5453cb`
+- Shotgun GLB remains `assets/shotgun_test.glb?v=501`.
+- CSS stays v500; no changes.
+- v503 shotgun model/ADS/hand targets/right-side shell-by-shell behavior preserved.
+- v497 weapon order, approved M4, and protected v324 recovery untouched.
+
+## Isolated v504 change
+- Added persistent `shotgunReloadCant` state, smoothly damped in/out in the main `move(dt)` weapon transform, and reset when rebuilding weapons.
+- The shotgun now rolls **+0.70 radians (~40 degrees)** left (positive Z) with a slight **-0.17 rad Y yaw**, making the right (+X) side of the receiver more visible.
+- Gun and both arms are repositioned to pivot about the actual measured right firing-hand grip. Gun-local shell actor and support-hand targets follow the rotated gun, rather than remaining in an upright orientation.
+- The roll stays held through all shells, **not** driven by the per-shell `rp.arch` cycle (which reset every 560ms and made the gun snap upright between rounds).
+- After the final shell, gun slowly returns to its normal ready orientation. Right hand keeps the grip without per-shell bobbing.
+- Original `updateShotgunReloadFX` hand/body/right-side port path, GLB shell actor, sound, reload timing and ammo increments remain intact.
+- All other weapons still use their exact pre-v504 reload transforms.
+
+## Validation
+- Re-read top of both handoff documents, current recovery pointer, index.html and game.js from latest `main`.
+- Patched only the shotgun-specific transform code and state plus neutral right-hand grip during shotgun reload.
+- Parsed the complete edited game.js with JavaScript syntax parser (PASS).
+- Verified unchanged M4 `RIFLE_ADS_ZERO_Y=.040`, shotgun ADS `z:-.30`, shotgun 8-pellet stats, weapon cycle order and shell animation code.
+- Damping continuity calculation showed smooth progression (not resetting each shell).
+- No browser gameplay/visual confirmation yet; do not claim user-approved or visually verified.
+
+## User test focus
+Fire 2–4 shells, press R:
+1. Shotgun tilts to its left and visibly presents the right receiver side;
+2. right hand holds grip, left hand feeds each shell into right-side loading area;
+3. gun stays on its left side through multiple shells instead of bouncing each cycle;
+4. returns naturally to hip-ready orientation afterward;
+5. normal hip/ADS, firing, ammo count, and reticle unchanged.
+
+Preserve approved M4 work. Make further adjustments only in response to user's actual test feedback.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v503 SHOTGUN ADS WIDTH / GEOMETRY HANDS / RIGHT-SIDE SHELL RELOAD — READ FIRST
 
 GitHub `main` remains authoritative. This top section supersedes prior current-state notes.
