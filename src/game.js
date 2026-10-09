@@ -127,7 +127,14 @@ const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new
 // High matches v517 exactly. Graphics presets never modify collision, AI,
 // weapon handling, models or world geometry.
 const GRAPHICS_QUALITY_KEY="city-outbreak-graphics-v1";
-let graphicsQuality="high",graphicsRainCount=620,graphicsLightLimit=Infinity;
+const GRAPHICS_CUSTOM_KEY="city-outbreak-graphics-custom-v2";
+const GRAPHICS_PRESETS={
+ high:{resolution:1.10,shadows:true,rain:620,splashes:true,lights:"full"},
+ medium:{resolution:.85,shadows:false,rain:310,splashes:false,lights:"half"},
+ low:{resolution:.60,shadows:false,rain:0,splashes:false,lights:"off"}
+};
+let graphicsQuality="high",graphicsOptions={...GRAPHICS_PRESETS.high};
+let graphicsRainCount=620,graphicsLightLimit=Infinity,graphicsCustomOptions=null;
 
 // v344 early-night atmosphere: dark but still readable, with cool moon fill
 // and enough exposure left for the warm street lamps to visibly light the road.
@@ -387,7 +394,7 @@ function updateRainEffect(dt,t){
    rainPositions[j+5]=rainZ[i]-leanZ;
  }
  rainPositionAttr.needsUpdate=true;
- if(graphicsQuality==="high")updateRainSplashes(dt);
+ if(graphicsOptions.splashes)updateRainSplashes(dt);
 }
 document.documentElement.dataset.rainEffect="world-space-heavy-wet";
 document.documentElement.dataset.rainDropCount=String(RAIN_DROP_COUNT);
@@ -1155,7 +1162,7 @@ function setupStreetLampLighting(placements){
  document.documentElement.dataset.streetLampAlwaysOnGlow=String(streetLampLightHeads.length);
  // The city GLB (and therefore its lamp pool) loads asynchronously.
  // Recompute the chosen light budget as soon as lamps become available.
- graphicsLightLimit=graphicsQuality==="low"?0:graphicsQuality==="medium"?Math.ceil(streetLampLightPool.length/2):Infinity;
+ graphicsLightLimit=graphicsOptions.lights==="off"?0:graphicsOptions.lights==="half"?Math.ceil(streetLampLightPool.length/2):Infinity;
  updateStreetLampLighting(performance.now(),true);
 }
 function updateStreetLampLighting(t,force=false){
@@ -6605,32 +6612,98 @@ const perfGuard=createPerformanceGuard({
 setupWebGLContextLossHandler(cv,()=>show("GRAPHICS RESET — REFRESH IF NEEDED"));
 const resizeRenderer=setupRendererResize({renderer:ren,camera:cam});
 // Switch presets instantly from the startup menu or pause overlay.
-function applyGraphicsQuality(value){
- const preset=["low","medium","high"].includes(value)?value:"high";
- graphicsQuality=preset;
- const ratioCap=preset==="low"?.60:preset==="medium"?.85:1.10;
- ren.setPixelRatio(Math.min(devicePixelRatio||1,ratioCap));
+// Presets remain the quick shortcuts; each advanced option is independently
+// adjustable like a typical PC game Video/Graphics menu.
+function normalizeGraphicsOptions(input){
+ const src=input&&typeof input==="object"?input:GRAPHICS_PRESETS.high;
+ return {
+  resolution:[.60,.75,.85,1.10].includes(Number(src.resolution))?Number(src.resolution):1.10,
+  shadows:src.shadows===true,
+  rain:[0,310,620].includes(Number(src.rain))?Number(src.rain):620,
+  splashes:src.splashes===true,
+  lights:["off","half","full"].includes(src.lights)?src.lights:"full"
+ };
+}
+function applyGraphicsOptions(input,presetName="custom"){
+ const settings=normalizeGraphicsOptions(input);
+ graphicsOptions=settings;
+ graphicsQuality=presetName;
+ ren.setPixelRatio(Math.min(devicePixelRatio||1,settings.resolution));
  resizeRenderer();
- const shadows=preset==="high";
- ren.shadowMap.enabled=shadows;
- sun.castShadow=shadows;
+ ren.shadowMap.enabled=settings.shadows;
+ sun.castShadow=settings.shadows;
  ren.shadowMap.needsUpdate=true;
- graphicsRainCount=preset==="low"?0:preset==="medium"?310:RAIN_DROP_COUNT;
+ graphicsRainCount=settings.rain;
  rainGeometry.setDrawRange(0,graphicsRainCount*2);
  rainLines.visible=graphicsRainCount>0;
- rainSplashes.visible=preset==="high";
- graphicsLightLimit=preset==="low"?0:preset==="medium"?Math.ceil(streetLampLightPool.length/2):Infinity;
+ rainSplashes.visible=graphicsRainCount>0&&settings.splashes;
+ graphicsLightLimit=settings.lights==="off"?0:settings.lights==="half"?Math.ceil(streetLampLightPool.length/2):Infinity;
  updateStreetLampLighting(performance.now(),true);
- for(const select of document.querySelectorAll(".graphicsQualitySelect"))select.value=preset;
- document.documentElement.dataset.graphicsQuality=preset;
- try{localStorage.setItem(GRAPHICS_QUALITY_KEY,preset)}catch(_){}
+ for(const select of document.querySelectorAll(".graphicsQualitySelect"))select.value=graphicsQuality;
+ for(const input of document.querySelectorAll("[data-graphics-option]")){
+  const key=input.dataset.graphicsOption;
+  if(Object.prototype.hasOwnProperty.call(settings,key))input.value=String(settings[key]);
+ }
+ const label=document.querySelector("#graphicsPresetState");
+ if(label)label.textContent=graphicsQuality==="custom"?"CUSTOM — your settings":"PRESET — "+graphicsQuality.toUpperCase();
+ document.documentElement.dataset.graphicsQuality=graphicsQuality;
+ try{
+  localStorage.setItem(GRAPHICS_QUALITY_KEY,graphicsQuality);
+  if(graphicsQuality==="custom"){
+   graphicsCustomOptions={...settings};
+   localStorage.setItem(GRAPHICS_CUSTOM_KEY,JSON.stringify(graphicsCustomOptions));
+  }
+ }catch(_){}
 }
+function applyGraphicsQuality(value){
+ if(value==="custom"){
+  applyGraphicsOptions(graphicsCustomOptions||graphicsOptions,"custom");
+  return;
+ }
+ const preset=Object.prototype.hasOwnProperty.call(GRAPHICS_PRESETS,value)?value:"high";
+ applyGraphicsOptions(GRAPHICS_PRESETS[preset],preset);
+}
+const graphicsModal=document.querySelector("#graphicsAdvancedModal");
+function openGraphicsModal(){
+ if(!graphicsModal)return;
+ graphicsModal.classList.add("show");
+ graphicsModal.setAttribute("aria-hidden","false");
+ graphicsModal.querySelector("#closeAdvancedGraphics")?.focus();
+}
+function closeGraphicsModal(){
+ if(!graphicsModal)return;
+ graphicsModal.classList.remove("show");
+ graphicsModal.setAttribute("aria-hidden","true");
+}
+for(const button of document.querySelectorAll(".openAdvancedGraphics")){
+ button.addEventListener("click",openGraphicsModal);
+}
+document.querySelector("#closeAdvancedGraphics")?.addEventListener("click",closeGraphicsModal);
+graphicsModal?.addEventListener("click",e=>{if(e.target===graphicsModal)closeGraphicsModal()});
 for(const select of document.querySelectorAll(".graphicsQualitySelect")){
- select.addEventListener("change",()=>applyGraphicsQuality(select.value));
+ select.addEventListener("change",()=>{
+  applyGraphicsQuality(select.value);
+  if(select.value==="custom")openGraphicsModal();
+ });
 }
-let savedGraphicsQuality="high";
-try{savedGraphicsQuality=localStorage.getItem(GRAPHICS_QUALITY_KEY)||"high"}catch(_){}
-applyGraphicsQuality(savedGraphicsQuality);
+for(const input of document.querySelectorAll("[data-graphics-option]")){
+ input.addEventListener("change",()=>{
+  const key=input.dataset.graphicsOption;
+  if(!Object.prototype.hasOwnProperty.call(graphicsOptions,key))return;
+  const next={...graphicsOptions};
+  next[key]=key==="resolution"||key==="rain"?Number(input.value):
+   key==="shadows"||key==="splashes"?input.value==="true":input.value;
+  applyGraphicsOptions(next,"custom");
+ });
+}
+// Upgrade the earlier preset-only choice, and restore saved Custom settings.
+let savedQuality="high";
+try{
+ savedQuality=localStorage.getItem(GRAPHICS_QUALITY_KEY)||"high";
+ const stored=localStorage.getItem(GRAPHICS_CUSTOM_KEY);
+ if(stored){const data=JSON.parse(stored);if(data&&typeof data==="object")graphicsCustomOptions=normalizeGraphicsOptions(data)}
+}catch(_){}
+applyGraphicsQuality(savedQuality);
 function frame(t){
  let dt=Math.min(.04,(t-last)/1000);last=t;
  if(shopLowPower){
