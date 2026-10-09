@@ -1691,6 +1691,95 @@ const FX={
  grenadeDustMat:new THREE.MeshStandardMaterial({color:0x5c5142,roughness:.86}),
  grenadeFlashMat:new THREE.MeshStandardMaterial({color:0xd29a46,roughness:.58,emissive:0x542b08,emissiveIntensity:.30})
 };
+// v526: One reusable user-supplied GLB replaces both grenade explosion visuals.
+// Damage, radius, knockback and sound remain in the original weapon functions.
+// Only the visual model is loaded here; the old cheap particles remain as fallback
+// while the model loads or if it cannot be displayed.
+const EXPLOSION_GLB_URL="assets/floor_smashedexploded.glb?v=526";
+let explosionGlbTemplate=null,explosionGlbAnimations=[],explosionGlbScale=1;
+const activeExplosionGlbs=[];
+new GLTFLoader().load(EXPLOSION_GLB_URL,gltf=>{
+ const root=gltf.scene;
+ const bounds=new THREE.Box3().setFromObject(root);
+ const size=bounds.getSize(new THREE.Vector3());
+ const maxDimension=Math.max(size.x,size.y,size.z);
+ if(!Number.isFinite(maxDimension)||maxDimension<=.0001){
+   console.warn("CITY OUTBREAK: explosion GLB has no usable geometry; using backup particles");
+   return;
+ }
+ // Retain original GLB orientation and animation targets. Offset with a parent
+ // so each instance pivots around the bottom-centre of the artwork.
+ const center=bounds.getCenter(new THREE.Vector3());
+ const anchor=new THREE.Group();
+ anchor.position.set(-center.x,-bounds.min.y,-center.z);
+ anchor.add(root);
+ const template=new THREE.Group();
+ template.name="ExplosionGLBTemplate";
+ template.add(anchor);
+ explosionGlbTemplate=template;
+ explosionGlbAnimations=gltf.animations||[];
+ explosionGlbScale=1/maxDimension;
+ console.log("CITY OUTBREAK: explosion GLB ready",{
+   asset:EXPLOSION_GLB_URL,animations:explosionGlbAnimations.map(clip=>clip.name),
+   size:[size.x,size.y,size.z]
+ });
+},undefined,e=>console.warn("CITY OUTBREAK: explosion GLB unavailable; using backup particles",e));
+function clearExplosionGlbs(){
+ for(const e of activeExplosionGlbs){
+   e.mixer?.stopAllAction();
+   if(e.object.parent)e.object.parent.remove(e.object);
+ }
+ activeExplosionGlbs.length=0;
+}
+function spawnExplosionGlb(position,isLauncher){
+ if(!explosionGlbTemplate)return false;
+ const limit=graphicsQuality==="low"?2:graphicsQuality==="medium"?3:4;
+ while(activeExplosionGlbs.length>=limit){
+   const removed=activeExplosionGlbs.shift();
+   removed.mixer?.stopAllAction();
+   if(removed.object.parent)removed.object.parent.remove(removed.object);
+ }
+ const object=SkeletonUtils.clone(explosionGlbTemplate);
+ object.name=isLauncher?"LauncherExplosionGLB":"GrenadeExplosionGLB";
+ object.position.copy(position);
+ object.position.y+=.025;
+ object.traverse(node=>{
+   if(node.isMesh){node.castShadow=false;node.receiveShadow=false}
+ });
+ const diameter=isLauncher?6.5:7.7;
+ const finalScale=explosionGlbScale*diameter;
+ object.scale.setScalar(finalScale*.30);
+ scene.add(object);
+ let mixer=null,duration=1.35;
+ if(explosionGlbAnimations.length){
+   mixer=new THREE.AnimationMixer(object);
+   duration=Math.min(5,Math.max(1.0,...explosionGlbAnimations.map(clip=>clip.duration+.18)));
+   for(const clip of explosionGlbAnimations){
+     const action=mixer.clipAction(clip);
+     action.setLoop(THREE.LoopOnce,1);
+     action.clampWhenFinished=true;
+     action.play();
+   }
+ }
+ activeExplosionGlbs.push({object,mixer,life:duration,t:0,scale:finalScale});
+ return true;
+}
+function updateExplosionGlbs(dt){
+ for(let i=activeExplosionGlbs.length-1;i>=0;i--){
+   const fx=activeExplosionGlbs[i];
+   fx.t+=dt;
+   fx.mixer?.update(dt);
+   // Quick pop gives unanimated crater/explosion meshes a visible impact beat.
+   const rise=Math.min(1,fx.t/.16);
+   const smooth=rise*rise*(3-2*rise);
+   fx.object.scale.setScalar(fx.scale*(.30+.70*smooth));
+   if(fx.t>=fx.life){
+     fx.mixer?.stopAllAction();
+     if(fx.object.parent)fx.object.parent.remove(fx.object);
+     activeExplosionGlbs.splice(i,1);
+   }
+ }
+}
 function cosmeticParticleCount(count){return Math.max(0,Math.round(count*graphicsOptions.particles/100));}
 function capFX(){
  while(parts.length>64){const p=parts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
@@ -5821,7 +5910,9 @@ function blastReact(z,origin,strength=1){
 function explodeLauncherRound(g){
  noise(.34,.95,1100);tone(46,.42,"sine",.48);tone(92,.20,"square",.20);
  const p=g.q.position.clone();scene.remove(g.q);
- for(let i=0;i<cosmeticParticleCount(34);i++){let q=new THREE.Mesh(FX.explosionGeo,i%4?FX.launcherDustMat:FX.launcherFlashMat);q.scale.setScalar(.40+rnd()*1.0);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*12,rnd()*7,(rnd()-.5)*12),life:.30+rnd()*.45})}
+ if(!spawnExplosionGlb(p,true)){
+  for(let i=0;i<cosmeticParticleCount(34);i++){let q=new THREE.Mesh(FX.explosionGeo,i%4?FX.launcherDustMat:FX.launcherFlashMat);q.scale.setScalar(.40+rnd()*1.0);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*12,rnd()*7,(rnd()-.5)*12),life:.30+rnd()*.45})}
+ }
  for(const z of living()){
    const d=z.g.position.distanceTo(p);
    if(d<6.5){
@@ -5856,7 +5947,9 @@ function radiatedSpinTopTarget(z){
 function explodeGrenade(g){
  noise(.42,.95,900);tone(48,.45,"sine",.42);
  const p=g.q.position.clone();scene.remove(g.q);
- for(let i=0;i<cosmeticParticleCount(55);i++){let q=new THREE.Mesh(FX.explosionGeo,i%3?FX.grenadeDustMat:FX.grenadeFlashMat);q.scale.setScalar(.45+rnd()*1.15);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*10,rnd()*7,(rnd()-.5)*10),life:.45+rnd()*.55})}
+ if(!spawnExplosionGlb(p,false)){
+  for(let i=0;i<cosmeticParticleCount(55);i++){let q=new THREE.Mesh(FX.explosionGeo,i%3?FX.grenadeDustMat:FX.grenadeFlashMat);q.scale.setScalar(.45+rnd()*1.15);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*10,rnd()*7,(rnd()-.5)*10),life:.45+rnd()*.55})}
+ }
  for(const z of living()){
    const d=z.g.position.distanceTo(p);
    if(d<7.5){
@@ -6229,7 +6322,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  scopeOverlay.classList.toggle("m4Scope",false);
  gun.visible=!fullScopeAim;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
-perfGuard(dt);capFX();
+perfGuard(dt);capFX();updateExplosionGlbs(dt);
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;
  const grenadeOldPos=g.q.position.clone();
  g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);
@@ -6757,7 +6850,7 @@ function frame(t){
  requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame);
-function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="shotgun";magSize=8;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:true,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];clearExplosionGlbs();for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="shotgun";magSize=8;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:true,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();setupResetButtons(reset);
 // Controls are now a tab in the shared SETTINGS dialog.
 const weaponHotkeys={Digit1:"pistol",Digit2:"rifle",Digit3:"shotgun",Digit4:"smg",Digit5:"m240",Digit6:"dmr",Digit7:"grenadeLauncher",Digit8:"awm"};

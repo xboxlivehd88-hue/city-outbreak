@@ -1,3 +1,19 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v526 NEW GLB EXPLOSIONS FOR BOTH GRENADES — READ FIRST
+
+**Live GitHub `main` authoritative. User approved v525 including widescreen title + START/SETTINGS alignment. Do not change that UI. User uploaded `assets/floor_smashedexploded.glb` for BOTH hand grenade and grenade-launcher explosion visuals.**
+
+## v526 changes
+- New uploaded GLB `assets/floor_smashedexploded.glb` (9,711,816 bytes; GitHub blob `a5d8a294950997d864a4b5a1fa1741abbbf9e939`) verified on main. Source GLB bytes were too large for GitHub text connector to inspect scene contents, so **its appearance and whether animation clips exist are UNVERIFIED**. Model will be loaded once by `GLTFLoader` at startup. If it loads, template is bottom-centered and sized from its 3D bounding box; if animations exist, they run once.
+- In `src/game.js` both `explodeGrenade()` and `explodeLauncherRound()` now call `spawnExplosionGlb()` for their VISUAL explosion only; launcher diameter 6.5 world units, hand grenade 7.7. GLB visuals last ~1.35s for static model or clip duration up to 5 seconds, then detach. Only 2 GLB explosions coexist on LOW, 3 on MEDIUM and 4 on HIGH/CUSTOM. Existing original cheap particle burst remains fallback while asset loads/fails.
+- NO changes to each weapon's original explosive SOUND, damage, radius, physical projectile behavior, zombie damage, knockdown, ragdolls, collision, or wave logic. They still execute after the model spawns.
+- `updateExplosionGlbs(dt)` advances one-shot clips + visual scale pop inside existing update loop, naturally freezes when paused. `reset()` clears transient explosion models. Geometry, animations and textures are shared between instances; no reloading huge GLB per explosion.
+- `index.html` updates ONLY game JS cache bust `src/game.js?v=526`; existing approved CSS `v=525` and start/menu art unchanged. Update top of BOTH handoff documents. Protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 never edited.
+- Static checks confirmed both explosion branches use the GLB with fallback, old damage loops untouched, reset cleanup and loader references present. **No user live visual/gameplay test yet**; actual GLB orientation, exact size, and animation style may require tuning. Do NOT claim visual perfection.
+- Playable: https://xboxlivehd88-hue.github.io/city-outbreak/?v=526-glb-blasts
+- Test: throw grenade with G, compare the new explosion model; unlock/buy grenade launcher, shoot a wall/ground/zombie and check it uses same model; confirm damage/ragdoll, normal grenade spin, and graphics Low preset. If model seems motionless, giant, buried or absent, inspect GLB at runtime and adjust only VFX. Leave approved v525 start menu alone.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v525 WIDESCREEN START ART AND VERIFIED CLICK TARGETS — READ FIRST
 
 **Current source of truth: GitHub `main`. User rejected v523 zoomed art and v524 narrow pillarboxed art. User approved generating wider artwork, personally uploaded `assets/city-outbreak-start-v525.jpg`, and asked for the new playable link and correct START button location.**
