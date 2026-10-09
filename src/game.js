@@ -2186,7 +2186,10 @@ function updateShotgunReloadFX(rp){
  if(p<.77){
   shotgunReloadShellActor.position.copy(hand).add(new THREE.Vector3(.11,.11,-.045));
  }else{
-  const start=port.clone().add(new THREE.Vector3(.30,.19,.05));
+  // Match the exact end of the visible over-top carry before pushing in,
+  // avoiding an abrupt position jump when the insertion animation begins.
+  const firstInsertHand=overRight.clone().lerp(atPort,smoothReload01((.77-.70)/.18));
+  const start=firstInsertHand.add(new THREE.Vector3(.11,.11,-.045));
   const seated=port.clone().add(new THREE.Vector3(-.085,.005,0));
   shotgunReloadShellActor.position.lerpVectors(start,seated,smoothReload01((p-.77)/.16));
  }
