@@ -2168,8 +2168,10 @@ function updateShotgunReloadFX(rp){
  const alignView=portView.clone().add(new THREE.Vector3(.12,.13,.20));
  const pickup=toGun(pickupView),overLeft=toGun(overLeftView);
  const overRight=toGun(overRightView),align=toGun(alignView);
- const pressIn=port.clone().add(new THREE.Vector3(.04,.055,.04));
- const pushForward=port.clone().add(new THREE.Vector3(-.045,.03,-.25));
+ // The last centimeters of the wrist stroke must reach the port's
+ // inner lip, not stop just outside the receiver shell-loading opening.
+ const pressIn=port.clone().add(new THREE.Vector3(-.015,.040,.04));
+ const pushForward=port.clone().add(new THREE.Vector3(-.09,.02,-.30));
  let hand;
  if(p<.22)hand=home.clone().lerp(pickup,smoothReload01(p/.22));
  else if(p<.29)hand=pickup.clone();
@@ -2236,11 +2238,17 @@ function updateShotgunReloadFX(rp){
   for(const child of actor.children){child.castShadow=false;child.receiveShadow=false;}
   gun.add(actor);shotgunReloadShellActor=actor;
  }
- // The shell must be physically carried by the LEFT hand through BOTH
- // the inward push and the forward stroke. v509 animated the shell on its
- // own track while the hand stopped above the port: it looked plugged in.
- // Here the wrist and cartridge share an unbroken path until release.
- shotgunReloadShellActor.position.copy(hand).add(new THREE.Vector3(.075,.065,-.075));
+ // Keep the shell in the left hand during the approach, then shift the
+ // CARTRIDGE TIP ahead of the fingertips while the wrist presses inward.
+ // v511 kept a fixed (+.075,+.065,-.075) hand offset, leaving the shell
+ // visibly OUTSIDE and ABOVE the actual right-side receiver opening even
+ // at the end of the forward stroke, before it abruptly disappeared.
+ const inT=smoothReload01(THREE.MathUtils.clamp((p-.72)/.11,0,1));
+ const forwardT=smoothReload01(THREE.MathUtils.clamp((p-.83)/.08,0,1));
+ const shellInHand=new THREE.Vector3(.075,.065,-.075)
+  .lerp(new THREE.Vector3(-.09,-.015,-.075),inT)
+  .lerp(new THREE.Vector3(-.19,-.060,-.115),forwardT);
+ shotgunReloadShellActor.position.copy(hand).add(shellInHand);
  shotgunReloadShellActor.rotation.set(0,0,0);
 }
 function updateReloadMagazineFX(rp){
