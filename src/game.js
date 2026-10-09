@@ -2130,53 +2130,53 @@ function updateMP5ReloadMagazineFX(rp,home,targetQ){
 }
 
 function updateShotgunReloadFX(rp){
- if(weapon!=="shotgun"||!playerHandRig)return;
- const isLoading=reloading&&reloadWeapon==="shotgun";
- // Complete the arm's return to its rest pose during gun-roll recovery;
- // otherwise the whole shoulder snaps back when the last shell is seated.
- if(!isLoading&&shotgunReloadCant<=.005)return;
- const p=isLoading?rp.p:1,home=playerHandRig.leftHandBase;
+ if(weapon!=="shotgun"||!reloading||reloadWeapon!=="shotgun"||!playerHandRig)return;
+ const p=rp.p,home=playerHandRig.leftHandBase;
  const port=shotgunLoadPort||new THREE.Vector3(.67,-.43,-1.12);
  // The right-side loading port stays exposed by the mild left roll, while
  // the LEFT support hand brings every shell visibly OVER THE TOP of the receiver.
  // All locations are in gun-local space so they move together while canted.
- // No below-the-gun pouch detour. Raise the empty support hand from the
- // forward pump and keep it ABOVE the canted receiver for the complete cycle.
- // The shell is picked up near the chest/top line and passes over to the
- // already-approved right-side loading port.
- const overFore=home.clone().add(new THREE.Vector3(.28,.36,.40));
- const overLeft=port.clone().add(new THREE.Vector3(-.25,.54,-.18));
- const overRight=port.clone().add(new THREE.Vector3(.18,.47,-.14));
- const atPort=port.clone().add(new THREE.Vector3(.15,.10,.07));
+ // v508: Keep the approved v506 arm rig and shotgun left-side cant.
+ // v507's camera-anchored shoulder made a large straight arm float into view.
+ // The old 'pouch' underneath the shotgun is gone; all travel now runs
+ // ABOVE the receiver in CAMERA space (not gun-local +Y, which points
+ // sideways once the shotgun is rolled ~66 degrees).
+ const inverseGun=gun.quaternion.clone().invert();
+ const gunScale=gun.scale;
+ const toCamera=v=>v.clone().multiply(gunScale).applyQuaternion(gun.quaternion).add(gun.position);
+ const toGun=v=>v.clone().sub(gun.position).applyQuaternion(inverseGun).divide(gunScale);
+ const portView=toCamera(port),homeView=toCamera(home);
+ // Compact path close to the visible receiver: peel off the pump,
+ // take the next shell above the left rear, cross over the top,
+ // and feed it into the exposed RIGHT-side loading opening.
+ const topY=Math.max(portView.y+.19,homeView.y+.12);
+ const pickupView=new THREE.Vector3(
+  THREE.MathUtils.lerp(homeView.x,portView.x,.5)-.12,
+  topY,portView.z+.27);
+ const overLeftView=new THREE.Vector3(portView.x-.16,topY+.025,portView.z+.12);
+ const overRightView=portView.clone().add(new THREE.Vector3(.16,.17,-.04));
+ const atPortView=portView.clone().add(new THREE.Vector3(.15,.065,.07));
+ const pickup=toGun(pickupView),overLeft=toGun(overLeftView);
+ const overRight=toGun(overRightView),atPort=toGun(atPortView);
  let hand;
- if(p<.22)hand=home.clone().lerp(overFore,smoothReload01(p/.22));
- else if(p<.29)hand=overFore.clone();
- else if(p<.49)hand=overFore.clone().lerp(overLeft,smoothReload01((p-.29)/.20));
+ if(p<.22)hand=home.clone().lerp(pickup,smoothReload01(p/.22));
+ else if(p<.29)hand=pickup.clone();
+ else if(p<.49)hand=pickup.clone().lerp(overLeft,smoothReload01((p-.29)/.20));
  else if(p<.70)hand=overLeft.clone().lerp(overRight,smoothReload01((p-.49)/.21));
  else if(p<.88)hand=overRight.clone().lerp(atPort,smoothReload01((p-.70)/.18));
  else{
-  // Return around the SAME upper side, never straight underneath the gun.
+  // Return through the same upper corridor instead of dipping under.
   const t=smoothReload01((p-.88)/.12),k=1-t;
   hand=atPort.clone().multiplyScalar(k*k)
-   .add(overFore.clone().multiplyScalar(2*k*t))
+   .add(pickup.clone().multiplyScalar(2*k*t))
    .add(home.clone().multiplyScalar(t*t));
  }
+ // The shoulder stays on the player's body; the elbow bends as the hand
+ // crosses ABOVE the receiver rather than sticking out like a rigid stalk.
  const rig=playerHandRig;
- // Gun rotation previously dragged the whole left shoulder UNDER the
- // shotgun. Keep the shoulder rooted to the player's camera/body while
- // its elbow follows the upper route in the shotgun's local coordinates.
- const cameraShoulder=new THREE.Vector3(-.34,-.96,-.12);
- const inverseGun=gun.quaternion.clone().invert();
- const anchoredShoulder=cameraShoulder.sub(gun.position)
-  .applyQuaternion(inverseGun).divide(gun.scale);
- const shoulderBlend=smoothReload01(Math.min(1,shotgunReloadCant/.85));
- const shoulder=rig.leftShoulder.clone().lerp(anchoredShoulder,shoulderBlend);
- // Shape the elbow upward in VIEW space, even when the gun is fully rolled.
- const lift=new THREE.Vector3(0,.22*shoulderBlend,0)
-  .applyQuaternion(inverseGun).divide(gun.scale);
- const elbow=shoulder.clone().lerp(hand,.57).add(lift);
+ const elbow=rig.leftShoulder.clone().lerp(hand,.53).add(new THREE.Vector3(-.20,-.055,.22));
  rig.left.position.set(0,0,0);rig.left.rotation.set(0,0,0);
- setFpsArmSegmentPose(rig.leftUpper,shoulder,elbow);
+ setFpsArmSegmentPose(rig.leftUpper,rig.leftShoulder,elbow);
  setFpsArmSegmentPose(rig.leftFore,elbow,hand);
  setFpsHandPose(rig.left,hand);
  rig.leftGripAnchor.position.copy(hand);rig.m4Articulated=true;
@@ -2184,7 +2184,7 @@ function updateShotgunReloadFX(rp){
  // appear on screen. Keep the original GLB/template untouched; for reload use
  // a correctly sized, reliably visible red hull and brass base in hand.
  // It is a real 3D actor, not a HUD sprite; it follows gun roll and insertion.
- const carrying=isLoading&&p>=.29&&p<.93;
+ const carrying=p>=.29&&p<.93;
  if(!carrying){
   if(shotgunReloadShellActor?.parent)shotgunReloadShellActor.parent.remove(shotgunReloadShellActor);
   shotgunReloadShellActor=null;return;
@@ -6035,7 +6035,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    m240ViewModel.position.copy(m240ViewBasePos).sub(m240RecoilPoint).applyQuaternion(m240RecoilQuat).add(m240RecoilPoint);
  }
  if(playerHandRig){
-   if(!(reloading&&reloadWeapon==="rifle")&&!(weapon==="shotgun"&&(reloading||shotgunReloadCant>.005)))resetM4ReloadLeftArm();
+   if(!(reloading&&(reloadWeapon==="rifle"||reloadWeapon==="shotgun")))resetM4ReloadLeftArm();
    // The imported M4 is much more realistic than the old block rifle. In ADS,
    // fade the procedural arms out so they do not form the giant V around the optic.
    // They remain fully visible at hip-fire and during reload.
