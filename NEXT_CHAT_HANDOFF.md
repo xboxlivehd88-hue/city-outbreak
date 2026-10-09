@@ -1,3 +1,39 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v505 OVER-TOP SHOTGUN SHELL RELOAD / VISIBLE SHELLS — READ FIRST
+
+GitHub `main` is authoritative. This newest section supersedes older current-state notes below.
+
+## Current TEST build (not user-approved yet)
+- Version **v505**, loader `./src/game.js?v=505`.
+- Gameplay commit: `a4c8252ed613fb86f46d603ddef20fd169650bb7`; blob `b8f2147849b580568ac1a160f2d579d964720b2b`.
+- Loader commit: `28bdccb1ca8cbce47d762bbe1f4e93c2e41548cd`.
+- Shotgun GLB remains `assets/shotgun_test.glb?v=501`, unchanged.
+- v500 reticle, approved M4 transforms/stats, and v497 key lineup preserved.
+- Protected v324 recovery not modified.
+
+## User's v504 test video and feedback
+User uploaded video `2026-10-09 01-17-17.mp4` (30.47 seconds), and said "doesnt look natural should be loaded over top and it doesnt show the shells being loaded either." Inspected gameplay frames: v504 had an exaggerated tilted gun and a visually missing red shell, despite code cloning the GLB's separate shell. The arm appeared over-extended.
+
+## v505 changes (shotgun only)
+- Reduced persistent full-reload left roll from `+.70` to `+.40` radians (~23 degrees), yaw magnitude from `-.17` to `-.09`, and X pitch/additional position offsets. Gun stays canted between successive shell cycles and returns smoothly when finished.
+- Shotgun-only left shoulder start point moved nearer the weapon `(-.27,-.99,-.43)`, reducing unnaturally long support-arm geometry.
+- New per-shell hand path: leave pump → low body pouch → rise on the **LEFT/OVER THE TOP of the receiver** → cross the top → descend to right receiver loading port → return to pump. A modeled elbow bend/anchored shoulder is used instead of generic offset movement.
+- **Guaranteed visible shell:** v503/v504 attempted to clone the original GLB loose shell, but its actor did not appear in user footage. The real shotgun GLB and `shotgunShellTemplate` are preserved; the *moving reload shell actor* is now a 3D red hull with brass base and primer, sized ~.22 units, carried ahead of the glove and physically slid toward the right-side port. No fake floating shell at idle.
+- Per-shell timing changed `Math.max(360,560-reloadLevel*45)` to `Math.max(580,820-reloadLevel*45)` for visible, readable insertion. Ammo count increments once at end of each shell cycle as before.
+- Crosshair/ADS and all other weapons untouched.
+
+## Validation
+- Read latest `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, and `src/game.js` on main first.
+- Inspected user video and high-res reload frames.
+- Confirmed game.js parses with a JS function parser before commit; protected M4 ADS zero `.040`, shotgun ADS, shotgun weapon stats, weapon order, and 72px reticle source present.
+- GitHub gameplay & index writes confirmed. **No live browser playback verified; user must test appearance**.
+
+## v505 test instructions
+Fire 2–4 shots, then press R. Confirm shotgun slightly cants left, **red/brass shell rises above receiver and crosses over the top**, is visibly inserted through the RIGHT-side loading port, and repeats cleanly for each missing shell. Confirm that arm doesn't become a long stalk, gun doesn't over-roll, and returns to hip-ready orientation after completion. Record video if shell still fails to appear.
+
+Keep M4 completely untouched. Continue making direct GitHub commits and provide cache-busted Pages test links. Do not send the user a plan instead of making the code change.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v504 SHOTGUN LEFT CANT / RIGHT-SIDE TUBE RELOAD — READ FIRST
 
 GitHub `main` is authoritative. This top section supersedes all older current-state notes.
