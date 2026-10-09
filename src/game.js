@@ -1583,7 +1583,7 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
 
 // v501: user-supplied replacement pump shotgun GLB. It is a static asset with
 // separate real nodes for base, shell, trigger, inserter and pump.
-let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunShellTemplate=null,shotgunTrigger=null,shotgunInserter=null,shotgunHandTargets=null,shotgunLoadPort=null,shotgunReloadShellActor=null,shotgunReloadCant=0;
+let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunShellTemplate=null,shotgunSpentShellTemplate=null,shotgunTrigger=null,shotgunInserter=null,shotgunHandTargets=null,shotgunLoadPort=null,shotgunReloadShellActor=null,shotgunReloadCant=0;
 new GLTFLoader().load("assets/shotgun_test.glb?v=501",gltf=>{
  shotgunModelTemplate=gltf.scene;
  shotgunModelTemplate.traverse(o=>{
@@ -2348,7 +2348,7 @@ function rebuildGun(){
  clearReloadMagazineFX(true);
  shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunReloadShellActor=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunReloadShellActor=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -2623,6 +2623,21 @@ function rebuildGun(){
        shotgunShellTemplate.name="ShotgunShellTemplate";
        shotgunShellTemplate.traverse(o=>{o.visible=true;o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
        shotgunShell.visible=false;
+       // Ejected SHOTGUN casings reuse the exact mesh/materials from the
+       // user-supplied GLB, NOT the common cylindrical brass placeholder.
+       // Recenter the source's loose presentation position once, here.
+       const ejected=new THREE.Group(),visual=shotgunShellTemplate.clone(true);
+       ejected.name="ShotgunSpentShellGLB";
+       ejected.add(visual);
+       ejected.updateMatrixWorld(true);
+       const bounds=new THREE.Box3().setFromObject(ejected);
+       if(!bounds.isEmpty()){
+         const size=bounds.getSize(new THREE.Vector3());
+         visual.position.sub(bounds.getCenter(new THREE.Vector3()));
+         ejected.scale.setScalar(.23/Math.max(.001,size.x,size.y,size.z));
+         ejected.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+         shotgunSpentShellTemplate=ejected;
+       }
      }
      document.documentElement.dataset.shotgunViewmodel="shotgun-test-glb";
    }
@@ -4540,8 +4555,17 @@ function hitMark(head=false){
   else tone(760,.025,"square",.045);
 }
 function casing(){
-  const q=new THREE.Mesh(FX.casingGeo,FX.casingMat);
-  q.rotation.z=Math.PI/2;
+  // Shotgun alone uses its real GLB spent shell; all other firearms retain
+  // the approved generic brass casing mesh, ejection point and physics.
+  const shotgunCase=weapon==="shotgun"&&!!shotgunSpentShellTemplate;
+  const q=shotgunCase
+    ?shotgunSpentShellTemplate.clone(true)
+    :new THREE.Mesh(FX.casingGeo,FX.casingMat);
+  if(shotgunCase){
+    q.quaternion.copy(gun.getWorldQuaternion(new THREE.Quaternion()));
+    q.rotateX((Math.random()-.5)*.5);
+    q.rotateZ((Math.random()-.5)*.4);
+  }else q.rotation.z=Math.PI/2;
   const wp=new THREE.Vector3();
   gun.localToWorld(wp.set(.56,-.26,-1.05));
   q.position.copy(wp);scene.add(q);
