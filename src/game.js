@@ -5461,7 +5461,10 @@ function reload(w=weapon){
  if(w==="m240")stopM240FireAudio();
  setAim(false);
  if(w==="shotgun"){
-   shotgunReloadShellIndex=0;
+   // Only an EMPTY shotgun needs a shell fed directly into the side chamber.
+   // With any rounds already in the gun, skip the chamber animation and
+   // replenish exclusively through the underside magazine loading gate.
+   shotgunReloadShellIndex=a.mag===0?0:1;
    const shellDuration=Math.max(580,820-reloadLevel*45);
    const finishShotgunReload=()=>{
      if(seq!==reloadSequence)return;
