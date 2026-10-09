@@ -1,3 +1,22 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v524 START-SCREEN ZOOM / RESPONSIVE IMAGE FIT — READ FIRST
+
+**GitHub `main` authoritative. The user tested v523 on a 1648×790-ish browser viewport and said the entire game title artwork is TOO ZOOMED IN. User explicitly asked assistant to fix this directly, without asking for instructions.**
+
+## v524 precise changes
+- **No new image asset needed**: reuse approved `assets/city-outbreak-start-v523.jpg` (1672×941; single baked SETTINGS icon; no CONTROLS icon). Prior v523 `#startScreen` used `center top/cover`, which cropped the bottom of this 16:9 art in a much wider browser content rectangle.
+- **CSS-only visual/layout fix**: opening `#startScreen` now renders the entire JPG centered using `contain`, with a subdued blurred use of the SAME asset behind it to fill wider/taller gutters. This does NOT hide/mask any button. The foreground artwork remains uncropped and aspect-ratio-correct.
+- Existing `#startPanel` hit-target wrapper now matches the **contained image** bounds using width `min(100%,177.6833vh)`, height `min(100%,56.2799vw)`, centered at 50%/50%. This makes baked-image button hit areas responsive even when letterboxed.
+- `#start` invisible target adjusted to left 37.1%, top 50.6%, width 24.6%, height 10%, matching new JPG's actual START OUTBREAK plate. `#showSettings` adjusted to right 2.1%, top 3.0%, width 5.7%, height 11.3%, matching original SETTINGS plate. No additional visible button.
+- `index.html` bumps ONLY stylesheet cache to `./src/game.css?v=524`; unchanged JS loader `./src/game.js?v=523`. **No game.js changes**: approved shotgun reload, weapons, NPCs, ragdolls, collision, map, rain, waves and graphics settings preserved. Existing five GAME SETTINGS tabs (Controls, Display, Graphics, Effects, Performance) and quality presets remain as before. Protected v324 recovery file unchanged.
+- CSS new layout was checked against v523 JPEG at a 1648×789 viewport with a generated composition preview: artwork is fully visible, START hitbox sits over START sign, SETTINGS hitbox sits over gear plate, gutters show softly darkened image continuation. This is layout calculation and preview, NOT visual approval or a live gameplay test.
+
+## User test / next step
+- After Pages deploy: https://xboxlivehd88-hue.github.io/city-outbreak/?v=524-full-artwork
+- Confirm entire start art now visible (particularly bottom zombie/street/weapon), not cropped/zoomed; single SETTINGS graphic remains; clicking SETTINGS opens five-tab menu, clicking START begins game. Pause/quality presets also still work.
+- If user wants further framing changes, adjust only front-end layout; never touch approved gameplay or protected `CURRENT_RECOVERY_CHECKPOINT.md` v324. Keep updating both handoffs at TOP and link the new deployed Pages build.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v523 CLEAN APPROVED START ART / ONE SETTINGS BUTTON — READ FIRST
 
 **GitHub `main` remains the only source of truth. The user approved the redesigned start-screen artwork and uploaded the JPEG themselves.**
