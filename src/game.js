@@ -1153,6 +1153,9 @@ function setupStreetLampLighting(placements){
  }
  document.documentElement.dataset.streetLampRealLights=String(streetLampLightPool.length);
  document.documentElement.dataset.streetLampAlwaysOnGlow=String(streetLampLightHeads.length);
+ // The city GLB (and therefore its lamp pool) loads asynchronously.
+ // Recompute the chosen light budget as soon as lamps become available.
+ graphicsLightLimit=graphicsQuality==="low"?0:graphicsQuality==="medium"?Math.ceil(streetLampLightPool.length/2):Infinity;
  updateStreetLampLighting(performance.now(),true);
 }
 function updateStreetLampLighting(t,force=false){
