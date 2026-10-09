@@ -2130,29 +2130,53 @@ function updateMP5ReloadMagazineFX(rp,home,targetQ){
 }
 
 function updateShotgunReloadFX(rp){
- if(weapon!=="shotgun"||!reloading||reloadWeapon!=="shotgun"||!playerHandRig)return;
- const p=rp.p,home=playerHandRig.leftHandBase;
+ if(weapon!=="shotgun"||!playerHandRig)return;
+ const isLoading=reloading&&reloadWeapon==="shotgun";
+ // Complete the arm's return to its rest pose during gun-roll recovery;
+ // otherwise the whole shoulder snaps back when the last shell is seated.
+ if(!isLoading&&shotgunReloadCant<=.005)return;
+ const p=isLoading?rp.p:1,home=playerHandRig.leftHandBase;
  const port=shotgunLoadPort||new THREE.Vector3(.67,-.43,-1.12);
  // The right-side loading port stays exposed by the mild left roll, while
  // the LEFT support hand brings every shell visibly OVER THE TOP of the receiver.
  // All locations are in gun-local space so they move together while canted.
- const pouch=new THREE.Vector3(-.15,-1.05,-.58);
- const overLeft=port.clone().add(new THREE.Vector3(-.38,.48,-.16));
+ // No below-the-gun pouch detour. Raise the empty support hand from the
+ // forward pump and keep it ABOVE the canted receiver for the complete cycle.
+ // The shell is picked up near the chest/top line and passes over to the
+ // already-approved right-side loading port.
+ const overFore=home.clone().add(new THREE.Vector3(.28,.36,.40));
+ const overLeft=port.clone().add(new THREE.Vector3(-.25,.54,-.18));
  const overRight=port.clone().add(new THREE.Vector3(.18,.47,-.14));
  const atPort=port.clone().add(new THREE.Vector3(.15,.10,.07));
  let hand;
- if(p<.22)hand=home.clone().lerp(pouch,smoothReload01(p/.22));
- else if(p<.29)hand=pouch.clone();
- else if(p<.49)hand=pouch.clone().lerp(overLeft,smoothReload01((p-.29)/.20));
+ if(p<.22)hand=home.clone().lerp(overFore,smoothReload01(p/.22));
+ else if(p<.29)hand=overFore.clone();
+ else if(p<.49)hand=overFore.clone().lerp(overLeft,smoothReload01((p-.29)/.20));
  else if(p<.70)hand=overLeft.clone().lerp(overRight,smoothReload01((p-.49)/.21));
  else if(p<.88)hand=overRight.clone().lerp(atPort,smoothReload01((p-.70)/.18));
- else hand=atPort.clone().lerp(home,smoothReload01((p-.88)/.12));
- // The shoulder stays on the player's body; the elbow bends as the hand
- // crosses ABOVE the receiver rather than sticking out like a rigid stalk.
+ else{
+  // Return around the SAME upper side, never straight underneath the gun.
+  const t=smoothReload01((p-.88)/.12),k=1-t;
+  hand=atPort.clone().multiplyScalar(k*k)
+   .add(overFore.clone().multiplyScalar(2*k*t))
+   .add(home.clone().multiplyScalar(t*t));
+ }
  const rig=playerHandRig;
- const elbow=rig.leftShoulder.clone().lerp(hand,.53).add(new THREE.Vector3(-.20,-.055,.22));
+ // Gun rotation previously dragged the whole left shoulder UNDER the
+ // shotgun. Keep the shoulder rooted to the player's camera/body while
+ // its elbow follows the upper route in the shotgun's local coordinates.
+ const cameraShoulder=new THREE.Vector3(-.34,-.96,-.12);
+ const inverseGun=gun.quaternion.clone().invert();
+ const anchoredShoulder=cameraShoulder.sub(gun.position)
+  .applyQuaternion(inverseGun).divide(gun.scale);
+ const shoulderBlend=smoothReload01(Math.min(1,shotgunReloadCant/.85));
+ const shoulder=rig.leftShoulder.clone().lerp(anchoredShoulder,shoulderBlend);
+ // Shape the elbow upward in VIEW space, even when the gun is fully rolled.
+ const lift=new THREE.Vector3(0,.22*shoulderBlend,0)
+  .applyQuaternion(inverseGun).divide(gun.scale);
+ const elbow=shoulder.clone().lerp(hand,.57).add(lift);
  rig.left.position.set(0,0,0);rig.left.rotation.set(0,0,0);
- setFpsArmSegmentPose(rig.leftUpper,rig.leftShoulder,elbow);
+ setFpsArmSegmentPose(rig.leftUpper,shoulder,elbow);
  setFpsArmSegmentPose(rig.leftFore,elbow,hand);
  setFpsHandPose(rig.left,hand);
  rig.leftGripAnchor.position.copy(hand);rig.m4Articulated=true;
@@ -2160,7 +2184,7 @@ function updateShotgunReloadFX(rp){
  // appear on screen. Keep the original GLB/template untouched; for reload use
  // a correctly sized, reliably visible red hull and brass base in hand.
  // It is a real 3D actor, not a HUD sprite; it follows gun roll and insertion.
- const carrying=p>=.29&&p<.93;
+ const carrying=isLoading&&p>=.29&&p<.93;
  if(!carrying){
   if(shotgunReloadShellActor?.parent)shotgunReloadShellActor.parent.remove(shotgunReloadShellActor);
   shotgunReloadShellActor=null;return;
@@ -6011,7 +6035,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    m240ViewModel.position.copy(m240ViewBasePos).sub(m240RecoilPoint).applyQuaternion(m240RecoilQuat).add(m240RecoilPoint);
  }
  if(playerHandRig){
-   if(!(reloading&&(reloadWeapon==="rifle"||reloadWeapon==="shotgun")))resetM4ReloadLeftArm();
+   if(!(reloading&&reloadWeapon==="rifle")&&!(weapon==="shotgun"&&(reloading||shotgunReloadCant>.005)))resetM4ReloadLeftArm();
    // The imported M4 is much more realistic than the old block rifle. In ADS,
    // fade the procedural arms out so they do not form the giant V around the optic.
    // They remain fully visible at hip-fire and during reload.
