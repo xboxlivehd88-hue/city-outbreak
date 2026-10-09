@@ -6680,6 +6680,9 @@ for(const button of document.querySelectorAll(".openAdvancedGraphics")){
 }
 document.querySelector("#closeAdvancedGraphics")?.addEventListener("click",closeGraphicsModal);
 graphicsModal?.addEventListener("click",e=>{if(e.target===graphicsModal)closeGraphicsModal()});
+graphicsModal?.addEventListener("keydown",e=>{
+ if(e.key==="Escape"){e.preventDefault();e.stopPropagation();closeGraphicsModal()}
+});
 for(const select of document.querySelectorAll(".graphicsQualitySelect")){
  select.addEventListener("change",()=>{
   applyGraphicsQuality(select.value);
