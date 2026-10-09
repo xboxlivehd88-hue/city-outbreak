@@ -111,3 +111,25 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 .graphicsStartOptions{position:absolute;left:16px;bottom:16px;width:min(245px,calc(100vw - 32px));z-index:3;pointer-events:auto;padding:13px 14px;border-radius:12px;border:1px solid #ffffff42;background:#081016e8;box-shadow:0 8px 24px #0008}
 .graphicsPauseOptions{margin:8px 0 17px;padding:13px 14px;border:1px solid #ffffff24;border-radius:10px;background:#131b20}
 @media(max-width:560px){.graphicsStartOptions{left:8px;bottom:8px;width:min(190px,calc(100vw - 16px));padding:9px 10px}.graphicsStartOptions select{font-size:11px;padding:8px}}
+
+/* v519: PC-style advanced graphics panel; single shared dialog from Start/Pause. */
+.graphicsAdvancedButton{margin:4px 0 0!important;padding:9px 12px!important;width:100%;color:#e2f2f5!important;background:#174052f0!important;border:1px solid #8fbdca77!important;border-radius:8px!important;letter-spacing:1px;font:800 11px Arial,sans-serif!important;cursor:pointer}
+.graphicsAdvancedButton:hover{background:#23556bf0!important}
+#graphicsAdvancedModal{position:absolute;inset:0;display:none;align-items:center;justify-content:center;box-sizing:border-box;padding:16px;z-index:35;background:#010709ea;backdrop-filter:blur(4px)}
+#graphicsAdvancedModal.show{display:flex}
+#graphicsAdvancedPanel{box-sizing:border-box;width:min(660px,96vw);max-height:min(88vh,720px);overflow:auto;overscroll-behavior:contain;background:linear-gradient(160deg,#142127f8,#090f14fc);border:1px solid #91bac662;border-radius:17px;box-shadow:0 24px 80px #000d;padding:22px 24px 20px;color:#fff;text-align:left;font-family:Arial,sans-serif}
+.graphicsAdvancedHeader{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:13px;border-bottom:1px solid #ffffff29}
+.graphicsAdvancedHeader h2{margin:0;font:900 clamp(20px,4vw,27px)/1.2 Arial,sans-serif;letter-spacing:2px}
+#graphicsPresetState{color:#9ed4e6;font:800 11px Arial,sans-serif;letter-spacing:1.4px;margin:7px 0 0}
+#closeAdvancedGraphics{margin:0!important;background:#263c45!important;color:#fff!important;border:1px solid #a6cad765!important;border-radius:8px!important;padding:9px 12px!important;white-space:nowrap;font:800 12px Arial,sans-serif!important}
+.graphicsAdvancedIntro{font:13px/1.5 Arial,sans-serif;color:#b8c9d0;margin:16px 0}
+.graphicsSettingGrid{display:grid;gap:1px;background:#ffffff17;border:1px solid #ffffff25;border-radius:11px;overflow:hidden}
+.graphicsSettingRow{display:flex;align-items:center;justify-content:space-between;gap:20px;background:#142129;padding:15px 16px}
+.graphicsSettingRow:nth-child(even){background:#101b22}
+.graphicsSettingRow>div{min-width:0;flex:1}
+.graphicsSettingRow label{display:block;font:800 12px Arial,sans-serif;color:#f2f6f6;letter-spacing:1px}
+.graphicsSettingRow small{display:block;margin-top:5px;color:#acbec6;font:12px/1.4 Arial,sans-serif}
+.graphicsSettingRow select{flex:0 0 min(215px,42%);min-width:135px;box-sizing:border-box;padding:10px 10px;background:#09151a;color:#fff;border:1px solid #8db3c06b;border-radius:8px;font:800 12px Arial,sans-serif;cursor:pointer}
+.graphicsSettingRow select:focus-visible,#closeAdvancedGraphics:focus-visible,.graphicsAdvancedButton:focus-visible{outline:2px solid #a7e6fc;outline-offset:2px}
+.graphicsAdvancedFoot{margin:15px 0 0;color:#9eb7c3;font:12px/1.5 Arial,sans-serif}
+@media(max-width:540px){#graphicsAdvancedPanel{padding:15px 13px;max-height:92vh}.graphicsSettingRow{gap:9px;padding:11px 10px}.graphicsSettingRow select{flex-basis:43%;min-width:100px;font-size:11px;padding:8px 5px}.graphicsSettingRow label{font-size:11px}.graphicsSettingRow small{font-size:11px}}
