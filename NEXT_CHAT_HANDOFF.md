@@ -1,3 +1,53 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v503 SHOTGUN ADS WIDTH / GEOMETRY HANDS / RIGHT-SIDE SHELL RELOAD — READ FIRST
+
+GitHub `main` remains authoritative. This top section supersedes prior current-state notes.
+
+## Current unapproved test build
+- **v503**
+- Loader: `./src/game.js?v=503`
+- Shotgun source model: `assets/shotgun_test.glb?v=501` (unchanged)
+- Gameplay commit: `dcfdaf04c87e7daddcfefb241d353b5ecf1e574d`
+- Gameplay blob SHA: `b1d36a93e9cf9c5362df9f5e46b9d6e694721e5e`
+- Loader commit: `b8c60a0b23b9ae94371052e11e8683b186f99029`
+- CSS still v500 (no change).
+- Protected recovery remains v324, unchanged.
+
+## User video and specific complaints (2026-10-09)
+From a 38-second user video of v502:
+1. The shotgun looked too slim in ADS.
+2. Both hands still looked wrong, not placed naturally.
+3. This specific shotgun takes shells on the **RIGHT side**, so reload must not be on the left/bottom.
+
+## v503 isolated modifications
+- Shotgun ADS no longer scales down by the global 16%. Shotgun-specific ADS scale loss is now just 4.5% while all other weapon values are preserved.
+- Shotgun ADS depth changed from `z:-.48` to `z:-.30` to keep more of the receiver/wood stock visually readable without moving the sight sideways.
+- Hands are measured from actual imported model geometry. Real `pump` and `trigger` bounding-box centers (transformed into gun space) are used for the left support and right firing hands, with conservative spatial clamps. Fallback positions are `left [.35,-.45,-1.80]`, `right [.40,-.48,-.88]` if the nodes are absent.
+- A right-hand SIDE (+X) loading-port target is derived from the real `inserter`/trigger part.
+- Each 560ms shotgun shell reload now animates the **left support hand** from pump down to body and across to the right-side loading port, inserting and returning to pump. The right firing hand stays on grip.
+- Existing fixed-shoulder, articulated upper/forearm helper is reused to prevent translating the whole shoulder.
+- The source GLB's exact `shell` node, previously saved as `shotgunShellTemplate` in v502, is cloned and normalized into a visible per-shell reload actor; the floating idle shell remains hidden.
+- Shell actor cleanup on reload finish, rebuild, and per-shell intervals.
+- Shotgun reload timing, ammo increments, sound, stats and other weapons unchanged.
+
+## Validation already performed
+- Fetched latest GitHub main handoff/recovery/index/game before code changes.
+- User video inspected.
+- Game source JavaScript syntax parsed successfully before commit.
+- Preserved exact `RIFLE_ADS_ZERO_Y=.040`, weapon-cycle order, and shotgun stats.
+- Committed gameplay and loader to `main`; live visual test remains **pending user review**.
+- This is a first test pass for real shell choreography. Do not call the hand grip, ADS size or insertion location approved until user checks it on screen.
+
+## v503 test target
+1. ADS shotgun receiver/stock looks fuller, but sights remain aligned with hits.
+2. The left hand grips the real pump; right grips trigger/stock and neither floats.
+3. Press R with 1–3 shells missing: support arm reaches down for each shell, visibly brings the model shell to the **right side** of receiver, inserts, and returns.
+4. Confirm ammo increments once per shell, no red shell hanging under idle receiver, no arm jump between shell cycles.
+5. Confirm M4 work and v497 key order unchanged.
+
+Keep work scoped to shotgun only until user approves. If a visual correction is needed, inspect new video/screenshots before adjusting geometry again.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-08 — v502 SHOTGUN HAND ALIGNMENT / LOOSE SHELL CLEANUP — READ THIS FIRST
 
 GitHub main is authoritative.
