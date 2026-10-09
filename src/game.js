@@ -6707,7 +6707,7 @@ function closeGraphicsModal(){
  graphicsModal.classList.remove("show");
  graphicsModal.setAttribute("aria-hidden","true");
 }
-document.querySelector("#showControls")?.addEventListener("click",()=>openGraphicsModal("controls"));
+document.querySelector("#showSettings")?.addEventListener("click",()=>openGraphicsModal("controls"));
 for(const button of document.querySelectorAll(".openAdvancedGraphics")){
  button.addEventListener("click",()=>openGraphicsModal("display"));
 }
