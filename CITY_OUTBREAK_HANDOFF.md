@@ -1,3 +1,31 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v511 SHOTGUN SUPPORT ELBOW FINAL BEND TUNE — READ FIRST
+
+GitHub `main` is authoritative. This entry at the top supersedes older "current" entries.
+
+## Current v511 test (not yet approved visually)
+- User uploaded `2026-10-09 02-29-57.mp4` (30.9s) testing v510 and said: "its so close just not there yet just a little more adjustment."
+- Examined extracted frames: v510 gun roll and red/brass shell + over-top/inward/forward stroke are very close. However, the left arm still appears to be a long, almost straight diagonal rod reaching up to the shell/receiver.
+- Keep approved gun left roll `1.15rad`, right-side receiver visibility `-.21rad` yaw, shell visibility, forward two-stage stroke, grip and ADS untouched.
+- **v511** loader `./src/game.js?v=511`. Gameplay commit `5054c25c1002d4dda39cfec229f58f14d8a14287`; gameplay blob `dae5d3cd6b874358a16a1b0ce6042cbb307fa6a2`.
+- Loader commit `46b17a9d2b7590bee5671c0b680a827588e69e6e`.
+- Shotgun GLB `assets/shotgun_test.glb?v=501` and CSS v500 unchanged.
+- Protected v324 recovery and approved M4 remain untouched.
+
+## v511 microscopic shotgun-only change
+- Previous camera-space shoulder `(-.52,-1.04,.16)` sits effectively behind player's camera, extending full upper arm as pole. It is now `(-.44,-1.00,-.26)` so upper arm originates more naturally from player's lower-left torso.
+- Previous elbow `Math.min(-.27,handView.x-.24)` and camera-space Y range `[-.84,-.50]` left wrist-to-elbow almost straight on screen. New elbow x `Math.min(-.52,handView.x-.38)`, Y clamp `[-.84,-.62]`, and interpolated depth factor `.52` (was `.64`) produces a visibly bent elbow with sleeve close to player's body. No change to actual hand or shell trajectory.
+- Representative 2D projected angle tests at three possible hand positions changed elbow angle from ~115/141/131 degrees to ~86/96/97 degrees, respectively (more human-like bend). This is geometry validation, not gameplay visual verification.
+- All shell and hand keyframes, +X inward then -Z forward stroke, 820ms shell interval, cylinder materials/scale, ADS/hip/crosshair, M4, weapon order, and game stats unchanged.
+- Full JavaScript source passed syntax parser and exact protected values checked.
+
+## What user should test
+Fire 2-4 shells and reload. The shotgun should still roll to the exact approved angle; support elbow should be bent rather than acting as a long bar across the screen while shell hand rises, pushes inward and then forward. If elbow still clips or looks wrong, inspect next video and make only narrowly scoped changes.
+
+## Workflow
+Commit edits directly to GitHub main, update `index.html` loader and both handoff docs; return cache-busted game link. Preserve approved v324 recovery. Never claim rendered visual success without actual gameplay verification.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v510 SHOTGUN HAND PUSHES SHELL IN AND FORWARD — READ FIRST
 
 GitHub `main` is authoritative. This top section supersedes previous "current" notes.
