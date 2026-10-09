@@ -1805,7 +1805,7 @@ function addPlayerHands(){
  // The pistol support hand was visually swallowing the reload magazine. Scale only
  // the M17 left-hand/arm geometry down while preserving the approved animation path.
  if(weapon==='pistol')left.scale.setScalar(.72);
- const rs=new THREE.Vector3(.80,-1.12,.08),ls=new THREE.Vector3(-.35,-1.08,.06),rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
+ const rs=new THREE.Vector3(.80,-1.12,.08),ls=weapon==="shotgun"?new THREE.Vector3(-.27,-.99,-.43):new THREE.Vector3(-.35,-1.08,.06),rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
  const rm=new THREE.Vector3().lerpVectors(rs,rh,.58),lm=new THREE.Vector3().lerpVectors(ls,lh,.58);
  fpsArmSegment(rs,rm,.105,sleeve,right);fpsArmSegment(rm,weapon==='pistol'?rh.clone().lerp(rm,.14):rh,.086,cuff,right);fpsHand(right,rh,'right',glove);
  const leftUpper=fpsArmSegment(ls,lm,.105,sleeve,left),leftFore=fpsArmSegment(lm,weapon==='pistol'?lh.clone().lerp(lm,.14):lh,.086,cuff,left);fpsHand(left,lh,'left',glove);
@@ -2132,39 +2132,66 @@ function updateMP5ReloadMagazineFX(rp,home,targetQ){
 function updateShotgunReloadFX(rp){
  if(weapon!=="shotgun"||!reloading||reloadWeapon!=="shotgun"||!playerHandRig)return;
  const p=rp.p,home=playerHandRig.leftHandBase;
- const pouch=new THREE.Vector3(-.36,-1.25,.35);
- const port=shotgunLoadPort||new THREE.Vector3(.66,-.41,-1.08);
- const approach=port.clone().add(new THREE.Vector3(.17,-.11,.25));
- // Individual shell motion: leave pump, pick up shell at body, travel to
- // the RIGHT receiver port, seat the shell, return to support grip.
+ const port=shotgunLoadPort||new THREE.Vector3(.67,-.43,-1.12);
+ // The right-side loading port stays exposed by the mild left roll, while
+ // the LEFT support hand brings every shell visibly OVER THE TOP of the receiver.
+ // All locations are in gun-local space so they move together while canted.
+ const pouch=new THREE.Vector3(-.15,-1.05,-.58);
+ const overLeft=port.clone().add(new THREE.Vector3(-.38,.48,-.16));
+ const overRight=port.clone().add(new THREE.Vector3(.18,.47,-.14));
+ const atPort=port.clone().add(new THREE.Vector3(.15,.10,.07));
  let hand;
- if(p<.26)hand=home.clone().lerp(pouch,smoothReload01(p/.26));
- else if(p<.39)hand=pouch.clone();
- else if(p<.72)hand=pouch.clone().lerp(approach,smoothReload01((p-.39)/.33));
- else if(p<.87)hand=approach.clone().lerp(port,smoothReload01((p-.72)/.15));
- else hand=port.clone().lerp(home,smoothReload01((p-.87)/.13));
- // Reuse anchored-arm IK geometry, never slide the complete shoulder.
- poseM4ReloadLeftArm(hand.clone().sub(home));
- const carrying=p>=.39&&p<.87&&!!shotgunShellTemplate;
+ if(p<.22)hand=home.clone().lerp(pouch,smoothReload01(p/.22));
+ else if(p<.29)hand=pouch.clone();
+ else if(p<.49)hand=pouch.clone().lerp(overLeft,smoothReload01((p-.29)/.20));
+ else if(p<.70)hand=overLeft.clone().lerp(overRight,smoothReload01((p-.49)/.21));
+ else if(p<.88)hand=overRight.clone().lerp(atPort,smoothReload01((p-.70)/.18));
+ else hand=atPort.clone().lerp(home,smoothReload01((p-.88)/.12));
+ // The shoulder stays on the player's body; the elbow bends as the hand
+ // crosses ABOVE the receiver rather than sticking out like a rigid stalk.
+ const rig=playerHandRig;
+ const elbow=rig.leftShoulder.clone().lerp(hand,.53).add(new THREE.Vector3(-.20,-.055,.22));
+ rig.left.position.set(0,0,0);rig.left.rotation.set(0,0,0);
+ setFpsArmSegmentPose(rig.leftUpper,rig.leftShoulder,elbow);
+ setFpsArmSegmentPose(rig.leftFore,elbow,hand);
+ setFpsHandPose(rig.left,hand);
+ rig.leftGripAnchor.position.copy(hand);rig.m4Articulated=true;
+ // The supplied GLB contains a loose shell, but the v503/v504 clone did not
+ // appear on screen. Keep the original GLB/template untouched; for reload use
+ // a correctly sized, reliably visible red hull and brass base in hand.
+ // It is a real 3D actor, not a HUD sprite; it follows gun roll and insertion.
+ const carrying=p>=.29&&p<.93;
  if(!carrying){
   if(shotgunReloadShellActor?.parent)shotgunReloadShellActor.parent.remove(shotgunReloadShellActor);
   shotgunReloadShellActor=null;return;
  }
  if(!shotgunReloadShellActor){
-  // This is a real copy of the named 'shell' piece from shotgun_test.glb.
-  const actor=new THREE.Group(),visual=shotgunShellTemplate.clone(true);
-  actor.name="RightSideShotgunReloadShell";
-  visual.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
-  gun.add(actor);actor.add(visual);
-  gun.updateMatrixWorld(true);
-  const b=new THREE.Box3().setFromObject(visual),sz=b.getSize(new THREE.Vector3());
-  const center=gun.worldToLocal(b.getCenter(new THREE.Vector3()));
-  visual.position.sub(center);
-  actor.scale.setScalar(.21/Math.max(.001,sz.x,sz.y,sz.z));
-  shotgunReloadShellActor=actor;
+  const actor=new THREE.Group();actor.name="VisibleShotgunShellInsertion";
+  const red=new THREE.MeshStandardMaterial({color:0xa7261c,roughness:.58,metalness:.04});
+  const brass=new THREE.MeshStandardMaterial({color:0xc5a352,roughness:.3,metalness:.75});
+  const primer=new THREE.MeshStandardMaterial({color:0x947438,roughness:.48,metalness:.55});
+  // Shell's axis is X: nose points toward the gun (-X), brass rim faces
+  // outward (+X). This means insertion physically travels inward.
+  const hull=new THREE.Mesh(new THREE.CylinderGeometry(.044,.044,.18,14),red);
+  hull.rotation.z=Math.PI/2;hull.position.x=-.015;actor.add(hull);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.050,.050,.047,14),brass);
+  base.rotation.z=Math.PI/2;base.position.x=.098;actor.add(base);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(.031,.031,.004,12),primer);
+  cap.rotation.z=Math.PI/2;cap.position.x=.124;actor.add(cap);
+  for(const child of actor.children){child.castShadow=false;child.receiveShadow=false;}
+  gun.add(actor);shotgunReloadShellActor=actor;
  }
- shotgunReloadShellActor.position.copy(hand).add(new THREE.Vector3(-.035,.030,-.025));
- shotgunReloadShellActor.rotation.set(0,0,-.35*smoothReload01((p-.72)/.15));
+ // Keep the shell just ahead of the glove so it does not disappear INSIDE
+ // the hand. Then drive it independently into the port, tip first.
+ if(p<.77){
+  shotgunReloadShellActor.position.copy(hand).add(new THREE.Vector3(.11,.11,-.045));
+ }else{
+  const start=port.clone().add(new THREE.Vector3(.30,.19,.05));
+  const seated=port.clone().add(new THREE.Vector3(-.085,.005,0));
+  shotgunReloadShellActor.position.lerpVectors(start,seated,smoothReload01((p-.77)/.16));
+ }
+ // The shell body remains at full, identifiable size until it passes the port.
+ shotgunReloadShellActor.rotation.set(0,0,0);
 }
 function updateReloadMagazineFX(rp){
  if(!reloading||!detachableMagazineReload())return;
@@ -5334,7 +5361,7 @@ function reload(w=weapon){
  if(w==="m240")stopM240FireAudio();
  setAim(false);
  if(w==="shotgun"){
-   const shellDuration=Math.max(360,560-reloadLevel*45);
+   const shellDuration=Math.max(580,820-reloadLevel*45);
    const finishShotgunReload=()=>{
      if(seq!==reloadSequence)return;
      finishReloadMagazineFX();reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";ui()
@@ -5905,12 +5932,12 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  gun.position.x=ac2.x*adsScale*aimBlend+(weapon==="shotgun"?0:rp.arch*(weapon==="pistol"?.05:.10));
  const rifleAdsRecoilScale=weapon==="rifle"?THREE.MathUtils.lerp(1,.22,aimBlend):1;
  const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil*rifleAdsRecoilScale;
- gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+(weapon==="shotgun"?.045*shotgunCant:rp.arch*.09);
- gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08-(weapon==="shotgun"?.03*shotgunCant:rp.arch*(weapon==="m240"?.12:.18));
- gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt+(weapon==="shotgun"?.08*shotgunCant:0);
- gun.rotation.y=weapon==="shotgun"?-.17*shotgunCant:rp.arch*(weapon==="grenadeLauncher"?.10:.04);
+ gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+(weapon==="shotgun"?.02*shotgunCant:rp.arch*.09);
+ gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08-(weapon==="shotgun"?.015*shotgunCant:rp.arch*(weapon==="m240"?.12:.18));
+ gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt+(weapon==="shotgun"?.02*shotgunCant:0);
+ gun.rotation.y=weapon==="shotgun"?-.09*shotgunCant:rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  // Positive roll exposes the shotgun's right (+X) receiver-side loading area.
- gun.rotation.z=weapon==="shotgun"?.70*shotgunCant:-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
+ gun.rotation.z=weapon==="shotgun"?.40*shotgunCant:-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(weapon==="shotgun"&&shotgunCant>0){
   // Keep the firing hand stationary in camera space. The imported receiver,
   // support hand and actual GLB shells roll about the grip, not the camera.
