@@ -1,3 +1,47 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v519 CUSTOM ADVANCED GRAPHICS CONTROLS — READ FIRST
+
+**GitHub `main` remains the source of truth. This newest top section supersedes older current-build handoffs.**
+
+## User's latest request / approved gameplay
+- User approved v517 (empty shotgun chambers first shell from side, partially loaded shotgun uses bottom feed only); v518 introduced Low/Medium/High graphics presets.
+- User now asked: **"are you able to make it so the player is able to turn on or off things separately. like maybe look ingto other game graphic settings and see how the have there menues?"**
+- Researched standard PC graphics menus (Fortnite video presets, Unreal Engine scalability docs): presets plus manual per-feature options are conventional. v519 implements that.
+- **v519** still needs user's actual in-browser visual/FPS testing; no measured benchmark claimed.
+- Loader `./src/game.js?v=519` and stylesheet `./src/game.css?v=519` in index.html.
+- Game initial commit `944a294ff44c3be70b851a1ecf983b65a0ee510c`; follow-up Escape/dialog commit `6bc676e2b206940d0cb5e08451f2d4dc3290a403`, gameplay blob `c52daf99b5bd443a896aee1ae84b3be4bf15f11b`.
+- index.html GUI commit `3e97ac2bd5c7b3b6244d261119c2e08d4262dabf`, blob `86ecc73a9a04bd88147797ec92df74183ee28945`.
+- CSS dialog commit `b44c836c6491f35e2f740b2d3128e617193f5765`, blob `0dc720bfa9bc38401bbce8ca241cc74020c57f88`.
+- GLB assets untouched. Protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 untouched.
+
+## UI and independent settings
+- Existing Low / Medium / High selectors remain both on start screen and pause menu, with a new `CUSTOM — MANUAL` option.
+- Both locations now have **ADVANCED GRAPHICS...** button. Either opens ONE shared fullscreen overlay dialog `#graphicsAdvancedModal` above start/pause. It has accessible field labels, descriptions, a close button, click-outside dismiss, Escape-to-close, responsive styling, and current preset indication.
+- Five truly independently adjustable options using `[data-graphics-option]`:
+  1. **Render Resolution**: 60%, 75%, 85%, or up to 110% pixel-ratio cap. Changing calls existing renderer resize function.
+  2. **Dynamic Shadows**: On/Off (`ren.shadowMap.enabled`, `sun.castShadow`).
+  3. **Rain**: Off/Reduced (310 streaks)/Full (620 streaks); rain updater and draw range respect value.
+  4. **Rain Splashes**: On/Off independent of preset, only visible when rain is on.
+  5. **Real Streetlight Lighting**: Off/Reduced (half existing real spotlights)/Full; decorative low-cost lamp glow stays.
+- Changing any setting switches quality label in both selectors to **CUSTOM** immediately, without changing other options. Presets overwrite all individual options at once. Selecting CUSTOM again restores saved manual settings.
+- `GRAPHICS_PRESETS` defaults match v518 exactly:
+   - High original: res 1.10, shadows on, rain 620, splashes on, full lights.
+   - Medium: res .85, shadows off, rain 310, splashes off, half lights.
+   - Low: res .60, shadows off, rain0, splashes off, real lights off.
+- Existing preset key `city-outbreak-graphics-v1` is reused; custom settings are stored as JSON at `city-outbreak-graphics-custom-v2`; both guarded with try/catch to handle blocked localStorage.
+- Async lamp GLB loading uses `graphicsOptions.lights` to recompute live budget, preserving choice after map finishes loading.
+- No antialias checkbox (Three.js WebGLRenderer constructor AA cannot be toggled without renderer recreation); no false controls added. No collision, AI, wave, zombie count, controls or weapon changes.
+
+## Verification and next test
+- Read newest handoff sections, protected recovery, index.html, full src/game.js and CSS from current GitHub main. Researched Epic docs.
+- Full JS syntax check passes. Mocked real graphics methods, both preset selectors, modal controls and a lamp pool of 8: tested High, Medium, Low; manually changed Medium to Shadows ON -> CUSTOM without losing its rain 310 or resolution .85; independently switched Rain OFF and lights OFF while retaining Shadows; switching to Low and back to Custom restored manual state. Confirmed storage JSON, both settings controls synced, modal opens/closes.
+- Verified all 5 advanced controls and their CSS present, v519 game/CSS cache busts, and approved v517 shotgun code unchanged. Escape support parsed. No GPU benchmark or live Pages browser rendering performed.
+- User test: open Start > ADVANCED GRAPHICS, try Rain OFF + Shadows ON + Render Resolution 60%, verify CUSTOM and whether FPS improves. Pause and verify same values there; restart browser and verify remembered choices. Compare FPS in upper-left; confirm game/zombie/spawn/collision/reloads untouched.
+- For performance, GPU-heavy toggles are render resolution, sun shadows, spotlights; rain/splash effects primarily help effect update work. Rendering improvements are hardware dependent.
+
+Continue direct GitHub main edits + versioned cache-busted Pages links. Keep handoffs up to date. **Never edit protected v324 recovery unless explicitly directed.**
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v518 GRAPHICS QUALITY PRESETS FOR LOW-END SYSTEMS — READ FIRST
 
 **GitHub main is authoritative. This newest section supersedes all earlier "current" entries.**
