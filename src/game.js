@@ -129,9 +129,9 @@ const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new
 const GRAPHICS_QUALITY_KEY="city-outbreak-graphics-v1";
 const GRAPHICS_CUSTOM_KEY="city-outbreak-graphics-custom-v2";
 const GRAPHICS_PRESETS={
- high:{resolution:1.10,shadows:true,rain:620,splashes:true,lights:"full"},
- medium:{resolution:.85,shadows:false,rain:310,splashes:false,lights:"half"},
- low:{resolution:.60,shadows:false,rain:0,splashes:false,lights:"off"}
+ high:{resolution:1.10,shadowQuality:"high",rain:620,splashes:true,lights:"full",particles:100,corpses:20},
+ medium:{resolution:.85,shadowQuality:"off",rain:310,splashes:false,lights:"half",particles:50,corpses:10},
+ low:{resolution:.60,shadowQuality:"off",rain:0,splashes:false,lights:"off",particles:25,corpses:4}
 };
 let graphicsQuality="high",graphicsOptions={...GRAPHICS_PRESETS.high};
 let graphicsRainCount=620,graphicsLightLimit=Infinity,graphicsCustomOptions=null;
@@ -1691,6 +1691,7 @@ const FX={
  grenadeDustMat:new THREE.MeshStandardMaterial({color:0x5c5142,roughness:.86}),
  grenadeFlashMat:new THREE.MeshStandardMaterial({color:0xd29a46,roughness:.58,emissive:0x542b08,emissiveIntensity:.30})
 };
+function cosmeticParticleCount(count){return Math.max(0,Math.round(count*graphicsOptions.particles/100));}
 function capFX(){
  while(parts.length>64){const p=parts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
  while(impacts.length>24){const p=impacts.shift();if(p&&p.q&&p.q.parent)scene.remove(p.q)}
@@ -4566,7 +4567,7 @@ function ui(){
 }
 function show(s){showTransientMessage(msg,s)}
 function burst(pos,big=false){
- const count=big?10:3;
+ const count=cosmeticParticleCount(big?10:3);
  for(let i=0;i<count;i++){
    let q=new THREE.Mesh(big?FX.bloodGeoBig:FX.bloodGeoSmall,i%4===0?FX.boneMat:FX.bloodMat);
    const s=big?.55+rnd()*.8:.45+rnd()*.5;q.scale.setScalar(s);q.position.copy(pos);scene.add(q);
@@ -4612,7 +4613,7 @@ function casing(){
   capFX()
 }
 function impactFX(p){
-  for(let i=0;i<2;i++){
+  for(let i=0;i<cosmeticParticleCount(2);i++){
     const q=new THREE.Mesh(FX.impactGeo,FX.impactMat);
     q.position.copy(p);let s=.7+Math.random()*.65;q.scale.setScalar(s);scene.add(q);
     impacts.push({q,v:new THREE.Vector3((Math.random()-.5)*1.6,Math.random()*1.5,(Math.random()-.5)*1.6),life:.16+Math.random()*.12});
@@ -5820,7 +5821,7 @@ function blastReact(z,origin,strength=1){
 function explodeLauncherRound(g){
  noise(.34,.95,1100);tone(46,.42,"sine",.48);tone(92,.20,"square",.20);
  const p=g.q.position.clone();scene.remove(g.q);
- for(let i=0;i<34;i++){let q=new THREE.Mesh(FX.explosionGeo,i%4?FX.launcherDustMat:FX.launcherFlashMat);q.scale.setScalar(.40+rnd()*1.0);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*12,rnd()*7,(rnd()-.5)*12),life:.30+rnd()*.45})}
+ for(let i=0;i<cosmeticParticleCount(34);i++){let q=new THREE.Mesh(FX.explosionGeo,i%4?FX.launcherDustMat:FX.launcherFlashMat);q.scale.setScalar(.40+rnd()*1.0);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*12,rnd()*7,(rnd()-.5)*12),life:.30+rnd()*.45})}
  for(const z of living()){
    const d=z.g.position.distanceTo(p);
    if(d<6.5){
@@ -5855,7 +5856,7 @@ function radiatedSpinTopTarget(z){
 function explodeGrenade(g){
  noise(.42,.95,900);tone(48,.45,"sine",.42);
  const p=g.q.position.clone();scene.remove(g.q);
- for(let i=0;i<55;i++){let q=new THREE.Mesh(FX.explosionGeo,i%3?FX.grenadeDustMat:FX.grenadeFlashMat);q.scale.setScalar(.45+rnd()*1.15);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*10,rnd()*7,(rnd()-.5)*10),life:.45+rnd()*.55})}
+ for(let i=0;i<cosmeticParticleCount(55);i++){let q=new THREE.Mesh(FX.explosionGeo,i%3?FX.grenadeDustMat:FX.grenadeFlashMat);q.scale.setScalar(.45+rnd()*1.15);q.position.copy(p);scene.add(q);parts.push({q,v:new THREE.Vector3((rnd()-.5)*10,rnd()*7,(rnd()-.5)*10),life:.45+rnd()*.55})}
  for(const z of living()){
    const d=z.g.position.distanceTo(p);
    if(d<7.5){
@@ -6304,7 +6305,16 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
  // scripted fall timer or root-ground flag says the corpse is "done."
  if(z.ragdoll?.active!==false)updateRagdoll(z,dt);
  syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
- if(z.corpseAge>10&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
+ // Do not clean up ANY corpse while it is still in active ragdoll motion.
+ if(z.corpseAge>10&&z.ragdoll?.active===false&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
+}
+// Apply the visual body budget only to settled corpses, oldest first.
+// Living enemies, active ragdolls, navigation and combat never change.
+const settledCorpses=zombies.filter(z=>z.dead&&!z.cleaned&&z.ragdoll?.active===false&&z.g?.parent);
+const extraCorpses=settledCorpses.length-graphicsOptions.corpses;
+if(extraCorpses>0){
+ settledCorpses.sort((a,b)=>b.corpseAge-a.corpseAge);
+ for(let i=0;i<extraCorpses;i++){const z=settledCorpses[i];releaseZombieVisual(z);z.cleaned=true;}
 }
 if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
 spawnQueuedZombies();
@@ -6618,10 +6628,12 @@ function normalizeGraphicsOptions(input){
  const src=input&&typeof input==="object"?input:GRAPHICS_PRESETS.high;
  return {
   resolution:[.60,.75,.85,1.10].includes(Number(src.resolution))?Number(src.resolution):1.10,
-  shadows:src.shadows===true,
+  shadowQuality:["off","low","medium","high"].includes(src.shadowQuality)?src.shadowQuality:(src.shadows===false?"off":"high"),
   rain:[0,310,620].includes(Number(src.rain))?Number(src.rain):620,
   splashes:src.splashes===true,
-  lights:["off","half","full"].includes(src.lights)?src.lights:"full"
+  lights:["off","half","full"].includes(src.lights)?src.lights:"full",
+  particles:[25,50,75,100].includes(Number(src.particles))?Number(src.particles):100,
+  corpses:[0,4,10,20].includes(Number(src.corpses))?Number(src.corpses):20
  };
 }
 function applyGraphicsOptions(input,presetName="custom"){
@@ -6630,8 +6642,14 @@ function applyGraphicsOptions(input,presetName="custom"){
  graphicsQuality=presetName;
  ren.setPixelRatio(Math.min(devicePixelRatio||1,settings.resolution));
  resizeRenderer();
- ren.shadowMap.enabled=settings.shadows;
- sun.castShadow=settings.shadows;
+ const castShadows=settings.shadowQuality!=="off";
+ const shadowPixels=settings.shadowQuality==="low"?256:settings.shadowQuality==="medium"?512:768;
+ if(sun.shadow.mapSize.x!==shadowPixels){
+  if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}
+  sun.shadow.mapSize.set(shadowPixels,shadowPixels);
+ }
+ ren.shadowMap.enabled=castShadows;
+ sun.castShadow=castShadows;
  ren.shadowMap.needsUpdate=true;
  graphicsRainCount=settings.rain;
  rainGeometry.setDrawRange(0,graphicsRainCount*2);
@@ -6694,8 +6712,8 @@ for(const input of document.querySelectorAll("[data-graphics-option]")){
   const key=input.dataset.graphicsOption;
   if(!Object.prototype.hasOwnProperty.call(graphicsOptions,key))return;
   const next={...graphicsOptions};
-  next[key]=key==="resolution"||key==="rain"?Number(input.value):
-   key==="shadows"||key==="splashes"?input.value==="true":input.value;
+  next[key]=["resolution","rain","particles","corpses"].includes(key)?Number(input.value):
+   key==="splashes"?input.value==="true":input.value;
   applyGraphicsOptions(next,"custom");
  });
 }
