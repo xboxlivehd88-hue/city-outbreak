@@ -1,3 +1,34 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v513 SHOTGUN EJECTS ACTUAL GLB SHELL — READ FIRST
+
+**GitHub `main` is authoritative. This newest section supersedes earlier current-state notes.**
+
+## User approval and v513 scoped request
+- User tested **v512** and explicitly said: **"its fine only problem is the emty shells that are ejected are still the one you made they need to be replaced with the shell model but only for the shotgun"**.
+- Treat **v512 shotgun reload, left-roll pose, bent support arm, over-top feed, right-side breech insertion and shell disappearance as APPROVED**. DO NOT rework them without the user's request.
+- Current v513 test build: `./src/game.js?v=513`, with game.js commit `b5a01e9ff0314ce266343f5c6a2cbf6f4c969cc2` and game blob `91ce96631b443ae084596f924eca51ead6be4b8d`; index loader commit `9e59756761e53cc21d5254b2d69215ab20cfffc1`.
+- Original shotgun GLB remains `assets/shotgun_test.glb?v=501`. CSS v500, protected recovery v324 intact.
+
+## What v513 changes (SHOTGUN EJECTION ONLY)
+- Existing `casing()` created a generic `FX.casingGeo` / brass cylinder for ALL guns, including shotgun.
+- Added a separate `shotgunSpentShellTemplate` initialized/null-reset with shotgun rebuild.
+- In existing shotgun model rebuild: use the already-recognized **original GLB `shell` node** (saved as `shotgunShellTemplate`). Clone its real mesh/materials once into an independent group, recenter source display offset using its bounding box, normalize its largest side to **0.23 units** and save as `shotgunSpentShellTemplate`. Continue hiding the GLB's loose display shell on the idle gun.
+- On `casing()`, if `weapon==="shotgun" && shotgunSpentShellTemplate` clone that original GLB model and allow a slight random tumble. For other weapons and for async asset fallback, retain the exact existing generic brass cylinder.
+- Preserve the *same* generic ejection world origin `gun.localToWorld(.56,-.26,-1.05)`, casing velocity, lifetime, gravity, spin and cleanup cap. Do not alter any other firearm.
+- **No changes** to shotgun reload FX's procedural red shell actor (the user approved that separately), shell timing, gameplay stats, ADS, crosshair, weapon loadout, or M4.
+- User requested the original GLB ejected casing model; do not confuse it with the red/brass reload shell actor.
+
+## Validation
+- Fetched latest handoff documents, recovery checkpoint, index.html, and src/game.js from main before editing.
+- Full edited JS passed parser check; verified exact existing gun roll `1.15*shotgunCant`, yaw `-.21*shotgunCant`, shotgun right-side breech `pushForward`, M4 ADS zero, weapon order and unchanged reload duration.
+- GitHub main gameplay & loader committed. **Not visually verified in a live browser**; user to test shotgun ejection and other weapon casing preservation.
+
+## v513 test
+Fire shotgun while watching the ejected shells: ejected models should look like the actual GLB model, not miniature brass cylinders; visible red/brass reload insertion should behave exactly like the approved v512. Optionally test M4/M17 ejection remains generic.
+
+Continue direct GitHub changes and cache-busted Pages links. Update both handoff files at top after each change. Preserve the protected v324 checkpoint.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v512 SHOTGUN SHELL SEATS INTO BREECH — READ FIRST
 
 GitHub `main` is authoritative. This newest dated section supersedes all older current-state handoff sections.
