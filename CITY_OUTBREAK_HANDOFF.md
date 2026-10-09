@@ -4,7 +4,7 @@ GitHub `main` is authoritative. This newest section supersedes older current-sta
 
 ## Current TEST build (not user-approved yet)
 - Version **v505**, loader `./src/game.js?v=505`.
-- Gameplay commit: `a4c8252ed613fb86f46d603ddef20fd169650bb7`; blob `b8f2147849b580568ac1a160f2d579d964720b2b`.
+- Latest gameplay commit: `09e9c48b94aa11f296795511cf84d64e8f10c0c2`; blob `e2be8a84a81da1ffc6e103b6743afa3ffc610ccf` (the previous v505 base gameplay commit was `a4c8252ed613fb86f46d603ddef20fd169650bb7`).
 - Loader commit: `28bdccb1ca8cbce47d762bbe1f4e93c2e41548cd`.
 - Shotgun GLB remains `assets/shotgun_test.glb?v=501`, unchanged.
 - v500 reticle, approved M4 transforms/stats, and v497 key lineup preserved.
@@ -19,6 +19,7 @@ User uploaded video `2026-10-09 01-17-17.mp4` (30.47 seconds), and said "doesnt 
 - New per-shell hand path: leave pump → low body pouch → rise on the **LEFT/OVER THE TOP of the receiver** → cross the top → descend to right receiver loading port → return to pump. A modeled elbow bend/anchored shoulder is used instead of generic offset movement.
 - **Guaranteed visible shell:** v503/v504 attempted to clone the original GLB loose shell, but its actor did not appear in user footage. The real shotgun GLB and `shotgunShellTemplate` are preserved; the *moving reload shell actor* is now a 3D red hull with brass base and primer, sized ~.22 units, carried ahead of the glove and physically slid toward the right-side port. No fake floating shell at idle.
 - Per-shell timing changed `Math.max(360,560-reloadLevel*45)` to `Math.max(580,820-reloadLevel*45)` for visible, readable insertion. Ammo count increments once at end of each shell cycle as before.
+- Follow-up continuity fix: the visible shell insertion path at p=.77 now starts at the *exact same position* as the over-top carry, preventing a shell teleport at the transition.
 - Crosshair/ADS and all other weapons untouched.
 
 ## Validation
