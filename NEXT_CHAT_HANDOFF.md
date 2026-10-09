@@ -1,3 +1,35 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v512 SHOTGUN SHELL SEATS INTO BREECH — READ FIRST
+
+GitHub `main` is authoritative. This newest dated section supersedes all older current-state handoff sections.
+
+## Current user feedback and version status
+- User supplied `2026-10-09 02-36-29.mp4` testing v511 and said "the shells are not going into the breach close but not close enough".
+- Inspected frames (19.8-second video). The shell is visible and the shotgun is held at the approved left-roll angle, but the red/brass cartridge stops visibly outside/above the receiver before disappearing.
+- **v512** is committed to `main`, pending user visual approval.
+- Gameplay commit: `a17c29b5de85ce0a40e7899ed8c1c7ffba07c088`; source blob: `bb49e2076a2a357e07397249034441b30a509d4f`.
+- Loader commit: `f2779264783c01b035c71821599b6d9cb7c6ca4d`. index loader: `./src/game.js?v=512`.
+- Shotgun asset stays `assets/shotgun_test.glb?v=501` and CSS stays v500.
+
+## v512 surgical adjustment (shotgun reload FX ONLY)
+- Keep v511-approved `gun.rotation.z=1.15*shotgunCant` (~66deg left roll) and `gun.rotation.y=-.21*shotgunCant`; do not alter these.
+- Keep the v511 camera-space bent elbow and shoulder positions and hand's over-the-top → inward → forward timing; no changes to hand approach, visual shell model, ADS, firing, M4 or other weapons.
+- Final two hand waypoints nudged inward/deeper: `pressIn=port+(-.015,.040,.04)` instead of `port+(.04,.055,.04)`; `pushForward=port+(-.09,.02,-.30)` instead of `port+(-.045,.03,-.25)`.
+- Critical defect: old shell stayed attached at a constant `hand + (.075,.065,-.075)`, which left it **outside and above** the breach even when the hand pushed forward. v512 blends the actual cartridge's hand-local offset starting at p=.72: `(.075,.065,-.075)` -> `(-.09,-.015,-.075)` by p=.83 -> `(-.19,-.06,-.115)` by p=.91 (using smooth steps). This makes shell tip cross receiver upper lip and end `port+(-.28,-.04,-.415)`, deeper into the shotgun instead of vanish outside.
+- Shell actor still appears at p>=.29 and disappears on complete forward seating p>=.91. 820ms shell timer and ammo count unchanged.
+
+## Validation/constraints
+- Before editing read top of both live handoffs, CURRENT_RECOVERY_CHECKPOINT.md, index.html, src/game.js from main.
+- Parsed complete edited JS successfully. Checked exact approved weapon cycle order, M4 ADS zero, shotgun ADS, shell duration, rotation/yaw, bent elbow and shell actor unchanged.
+- Verified displacement at p=.72, .775, .83, .87, .91 mathematically; endpoint is inside port x/y and .415 units forward. This is source/geometry validation, NOT real in-browser visual confirmation.
+- Protected v324 recovery not touched.
+
+## Next test
+Fire several shotgun rounds, press R: shotgun left roll/arm should look the same as v511. Red/brass shell should now **enter the breech visibly during the last inward-and-forward push**, rather than hovering just outside before disappearing. If insertion is visually offset, inspect exact new video and adjust only seating position; do not change approved gun/arm and timing.
+
+Continue direct GitHub commits and cache-busted Pages links, maintain handoffs. Do not claim visual success without user test.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v511 SHOTGUN SUPPORT ELBOW FINAL BEND TUNE — READ FIRST
 
 GitHub `main` is authoritative. This entry at the top supersedes older "current" entries.
