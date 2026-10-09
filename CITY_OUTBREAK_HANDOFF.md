@@ -1,3 +1,39 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v510 SHOTGUN HAND PUSHES SHELL IN AND FORWARD — READ FIRST
+
+GitHub `main` is authoritative. This top section supersedes previous "current" notes.
+
+## User's latest test and request
+- User tested v509; attached `2026-10-09 02-06-24.mp4` (about 18 seconds).
+- Exact feedback: **"the shell looks like it being plugg in not loaded and the left arm should be over with shell then push shell in and forward this is close"**.
+- This means v509 left arm and gun cant are getting closer. Preserve them. Specifically fix shell orientation and couple hand motion to the shell through TWO distinct loading beats: inward then forward toward the muzzle.
+- v510 is committed but **visual correctness not yet user confirmed**.
+
+## v510 source and deployment
+- Game version v510, loader `./src/game.js?v=510`.
+- Gameplay commit `020ae07ad5462ebf54b70cb6fad9df985e9752a9`.
+- Gameplay source blob `9c22efb785eede4a64d68fd8c89370634c43363b`.
+- Loader commit `e24a7377951d500a609f1bf1ab5ce198f7080506`.
+- Shotgun GLB remains `assets/shotgun_test.glb?v=501`; CSS unchanged from v500.
+- Protected recovery v324 unchanged.
+
+## Isolated v510 improvements to `updateShotgunReloadFX`
+1. Keep v509 over-top approach, camera-space fixed shoulder/elbow solution, shell visibility, and v506-approved roll (`1.15*shotgunCant`) and yaw (`-.21*shotgunCant`).
+2. From the upper crossing, support hand/shell arrive just outside loading port (`align`), then press inward to `pressIn = port + (.04,.055,.04)` (progress .74–.83), then deliberately **push FORWARD toward muzzle (-Z)** to `pushForward = port + (-.045,.03,-.25)` (progress .83–.91). Hand stays connected to shell the whole way. Finally retract hand along upper-right path to foregrip (.91–1).
+3. Replace v509 shell-axis alignment on X (which resembled a plug) with **longitudinal -Z orientation**, brass cap trailing toward the hand (+Z). Existing red hull, brass base and primer remain.
+4. Remove v509 independent shell transform interpolation during insertion: shell is positioned at `hand + (.075,.065,-.075)` every frame, and remains visible during inward and forward beats. Remove actor when insertion is complete (`p>=.91`).
+5. Shell timing still `Math.max(580,820-reloadLevel*45)`; magazine increment unchanged. Gun roll/ADS, firing stats, reticle, M4, other weapons, keybinds untouched.
+
+## Validation and test focus
+- Read latest handoffs, recovery, index.html, src/game.js from `main` before editing.
+- Visually examined user's v509 footage; previous shell oriented sideways and moved independently.
+- Parsed complete updated JavaScript. Pure vector waypoint checks ensure inward movement and a distinct forward (-Z) push; preserved locked M4 zero, shotgun ADS and weapon order.
+- Github commits and new loader verified. No browser in-game rendering check yet.
+- User should fire 2–4 shells, press R, watch the **left hand carry a shell over the gun, line it up at the right port, press inward and drive it forward before releasing**; return arm over gun rather than dropping under. Check arm remains bent and gun holds v506 cant. Ask only for feedback from actual play if needed.
+
+Maintain versioned cache-busted Pages playable link; don't declare visual fix user-approved before their test.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v509 SHOTGUN SUPPORT ARM VERTICAL-POLE CORRECTION — READ FIRST
 
 GitHub `main` is authoritative. This newest section supersedes past current-state notes.
