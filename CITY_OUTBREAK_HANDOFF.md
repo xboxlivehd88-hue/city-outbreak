@@ -1,3 +1,32 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v521 RESTORE EXISTING OPENING-SCREEN SETTINGS BUTTON — READ FIRST
+
+**GitHub main is source of truth. This newest top section supersedes earlier v520 current-state summaries.**
+
+## Latest user correction (UI-only)
+- User said: **"i see what you did and you didnt have to create an new settings button when there is one there already why"**.
+- In v520 an existing `#showControls` button was RESTYLED from its original invisible clickable region aligned with the opening art into a new visible rectangular SETTINGS button in the upper right. This was unnecessary. The user wants to use the **original opening artwork SETTINGS button**.
+- **v521 CSS ONLY** restores the existing `#showControls` to its exact v519 transparent clickable region: right 1%, top .8%, width 6.4%, height 10.6%, opacity .01, pointer-events auto. It retains a visible keyboard-focus outline. Removed the additional rectangular button look and hover style; there is **one** opening/settings trigger, the preexisting button.
+- CSS commit: `1769717d15e526cbd2326885beacc79cda337666`, blob `7acc78a4be8acb56608dbdbc9825d7a6656be4d1`.
+- index loader CSS cache bust `./src/game.css?v=521`, index commit `d6e9d6b070011dbd541362e10df2bac97d7115c4`, blob `f1a61140cef51df2dc563167268ee90e440aba2a`.
+- Gameplay code remains **v520** at `./src/game.js?v=520` (no gameplay edit). Current `src/game.js` blob `a07b7f08e731f574595e5543fc981b5c58e67064` as fetched for this change.
+- Protected v324 recovery remains intact.
+
+## Existing settings interface preserved
+- Original start-menu `#showControls` is wired by `src/game.js` to `openGraphicsModal("controls")`. This opens the single **GAME SETTINGS** modal with CONTROL / DISPLAY / GRAPHICS / EFFECTS / PERFORMANCE tabs. It is not a second Settings button.
+- Modal still contains Low/Medium/High/Custom graphics quality selector, independent render resolution, shadow quality, real streetlights, rain, rain splashes, cosmetic particle density, and max settled corpses. Pause menu retains quality select + Advanced button, correctly using the same modal.
+- v520 gameplay/performance work is unchanged: shotgun v517 first-shell chamber only if empty, spent shell GLB, M4, collision, ragdoll, maps, waves, and controls untouched. Corpses clear only once settled; effects limited to cosmetic particles.
+- Start screen extra floating `.graphicsStartOptions` panel was already removed in v520 and remains absent in v521.
+
+## Validation and user test
+- Read both handoffs, protected checkpoint, index, game, CSS from live GitHub main.
+- Confirmed CSS originally overwrote `#showControls` positioning/appearance in v520. Replaced only that one selector group and changed only index CSS version.
+- Test original settings icon/word already drawn on title-screen background at upper right: click it, see GAME SETTINGS tabs and controls. No duplicate rectangular SETTINGS button should appear. Choose LOW > PERFORMANCE, adjust particles/corpses, close, and play.
+- No live browser rendered screenshot/benchmark taken yet; user must confirm original-image button aligns and is clickable.
+
+Do not reintroduce a separate start SETTINGS button. Continue direct GitHub commits, cache-busted Pages link, newest handoffs at top.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v520 SETTINGS NOW INSIDE THE ACTUAL OPENING SCREEN MENU — READ FIRST
 
 **READ THIS TOP ENTRY FIRST. GitHub main is authoritative. This newer v520 entry supersedes the older v520 note below that says a separate start-screen graphics widget or only four tabs.**
