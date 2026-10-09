@@ -1,3 +1,17 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v531 REAL GRENADE CASING SHATTERS FROM INSIDE — READ FIRST
+
+**GitHub main is source of truth. User approved v530 large explosion spark/fire/smoke effect, but grenade appeared to disappear rather than burst: wants the explosion visibly BEGIN INSIDE spinning grenade and rip the grenade apart, not a swapped particle pop. Keep v525 widescreen title, five-tab Settings, and protected v324.**
+
+## v531 updates
+- New `src/grenade-shatter.js`: extracts triangles from the ACTUAL `assets/spintop.glb` grenade meshes (body + stick) at exact world-space angle on the detonation frame, groups faces into 4/6/8 directional chunks depending on graphics particle setting, keeps original textured mesh materials, and physically sends shell pieces flying and tumbling with gravity, brief soft bounce and ~0.54–0.84sec lifetime. This visually breaks the grenade apart; no generic replacement grenade. Also shatters launcher projectile sphere + band, using same helper. Short-lived fragment geometry is disposed after use and during reset; cap 36 fragments across blasts.
+- Both `explodeGrenade` and `explodeLauncherRound` calculate the projectile's real center via `Box3.setFromObject`, shatter visible source mesh BEFORE scene removal, then spawn the existing v530 explosion from that exact visual center. The existing gameplay detonation position `p=g.q.position.clone()` and original damage calculations remain absolutely unchanged.
+- New tight white-yellow ignition flash starts at *center* t=0, while full existing v530 fireball/smoke layers wait only .055s. Gives a visible shell rupture before main blast, without growing anything or building any ground. The existing spark instancing and quality scaling remain.
+- `src/game.js` imports and updates the new helper per frame, clearing it on reset. No changes to sounds, fuse, collisions, zombie knockdown, ragdolls, waves, weapon mechanics or settings; graphics CSS unchanged v525. `index.html` loader bumps to `src/game.js?v=531`. Old rejected `floor_smashedexploded.glb` remains unused.
+- Both handoffs updated at TOP. Protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 untouched. Syntactic/static validation done; user still must visually approve timing/size in live game.
+- Play URL after Pages deployment: https://xboxlivehd88-hue.github.io/city-outbreak/?v=531-shattering-grenade. User test with G: watch existing spinning grenade burst into textured chunks while inner flash happens, followed immediately by dense v530 explosion. Launcher after unlocking with 7 should burst casing too. Check High and Low and FPS.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v530 HIGH-FIDELITY DENSE EXPLOSIONS (HIGH GRAPHICS) — READ FIRST
 
 **GitHub `main` is authoritative. User approved v528 direct explosions with NO ground buildup and v529 airborne sparks, now requests a bigger, more nearly realistic explosion specifically on HIGH. Preserve v525 full-width start menu, single Settings icon, all five Settings tabs, and protected v324 recovery.**

@@ -9,6 +9,7 @@ import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.j
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
+import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments} from "./grenade-shatter.js?v=531";
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -1764,7 +1765,7 @@ function drawExplosionSparks(fx,dt){
  }
  fx.sparkMesh.instanceMatrix.needsUpdate=true;
 }
-function spawnExplosionBurst(position,isLauncher){
+function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  if(!explosionBurstTextures){
    explosionBurstTextures={
      fire:makeExplosionBurstTexture(false),
@@ -1793,9 +1794,11 @@ function spawnExplosionBurst(position,isLauncher){
    group.add(sprite);
    particles.push({
      sprite,velocity:new THREE.Vector3(vx,vy,vz),opacity,life,age:0,
-     smoke,phase:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.85
+     smoke,core:particles.length===0,phase:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.85
    });
  };
+ // A tight white-hot core ignites inside the grenade before its shell bursts.
+ add(false,0,0,0,.44,0xfff8df,1,0,.04,0,.12);
  // The impact FLASH exists at t=0. It never swells into a ground patch.
  add(false,0,.86,0,radius*1.14,0xfff3c4,.98,0,.18,0,.18);
  add(false,0,1.1,0,radius*.99,0xffa031,.92,0,1.00,0,.29);
@@ -1855,7 +1858,8 @@ function spawnExplosionBurst(position,isLauncher){
    flash.position.set(0,1.45,0);
    group.add(flash);
  }
- const burst={group,particles,sparkMesh,sparks,flash,age:0,life:1.75};
+ const burst={group,particles,sparkMesh,sparks,flash,ruptureDelay,age:0,life:1.75};
+ if(ruptureDelay>0)for(const part of particles)if(!part.core)part.sprite.visible=false;
  drawExplosionSparks(burst,0);
  activeExplosionBursts.push(burst);
 }
@@ -1866,6 +1870,8 @@ function updateExplosionGlbs(dt){
    drawExplosionSparks(fx,dt);
    if(fx.flash)fx.flash.intensity=3.2*Math.max(0,1-fx.age/.20)**2;
    for(const p of fx.particles){
+     if(!p.core&&fx.age<fx.ruptureDelay)continue;
+     p.sprite.visible=true;
      p.age+=dt;
      const t=Math.min(1,p.age/p.life);
      p.sprite.material.opacity=p.opacity*Math.pow(1-t,p.smoke?1.15:1.85);
@@ -6014,8 +6020,12 @@ function blastReact(z,origin,strength=1){
 }
 function explodeLauncherRound(g){
  noise(.34,.95,1100);tone(46,.42,"sine",.48);tone(92,.20,"square",.20);
- const p=g.q.position.clone();scene.remove(g.q);
- spawnExplosionBurst(p,true);
+ // Shatter the live projectile casing before removing it, at its real center.
+ const p=g.q.position.clone();
+ const visualOrigin=new THREE.Box3().setFromObject(g.q).getCenter(new THREE.Vector3());
+ burstCasingIntoFragments(g.q,visualOrigin,scene,graphicsOptions.particles);
+ scene.remove(g.q);
+ spawnExplosionBurst(visualOrigin,true,.055);
  for(const z of living()){
    const d=z.g.position.distanceTo(p);
    if(d<6.5){
@@ -6049,8 +6059,13 @@ function radiatedSpinTopTarget(z){
 }
 function explodeGrenade(g){
  noise(.42,.95,900);tone(48,.45,"sine",.42);
- const p=g.q.position.clone();scene.remove(g.q);
- spawnExplosionBurst(p,false);
+ // The spinning grenade's actual textured faces rip outward from its center.
+ // Keep gameplay damage tied to the original bottom-pivot position p.
+ const p=g.q.position.clone();
+ const visualOrigin=new THREE.Box3().setFromObject(g.q).getCenter(new THREE.Vector3());
+ burstCasingIntoFragments(g.q,visualOrigin,scene,graphicsOptions.particles);
+ scene.remove(g.q);
+ spawnExplosionBurst(visualOrigin,false,.055);
  for(const z of living()){
    const d=z.g.position.distanceTo(p);
    if(d<7.5){
@@ -6423,7 +6438,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  scopeOverlay.classList.toggle("m4Scope",false);
  gun.visible=!fullScopeAim;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt){
-perfGuard(dt);capFX();updateExplosionGlbs(dt);
+perfGuard(dt);capFX();updateExplosionGlbs(dt);updateCasingFragments(dt);
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;
  const grenadeOldPos=g.q.position.clone();
  g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);
@@ -6951,7 +6966,7 @@ function frame(t){
  requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame);
-function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];clearExplosionGlbs();for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="shotgun";magSize=8;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:true,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];clearExplosionGlbs();clearCasingFragments();for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="shotgun";magSize=8;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:true,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();setupResetButtons(reset);
 // Controls are now a tab in the shared SETTINGS dialog.
 const weaponHotkeys={Digit1:"pistol",Digit2:"rifle",Digit3:"shotgun",Digit4:"smg",Digit5:"m240",Digit6:"dmr",Digit7:"grenadeLauncher",Digit8:"awm"};
