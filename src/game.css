@@ -101,3 +101,13 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 #pausePanel h2{margin:0 0 8px;font-size:38px;letter-spacing:4px}
 #pausePanel p{margin:0 0 20px;color:#c8ced1;font-size:14px;line-height:1.5}
 #resumeGame{margin:0;padding:12px 28px;border:0;border-radius:9px;background:#e8e8e8;color:#111;font-size:16px;font-weight:900;cursor:pointer}
+
+/* v518: accessible graphics quality presets — startup and pause menus. */
+.graphicsOptions{display:flex;flex-direction:column;align-items:stretch;gap:7px;text-align:left;color:#f3f5f5;font:800 12px/1.25 Arial,sans-serif;letter-spacing:1px}
+.graphicsOptions label{color:#dce5e8}
+.graphicsOptions select{width:100%;padding:10px 12px;background:#111b21f2;color:#fff;border:1px solid #b2c9d377;border-radius:8px;font:800 13px Arial,sans-serif;cursor:pointer;letter-spacing:.3px;outline-offset:3px}
+.graphicsOptions select:focus-visible{outline:2px solid #ccebf6}
+.graphicsOptions span{color:#aebbc0;font:400 11px/1.4 Arial,sans-serif;letter-spacing:0}
+.graphicsStartOptions{position:absolute;left:16px;bottom:16px;width:min(245px,calc(100vw - 32px));z-index:3;pointer-events:auto;padding:13px 14px;border-radius:12px;border:1px solid #ffffff42;background:#081016e8;box-shadow:0 8px 24px #0008}
+.graphicsPauseOptions{margin:8px 0 17px;padding:13px 14px;border:1px solid #ffffff24;border-radius:10px;background:#131b20}
+@media(max-width:560px){.graphicsStartOptions{left:8px;bottom:8px;width:min(190px,calc(100vw - 16px));padding:9px 10px}.graphicsStartOptions select{font-size:11px;padding:8px}}
