@@ -2634,7 +2634,7 @@ function rebuildGun(){
        if(!bounds.isEmpty()){
          const size=bounds.getSize(new THREE.Vector3());
          visual.position.sub(bounds.getCenter(new THREE.Vector3()));
-         ejected.scale.setScalar(.23/Math.max(.001,size.x,size.y,size.z));
+         ejected.scale.setScalar(.19/Math.max(.001,size.x,size.y,size.z));
          ejected.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
          shotgunSpentShellTemplate=ejected;
        }
@@ -4562,7 +4562,11 @@ function casing(){
     ?shotgunSpentShellTemplate.clone(true)
     :new THREE.Mesh(FX.casingGeo,FX.casingMat);
   if(shotgunCase){
+    // The GLB shotgun points +Z and its displayed root rotates 180 degrees
+    // onto -Z. Match that root direction when a shell becomes free-flying;
+    // otherwise the spent model leaves the receiver backward.
     q.quaternion.copy(gun.getWorldQuaternion(new THREE.Quaternion()));
+    q.rotateY(Math.PI);
     q.rotateX((Math.random()-.5)*.5);
     q.rotateZ((Math.random()-.5)*.4);
   }else q.rotation.z=Math.PI/2;
