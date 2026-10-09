@@ -1,3 +1,34 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v520 SETTINGS NOW INSIDE THE ACTUAL OPENING SCREEN MENU — READ FIRST
+
+**READ THIS TOP ENTRY FIRST. GitHub main is authoritative. This newer v520 entry supersedes the older v520 note below that says a separate start-screen graphics widget or only four tabs.**
+
+## Latest user request and completed changes
+- User clarified: **"ok great but with the graphic settings can we put them in the actual settings on the opening screen"** while we were completing v520 low-end performance controls.
+- Implemented a visible **SETTINGS** button at the TOP RIGHT of the title screen in place of the nearly invisible `#showControls` hotspot; removed floating bottom-left start `graphicsStartOptions`.
+- Existing separate old `#controlsModal` was removed from index. The original full keyboard/gamepad controls list was relocated into the same graphics/settings dialog as the first **CONTROLS** tab, with no input/controls behavior changed.
+- One shared `#graphicsAdvancedModal` is now **GAME SETTINGS** with **FIVE** tabs: CONTROLS, DISPLAY, GRAPHICS, EFFECTS, PERFORMANCE. Graphics quality preset `#graphicsQualityStart` is INSIDE this modal at top, rather than on title image.
+- Start SETTINGS opens CONTROLS tab by default; user may select Display, Graphics, Effects and Performance. Pause > Advanced Graphics opens the SAME dialog on DISPLAY. Existing pause preset select remains. All tabs share persistent settings.
+- User's low-end system: on start screen click SETTINGS > QUALITY PRESET > **LOW**. Alternatively adjust individual CPU/GPU settings via tabs.
+- Final UI integration game commit `a14a28cc582bc00993e6de0308ea91811dd0147a`, game blob `a07b7f08e731f574595e5543fc981b5c58e67064`; index commit `c447442d2dedd14aebb75271acb189212833e262`, index blob `3d44cccad3fe6c1ab9a312711c7c01f9d7df06d4`; CSS commit `d1093a4c5169c56c2eab0f44fb79eb50986ac052`, CSS blob `84d49c1aef1c3ad11c32f916b3ed16e1247d67b3`.
+- Loader remains `./src/game.js?v=520`, style `./src/game.css?v=520`. Previous v520 CPU/GPU logic changes remain in the same main branch and are detailed in the following older v520 section.
+
+## v520 features protected
+- Quality High/Medium/Low/Custom, resolution scaling, sun shadow quality OFF/LOW 256/MEDIUM 512/HIGH 768, streetlamp real spotlights, rain and splashes, cosmetic particle percentage 25/50/75/100, max settled corpse cap 0/4/10/20.
+- Corpse cleanup waits until ragdoll `active===false` before removing any settled corpse, preserving user-approved falls. Living zombies and AI unmodified; explosion particle setting changes only visuals, not explosion damage.
+- v517 shotgun empty-only chamber, bottom load otherwise, approved GLB spent ejections, ADS stats and all weapons unchanged.
+- Protected v324 recovery checkpoint NEVER touched.
+
+## Tests completed
+- Full edited JavaScript syntax parses, index contains all 5 paired tabs and no standalone floating graphics card or old controls modal, CSS has visible SETTINGS button and 5-column nav.
+- Mocked real settings handlers: start SETTINGS opens Controls; Performance tab works; adjusting particle density and corpse cap independently switches to CUSTOM; shadow LOW updates shadow map to 256; pause shortcut opens DISPLAY; LOW restores 60% pixel ratio/shadows off/particles 25%/4 settled corpses; HIGH restores full quality. Confirmed no change to approved shotgun reload.
+- This is static/runtime mock testing, **not a live browser gameplay or FPS benchmark**. User must test new title menu and record FPS differences during waves.
+
+## Continuing workflow
+- Commit any adjustments directly to live GitHub `main`, verify current `index.html` + `src/game.js`, update both handoff docs at TOP, share cache-busted Pages URL.
+- Preserve recovery checkpoint `CURRENT_RECOVERY_CHECKPOINT.md` (v324).
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v520 LOW-END PERFORMANCE CONTROLS & TABBED GRAPHICS MENU — READ FIRST
 
 **GitHub main is authoritative; newest dated top entry supersedes older "current" sections.**
