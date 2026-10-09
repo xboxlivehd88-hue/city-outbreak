@@ -50,37 +50,38 @@
 </div>
 <div id="shopFooter"><button id="readyNext" class="readyBtn">READY — START NEXT WAVE</button><p id="shopNote">Take your time. The next wave will not start until you press Ready.</p></div>
 </div><div id="startScreen"><div id="startPanel">
-<div id="startActions"><button id="start">START OUTBREAK</button><button id="showControls" type="button">CONTROLS</button><button id="restart">RESTART</button></div>
-<div class="graphicsOptions graphicsStartOptions"><label for="graphicsQualityStart">GRAPHICS QUALITY</label><select id="graphicsQualityStart" class="graphicsQualitySelect" aria-label="Graphics quality before starting"><option value="low">LOW — FASTEST</option><option value="medium">MEDIUM — BALANCED</option><option value="high">HIGH — ORIGINAL</option><option value="custom">CUSTOM — MANUAL</option></select><button type="button" class="openAdvancedGraphics graphicsAdvancedButton">ADVANCED GRAPHICS...</button></div>
-</div>
-<div id="controlsModal" aria-hidden="true"><div id="controlsPanel" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
-<div id="controlsHeader"><h2 id="controlsTitle">CONTROLS</h2><button id="closeControls" type="button" aria-label="Close controls">CLOSE</button></div>
-<div id="controlsCard">
-<div class="controlRow"><span>Move</span><span class="key">W A S D</span></div>
-<div class="controlRow"><span>Aim / Look</span><span class="key">MOUSE</span></div>
-<div class="controlRow"><span>Sprint</span><span class="key">SHIFT</span></div>
-<div class="controlRow"><span>Fire</span><span class="key">LEFT CLICK</span></div>
-<div class="controlRow"><span>Aim Down Sights</span><span class="key">RIGHT CLICK</span></div>
-<div class="controlRow"><span>Reload</span><span class="key">R</span></div>
-<div class="controlRow"><span>Pause</span><span class="key">P / ESC</span></div>
-<div class="controlRow"><span>Weapons</span><span class="key">1 — 8</span></div>
-<div class="controlRow"><span>Grenade</span><span class="key">G</span></div>
-<div class="controlRow"><span>Tactical Nuke</span><span class="key">N</span></div>
-</div></div></div></div>
+<div id="startActions"><button id="start">START OUTBREAK</button><button id="showControls" type="button" aria-label="Open game settings">SETTINGS</button><button id="restart">RESTART</button></div>
+</div></div>
 <div id="graphicsAdvancedModal" aria-hidden="true">
   <section id="graphicsAdvancedPanel" role="dialog" aria-modal="true" aria-labelledby="graphicsAdvancedTitle">
     <header class="graphicsAdvancedHeader">
-      <div><h2 id="graphicsAdvancedTitle">GRAPHICS SETTINGS</h2><p id="graphicsPresetState">PRESET — HIGH</p></div>
+      <div><h2 id="graphicsAdvancedTitle">GAME SETTINGS</h2><p id="graphicsPresetState">PRESET — HIGH</p></div>
       <button type="button" id="closeAdvancedGraphics">CLOSE</button>
     </header>
-    <p class="graphicsAdvancedIntro">Choose a preset on the previous screen, or adjust each effect here. Changes are applied immediately and saved automatically.</p>
-    <nav class="graphicsTabs" aria-label="Graphics settings category">
-      <button type="button" class="graphicsTab is-active" data-graphics-tab="display" aria-selected="true">DISPLAY</button>
+    <div class="graphicsSettingsPreset"><label for="graphicsQualityStart">QUALITY PRESET</label><select id="graphicsQualityStart" class="graphicsQualitySelect" aria-label="Graphics quality preset"><option value="low">LOW — FASTEST</option><option value="medium">MEDIUM — BALANCED</option><option value="high">HIGH — ORIGINAL</option><option value="custom">CUSTOM — MANUAL</option></select></div>
+    <p class="graphicsAdvancedIntro">Choose a quality preset or customize individual settings. Changes apply instantly and are saved automatically.</p>
+    <nav class="graphicsTabs" aria-label="Game settings category">
+      <button type="button" class="graphicsTab is-active" data-graphics-tab="controls" aria-selected="true">CONTROLS</button>
+      <button type="button" class="graphicsTab" data-graphics-tab="display" aria-selected="false">DISPLAY</button>
       <button type="button" class="graphicsTab" data-graphics-tab="graphics" aria-selected="false">GRAPHICS</button>
       <button type="button" class="graphicsTab" data-graphics-tab="effects" aria-selected="false">EFFECTS</button>
       <button type="button" class="graphicsTab" data-graphics-tab="performance" aria-selected="false">PERFORMANCE</button>
     </nav>
-    <div class="graphicsTabPanel" data-graphics-panel="display">
+    <div class="graphicsTabPanel" data-graphics-panel="controls">
+      <div id="controlsCard">
+        <div class="controlRow"><span>Move</span><span class="key">W A S D</span></div>
+        <div class="controlRow"><span>Aim / Look</span><span class="key">MOUSE</span></div>
+        <div class="controlRow"><span>Sprint</span><span class="key">SHIFT</span></div>
+        <div class="controlRow"><span>Fire</span><span class="key">LEFT CLICK</span></div>
+        <div class="controlRow"><span>Aim Down Sights</span><span class="key">RIGHT CLICK</span></div>
+        <div class="controlRow"><span>Reload</span><span class="key">R</span></div>
+        <div class="controlRow"><span>Pause</span><span class="key">P / ESC</span></div>
+        <div class="controlRow"><span>Weapons</span><span class="key">1 — 8</span></div>
+        <div class="controlRow"><span>Grenade</span><span class="key">G</span></div>
+        <div class="controlRow"><span>Tactical Nuke</span><span class="key">N</span></div>
+      </div>
+    </div>
+    <div class="graphicsTabPanel" data-graphics-panel="display" hidden>
       <div class="graphicsSettingGrid">
         <div class="graphicsSettingRow"><div><label for="graphicsResolution">RENDER RESOLUTION</label><small>Lower this first on slower computers. It reduces pixels drawn without changing gameplay.</small></div><select id="graphicsResolution" data-graphics-option="resolution"><option value="0.6">60% — FASTEST</option><option value="0.75">75%</option><option value="0.85">85% — BALANCED</option><option value="1.1">ORIGINAL</option></select></div>
       </div>
@@ -104,7 +105,7 @@
       </div>
       <p class="graphicsTabHint">LOW preset uses 25% cosmetic particles and up to 4 settled corpses. Living zombies and ragdoll falls are unaffected.</p>
     </div>
-    <p class="graphicsAdvancedFoot">Changes automatically save as CUSTOM. For a lower-end computer, start with LOW and adjust only what you need.</p>
+    <p class="graphicsAdvancedFoot">Start with LOW on older laptops, then raise individual settings as performance allows. Custom choices are saved.</p>
   </section>
 </div>
 </div>
