@@ -124,6 +124,10 @@ function groan(v){
 }
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x171b22);scene.fog=new THREE.FogExp2(0x242321,.0047);
 const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,1.10));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.18;
+// High matches v517 exactly. Graphics presets never modify collision, AI,
+// weapon handling, models or world geometry.
+const GRAPHICS_QUALITY_KEY="city-outbreak-graphics-v1";
+let graphicsQuality="high",graphicsRainCount=620,graphicsLightLimit=Infinity;
 
 // v344 early-night atmosphere: dark but still readable, with cool moon fill
 // and enough exposure left for the warm street lamps to visibly light the road.
@@ -357,7 +361,7 @@ function updateRainCover(t){
  }
 }
 function updateRainEffect(dt,t){
- if(!rainLines)return;
+ if(!rainLines||graphicsRainCount===0)return;
  updateRainCover(t);
  const targetOpacity=rainCovered?.02:.39;
  rainOpacity=THREE.MathUtils.lerp(rainOpacity,targetOpacity,Math.min(1,dt*7));
@@ -365,7 +369,7 @@ function updateRainEffect(dt,t){
  if(paused||shopLowPower)return;
  const groundBottom=playerGroundY+RAIN_BOTTOM;
  const recycleRadius=RAIN_RADIUS+4,recycleRadiusSq=recycleRadius*recycleRadius;
- for(let i=0;i<RAIN_DROP_COUNT;i++){
+ for(let i=0;i<graphicsRainCount;i++){
    rainX[i]+=RAIN_WIND_X*dt;
    rainZ[i]+=RAIN_WIND_Z*dt;
    rainY[i]-=rainSpeed[i]*dt;
@@ -383,7 +387,7 @@ function updateRainEffect(dt,t){
    rainPositions[j+5]=rainZ[i]-leanZ;
  }
  rainPositionAttr.needsUpdate=true;
- updateRainSplashes(dt);
+ if(graphicsQuality==="high")updateRainSplashes(dt);
 }
 document.documentElement.dataset.rainEffect="world-space-heavy-wet";
 document.documentElement.dataset.rainDropCount=String(RAIN_DROP_COUNT);
@@ -1154,6 +1158,11 @@ function setupStreetLampLighting(placements){
 function updateStreetLampLighting(t,force=false){
  if(!streetLampLightPool.length)return;
  updateStreetLampFlicker(t);
+ // Low retains cheap warm GLB glow but avoids all real spotlights.
+ if(graphicsLightLimit===0){
+  for(const light of streetLampLightPool)light.visible=false;
+  return;
+ }
 
  // Reassign the expensive real spotlights only at the old low frequency.
  // Their on/off state is no longer used for the normal lamp appearance.
@@ -1182,11 +1191,12 @@ function updateStreetLampLighting(t,force=false){
 
  // Normally the real lights stay at full power. Only the rare per-lamp flicker
  // above is allowed to dip the matching spotlight intensity.
- for(const light of streetLampLightPool){
+ for(let lampIndex=0;lampIndex<streetLampLightPool.length;lampIndex++){
+   const light=streetLampLightPool[lampIndex];
    const i=light.userData.streetLampHeadIndex;
    const brightness=i>=0&&streetLampGlowBrightness?streetLampGlowBrightness[i]:1;
    light.intensity=STREET_LAMP_LIGHT_INTENSITY*brightness;
-   light.visible=true;
+   light.visible=lampIndex<graphicsLightLimit;
  }
 }
 
@@ -6590,7 +6600,34 @@ const perfGuard=createPerformanceGuard({
  consoleLogging:false
 }); // HUD stays visible; console spam stays off unless explicitly needed
 setupWebGLContextLossHandler(cv,()=>show("GRAPHICS RESET — REFRESH IF NEEDED"));
-setupRendererResize({renderer:ren,camera:cam});
+const resizeRenderer=setupRendererResize({renderer:ren,camera:cam});
+// Switch presets instantly from the startup menu or pause overlay.
+function applyGraphicsQuality(value){
+ const preset=["low","medium","high"].includes(value)?value:"high";
+ graphicsQuality=preset;
+ const ratioCap=preset==="low"?.60:preset==="medium"?.85:1.10;
+ ren.setPixelRatio(Math.min(devicePixelRatio||1,ratioCap));
+ resizeRenderer();
+ const shadows=preset==="high";
+ ren.shadowMap.enabled=shadows;
+ sun.castShadow=shadows;
+ ren.shadowMap.needsUpdate=true;
+ graphicsRainCount=preset==="low"?0:preset==="medium"?310:RAIN_DROP_COUNT;
+ rainGeometry.setDrawRange(0,graphicsRainCount*2);
+ rainLines.visible=graphicsRainCount>0;
+ rainSplashes.visible=preset==="high";
+ graphicsLightLimit=preset==="low"?0:preset==="medium"?Math.ceil(streetLampLightPool.length/2):Infinity;
+ updateStreetLampLighting(performance.now(),true);
+ for(const select of document.querySelectorAll(".graphicsQualitySelect"))select.value=preset;
+ document.documentElement.dataset.graphicsQuality=preset;
+ try{localStorage.setItem(GRAPHICS_QUALITY_KEY,preset)}catch(_){}
+}
+for(const select of document.querySelectorAll(".graphicsQualitySelect")){
+ select.addEventListener("change",()=>applyGraphicsQuality(select.value));
+}
+let savedGraphicsQuality="high";
+try{savedGraphicsQuality=localStorage.getItem(GRAPHICS_QUALITY_KEY)||"high"}catch(_){}
+applyGraphicsQuality(savedGraphicsQuality);
 function frame(t){
  let dt=Math.min(.04,(t-last)/1000);last=t;
  if(shopLowPower){
