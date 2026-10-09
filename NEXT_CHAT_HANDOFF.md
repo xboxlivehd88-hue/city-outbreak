@@ -1,3 +1,38 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v507 NATURAL SHOTGUN SUPPORT ARM OVER TOP — READ FIRST
+
+**GitHub main is the source of truth. This newest section supersedes older notes.**
+
+## Test version and user feedback
+- Current **v507** gameplay commit: `3671443142c0c4ecb14ba4ecbfe1ca4ae07b0347`; game.js blob: `af7d02c69eeeb6be2bc82503a195a6d3d1a784fb`.
+- Loader `./src/game.js?v=507`; loader commit `0350eb443b436d91062afdebaffff85c6ac80386`.
+- User reviewed v506 with attached 20.6s gameplay video `2026-10-09 01-32-51.mp4` and said: **"side load is good now it looks like the player arm is going under the shotgun then back over top it doesnt look natural"**.
+- Keep v506's approved clear shotgun-on-left-side gun roll and the v505 visible red/brass shell and right-side port. Change ONLY support arm trajectory.
+- Still unapproved visually pending user testing.
+
+## v507 changes
+- Replaced the shotgun reload arm's dip to `pouch=(-.15,-1.05,-.58)` (which passed under the gun) with an above-receiver path: home pump → `overFore=home+(.28,.36,.40)` → `overLeft=port+(-.25,.54,-.18)` → `overRight=port+(.18,.47,-.14)` → right port `atPort=port+(.15,.10,.07)`. It returns around the *same upper side* using a quadratic Bézier with overFore control instead of under the gun.
+- Kept every shell actor and right-side insertion timing/waypoints from v505/v506; `overRight` and `atPort` still exactly match existing shell-path math (avoids insertion teleport).
+- Anchors **support shoulder to the player's camera/body** during shotgun cant, rather than allowing the whole shoulder to roll underneath with the gun. Converts a body-space point `(-.34,-.96,-.12)` to gun-local using inverse gun quaternion, position, scale; blends it in with `shotgunReloadCant`.
+- Elbow lift follows **camera-up direction** during cant, creating a bent forearm rather than an awkward rigid vertical arm.
+- After the final shell, arm remains articulated briefly while the shotgun rolls back and blends seamlessly to resting arm pose; no last-shell snap.
+- No changes to shotgun roll `+1.15rad` (~66°), yaw `-.21rad`, other shotgun transforms, ADS, 820ms shell timing, ammunition, sounds, M4 or any other weapon.
+- Shotgun GLB still `assets/shotgun_test.glb?v=501`. Crosshair CSS still v500.
+- Protected v324 recovery pointer untouched.
+
+## Validation
+- Re-read live top of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, plus `index.html` and `src/game.js` on main.
+- Inspected attached video frames.
+- Full JavaScript source parsed before commit; verified exact baseline M4 zero, shotgun roll/port/shell actor, ADS and weapon order retained.
+- GitHub gameplay and loader writes confirmed.
+- **No live gameplay/visual inspection completed**. User must test and report actual results.
+
+## v507 test
+Fire 3-4 shotgun shells, press R. The hand should go up from the pump, carry the red shell **above** the gun, cross the receiver, insert on its right side, and return over the top to the fore-end. NO arm dropping underneath and emerging on top, and no detached shoulder or snap after last shell. Verify standard hip/ADS and all other weapons remain as before.
+
+The user's pattern is direct implement-and-test: commit fixes to main, update handoffs, give cache-busted Pages URL. Do not ask whether to make an agreed change.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v506 SHOTGUN CLEAR LEFT-SIDE ROLL DURING RELOAD — READ FIRST
 
 **GitHub main is authoritative. This entry supersedes older current-state handoffs.**
