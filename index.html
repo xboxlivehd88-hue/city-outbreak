@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>City Outbreak Enhanced</title>
-<link rel="stylesheet" href="./src/game.css?v=519">
+<link rel="stylesheet" href="./src/game.css?v=520">
 
 </head>
 <body>
@@ -74,20 +74,43 @@
       <button type="button" id="closeAdvancedGraphics">CLOSE</button>
     </header>
     <p class="graphicsAdvancedIntro">Choose a preset on the previous screen, or adjust each effect here. Changes are applied immediately and saved automatically.</p>
-    <div class="graphicsSettingGrid">
-      <div class="graphicsSettingRow"><div><label for="graphicsResolution">RENDER RESOLUTION</label><small>Lower resolution often improves FPS the most.</small></div><select id="graphicsResolution" data-graphics-option="resolution"><option value="0.6">60% — FASTEST</option><option value="0.75">75%</option><option value="0.85">85% — BALANCED</option><option value="1.1">UP TO 110% — ORIGINAL</option></select></div>
-      <div class="graphicsSettingRow"><div><label for="graphicsShadows">DYNAMIC SHADOWS</label><small>Turn off sunlight shadows to lighten GPU use.</small></div><select id="graphicsShadows" data-graphics-option="shadows"><option value="true">ON</option><option value="false">OFF</option></select></div>
-      <div class="graphicsSettingRow"><div><label for="graphicsRain">RAIN</label><small>Control the number of visible rain streaks.</small></div><select id="graphicsRain" data-graphics-option="rain"><option value="0">OFF</option><option value="310">REDUCED</option><option value="620">FULL</option></select></div>
-      <div class="graphicsSettingRow"><div><label for="graphicsSplashes">RAIN SPLASHES</label><small>Extra rain impacts on the pavement when rain is enabled.</small></div><select id="graphicsSplashes" data-graphics-option="splashes"><option value="true">ON</option><option value="false">OFF</option></select></div>
-      <div class="graphicsSettingRow"><div><label for="graphicsStreetlights">REAL STREETLIGHT LIGHTING</label><small>Turn off expensive spotlights; decorative lamp glow remains.</small></div><select id="graphicsStreetlights" data-graphics-option="lights"><option value="off">OFF</option><option value="half">REDUCED</option><option value="full">FULL</option></select></div>
+    <nav class="graphicsTabs" aria-label="Graphics settings category">
+      <button type="button" class="graphicsTab is-active" data-graphics-tab="display" aria-selected="true">DISPLAY</button>
+      <button type="button" class="graphicsTab" data-graphics-tab="graphics" aria-selected="false">GRAPHICS</button>
+      <button type="button" class="graphicsTab" data-graphics-tab="effects" aria-selected="false">EFFECTS</button>
+      <button type="button" class="graphicsTab" data-graphics-tab="performance" aria-selected="false">PERFORMANCE</button>
+    </nav>
+    <div class="graphicsTabPanel" data-graphics-panel="display">
+      <div class="graphicsSettingGrid">
+        <div class="graphicsSettingRow"><div><label for="graphicsResolution">RENDER RESOLUTION</label><small>Lower this first on slower computers. It reduces pixels drawn without changing gameplay.</small></div><select id="graphicsResolution" data-graphics-option="resolution"><option value="0.6">60% — FASTEST</option><option value="0.75">75%</option><option value="0.85">85% — BALANCED</option><option value="1.1">ORIGINAL</option></select></div>
+      </div>
     </div>
-    <p class="graphicsAdvancedFoot">Changing any setting activates CUSTOM. Zombies, weapons, map collision and gameplay stay the same.</p>
+    <div class="graphicsTabPanel" data-graphics-panel="graphics" hidden>
+      <div class="graphicsSettingGrid">
+        <div class="graphicsSettingRow"><div><label for="graphicsShadows">SHADOW QUALITY</label><small>Lower resolutions cost less GPU power. Off is fastest.</small></div><select id="graphicsShadows" data-graphics-option="shadowQuality"><option value="off">OFF — FASTEST</option><option value="low">LOW (256)</option><option value="medium">MEDIUM (512)</option><option value="high">HIGH (768)</option></select></div>
+        <div class="graphicsSettingRow"><div><label for="graphicsStreetlights">REAL STREETLIGHT LIGHTING</label><small>Switch off expensive spotlights while keeping decorative lamp glow.</small></div><select id="graphicsStreetlights" data-graphics-option="lights"><option value="off">OFF</option><option value="half">REDUCED</option><option value="full">FULL</option></select></div>
+      </div>
+    </div>
+    <div class="graphicsTabPanel" data-graphics-panel="effects" hidden>
+      <div class="graphicsSettingGrid">
+        <div class="graphicsSettingRow"><div><label for="graphicsRain">RAIN</label><small>Fewer rain streaks mean less GPU/CPU work.</small></div><select id="graphicsRain" data-graphics-option="rain"><option value="0">OFF</option><option value="310">REDUCED</option><option value="620">FULL</option></select></div>
+        <div class="graphicsSettingRow"><div><label for="graphicsSplashes">RAIN SPLASHES</label><small>Extra rain impacts on the pavement.</small></div><select id="graphicsSplashes" data-graphics-option="splashes"><option value="true">ON</option><option value="false">OFF</option></select></div>
+      </div>
+    </div>
+    <div class="graphicsTabPanel" data-graphics-panel="performance" hidden>
+      <div class="graphicsSettingGrid">
+        <div class="graphicsSettingRow"><div><label for="graphicsParticles">COSMETIC PARTICLES</label><small>Reduces blood, bullet dust and explosion debris visuals. Blast damage stays the same.</small></div><select id="graphicsParticles" data-graphics-option="particles"><option value="25">25% — FASTEST</option><option value="50">50%</option><option value="75">75%</option><option value="100">100% — ORIGINAL</option></select></div>
+        <div class="graphicsSettingRow"><div><label for="graphicsCorpses">MAX VISIBLE CORPSES</label><small>Clears oldest dead bodies only AFTER their ragdoll physics settle. Active ragdolls stay intact.</small></div><select id="graphicsCorpses" data-graphics-option="corpses"><option value="0">0 — CLEAR WHEN SETTLED</option><option value="4">4 — FASTEST</option><option value="10">10 — BALANCED</option><option value="20">20 — ORIGINAL</option></select></div>
+      </div>
+      <p class="graphicsTabHint">LOW preset uses 25% cosmetic particles and up to 4 settled corpses. Living zombies and ragdoll falls are unaffected.</p>
+    </div>
+    <p class="graphicsAdvancedFoot">Changes automatically save as CUSTOM. For a lower-end computer, start with LOW and adjust only what you need.</p>
   </section>
 </div>
 </div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <!-- v463 Pages deployment retrigger: no gameplay change -->
 <!-- v470 final deployment sync -->
-<script type="module" src="./src/game.js?v=519"></script>
+<script type="module" src="./src/game.js?v=520"></script>
 </body>
 </html>
