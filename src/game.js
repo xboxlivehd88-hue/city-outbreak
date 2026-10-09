@@ -1583,7 +1583,7 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
 
 // v501: user-supplied replacement pump shotgun GLB. It is a static asset with
 // separate real nodes for base, shell, trigger, inserter and pump.
-let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunShellTemplate=null,shotgunTrigger=null,shotgunInserter=null,shotgunHandTargets=null,shotgunLoadPort=null,shotgunReloadShellActor=null;
+let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunShellTemplate=null,shotgunTrigger=null,shotgunInserter=null,shotgunHandTargets=null,shotgunLoadPort=null,shotgunReloadShellActor=null,shotgunReloadCant=0;
 new GLTFLoader().load("assets/shotgun_test.glb?v=501",gltf=>{
  shotgunModelTemplate=gltf.scene;
  shotgunModelTemplate.traverse(o=>{
@@ -2261,6 +2261,7 @@ function updateReloadMagazineFX(rp){
 function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
+ shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
  gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunReloadShellActor=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
@@ -5891,16 +5892,31 @@ const targetGroundY=samplePlayerGroundY(px,pz,playerGroundY);
 const groundFollowRate=targetGroundY>playerGroundY?18:13;
 playerGroundY=THREE.MathUtils.lerp(playerGroundY,targetGroundY,Math.min(1,dt*groundFollowRate));
 stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,playerGroundY+1.65*PLAYER_WORLD_SCALE,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:weapon==="shotgun"?.045:.16);const rp=reloadPoseProgress();
- const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
+ // Roll the shotgun LEFT once, then hold the right-side loading port
+ // exposed across the entire string of shells. Per-shell rp.arch would snap.
+ if(weapon==="shotgun"){
+  const targetCant=reloading&&reloadWeapon==="shotgun"?1:0;
+  shotgunReloadCant=THREE.MathUtils.damp(shotgunReloadCant,targetCant,targetCant?10:7,dt);
+  if(!targetCant&&shotgunReloadCant<.0005)shotgunReloadCant=0;
+ }else shotgunReloadCant=0;
+ const shotgunCant=weapon==="shotgun"?shotgunReloadCant:0;
+ const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?0:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
- gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
+ gun.position.x=ac2.x*adsScale*aimBlend+(weapon==="shotgun"?0:rp.arch*(weapon==="pistol"?.05:.10));
  const rifleAdsRecoilScale=weapon==="rifle"?THREE.MathUtils.lerp(1,.22,aimBlend):1;
  const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil*rifleAdsRecoilScale;
- gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+rp.arch*.09;
- gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08-rp.arch*(weapon==="m240"?.12:.18);
- gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt;
- gun.rotation.y=rp.arch*(weapon==="grenadeLauncher"?.10:.04);
- gun.rotation.z=-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
+ gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+(weapon==="shotgun"?.045*shotgunCant:rp.arch*.09);
+ gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08-(weapon==="shotgun"?.03*shotgunCant:rp.arch*(weapon==="m240"?.12:.18));
+ gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt+(weapon==="shotgun"?.08*shotgunCant:0);
+ gun.rotation.y=weapon==="shotgun"?-.17*shotgunCant:rp.arch*(weapon==="grenadeLauncher"?.10:.04);
+ // Positive roll exposes the shotgun's right (+X) receiver-side loading area.
+ gun.rotation.z=weapon==="shotgun"?.70*shotgunCant:-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
+ if(weapon==="shotgun"&&shotgunCant>0){
+  // Keep the firing hand stationary in camera space. The imported receiver,
+  // support hand and actual GLB shells roll about the grip, not the camera.
+  const grip=shotgunHandTargets?.right||new THREE.Vector3(.40,-.48,-.88);
+  gun.position.add(grip.clone().sub(grip.clone().applyEuler(gun.rotation)));
+ }
  // Do not alter any locked reload choreography. Outside reload, a zombie crowding
  // the muzzle pushes the complete gun + both hands toward the player and raises
  // the muzzle, so viewmodel geometry no longer passes through the zombie.
@@ -6042,7 +6058,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      playerHandRig.left.position.set(ro[0]*h-.10*pouch,ro[1]*h-.24*pull-.48*pouch,ro[2]*h+.05*pull+.22*pouch);
      playerHandRig.left.rotation.set(.10*h+.11*pouch,0,-.18*h-.09*pouch);
    }
-   if(reloading&&reloadWeapon==="rifle"){
+   if(reloading&&(reloadWeapon==="rifle"||reloadWeapon==="shotgun")){
      playerHandRig.right.position.set(0,0,0);playerHandRig.right.rotation.set(0,0,0);
    }else{
      playerHandRig.right.position.set(0,-.025*rp.arch,.02*rp.arch);
