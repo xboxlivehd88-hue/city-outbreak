@@ -6682,6 +6682,21 @@ function applyGraphicsQuality(value){
  applyGraphicsOptions(GRAPHICS_PRESETS[preset],preset);
 }
 const graphicsModal=document.querySelector("#graphicsAdvancedModal");
+// All four panels share the same live settings object, so switching tabs
+// never resets a choice or changes the active graphics quality preset.
+const graphicsTabs=[...document.querySelectorAll("[data-graphics-tab]")];
+const graphicsPanels=[...document.querySelectorAll("[data-graphics-panel]")];
+for(const tab of graphicsTabs){
+ tab.addEventListener("click",()=>{
+  const choice=tab.dataset.graphicsTab;
+  for(const button of graphicsTabs){
+   const active=button===tab;
+   button.classList.toggle("is-active",active);
+   button.setAttribute("aria-selected",String(active));
+  }
+  for(const panel of graphicsPanels)panel.hidden=panel.dataset.graphicsPanel!==choice;
+ });
+}
 function openGraphicsModal(){
  if(!graphicsModal)return;
  graphicsModal.classList.add("show");
