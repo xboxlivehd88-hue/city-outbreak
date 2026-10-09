@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>City Outbreak Enhanced</title>
-<link rel="stylesheet" href="./src/game.css?v=500">
+<link rel="stylesheet" href="./src/game.css?v=518">
 
 </head>
 <body>
@@ -14,7 +14,7 @@
 <div class="stats"><span id="ammo">8 / 30</span><br><span id="kills">KILLS 0</span><br><span id="heads">HEADSHOTS 0</span><br><span id="wave">WAVE 1</span><br><span id="remaining">ZOMBIES 6</span><br><span id="cash">CASH $0</span><br><span id="weaponName">SHOTGUN</span><br><span id="grenadeCount">GRENADES 2</span><br><span id="nukeCount">NUKES 0</span></div><button id="pauseBtn" type="button">PAUSE [P]</button><div id="bossHUD"><div id="bossName"></div><div id="bossSub">BOSS THREAT</div><div id="bossTrack"><div id="bossFill"></div></div></div>
 <div id="crosshair"></div><div id="scopeOverlay"><div id="scopeReticle"></div></div><div id="hitmarker">×</div><div id="damage"></div><div id="nukeFlash"></div><div id="nukeShock"></div>
 <div id="announce"><b id="big"></b><span id="small"></span></div>
-<div id="pauseOverlay"><div id="pausePanel"><h2>PAUSED</h2><p>The outbreak is frozen exactly where you left it.<br>Press P or choose Resume when you are ready.</p><button id="resumeGame" type="button">RESUME GAME</button></div></div>
+<div id="pauseOverlay"><div id="pausePanel"><h2>PAUSED</h2><p>The outbreak is frozen exactly where you left it.<br>Press P or choose Resume when you are ready.</p><div class="graphicsOptions graphicsPauseOptions"><label for="graphicsQualityPause">GRAPHICS QUALITY</label><select id="graphicsQualityPause" class="graphicsQualitySelect" aria-label="Graphics quality while paused"><option value="low">LOW — FASTEST</option><option value="medium">MEDIUM — BALANCED</option><option value="high">HIGH — ORIGINAL</option></select><span>Changes apply immediately and are saved on this device.</span></div><button id="resumeGame" type="button">RESUME GAME</button></div></div>
 <div id="death"><div id="deathTitle">YOU DIED</div><div id="deathStats"><div class="deathStat"><span>KILLS</span><b id="deathKills">0</b></div><div class="deathStat"><span>RUN TIME</span><b id="deathTime">00:00</b></div><div class="deathStat"><span>WAVE REACHED</span><b id="deathWave">1</b></div><div class="deathStat"><span>ROUNDS CLEARED</span><b id="deathRounds">0</b></div></div><button id="deathRestart">RESTART GAME</button></div><div id="msg"></div>
 <div id="shop">
 <div id="shopHeader"><h2>WAVE SHOP</h2><div id="shopCash">CASH $0</div></div>
@@ -51,6 +51,7 @@
 <div id="shopFooter"><button id="readyNext" class="readyBtn">READY — START NEXT WAVE</button><p id="shopNote">Take your time. The next wave will not start until you press Ready.</p></div>
 </div><div id="startScreen"><div id="startPanel">
 <div id="startActions"><button id="start">START OUTBREAK</button><button id="showControls" type="button">CONTROLS</button><button id="restart">RESTART</button></div>
+<div class="graphicsOptions graphicsStartOptions"><label for="graphicsQualityStart">GRAPHICS QUALITY</label><select id="graphicsQualityStart" class="graphicsQualitySelect" aria-label="Graphics quality before starting"><option value="low">LOW — FASTEST</option><option value="medium">MEDIUM — BALANCED</option><option value="high">HIGH — ORIGINAL</option></select></div>
 </div>
 <div id="controlsModal" aria-hidden="true"><div id="controlsPanel" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
 <div id="controlsHeader"><h2 id="controlsTitle">CONTROLS</h2><button id="closeControls" type="button" aria-label="Close controls">CLOSE</button></div>
@@ -70,6 +71,6 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <!-- v463 Pages deployment retrigger: no gameplay change -->
 <!-- v470 final deployment sync -->
-<script type="module" src="./src/game.js?v=517"></script>
+<script type="module" src="./src/game.js?v=518"></script>
 </body>
 </html>
