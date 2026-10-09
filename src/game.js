@@ -2190,13 +2190,15 @@ function updateShotgunReloadFX(rp){
  // 66 degrees also swung the upper arm below/behind the receiver, producing
  // that giant vertical pole seen in the player's footage.
  const rig=playerHandRig,handView=toCamera(hand);
- const shoulderView=new THREE.Vector3(-.52,-1.04,.16);
- // Keep a distinct bent elbow to the LEFT of the feeding hand and well
- // below its wrist: the forearm now cuts across the body toward the port.
+ // v511 fine tuning: keep the left upper arm close to the player's body
+ // rather than emerging from behind the camera as a long straight bar.
+ // Bias the elbow LEFT and DOWN so the shell hand approaches over the
+ // receiver with an obvious human arm bend through both loading strokes.
+ const shoulderView=new THREE.Vector3(-.44,-1.00,-.26);
  const elbowView=new THREE.Vector3(
-  Math.min(-.27,handView.x-.24),
-  THREE.MathUtils.clamp(Math.min(-.50,handView.y-.20),-.84,-.50),
-  THREE.MathUtils.lerp(shoulderView.z,handView.z,.64)
+  Math.min(-.52,handView.x-.38),
+  THREE.MathUtils.clamp(Math.min(-.62,handView.y-.26),-.84,-.62),
+  THREE.MathUtils.lerp(shoulderView.z,handView.z,.52)
  );
  // Blend from the normal foregrip arm as the gun turns in, and back again
  // after the final shell. No first-frame jump or shoulder stuck after reload.
