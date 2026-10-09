@@ -166,6 +166,8 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 #startScreen::before{
  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
  background:url("../assets/city-outbreak-start-v153.jpg.jpg") calc(50% + 16vw) top/cover no-repeat;
- clip-path:inset(0 0 86.5% 93.3%);
+ /* Feather only the old Controls art; keep adjacent SETTINGS lettering sharp. */
+ -webkit-mask-image:radial-gradient(ellipse 5.7% 11.8% at 97.1% 6.5%,#000 65%,transparent 100%);
+ mask-image:radial-gradient(ellipse 5.7% 11.8% at 97.1% 6.5%,#000 65%,transparent 100%);
  opacity:1;
 }
