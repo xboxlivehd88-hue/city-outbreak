@@ -1583,7 +1583,7 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
 
 // v501: user-supplied replacement pump shotgun GLB. It is a static asset with
 // separate real nodes for base, shell, trigger, inserter and pump.
-let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunShellTemplate=null,shotgunSpentShellTemplate=null,shotgunTrigger=null,shotgunInserter=null,shotgunHandTargets=null,shotgunLoadPort=null,shotgunReloadShellActor=null,shotgunReloadCant=0;
+let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunShellTemplate=null,shotgunSpentShellTemplate=null,shotgunTrigger=null,shotgunInserter=null,shotgunHandTargets=null,shotgunLoadPort=null,shotgunBottomLoadPort=null,shotgunReloadShellActor=null,shotgunReloadCant=0,shotgunReloadShellIndex=0;
 new GLTFLoader().load("assets/shotgun_test.glb?v=501",gltf=>{
  shotgunModelTemplate=gltf.scene;
  shotgunModelTemplate.traverse(o=>{
@@ -2135,10 +2135,12 @@ function updateShotgunReloadFX(rp){
  // Keep the support arm articulated during the brief roll back to ready.
  if(!loading&&shotgunReloadCant<.008)return;
  const p=loading?rp.p:1,home=playerHandRig.leftHandBase;
- const port=shotgunLoadPort||new THREE.Vector3(.67,-.43,-1.12);
- // The right-side loading port stays exposed by the mild left roll, while
- // the LEFT support hand brings every shell visibly OVER THE TOP of the receiver.
- // All locations are in gun-local space so they move together while canted.
+ // One shell is chambered from the side by the left support hand. All
+ // following shells travel upward into the underside magazine gate.
+ const chamberShell=shotgunReloadShellIndex===0;
+ const port=chamberShell
+  ?(shotgunLoadPort||new THREE.Vector3(.67,-.43,-1.12))
+  :(shotgunBottomLoadPort||new THREE.Vector3(.39,-.69,-1.12));
  // v508: Keep the approved v506 arm rig and shotgun left-side cant.
  // v507's camera-anchored shoulder made a large straight arm float into view.
  // The old 'pouch' underneath the shotgun is gone; all travel now runs
@@ -2149,29 +2151,30 @@ function updateShotgunReloadFX(rp){
  const toCamera=v=>v.clone().multiply(gunScale).applyQuaternion(gun.quaternion).add(gun.position);
  const toGun=v=>v.clone().sub(gun.position).applyQuaternion(inverseGun).divide(gunScale);
  const portView=toCamera(port),homeView=toCamera(home);
- // Compact path close to the visible receiver: peel off the pump,
- // take the next shell above the left rear, cross over the top,
- // and feed it into the exposed RIGHT-side loading opening.
- // Stay just above the receiver but BELOW the eye line. Unlimited camera-up
- // offsets made the hand climb too high when the shotgun was fully rolled.
+ // Preserve the approved side-chamber motion for the FIRST round. The
+ // remaining shells instead rise from below the receiver to its bottom
+ // loading gate, then press up and slide forward down the tube.
  const topY=THREE.MathUtils.clamp(Math.max(portView.y+.12,homeView.y+.08),-.56,-.22);
- const pickupView=new THREE.Vector3(
-  THREE.MathUtils.lerp(homeView.x,portView.x,.5)-.12,
-  topY,portView.z+.27);
- const overLeftView=new THREE.Vector3(portView.x-.16,topY+.025,portView.z+.12);
- const overRightView=portView.clone().add(new THREE.Vector3(.16,.17,-.04));
- // A side-loading shotgun requires two distinct beats: the shell is
- // presented OVER the rolled receiver, pressed IN through the right-side
- // opening, then driven FORWARD toward the muzzle (-Z in weapon space).
- // Keeping the wrist on the shell for both beats makes the reload a
- // physical hand motion instead of a hovering round plugging into the side.
- const alignView=portView.clone().add(new THREE.Vector3(.12,.13,.20));
+ const pickupView=chamberShell
+  ?new THREE.Vector3(THREE.MathUtils.lerp(homeView.x,portView.x,.5)-.12,topY,portView.z+.27)
+  :new THREE.Vector3(portView.x-.19,Math.min(-.70,portView.y-.22),portView.z+.34);
+ const overLeftView=chamberShell
+  ?new THREE.Vector3(portView.x-.16,topY+.025,portView.z+.12)
+  :new THREE.Vector3(portView.x-.17,portView.y-.20,portView.z+.16);
+ const overRightView=chamberShell
+  ?portView.clone().add(new THREE.Vector3(.16,.17,-.04))
+  :portView.clone().add(new THREE.Vector3(.055,-.19,.13));
+ const alignView=chamberShell
+  ?portView.clone().add(new THREE.Vector3(.12,.13,.20))
+  :portView.clone().add(new THREE.Vector3(.015,-.16,.16));
  const pickup=toGun(pickupView),overLeft=toGun(overLeftView);
  const overRight=toGun(overRightView),align=toGun(alignView);
- // The last centimeters of the wrist stroke must reach the port's
- // inner lip, not stop just outside the receiver shell-loading opening.
- const pressIn=port.clone().add(new THREE.Vector3(-.015,.040,.04));
- const pushForward=port.clone().add(new THREE.Vector3(-.09,.02,-.30));
+ const pressIn=chamberShell
+  ?port.clone().add(new THREE.Vector3(-.015,.040,.04))
+  :port.clone().add(new THREE.Vector3(0,-.06,.065));
+ const pushForward=chamberShell
+  ?port.clone().add(new THREE.Vector3(-.09,.02,-.30))
+  :port.clone().add(new THREE.Vector3(0,.025,-.27));
  let hand;
  if(p<.22)hand=home.clone().lerp(pickup,smoothReload01(p/.22));
  else if(p<.29)hand=pickup.clone();
@@ -2181,7 +2184,7 @@ function updateShotgunReloadFX(rp){
  else if(p<.83)hand=align.clone().lerp(pressIn,smoothReload01((p-.74)/.09));
  else if(p<.91)hand=pressIn.clone().lerp(pushForward,smoothReload01((p-.83)/.08));
  else{
-  // Return over the upper/right side to the forward pump, not underneath.
+  // Return to the foregrip along the same route used for this shell.
   const t=smoothReload01((p-.91)/.09),k=1-t;
   hand=pushForward.clone().multiplyScalar(k*k)
    .add(overRight.clone().multiplyScalar(2*k*t))
@@ -2245,9 +2248,13 @@ function updateShotgunReloadFX(rp){
  // at the end of the forward stroke, before it abruptly disappeared.
  const inT=smoothReload01(THREE.MathUtils.clamp((p-.72)/.11,0,1));
  const forwardT=smoothReload01(THREE.MathUtils.clamp((p-.83)/.08,0,1));
- const shellInHand=new THREE.Vector3(.075,.065,-.075)
-  .lerp(new THREE.Vector3(-.09,-.015,-.075),inT)
-  .lerp(new THREE.Vector3(-.19,-.060,-.115),forwardT);
+ const shellInHand=chamberShell
+  ?new THREE.Vector3(.075,.065,-.075)
+    .lerp(new THREE.Vector3(-.09,-.015,-.075),inT)
+    .lerp(new THREE.Vector3(-.19,-.060,-.115),forwardT)
+  :new THREE.Vector3(.035,.105,-.075)
+    .lerp(new THREE.Vector3(.015,.08,-.09),inT)
+    .lerp(new THREE.Vector3(.005,.035,-.12),forwardT);
  shotgunReloadShellActor.position.copy(hand).add(shellInHand);
  shotgunReloadShellActor.rotation.set(0,0,0);
 }
@@ -2348,7 +2355,7 @@ function rebuildGun(){
  clearReloadMagazineFX(true);
  shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunReloadShellActor=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -2614,6 +2621,13 @@ function rebuildGun(){
      // The LEFT support hand carries shells here; RIGHT hand holds trigger.
      const portBase=inserterCenter||triggerCenter||new THREE.Vector3(.36,-.34,-1.18);
      shotgunLoadPort=new THREE.Vector3(clamp(portBase.x+.28,.62,.83),clamp(portBase.y-.07,-.64,-.30),clamp(portBase.z,-1.65,-.78));
+     // The first shell loads at the previously approved receiver opening.
+     // Afterward use the magazine gate UNDER the imported GLB's inserter.
+     shotgunBottomLoadPort=new THREE.Vector3(
+      clamp(portBase.x,.28,.54),
+      clamp(portBase.y-.24,-.84,-.58),
+      clamp(portBase.z,-1.65,-.78)
+     );
 
      // The source GLB includes one loose display shell hanging below the receiver.
      // Keep an exact copy for the future pump-ejection / shell-by-shell reload actor,
@@ -5447,6 +5461,7 @@ function reload(w=weapon){
  if(w==="m240")stopM240FireAudio();
  setAim(false);
  if(w==="shotgun"){
+   shotgunReloadShellIndex=0;
    const shellDuration=Math.max(580,820-reloadLevel*45);
    const finishShotgunReload=()=>{
      if(seq!==reloadSequence)return;
@@ -5458,7 +5473,7 @@ function reload(w=weapon){
      reloadStartedAt=gameTimeNow();reloadDurationMs=shellDuration;shellLoadS();
      gameTimeout(()=>{
        if(seq!==reloadSequence||!reloading||reloadWeapon!==w)return;
-       if(!dying&&a.mag<cap&&a.reserve>0){a.mag++;a.reserve--;ui()}
+       if(!dying&&a.mag<cap&&a.reserve>0){a.mag++;a.reserve--;shotgunReloadShellIndex++;ui()}
        if(dying||a.mag>=cap||a.reserve<=0)finishShotgunReload();
        else loadShell()
      },shellDuration)
