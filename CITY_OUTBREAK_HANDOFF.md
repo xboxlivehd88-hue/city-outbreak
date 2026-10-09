@@ -1,3 +1,23 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v523 CLEAN APPROVED START ART / ONE SETTINGS BUTTON — READ FIRST
+
+**GitHub `main` remains the only source of truth. The user approved the redesigned start-screen artwork and uploaded the JPEG themselves.**
+
+## Latest v523 change (opening screen only)
+- Verified uploaded `assets/city-outbreak-start-v523.jpg` exists on `main` (blob `a2fc6994b8fc44e2791b2ebba4f753db96888cf8`) and visually inspected it: new CITY OUTBREAK splash art shows a single SETTINGS gear icon at upper-right and NO old CONTROLS icon. Keep original `assets/city-outbreak-start-v153.jpg.jpg` as an untouched backup.
+- `src/game.css`: `#startScreen` now uses the actual uploaded v523 JPG. Completely removed v522's visually unacceptable `#startScreen::before` shifted-image mask. Moved existing invisible `#showSettings` hit target to right 2.3%, top 3.3%, width 6.2%, height 11.2% to follow the new baked SETTINGS icon at the upper right; no additional visible button was added.
+- `index.html`: loader query changed to `./src/game.css?v=523` and `./src/game.js?v=523` for cache refresh. Existing `#showSettings` HTML and its five-tab GAME SETTINGS modal unchanged.
+- `src/game.js` gameplay SOURCE UNCHANGED (blob `f236384f427aa513caf2e67621f7f1edf285815c`), including the original settings click handler; old CONTROLS hotspot remains absent. All five Settings tabs (Controls, Display, Graphics, Effects, Performance) and Low/Medium/High/Custom presets remain as in v522.
+- No edits to the user's approved shotgun animation/reload, M4, zombies, ragdoll, collision, rain, wave code, or protected `CURRENT_RECOVERY_CHECKPOINT.md` v324.
+
+## v523 test, caution, continuation
+- Code-level checks: new image path is present, old v153 artwork is not referenced by active opening CSS, v522 pseudo-element mask is fully removed, one existing SETTINGS hotspot remains, five modal tabs and loaders are intact.
+- Uploaded artwork itself was viewed from GitHub; LIVE browser click alignment and actual rendered appearance still require user testing. DO NOT claim end-to-end visual/gameplay approval before user confirms. In particular confirm the SETTINGS hotspot matches the upper-right gear icon on the user's screen.
+- Playable after GitHub Pages finishes: https://xboxlivehd88-hue.github.io/city-outbreak/?v=523-clean-start-art
+- Ask user to verify: top-right shows one clean SETTINGS icon; icon opens GAME SETTINGS with all five tabs; old Controls area does nothing; Start Outbreak still works; pause menu settings and LOW preset work. If hotspot is off on other aspect ratios, adjust only the `#showSettings` CSS target.
+- Never overwrite protected recovery v324 without explicit user approval. Always commit directly to `main`, verify deployment, and update both handoff documents at the top.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v522 REMOVE OLD CONTROLS ICON; ORIGINAL SETTINGS OPENS EVERYTHING — READ FIRST
 
 **GitHub `main` is authoritative. Read these newest top sections before changing the game.**
