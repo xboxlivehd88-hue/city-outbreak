@@ -1,3 +1,42 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v518 GRAPHICS QUALITY PRESETS FOR LOW-END SYSTEMS — READ FIRST
+
+**GitHub main is authoritative. This newest section supersedes all earlier "current" entries.**
+
+## User request and current build
+- User approved v517 shotgun behavior and asked **"is there some way we can make it so i can lower the graphics settings so this can be played on lower end systems?"**
+- v518 introduces **Low, Medium, High** settings in both the start screen and pause overlay, immediate live adjustment and persistence in browser localStorage.
+- Gameplay commit `aabc76d77374d52939dbd8c7509e49148db9a8bc`, followed by game follow-up `5cff8aa49f8708b58a449f187042d52b17cb353d`, game blob `7dc8c8ffc99dc34e4a5e1ee788380a725cc4b752`.
+- index/menu + game/CSS loader commit `6631700b1d9fbf518946721b5536417776f38cad`, index blob `68e662ef6dbc5c754a2b72f3424ee234d3a4c1bc`.
+- CSS selector styling commit `b3737ada847bccd988f8523fc02606c5375469a5`, CSS blob `ba8dbb56acc6551908deff2816f25e9583f166c0`.
+- index now loads `./src/game.js?v=518` and `./src/game.css?v=518`. Protected v324 recovery checkpoint unchanged.
+- **Pending user visual/performance test**; don't claim FPS gains as measured without benchmark.
+
+## Graphics preset behavior
+- **High (original v517 graphics)**: Three.js renderer pixel ratio `Math.min(devicePixelRatio,1.10)`; sun shadows ON; all 620 world-space rain drops plus 56 splash slots; full existing real streetlight pool. Initial choice when no prior saved preference.
+- **Medium**: pixel ratio cap `.85`; sun shadows OFF; only 310 live rain streaks, with rain splashes hidden and skipped; approximately half of the preexisting nearby real streetlight pool (cheap point glow unchanged).
+- **Low (fastest)**: pixel ratio cap `.60`; shadows OFF; rain streaks/splashes OFF, rain raycast/update loop skipped; live streetlight spotlights OFF but cheap, warm always-on streetlight glows preserved. Scene illumination from original hemisphere/directional lights remains, geometry & zombies preserved.
+- Switching calls `ren.setPixelRatio(...)`, existing render resize callback, toggles `ren.shadowMap.enabled`/`sun.castShadow`, rain geometry drawRange and visibility, lamp budget; no restart needed.
+- Saved in `localStorage["city-outbreak-graphics-v1"]` guarded with try/catch; both `.graphicsQualitySelect` synchronized and document root data attribute updated.
+- Async city GLB lamp creation recomputes the chosen lamp budget when pool becomes available. No model/collider/nav/weapon/wave logic altered.
+- Start-screen menu is a visible bottom-left `GRAPHICS QUALITY` select, and another is in paused panel above Resume. CSS selector styled to match UI.
+
+## Verification and precautions
+- Read newest sections of both repo handoffs, protected checkpoint, index, source game, stylesheet, renderer resize util and performance HUD.
+- Parsed entire modified game JS successfully.
+- Executed isolated `applyGraphicsQuality()` with mocked renderer / lamp pool (8 lamps) and both selectors:
+  - High: pixel ratio 1.10, shadows yes, 620 rain, 8 live lamps, splashes yes
+  - Medium: pixel ratio .85, shadows no, 310 rain, 4 lamps, splashes no
+  - Low: pixel ratio .60, shadows no, 0 rain, 0 lamps, splashes no
+  - High again restored original state.
+- Verified both controls, CSS/loader cache versions, async streetlamp handling, approved v517 shotgun empty-only chamber logic.
+- No real in-browser GPU performance benchmark done yet. Ask user to compare **FPS** shown upper-left while moving and during zombie waves; presets should affect rendering cost not enemy count/gameplay rules.
+- If problems, address only new renderer effect toggles or menu controls and never alter protected approved shotgun behavior.
+
+## Workflows
+- Keep code in GitHub `main` and handoff latest top sections. Present cache-busted Pages link. Never edit `CURRENT_RECOVERY_CHECKPOINT.md` v324 unless user explicitly says so.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v517 CHAMBER SHELL ONLY WHEN SHOTGUN IS EMPTY — READ FIRST
 
 **GitHub `main` is authoritative. This newest section supersedes older current build notes.**
