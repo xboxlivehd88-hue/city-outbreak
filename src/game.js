@@ -1691,11 +1691,10 @@ const FX={
  grenadeDustMat:new THREE.MeshStandardMaterial({color:0x5c5142,roughness:.86}),
  grenadeFlashMat:new THREE.MeshStandardMaterial({color:0xd29a46,roughness:.58,emissive:0x542b08,emissiveIntensity:.30})
 };
-// v529: Immediate explosion plus distinct visible sparks/embers/smoke. NO floor/crater/growth.
-// The uploaded floor_smashedexploded.glb stays in assets for future editing, but
-// is intentionally NOT loaded here: its ground-building sequence was unwanted.
-// Shared textures and a single instanced spark mesh per blast stay efficient on low-end systems.
-// Explosion damage, falloff, projectile physics, sound and ragdoll are unaffected.
+// v530: Dense, layered explosion VFX on High, without the rejected ground patch.
+// The uploaded floor_smashedexploded.glb is deliberately NOT used: its ground
+// buildup is unwanted. This fire/smoke/fragment effect is purely cosmetic.
+// The existing graphics particle percentage controls every density tier.
 let explosionBurstTextures=null;
 const activeExplosionBursts=[];
 const explosionSparkGeometry=new THREE.TetrahedronGeometry(1,0);
@@ -1705,36 +1704,65 @@ const explosionSparkMaterial=new THREE.MeshBasicMaterial({
 const explosionSparkDummy=new THREE.Object3D();
 const explosionSparkUp=new THREE.Vector3(0,1,0);
 const explosionSparkDirection=new THREE.Vector3();
-const explosionSparkColors=[0xffeeb2,0xffd45f,0xff962a,0xff5020,0xffffff];
+const explosionSparkColors=[0xfff8d4,0xffdf78,0xffa73e,0xff581e,0xffffff];
 
+// The v529 radial circles looked sparse and artificial. Make irregular cloud
+// silhouettes once, not per frame, using two tiny procedural alpha textures.
 function makeExplosionBurstTexture(smoke){
  const canvas=document.createElement("canvas");
- canvas.width=96;canvas.height=96;
+ canvas.width=128;canvas.height=128;
  const ctx=canvas.getContext("2d");
- const grad=ctx.createRadialGradient(48,48,2,48,48,47);
- if(smoke){
-   grad.addColorStop(0,"rgba(255,255,255,.87)");
-   grad.addColorStop(.33,"rgba(255,255,255,.62)");
-   grad.addColorStop(.70,"rgba(255,255,255,.22)");
- }else{
-   grad.addColorStop(0,"rgba(255,255,255,1)");
-   grad.addColorStop(.25,"rgba(255,255,255,.96)");
-   grad.addColorStop(.61,"rgba(255,255,255,.48)");
+ const img=ctx.createImageData(128,128);
+ for(let y=0;y<128;y++)for(let x=0;x<128;x++){
+   const dx=(x-63.5)/62,dy=(y-63.5)/62;
+   const angle=Math.atan2(dy,dx);
+   const outline=1+.10*Math.sin(7*angle+1.1)+.065*Math.sin(13*angle-1.2)+.047*Math.sin(23*angle+.8);
+   const r=Math.hypot(dx,dy)/outline;
+   const cloud=Math.max(0,1-r);
+   const n=.82+.10*Math.sin(x*.29+y*.14)*Math.sin(y*.37-x*.11)+.08*Math.sin(x*.67-y*.51);
+   const a=smoke?Math.pow(cloud,1.13)*.85*n:Math.pow(cloud,1.85)*Math.min(1,1.18*n);
+   const k=(y*128+x)*4;
+   img.data[k]=255;img.data[k+1]=255;img.data[k+2]=255;
+   img.data[k+3]=Math.round(Math.max(0,Math.min(1,a))*255);
  }
- grad.addColorStop(1,"rgba(255,255,255,0)");
- ctx.fillStyle=grad;ctx.fillRect(0,0,96,96);
+ ctx.putImageData(img,0,0);
  const texture=new THREE.CanvasTexture(canvas);
  texture.colorSpace=THREE.SRGBColorSpace;
  return texture;
 }
 function clearExplosionBurst(burst){
  for(const particle of burst.particles)particle.sprite.material.dispose();
- // Spark instancing uses shared geometry/material; do not dispose those per burst.
+ // Instanced sparks and procedural textures share geometry/material between
+ // blasts; removing the parent cleans up every short-lived visual instance.
  if(burst.group.parent)burst.group.parent.remove(burst.group);
 }
 function clearExplosionGlbs(){
  for(const burst of activeExplosionBursts)clearExplosionBurst(burst);
  activeExplosionBursts.length=0;
+}
+function drawExplosionSparks(fx,dt){
+ for(let i=0;i<fx.sparks.length;i++){
+   const s=fx.sparks[i];
+   if(dt>0){
+     s.age+=dt;
+     s.vel.y-=(s.debris?13:9.5)*dt;
+     s.pos.addScaledVector(s.vel,dt);
+     s.vel.x*=Math.exp(-dt*.33);
+     s.vel.z*=Math.exp(-dt*.33);
+   }
+   const remain=Math.max(0,1-s.age/s.life);
+   explosionSparkDummy.position.copy(s.pos);
+   explosionSparkDirection.copy(s.vel);
+   if(explosionSparkDirection.lengthSq()>.001){
+     explosionSparkDirection.normalize();
+     explosionSparkDummy.quaternion.setFromUnitVectors(explosionSparkUp,explosionSparkDirection);
+   }else explosionSparkDummy.quaternion.identity();
+   const scale=s.size*remain;
+   explosionSparkDummy.scale.set(scale,scale*s.length,scale);
+   explosionSparkDummy.updateMatrix();
+   fx.sparkMesh.setMatrixAt(i,explosionSparkDummy.matrix);
+ }
+ fx.sparkMesh.instanceMatrix.needsUpdate=true;
 }
 function spawnExplosionBurst(position,isLauncher){
  if(!explosionBurstTextures){
@@ -1743,6 +1771,7 @@ function spawnExplosionBurst(position,isLauncher){
      smoke:makeExplosionBurstTexture(true)
    };
  }
+ const quality=Math.max(0,Math.min(1,graphicsOptions.particles/100));
  const limit=graphicsQuality==="low"?2:graphicsQuality==="medium"?3:4;
  while(activeExplosionBursts.length>=limit)clearExplosionBurst(activeExplosionBursts.shift());
  const group=new THREE.Group();
@@ -1750,101 +1779,105 @@ function spawnExplosionBurst(position,isLauncher){
  group.position.copy(position);
  scene.add(group);
  const particles=[];
- const radius=isLauncher?2.05:2.45;
- const add=(kind,x,y,z,size,color,opacity,vx,vy,vz,life)=>{
-   const smoke=kind==="smoke";
+ const radius=isLauncher?2.15:2.55;
+ const add=(smoke,x,y,z,size,color,opacity,vx,vy,vz,life)=>{
    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({
      map:smoke?explosionBurstTextures.smoke:explosionBurstTextures.fire,
      color,transparent:true,opacity,
      depthWrite:false,depthTest:true,
-     blending:smoke?THREE.NormalBlending:THREE.AdditiveBlending
+     blending:smoke?THREE.NormalBlending:THREE.AdditiveBlending,
+     rotation:(Math.random()-.5)*Math.PI
    }));
    sprite.position.set(x,y,z);
-   sprite.scale.set(size,size,1); // final size immediately; never animate scale
+   sprite.scale.set(size,size,1); // No explosion/ground growth at any setting
    group.add(sprite);
-   particles.push({sprite,velocity:new THREE.Vector3(vx,vy,vz),opacity,life,age:0,smoke});
+   particles.push({
+     sprite,velocity:new THREE.Vector3(vx,vy,vz),opacity,life,age:0,
+     smoke,phase:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.85
+   });
  };
- // One immediate fireball at the impact point. No floor meshes or ground decals.
- add("fire",0,.85,0,radius*1.20,0xffe0a1,.98,0,.75,0,.23);
- add("fire",0,1.35,0,radius*.93,0xff852a,.85,0,1.4,0,.36);
- const count=Math.max(7,cosmeticParticleCount(isLauncher?22:30));
- for(let i=0;i<count;i++){
-   const smoke=i>=Math.floor(count*.72);
+ // The impact FLASH exists at t=0. It never swells into a ground patch.
+ add(false,0,.86,0,radius*1.14,0xfff3c4,.98,0,.18,0,.18);
+ add(false,0,1.1,0,radius*.99,0xffa031,.92,0,1.00,0,.29);
+ add(false,0,1.42,0,radius*.80,0xff551a,.84,0,1.55,0,.43);
+ // High: ~110 volume puffs for a hand grenade, plus 200 instanced hot/debris
+ // streaks. Low: ~11 puffs and ~16 sparks; Medium stays in between.
+ const puffCount=Math.max(8,Math.round((isLauncher?85:110)*Math.pow(quality,1.65)));
+ for(let i=0;i<puffCount;i++){
+   const smoke=i%5<3; // 60% smoke for a convincing rolling airborne plume
    const angle=Math.random()*Math.PI*2;
-   const radial=.18+Math.random()*.75;
-   const outward=(smoke?1.15:2.15)+Math.random()*(smoke?1.0:2.9);
-   const base=.2+Math.random()*1.25;
-   const size=(smoke?.73:.52)+Math.random()*(smoke?.90:.95);
-   const color=smoke?0x44403c:(i%5===0?0xffdc7c:i%3===0?0xffaa38:0xe84916);
-   add(smoke?"smoke":"fire",
-       Math.cos(angle)*radial,base,Math.sin(angle)*radial,
-       size,color,smoke?.66:.87,
-       Math.cos(angle)*outward,(smoke?1.25:2.4)+Math.random()*2.0,
-       Math.sin(angle)*outward,smoke?.85:.35+Math.random()*.22);
+   const spread=Math.sqrt(Math.random())*(smoke?1.00:.82);
+   const x=Math.cos(angle)*spread,z=Math.sin(angle)*spread;
+   const y=.60+Math.random()*(smoke?1.7:1.25);
+   const speed=(smoke?1.35:2.90)+Math.random()*(smoke?2.25:3.4);
+   const up=(smoke?1.2:2.5)+Math.random()*(smoke?2.5:2.4);
+   const size=smoke?.85+Math.random()*1.10:.45+Math.random()*1.05;
+   const color=smoke?
+     (i%4===0?0xa29b90:i%3===0?0x675c53:0x393838):
+     (i%7===0?0xfff0aa:i%3===0?0xffa33a:0xcc4218);
+   const life=smoke?.88+Math.random()*.77:.28+Math.random()*.43;
+   add(smoke,x,y,z,size,color,smoke?.71:.84,
+       Math.cos(angle)*speed,up,Math.sin(angle)*speed,life);
  }
- // v529: highly visible physical sparks / hot fragments. One instanced draw
- // call per blast: this stays practical even in Low graphics mode.
- const sparkCount=Math.max(14,cosmeticParticleCount(isLauncher?46:60));
+ const sparkCount=Math.max(14,Math.round((isLauncher?160:200)*Math.pow(quality,1.8)));
  const sparkMesh=new THREE.InstancedMesh(explosionSparkGeometry,explosionSparkMaterial,sparkCount);
- sparkMesh.name="VisibleExplosionSparks";
+ sparkMesh.name="DenseExplosionSparksAndFragments";
  sparkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
  sparkMesh.frustumCulled=false;
  sparkMesh.castShadow=false;sparkMesh.receiveShadow=false;
  const sparks=[];
  for(let i=0;i<sparkCount;i++){
-   const a=Math.random()*Math.PI*2;
-   const outward=3.7+Math.random()*6.7;
-   const vy=3.0+Math.random()*7.0;
-   const v=new THREE.Vector3(Math.cos(a)*outward,vy,Math.sin(a)*outward);
-   const hot=i%sparkCount<Math.floor(sparkCount*.48);
-   const s=hot?.09+Math.random()*.085:.07+Math.random()*.075;
-   const pos=new THREE.Vector3((Math.random()-.5)*.42,.52+Math.random()*.87,(Math.random()-.5)*.42);
-   sparks.push({pos,vel:v,life:.38+Math.random()*.43,age:0,size:s,length:2.2+Math.random()*2.1});
-   sparkMesh.setColorAt(i,new THREE.Color(explosionSparkColors[i%explosionSparkColors.length]));
+   const angle=Math.random()*Math.PI*2;
+   const elevation=.2+Math.random()*.95;
+   const magnitude=4.0+Math.random()*8.6;
+   const debris=i%9===0;
+   const vel=new THREE.Vector3(
+     Math.cos(angle)*magnitude,
+     (3.8+Math.random()*6.6)*elevation,
+     Math.sin(angle)*magnitude
+   );
+   const pos=new THREE.Vector3((Math.random()-.5)*.43,.45+Math.random()*1.02,(Math.random()-.5)*.43);
+   sparks.push({
+     pos,vel,debris,life:debris?.62+Math.random()*.45:.35+Math.random()*.48,
+     age:0,size:debris?.10+Math.random()*.08:.055+Math.random()*.075,
+     length:debris?1.3+Math.random()*.6:2.2+Math.random()*3.1
+   });
+   sparkMesh.setColorAt(i,new THREE.Color(debris?0x4b3530:explosionSparkColors[i%explosionSparkColors.length]));
  }
  if(sparkMesh.instanceColor)sparkMesh.instanceColor.needsUpdate=true;
  group.add(sparkMesh);
- const burst={group,particles,sparkMesh,sparks,age:0,life:1.0};
+ // A brief local light flash makes the large High-quality explosion illuminate
+ // nearby surfaces; no shadow map is allocated, and disabling Lights omits it.
+ let flash=null;
+ if(quality>=.85&&graphicsOptions.lights!=="off"){
+   flash=new THREE.PointLight(0xff9b42,3.2,8.0,2);
+   flash.castShadow=false;
+   flash.position.set(0,1.45,0);
+   group.add(flash);
+ }
+ const burst={group,particles,sparkMesh,sparks,flash,age:0,life:1.75};
  drawExplosionSparks(burst,0);
  activeExplosionBursts.push(burst);
-}
-function drawExplosionSparks(fx,dt){
- const sparks=fx.sparks;
- for(let i=0;i<sparks.length;i++){
-   const s=sparks[i];
-   if(dt>0){
-     s.age+=dt;
-     s.vel.y-=11*dt;
-     s.pos.addScaledVector(s.vel,dt);
-   }
-   const remain=Math.max(0,1-s.age/s.life);
-   // Only individual spark streaks shorten/fade. The explosion or floor
-   // NEVER grows; no patch, crater mesh, decal or swelling cloud is spawned.
-   const scale=s.size*remain;
-   explosionSparkDummy.position.copy(s.pos);
-   explosionSparkDirection.copy(s.vel);
-   if(explosionSparkDirection.lengthSq()>.001){
-     explosionSparkDirection.normalize();
-     explosionSparkDummy.quaternion.setFromUnitVectors(explosionSparkUp,explosionSparkDirection);
-   }else explosionSparkDummy.quaternion.identity();
-   explosionSparkDummy.scale.set(scale,scale*s.length,scale);
-   explosionSparkDummy.updateMatrix();
-   fx.sparkMesh.setMatrixAt(i,explosionSparkDummy.matrix);
- }
- fx.sparkMesh.instanceMatrix.needsUpdate=true;
 }
 function updateExplosionGlbs(dt){
  for(let i=activeExplosionBursts.length-1;i>=0;i--){
    const fx=activeExplosionBursts[i];
    fx.age+=dt;
    drawExplosionSparks(fx,dt);
+   if(fx.flash)fx.flash.intensity=3.2*Math.max(0,1-fx.age/.20)**2;
    for(const p of fx.particles){
      p.age+=dt;
      const t=Math.min(1,p.age/p.life);
-     // Animation only fades and moves airborne fire/smoke. No scaling whatsoever.
-     p.sprite.material.opacity=p.opacity*Math.pow(1-t,p.smoke?1.4:1.8);
+     p.sprite.material.opacity=p.opacity*Math.pow(1-t,p.smoke?1.15:1.85);
      p.sprite.position.addScaledVector(p.velocity,dt);
-     p.velocity.multiplyScalar(Math.exp(-dt*(p.smoke?1.6:3.2)));
+     // Airborne smoke rolls and drifts, never spawns any flat floor geometry.
+     if(p.smoke){
+       p.velocity.x+=Math.sin(p.phase+p.age*4)*dt*.70;
+       p.velocity.z+=Math.cos(p.phase*.9+p.age*3)*dt*.70;
+     }
+     p.sprite.material.rotation+=p.spin*dt;
+     p.velocity.multiplyScalar(Math.exp(-dt*(p.smoke?1.35:3.0)));
+     if(t>=1)p.sprite.visible=false;
    }
    if(fx.age>=fx.life){
      clearExplosionBurst(fx);

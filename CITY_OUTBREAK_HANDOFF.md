@@ -1,3 +1,17 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v530 HIGH-FIDELITY DENSE EXPLOSIONS (HIGH GRAPHICS) — READ FIRST
+
+**GitHub `main` is authoritative. User approved v528 direct explosions with NO ground buildup and v529 airborne sparks, now requests a bigger, more nearly realistic explosion specifically on HIGH. Preserve v525 full-width start menu, single Settings icon, all five Settings tabs, and protected v324 recovery.**
+
+## v530 visual-only changes
+- `src/game.js` upgrades `spawnExplosionBurst()`: immediate multi-layer white-hot/amber/orange fireball; many distinct irregular textured smoke/fire puffs moving upward and outward, now 60% smoke, color graded charcoal to warm light gray; brighter 3D hot sparks/debris of several colors using ONE shared instanced mesh per explosion; short local orange PointLight on HIGH only when independent light setting is not off, no shadows. No growth of whole blast, ground patch, crater, floor model, ring or ground animation. Sprite size is fixed from first frame; cloud motion and fade is in the air.
+- High particle count hand grenade: ~110 independently rendered airborne smoke/fire puffs, plus ~200 sparks/rock fragments (compared with v529 30 puffs + 60 sparks). Launcher: ~85 puffs + ~160 sparks (vs 22 + 46). Both also receive immediate layered fireball. Most particles are in the air for 0.3-1.7 sec; entire visual cleared by 1.75s.
+- Quality scaling uses the existing `graphicsOptions.particles/100` and `Math.pow(quality,1.65)` for puffs, `Math.pow(quality,1.8)` for sparks, yielding approximately 11 puffs + 16 sparks on Low for grenade, 35 puffs + 57 sparks on Medium, 110 + 200 on High; Custom smoothly varies densities. Shared texture generation ONCE at runtime and spark instancing keep per-blast allocations manageable; max simultaneous explosion effect count Low=2, Medium=3, High/Custom=4. Short PointLight only at effective particle quality ≥85% and when lights enabled.
+- Uploaded `assets/floor_smashedexploded.glb` remains intact but intentionally unused because it produced a ground-building animation user expressly rejected.
+- CRITICAL: Both `explodeGrenade()` and `explodeLauncherRound()` damage radii/formulas, weapon mechanics, zombie knockdowns/ragdoll and audio are unchanged. Explosion rendering only. `index.html` cache-busts game.js to v530, `src/game.css?v=525` unchanged. Both handoffs prepended. Protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 unchanged.
+- JS syntax/static checks only; NOT a live visual approval. Test URL after successful Pages deploy: https://xboxlivehd88-hue.github.io/city-outbreak/?v=530-hifi-blasts. Verify G throws grenade, unlocked launcher shot (7), smoke/sparks visible and no ground; High density vs Low and actual FPS.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v529 VISIBLE EXPLOSION PARTICLES, NO GROUND — READ FIRST
 
 **Current source of truth: GitHub `main`. User confirmed v528 properly REMOVED the unwanted ground buildup: "so thats gperfect but now there is no particals". Main task: RESTORE VISIBLE airborne explosion sparks/embers while keeping the blast direct and no ground patch. v525 widescreen start menu and Settings user-approved.**
