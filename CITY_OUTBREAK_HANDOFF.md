@@ -1,3 +1,46 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v508 SHOTGUN ARM REGRESSION FIX — READ FIRST
+
+**GitHub main is the single source of truth. Read latest sections at top of all handoff and recovery docs before future changes.**
+
+## Latest build (PENDING USER VISUAL APPROVAL)
+- Version **v508**; loader `./src/game.js?v=508`.
+- Gameplay commit `3dd3e28802cedc00647258eb3b27790c60007adf`; game.js blob `699e9fe2da475ec81fed3c8a826e223815395704`.
+- Loader commit `1f10506fe8f1810f96a381c9346d7f40c8c7c7b7`.
+- Shotgun source `assets/shotgun_test.glb?v=501`, unchanged; CSS v500 unchanged.
+- Approved M4 behavior, weapon hotkeys and full weapon gameplay unchanged; protected **v324** recovery untouched.
+
+## User reported visual v507 regression
+User supplied **14-second gameplay video** `2026-10-09 01-47-50.mp4`, stating **"this doesnt look right at all"**. Inspected frames: v507's body-anchored camera shoulder and local-over-forearm route made a huge straight-looking left arm reaching skyward in front of the camera while the shotgun sat far right. This is worse than v506. Previously user explicitly approved **v506 shotgun rolled left/right-side load angle**, but wanted the support arm to stop moving underneath the gun before returning over the top.
+
+## v508 isolated repair
+- **RESTORED the v506 shotgun support arm / fixed gun-local shoulder and elbow behavior** rather than retaining v507's camera-reanchored shoulder which produced the visually oversized arm.
+- Kept v506's approved shotgun `+1.15rad` left side roll, `-.21rad` yaw, and persistent hold for all shells.
+- Kept v505 red hull / brass-base reload-shell actor, right-side loading target and per-shell 820ms timing.
+- Eliminated the v506/v507 below-gun/chest `pouch` detour altogether.
+- NEW compact, upper-only reload hand waypoints are placed in **camera/view-relative coordinates** using current shotgun rotation, position, scale and inverse quaternion, then converted into gun-local for arm and shell. This matters because gun-local +Y pointed SIDEWAYS when the gun was rolled 66°.
+- Path: forward pump → compact shell pickup above receiver → pass slightly left over the top → across to right side → right loading port → return via a quadratic curve along the same upper corridor. No major up-and-out wrist reach and no underside dip.
+- Removed v507's special "keep support arm articulated throughout shotgun roll recovery" branch; restored v506 arm reset when reload finishes to avoid floating skyward after final shell.
+- Did **not** alter shotgun ADS, its hip size, gameplay, shell actor, weapon order or any M4 code.
+
+## Validation already performed
+- Read live top of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, `src/game.js` from `main`.
+- Inspected uploaded 14-second video (v507 arm regression).
+- Explicitly compared original **v506** `updateShotgunReloadFX` source via GitHub commit `daede8c738107cca1ba354fa253ac08e8c8a4103` against v507 and restored v506 arm with new camera-relative path.
+- Full new JS parsed successfully and guarded exact approved values: M4 zero, shotgun ADS and stats, v506 roll/yaw, visible shell actor, 820ms timing, cycle order.
+- Confirmed gameplay and loader committed to GitHub main. **Visual gameplay not yet user-confirmed**.
+
+## v508 user test
+Fire 2-4 shotgun shells, then press R. Watch for:
+1. Gun remains canted left at the **same approved v506 angle**.
+2. No huge straight/skyward arm like v507.
+3. Left hand carries clearly visible red/brass shell **close above the shotgun receiver** and inserts on its right side; never travels under it.
+4. Return to foregrip is compact and connected to shoulder.
+5. Shooting, hip and ADS and all other guns unchanged.
+
+Do not declare v508 visually fixed until user tests it. If still unnatural, use user's actual video and preserve approved loading angle rather than arbitrarily moving the gun.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v507 NATURAL SHOTGUN SUPPORT ARM OVER TOP — READ FIRST
 
 **GitHub main is the source of truth. This newest section supersedes older notes.**
