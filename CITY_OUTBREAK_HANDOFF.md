@@ -1,3 +1,47 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v520 LOW-END PERFORMANCE CONTROLS & TABBED GRAPHICS MENU — READ FIRST
+
+**GitHub main is authoritative; newest dated top entry supersedes older "current" sections.**
+
+## User intent, approvals and source
+- User approved v517 shotgun and v519 graphics individual effects, is currently testing on a **low-end system**, provided reference image of extensive Graphics/GPU/CPU settings and said **"thats make this happen as im currently on a low end system"**.
+- v520 directly implements safe low-end optimization: maximum settled corpses, cosmetic particle density, shadow quality, and reorganized four-tab advanced graphics UI.
+- **User has NOT visually/performance approved v520.** No actual browser GPU FPS benchmark claimed.
+- Gameplay commits: first `0e72170885ae9bb9bbbd9e6cbf05be369bed7b2a`, finalized tab wiring `6aef98ef8a82fd26d8bda723423a415e29cecdc0`; game blob `3072275071b126293747671d3be5c196a0199da0`.
+- Index markup version bump commit `46cdc012a690b17ebaf963b5f9ebd5b46e0656b9`, index blob `f8d2a6a559ce69b1ea83b63604f2ca76c0d62bde`.
+- CSS styling commit `48d5301255ae78fbaf4a77468ead1b33cc8f50df`, CSS blob `8a10ade89f897f14d2df9b1f269454d512b129bf`.
+- Loaders `src/game.js?v=520` and `src/game.css?v=520`. Original GLB assets, game map, zombies, weapons, shotgun ammo/reload/ejected shell, keyboard controls, audio untouched.
+- **Never edit protected v324 CURRENT_RECOVERY_CHECKPOINT.md unless user explicitly requests it.**
+
+## Menu
+- Both start and pause still have simple Low/Medium/High/Custom selectors and Advanced Graphics buttons. Advanced dialog now has four switchable tab sections: **Display**, **Graphics**, **Effects**, **Performance**.
+- Display: 60/75/85/original 110% render ratio.
+- Graphics: shadow quality Off/Low 256/Medium 512/High 768 shadowmap pixels, and real streetlight setting Off/Reduced/Full.
+- Effects: Rain Off/Reduced/Full, Rain Splashes On/Off.
+- Performance: Cosmetic Particle Density 25%/50%/75%/100% and Maximum Visible Settled Corpses 0/4/10/20.
+- Visual language dark blue/grey, small responsive tabs. Tabs only show/hide control sections and do not reset any selection. Changing a per-effect option still marks **Custom**, saves locally using existing `city-outbreak-graphics-v1` and `city-outbreak-graphics-custom-v2` keys. Old v519 saved boolean `shadows` migrates to `shadowQuality`.
+- New preset defaults: **High** original resolution 1.10, high shadows 768, full rain/splash/lights, 100% particles, max20 settled corpses (old fixed 10-second lifetime still applies when settled); **Medium** .85, shadows off, half rain/lights, no splashes, 50% particles and 10 settled corpses; **Low** .60, shadows off, no rain/lights, no splashes, 25% particles, at most 4 SETTLED corpses.
+- Do not change default High selection for pre-existing saved preferences, except user may choose Low manually.
+
+## Implementation and safeguards
+- In src/game.js `cosmeticParticleCount(count)` scales only VISUAL blood fragments, impact dust meshes, launcher and grenade particles: original launcher 34 / grenade 55, Low ~9 / ~14, Medium 17 / 28, High original. Damage, blast impulse, hitboxes and number of enemies unchanged.
+- Dead zombie update continues full ragdoll simulation via `if(z.ragdoll?.active!==false)updateRagdoll(z,dt)`. Existing 10-second corpse cleanup now checks `z.ragdoll?.active===false` (must be settled). After update, `settledCorpses` filters dead, not already removed and **ragdoll.active exactly false**, sorts oldest first, removes only excess beyond `graphicsOptions.corpses`. Avoid culling any falling ragdolls or living zombies; graphics options may not force physics sleep early.
+- Shadow quality uses `sun.shadow.mapSize` 256/512/768 with disposal of old render target on change, existing `ren.shadowMap.enabled` and `sun.castShadow`; Off disables.
+- Old Low/Medium/High lighting and world-rain settings continue to work.
+- No full-screen, FOV, view distance or alternative render engine changes in this version; don't add misleading toggles without actual corresponding features.
+
+## Tests completed
+- Fetched live main both handoffs, protected checkpoint, index, full JS/CSS and perf HUD before changes.
+- After full game code commit, complete JavaScript parses.
+- Verified 7 live settings HTML controls, all four tabs and CSS hidden-panel rules, render/CSS loader v520, preserved approved shotgun empty-only side chamber, GLB spent shell orientation/size, ragdoll active condition and M4 zero.
+- Tested cosmetic multiplier at 25/50/75/100% for particle count 2/3/10/34/55; Low launcher9 & grenade14, Medium17 &28, High34 &55.
+- Normalization tests for legacy saved `shadows:false` and new Custom fields pass.
+- **Not browser-rendered/benchmarked**; user should test FPS upper-left, selecting Low and compare High, then try Performance tab corpse limit 4, particle density 25, Graphics tab shadows off, Effects tab rain off. Test several waves / explosions / zombie ragdolls to ensure falling bodies stay visible until they settle. If memory/performance regression, inspect current repo and fix surgically.
+
+## Workflow
+- Direct GitHub main edits, full validation, update both handoffs, cache-busted Pages test link. Protected v324 untouched.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v519 CUSTOM ADVANCED GRAPHICS CONTROLS — READ FIRST
 
 **GitHub `main` remains the source of truth. This newest top section supersedes older current-build handoffs.**
