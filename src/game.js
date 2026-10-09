@@ -2160,20 +2160,29 @@ function updateShotgunReloadFX(rp){
   topY,portView.z+.27);
  const overLeftView=new THREE.Vector3(portView.x-.16,topY+.025,portView.z+.12);
  const overRightView=portView.clone().add(new THREE.Vector3(.16,.17,-.04));
- const atPortView=portView.clone().add(new THREE.Vector3(.15,.065,.07));
+ // A side-loading shotgun requires two distinct beats: the shell is
+ // presented OVER the rolled receiver, pressed IN through the right-side
+ // opening, then driven FORWARD toward the muzzle (-Z in weapon space).
+ // Keeping the wrist on the shell for both beats makes the reload a
+ // physical hand motion instead of a hovering round plugging into the side.
+ const alignView=portView.clone().add(new THREE.Vector3(.12,.13,.20));
  const pickup=toGun(pickupView),overLeft=toGun(overLeftView);
- const overRight=toGun(overRightView),atPort=toGun(atPortView);
+ const overRight=toGun(overRightView),align=toGun(alignView);
+ const pressIn=port.clone().add(new THREE.Vector3(.04,.055,.04));
+ const pushForward=port.clone().add(new THREE.Vector3(-.045,.03,-.25));
  let hand;
  if(p<.22)hand=home.clone().lerp(pickup,smoothReload01(p/.22));
  else if(p<.29)hand=pickup.clone();
  else if(p<.49)hand=pickup.clone().lerp(overLeft,smoothReload01((p-.29)/.20));
- else if(p<.70)hand=overLeft.clone().lerp(overRight,smoothReload01((p-.49)/.21));
- else if(p<.88)hand=overRight.clone().lerp(atPort,smoothReload01((p-.70)/.18));
+ else if(p<.65)hand=overLeft.clone().lerp(overRight,smoothReload01((p-.49)/.16));
+ else if(p<.74)hand=overRight.clone().lerp(align,smoothReload01((p-.65)/.09));
+ else if(p<.83)hand=align.clone().lerp(pressIn,smoothReload01((p-.74)/.09));
+ else if(p<.91)hand=pressIn.clone().lerp(pushForward,smoothReload01((p-.83)/.08));
  else{
-  // Return through the same upper corridor instead of dipping under.
-  const t=smoothReload01((p-.88)/.12),k=1-t;
-  hand=atPort.clone().multiplyScalar(k*k)
-   .add(pickup.clone().multiplyScalar(2*k*t))
+  // Return over the upper/right side to the forward pump, not underneath.
+  const t=smoothReload01((p-.91)/.09),k=1-t;
+  hand=pushForward.clone().multiplyScalar(k*k)
+   .add(overRight.clone().multiplyScalar(2*k*t))
    .add(home.clone().multiplyScalar(t*t));
  }
  // Solve the shoulder -> elbow -> wrist in the player's CAMERA frame.
@@ -2203,7 +2212,7 @@ function updateShotgunReloadFX(rp){
  // appear on screen. Keep the original GLB/template untouched; for reload use
  // a correctly sized, reliably visible red hull and brass base in hand.
  // It is a real 3D actor, not a HUD sprite; it follows gun roll and insertion.
- const carrying=loading&&p>=.29&&p<.93;
+ const carrying=loading&&p>=.29&&p<.91;
  if(!carrying){
   if(shotgunReloadShellActor?.parent)shotgunReloadShellActor.parent.remove(shotgunReloadShellActor);
   shotgunReloadShellActor=null;return;
@@ -2213,30 +2222,23 @@ function updateShotgunReloadFX(rp){
   const red=new THREE.MeshStandardMaterial({color:0xa7261c,roughness:.58,metalness:.04});
   const brass=new THREE.MeshStandardMaterial({color:0xc5a352,roughness:.3,metalness:.75});
   const primer=new THREE.MeshStandardMaterial({color:0x947438,roughness:.48,metalness:.55});
-  // Shell's axis is X: nose points toward the gun (-X), brass rim faces
-  // outward (+X). This means insertion physically travels inward.
+  // Point the cartridge FORWARD, parallel with the barrel (-Z), rather
+  // than straight across the receiver on X like a plug. Brass trails
+  // toward the hand while the red hull advances down the loading channel.
   const hull=new THREE.Mesh(new THREE.CylinderGeometry(.044,.044,.18,14),red);
-  hull.rotation.z=Math.PI/2;hull.position.x=-.015;actor.add(hull);
+  hull.rotation.x=-Math.PI/2;hull.position.z=-.017;actor.add(hull);
   const base=new THREE.Mesh(new THREE.CylinderGeometry(.050,.050,.047,14),brass);
-  base.rotation.z=Math.PI/2;base.position.x=.098;actor.add(base);
+  base.rotation.x=-Math.PI/2;base.position.z=.101;actor.add(base);
   const cap=new THREE.Mesh(new THREE.CylinderGeometry(.031,.031,.004,12),primer);
-  cap.rotation.z=Math.PI/2;cap.position.x=.124;actor.add(cap);
+  cap.rotation.x=-Math.PI/2;cap.position.z=.124;actor.add(cap);
   for(const child of actor.children){child.castShadow=false;child.receiveShadow=false;}
   gun.add(actor);shotgunReloadShellActor=actor;
  }
- // Keep the shell just ahead of the glove so it does not disappear INSIDE
- // the hand. Then drive it independently into the port, tip first.
- if(p<.77){
-  shotgunReloadShellActor.position.copy(hand).add(new THREE.Vector3(.11,.11,-.045));
- }else{
-  // Match the exact end of the visible over-top carry before pushing in,
-  // avoiding an abrupt position jump when the insertion animation begins.
-  const firstInsertHand=overRight.clone().lerp(atPort,smoothReload01((.77-.70)/.18));
-  const start=firstInsertHand.add(new THREE.Vector3(.11,.11,-.045));
-  const seated=port.clone().add(new THREE.Vector3(-.085,.005,0));
-  shotgunReloadShellActor.position.lerpVectors(start,seated,smoothReload01((p-.77)/.16));
- }
- // The shell body remains at full, identifiable size until it passes the port.
+ // The shell must be physically carried by the LEFT hand through BOTH
+ // the inward push and the forward stroke. v509 animated the shell on its
+ // own track while the hand stopped above the port: it looked plugged in.
+ // Here the wrist and cartridge share an unbroken path until release.
+ shotgunReloadShellActor.position.copy(hand).add(new THREE.Vector3(.075,.065,-.075));
  shotgunReloadShellActor.rotation.set(0,0,0);
 }
 function updateReloadMagazineFX(rp){
