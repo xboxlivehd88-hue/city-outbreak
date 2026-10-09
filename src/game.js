@@ -4,7 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
 import {createPerformanceGuard} from "./performance-hud.js?v=262";
-import {showTransientMessage,setupControlsModal,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=464";
+import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=464";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
@@ -6682,23 +6682,22 @@ function applyGraphicsQuality(value){
  applyGraphicsOptions(GRAPHICS_PRESETS[preset],preset);
 }
 const graphicsModal=document.querySelector("#graphicsAdvancedModal");
-// All four panels share the same live settings object, so switching tabs
-// never resets a choice or changes the active graphics quality preset.
+// One shared SETTINGS dialog: opening screen defaults to Controls,
+// while the pause button opens Display. Tabs preserve current settings.
 const graphicsTabs=[...document.querySelectorAll("[data-graphics-tab]")];
 const graphicsPanels=[...document.querySelectorAll("[data-graphics-panel]")];
-for(const tab of graphicsTabs){
- tab.addEventListener("click",()=>{
-  const choice=tab.dataset.graphicsTab;
-  for(const button of graphicsTabs){
-   const active=button===tab;
-   button.classList.toggle("is-active",active);
-   button.setAttribute("aria-selected",String(active));
-  }
-  for(const panel of graphicsPanels)panel.hidden=panel.dataset.graphicsPanel!==choice;
- });
+function selectSettingsTab(choice){
+ for(const tab of graphicsTabs){
+  const active=tab.dataset.graphicsTab===choice;
+  tab.classList.toggle("is-active",active);
+  tab.setAttribute("aria-selected",String(active));
+ }
+ for(const panel of graphicsPanels)panel.hidden=panel.dataset.graphicsPanel!==choice;
 }
-function openGraphicsModal(){
+for(const tab of graphicsTabs)tab.addEventListener("click",()=>selectSettingsTab(tab.dataset.graphicsTab));
+function openGraphicsModal(tabName="display"){
  if(!graphicsModal)return;
+ selectSettingsTab(tabName);
  graphicsModal.classList.add("show");
  graphicsModal.setAttribute("aria-hidden","false");
  graphicsModal.querySelector("#closeAdvancedGraphics")?.focus();
@@ -6708,8 +6707,9 @@ function closeGraphicsModal(){
  graphicsModal.classList.remove("show");
  graphicsModal.setAttribute("aria-hidden","true");
 }
+document.querySelector("#showControls")?.addEventListener("click",()=>openGraphicsModal("controls"));
 for(const button of document.querySelectorAll(".openAdvancedGraphics")){
- button.addEventListener("click",openGraphicsModal);
+ button.addEventListener("click",()=>openGraphicsModal("display"));
 }
 document.querySelector("#closeAdvancedGraphics")?.addEventListener("click",closeGraphicsModal);
 graphicsModal?.addEventListener("click",e=>{if(e.target===graphicsModal)closeGraphicsModal()});
@@ -6719,7 +6719,7 @@ graphicsModal?.addEventListener("keydown",e=>{
 for(const select of document.querySelectorAll(".graphicsQualitySelect")){
  select.addEventListener("change",()=>{
   applyGraphicsQuality(select.value);
-  if(select.value==="custom")openGraphicsModal();
+  if(select.value==="custom")openGraphicsModal("display");
  });
 }
 for(const input of document.querySelectorAll("[data-graphics-option]")){
@@ -6759,7 +6759,7 @@ function frame(t){
 requestAnimationFrame(frame);
 function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="shotgun";magSize=8;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:true,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();setupResetButtons(reset);
-setupControlsModal();
+// Controls are now a tab in the shared SETTINGS dialog.
 const weaponHotkeys={Digit1:"pistol",Digit2:"rifle",Digit3:"shotgun",Digit4:"smg",Digit5:"m240",Digit6:"dmr",Digit7:"grenadeLauncher",Digit8:"awm"};
 const onKeyDown=e=>{let k=e.key.toLowerCase(),hotWeapon=weaponHotkeys[e.code],gameKey=["w","a","s","d","r","g","n","shift"].includes(k)||!!hotWeapon;if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(hotWeapon&&!e.repeat)setWeapon(hotWeapon);if(gameKey)e.preventDefault()};
 setupKeyDown(onKeyDown);
