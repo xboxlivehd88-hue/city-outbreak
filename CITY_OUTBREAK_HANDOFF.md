@@ -1,3 +1,41 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v509 SHOTGUN SUPPORT ARM VERTICAL-POLE CORRECTION — READ FIRST
+
+GitHub `main` is authoritative. This newest section supersedes past current-state notes.
+
+## User complaint and root cause
+- User reviewed v508 and uploaded `2026-10-09 01-58-40.mp4` (16.5 s), asking **"how did we go backwards?"**.
+- In video: a huge straight/vertical left support arm stands up beside the tilted shotgun, shell near its top. Not credible human grip.
+- Earlier v506 **shotgun rolled onto left side / visible right-side loading port** was user-approved; user wanted the support hand not to travel beneath the gun then back above.
+- v507/v508 made the arm progressively worse because gun-local shoulder/elbow rotation and camera-relative hand targets were not solved together as a proper joint chain; code-only syntax checks were incorrectly treated as sufficient evidence of visual quality. Do NOT claim visuals are verified without actual gameplay.
+
+## Current TEST build, pending visual review
+- Version: **v509**. Loader: `./src/game.js?v=509`
+- Gameplay commit: `42402024af134a903c8e9d699baf44c13cd6b617`.
+- Gameplay blob: `c7bf75888e581cc97b7bab2717309d1dd36ad388`.
+- Loader commit: `a0e75250732e8ccbe6203e52439d0e7ae79e33ab`.
+- Shotgun model still `assets/shotgun_test.glb?v=501`; CSS v500; protected recovery v324 untouched.
+
+## Isolated v509 support arm changes
+- Keeps gun's approved full reload cant `+1.15rad` roll and `-.21rad` yaw, v505 red/brass visible shell, per-shell insertion, 820ms timing, gameplay, ADS, M4 and hotkeys.
+- `updateShotgunReloadFX` no longer uses the physically **gun-rotated support shoulder** as the full-reload upper-arm base. It solves a fixed player/camera-space shoulder `(-.52,-1.04,.16)`, while positioning the elbow **to the left and below the current camera-space hand** with explicit constraints. Both are converted to gun-local so the existing procedural arm meshes are posed consistently after the shotgun rotation.
+- Arm anchors blend in progressively with `shotgunReloadCant` and blend out while gun returns from reload; support arm is not reset abruptly when final round seats.
+- Upper hand trajectory capped at camera `topY=-.22` maximum, preventing extreme upward reach. Keeps v508 no-undergun pickup, across-receiver, right-side shell insertion path.
+- Shell actors are suppressed on recovery/after load, and existing per-shell shell-position continuity retained.
+
+## Validation
+- Read both latest handoffs, current recovery checkpoint, index.html and game.js on live `main`.
+- Inspected new user video frames showing vertical pole.
+- Full JS syntax parsed successfully, guarded M4 zero/shotgun ADS, locked roll, visible shell, per-shell rate, and weapon order.
+- Sampled projected elbow geometries assert elbow is left/below wrist.
+- **Browser/visual test could NOT be completed**: container has Chromium but no network DNS for GitHub Pages. User must visually test; do not state this is already fixed.
+
+## Next test
+Fire 2-4 shells then press R. Confirm shotgun still rolls LEFT, loading occurs on RIGHT with visible red shell, but support arm now angles naturally from lower-left body to bent elbow to hand rather than forming a huge vertical pole. Look for hand/arm snapping back after last round. Preserve approved shotgun rotation and M4.
+
+Continue direct Github commits and cache-busted Pages builds. Any further visual fixes should be motivated by captured footage, not ungrounded numbers.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v508 SHOTGUN ARM REGRESSION FIX — READ FIRST
 
 **GitHub main is the single source of truth. Read latest sections at top of all handoff and recovery docs before future changes.**
