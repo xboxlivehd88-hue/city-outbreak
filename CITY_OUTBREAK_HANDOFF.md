@@ -1,3 +1,30 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v514 SHOTGUN SPENT SHELL SMALLER & REORIENTED — READ FIRST
+
+**GitHub `main` is authoritative. This newest top section supersedes prior current-build notes.**
+
+## User feedback and current approved state
+- User tested v513 and said **"ok love it, 2 things the shells ejected are facing the wrong way and they seem a bit large"**.
+- **v513 shotgun ejected GLB shell model is approved in principle.** The v512 side-load reload animation, hand movement, ADS, weapon behaviors, and all other guns must remain untouched.
+- v514 is the latest **test** version; ejected-shell orientation/size have not yet been visually approved.
+- Loader `./src/game.js?v=514`, gameplay commit `a6846a001d769edcc60f63c15a3472a8aaba36b5`, new game blob `eaed8d4482522b259d4f72ff97f3d09d35409b17`. Loader commit `2c2b77334d55dae38a30ebdc5cfb936233031980`.
+- GLB asset `assets/shotgun_test.glb?v=501` unchanged; CSS `v500` unchanged. Protected recovery v324 untouched.
+
+## v514 shotgun spent shell-only edits
+- `shotgunSpentShellTemplate` still clones original `shotgunShellTemplate` mesh/material/texture and normalizes original GLB shell. Reduced ejected shell maximum dimension from **0.23** to **0.19** (about **17.4% smaller**): `ejected.scale.setScalar(.19/Math.max(.001,size.x,size.y,size.z))`.
+- In the `if(shotgunCase)` branch of `casing()`, after copying the gun's world quaternion, apply `q.rotateY(Math.PI)` before small random pitch/roll to match the shotgun model root's original `rotation.y=Math.PI` correction (source gun barrel +Z, game -Z). This flips the shell's displayed forward/backward direction.
+- All non-shotgun guns still use `FX.casingGeo` brass cylinders and original ejection physics; shotgun still ejects genuine GLB mesh.
+- No other ejection physics, casing lifetime, spawn origin, barrel recoil, shotgun reload, ADS, stats, magazine capacity, or keybindings changed.
+
+## Verification and user test
+- Read main's latest handoff docs, current checkpoint, index, game before editing.
+- Full modified `src/game.js` parsed successfully. Guarded approved shotgun roll/yaw, reload duration, red-shell insertion path, M4 ADS zero, shotgun ADS, weapon ordering, and generic-casing fallback.
+- Changes are exactly two snippets in game code, plus loader bump. **No actual visual/browser confirmation yet.**
+- Test: fire shotgun and look for slightly smaller spent GLB shells ejecting the opposite facing direction; confirm reload is still the approved v512/v513 presentation. Other weapons' casings remain generic.
+
+Continue direct GitHub main commits and cache-busted Pages test links; update handoffs after modifications.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v513 SHOTGUN EJECTS ACTUAL GLB SHELL — READ FIRST
 
 **GitHub `main` is authoritative. This newest section supersedes earlier current-state notes.**
