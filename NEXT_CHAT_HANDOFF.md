@@ -1,3 +1,35 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v515 FIRST SHOTGUN SHELL CHAMBERED FROM SIDE, REST LOADED BELOW — READ FIRST
+
+**GitHub main is authoritative. Latest top sections supersede older notes.**
+
+## New user instruction and approved baseline
+- After testing v514, the user said **"perfect"** — v514 shell size/orientation, model ejection and shotgun reload were approved.
+- User has now learned the real shotgun's loading sequence and requested **"one shell from the left then the rest is loaded into the bottom"**.
+- Preserve v514 shotgun firing, ADS, spent-shell GLB model/size/orientation, gun cant, red shell actor, reload speed, M4 and all other guns. Update only how subsequent shotgun shells feed.
+- Current gameplay **v515** commit `184a06d7b9227bfc43f210f217a90d6c48dee4c0`; game blob `97ee29b29db8dbfa04728bd963f39580a6a80036`.
+- Loader `./src/game.js?v=515`, commit `663216341078e1be21d9d0917453823aad93e676`.
+- GLB asset still `assets/shotgun_test.glb?v=501`; protected recovery v324 untouched.
+- **User has not visually approved v515 yet.**
+
+## v515 exact changes
+- Add `shotgunReloadShellIndex=0`, reset at beginning of each shotgun reload. Increment by 1 only when a shell actually loads into magazine/ammo. If only one shell needed, only the original side-chamber motion plays.
+- **First shell** (`shotgunReloadShellIndex===0`) preserves the exact approved v514 side/chamber loading coordinates and camera-space arm pose; shell still advances inward and forward during the same p=.74-.91 phases.
+- **Subsequent shells** go into a new `shotgunBottomLoadPort` computed in `rebuildGun()` from the GLB's `inserter` node, offset toward the bottom of the receiver (x clamp .28-.54, y base-.24 clamp -.84..-.58, z clamp -1.65..-.78). Hand leaves pump and comes UP from below to this bottom gate. The shell goes up into the port and then forward down the magazine tube. It returns along the same underside corridor to the pump, avoiding an over-the-top loop for every shell.
+- Separate camera-relative waypoint set for bottom feed versus chamber: lower pickup/approach/align; bottom pressIn=bottomPort+(0,-.06,.065) and pushForward=bottomPort+(0,+.025,-.27). Shell actor wrist offset on bottom route transitions (.035,+.105,-.075) -> (.015,+.08,-.09) -> (.005,+.035,-.12), so shell goes in with the hand. Original chamber offsets fully preserved.
+- Existing projectile/shotgun reload physics, audio trigger, shell cycle duration `Math.max(580,820-reloadLevel*45)`, reserve/magazine math, ejection original GLB shell scale 0.19/orientation correction and overall gun roll `1.15*shotgunCant` untouched.
+- Added new bottom target + index reset to weapon rebuild state. No M4 or other weapon changes.
+
+## Validation and next test
+- Read live `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, `src/game.js` on main before edit.
+- Full modified JS passed syntax check. Verified preserved approved M4 ADS zero, shotgun roll/yaw/ADS, shell-duration, actual GLB spent casings, support-shoulder pose, weapon hotkey sequence and red/brass shell actor.
+- Gameplay/loader committed. **No browser visual confirmation was possible; this is a user TEST build.**
+- User should fire 3-4 shells, press R: **first shell travels over the receiver into its side/chamber port; all remaining shells travel under receiver into bottom loading gate, then forward toward muzzle.** Confirm hand doesn't stretch across gun or snap between shots. Gun should remain at approved v514 left cant, red/brass spent ejections unchanged.
+- If needed adjust only bottom-feed port and motion based on user video, rather than altering approved first shell or weapon transforms.
+
+Continue direct GitHub commits, update top of both handoffs, give cache-busted Pages link. Preserve v324 recovery.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v514 SHOTGUN SPENT SHELL SMALLER & REORIENTED — READ FIRST
 
 **GitHub `main` is authoritative. This newest top section supersedes prior current-build notes.**
