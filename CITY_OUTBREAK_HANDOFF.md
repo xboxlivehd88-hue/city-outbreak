@@ -1,3 +1,32 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v516 SHOTGUN LEVELS AFTER FIRST SHELL, BOTTOM LOAD REMAINS — READ FIRST
+
+**GitHub main is authoritative. This top entry supersedes older current build notes.**
+
+## User feedback and v516 objective
+- User reviewed v515 and said **"ok so the motion is there but after the first loaded shell the shotgun doesnt need to be on its right side anymore"**.
+- Current **v516** is committed for user testing; visual result not yet approved.
+- Gameplay commit `5ff3e4507ede2ac9a30add090c98d4cd42874757`; gameplay blob `cee4123411ad8fe7fb30318a2807971f6995feed`.
+- Loader: `./src/game.js?v=516`, loader commit `8e42e69cdd68f72b887d7526e1e8efa570f8c59b`.
+- Shotgun GLB `assets/shotgun_test.glb?v=501` and CSS unchanged; protected v324 recovery untouched.
+
+## EXACT CHANGE
+- In `move(dt)`, v515 held `shotgunReloadCant` at 1 for the entire `reloading` interval, including bottom loading, keeping the shotgun on its side after the first shell.
+- **v516:** hold `targetCant=1` ONLY while `reloading&&reloadWeapon==="shotgun"&&shotgunReloadShellIndex===0`. When the first cartridge is fully loaded, `shotgunReloadShellIndex` increments from 0 to 1 (already v515) and `targetCant=0`. `shotgunReloadCant` eases back to 0 using Three.js damping with rate 8 rather than snapping, while the bottom loading cycles proceed without turning onto a side.
+- Preserve exact first-chamber `gun.rotation.z=1.15*shotgunCant` and `rotation.y=-.21*shotgunCant`; values remain unchanged, only the target and easing on transition are altered.
+- New per-shell bottom-loading path `shotgunBottomLoadPort` from v515, bottom pickup/align/press/forward shell actor, arm poses and trigger/grip positions remain untouched.
+- Ejected spent-shell GLB orientation and 0.19 max dimension from approved v514 untouched. M4 and all other weapons, ADS, reload duration, ammo logic and weapon order untouched.
+
+## Validation
+- Fetched latest main handoffs, checkpoint, index.html, src/game.js before change.
+- Full modified JS parses. Diff confined to one shotgun cant-control block in `move(dt)`.
+- Simple numerical damping check at 60 fps: first shell roll reaches 0.9999 by 820ms, then fades to 0.0015 over the next 820ms. This is a unit/math check, NOT a visual/browser verification.
+- Commit gameplay, loader and both docs directly to `main`.
+- User test: fire 3-4 shells and reload; first shell should play established side-chamber sequence with gun rolled, then gun should return smoothly to natural level position for ALL later bottom-fed shells, not remain rolled on its side. Watch for hand snapping at transition; give feedback if needed.
+
+Always preserve the protected v324 recovery. Provide cache-busted Pages test link; never claim visual approval before user tests.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v515 FIRST SHOTGUN SHELL CHAMBERED FROM SIDE, REST LOADED BELOW — READ FIRST
 
 **GitHub main is authoritative. Latest top sections supersede older notes.**
