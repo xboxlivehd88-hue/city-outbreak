@@ -5926,21 +5926,23 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  // exposed across the entire string of shells. Per-shell rp.arch would snap.
  if(weapon==="shotgun"){
   const targetCant=reloading&&reloadWeapon==="shotgun"?1:0;
-  shotgunReloadCant=THREE.MathUtils.damp(shotgunReloadCant,targetCant,targetCant?10:7,dt);
+  shotgunReloadCant=THREE.MathUtils.damp(shotgunReloadCant,targetCant,targetCant?12:6.5,dt);
   if(!targetCant&&shotgunReloadCant<.0005)shotgunReloadCant=0;
  }else shotgunReloadCant=0;
  const shotgunCant=weapon==="shotgun"?shotgunReloadCant:0;
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?0:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
- gun.position.x=ac2.x*adsScale*aimBlend+(weapon==="shotgun"?0:rp.arch*(weapon==="pistol"?.05:.10));
+ gun.position.x=ac2.x*adsScale*aimBlend+(weapon==="shotgun"?.095*shotgunCant:rp.arch*(weapon==="pistol"?.05:.10));
  const rifleAdsRecoilScale=weapon==="rifle"?THREE.MathUtils.lerp(1,.22,aimBlend):1;
  const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil*rifleAdsRecoilScale;
- gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+(weapon==="shotgun"?.02*shotgunCant:rp.arch*.09);
- gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08-(weapon==="shotgun"?.015*shotgunCant:rp.arch*(weapon==="m240"?.12:.18));
- gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt+(weapon==="shotgun"?.02*shotgunCant:0);
- gun.rotation.y=weapon==="shotgun"?-.09*shotgunCant:rp.arch*(weapon==="grenadeLauncher"?.10:.04);
- // Positive roll exposes the shotgun's right (+X) receiver-side loading area.
- gun.rotation.z=weapon==="shotgun"?.40*shotgunCant:-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
+ gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+(weapon==="shotgun"?.055*shotgunCant:rp.arch*.09);
+ gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08+(weapon==="shotgun"?.045*shotgunCant:-rp.arch*(weapon==="m240"?.12:.18));
+ gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt+(weapon==="shotgun"?.035*shotgunCant:0);
+ gun.rotation.y=weapon==="shotgun"?-.21*shotgunCant:rp.arch*(weapon==="grenadeLauncher"?.10:.04);
+ // Roll the shotgun roughly 66° onto its LEFT side so the right-side loading
+ // opening faces up/toward the player. The previous 23° cant was imperceptible
+ // next to the receiver's narrow profile; keep this for every shell, not rp.arch.
+ gun.rotation.z=weapon==="shotgun"?1.15*shotgunCant:-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(weapon==="shotgun"&&shotgunCant>0){
   // Keep the firing hand stationary in camera space. The imported receiver,
   // support hand and actual GLB shells roll about the grip, not the camera.
