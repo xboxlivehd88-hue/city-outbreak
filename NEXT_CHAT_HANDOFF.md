@@ -1,3 +1,24 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v525 WIDESCREEN START ART AND VERIFIED CLICK TARGETS — READ FIRST
+
+**Current source of truth: GitHub `main`. User rejected v523 zoomed art and v524 narrow pillarboxed art. User approved generating wider artwork, personally uploaded `assets/city-outbreak-start-v525.jpg`, and asked for the new playable link and correct START button location.**
+
+## v525 details
+- Verified uploaded `assets/city-outbreak-start-v525.jpg` exists on main with blob `4e9c1c1c99e2580539bdf43baea5a2f1d7683646`. Inspected actual pixels: 1808×870 (aspect ratio ~2.078:1). The image has one baked SETTINGS icon, one large START OUTBREAK plate, and no CONTROLS icon.
+- Updated only `src/game.css` and stylesheet loader in `index.html` plus BOTH handoffs. Opening `#startScreen` now uses `background: #080909 url("../assets/city-outbreak-start-v525.jpg") center center/cover no-repeat`. Removed v524's shaded side gutters and blurred duplicate artwork, which user disliked.
+- The invisible `#startPanel` tracks COVER image bounds (width `max(100%,207.8161vh)`; height `max(100%,48.1195vw)`), staying centered at 50%/50%, so clickable areas track the actual image under crop/resize.
+- Aligned `#start` overlay to left 40.8%, top 49.9%, width 18.8%, height 9% of the image bounds; `#showSettings` overlay right 2.35%, top 3.75%, width 4.65%, height 10.3%. Both remain INVISIBLE: NO duplicated DOM art.
+- Responsive support: for screens narrower than 2:1, present image stretched to screen width and height (to keep SETTINGS from cropping off on 16:9) and make panel 100% screen; at 3:2 or narrower, use `contain` with image-aligned panel to avoid extreme distortion on portrait.
+- `index.html` changes stylesheet loader only to `./src/game.css?v=525`; existing `./src/game.js?v=523` is unchanged. `src/game.js` remains blob `f236384f427aa513caf2e67621f7f1edf285815c`. Settings menu contains Controls, Display, Graphics, Effects, Performance; all presets/settings unchanged.
+- Browser layout mock tests used uploaded JPEG, headless Chromium and Playwright at 1648×790, 1920×1080, 1280×720, 1024×768 and 390×844. Both visible hitboxes were clicked in each mock at their centres and handler fired; 1648×790 borders visually line up with baked START/SETTINGS plate. These are LOCAL MOCKS, not proof actual live game gameplay works.
+- Preserved approved shotgun, M4, animation, ragdoll, zombie, lighting, map, waves and performance logic. Protected v324 `CURRENT_RECOVERY_CHECKPOINT.md` unchanged.
+
+## Post-deployment test
+- URL: https://xboxlivehd88-hue.github.io/city-outbreak/?v=525-wide-title-alignment
+- Have user inspect full-bleed title, confirm no narrow side gutters or excess cropping, click START OUTBREAK and SETTINGS, verify all five tabs. If any alignment mismatch occurs on user's browser, adjust CSS-only hitbox; no gameplay changes.
+- Never claim user visually approved v525 before screenshot/confirmation. Keep latest handoffs at TOP; direct commit to main, verify deployment, and share fresh link.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v524 START-SCREEN ZOOM / RESPONSIVE IMAGE FIT — READ FIRST
 
 **GitHub `main` authoritative. The user tested v523 on a 1648×790-ish browser viewport and said the entire game title artwork is TOO ZOOMED IN. User explicitly asked assistant to fix this directly, without asking for instructions.**

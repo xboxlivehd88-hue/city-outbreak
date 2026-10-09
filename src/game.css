@@ -66,19 +66,19 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 #shop p{font-size:12px;color:#c4c9cc;margin:8px 0 0}
 #shop .readyBtn{width:100%;margin:0;font-weight:900;font-size:15px;background:#e8e8e8;color:#111;padding:11px}
 @media(max-width:680px){#shopGrid{grid-template-columns:1fr}.shopItems{grid-template-columns:1fr 1fr}}
-@media(max-width:440px){.shopItems{grid-template-columns:1fr}#shop{padding:14px;width:95vw}}#startScreen{position:absolute;inset:0;background:#080909;display:block;z-index:5;box-sizing:border-box;overflow:hidden}
+@media(max-width:440px){.shopItems{grid-template-columns:1fr}#shop{padding:14px;width:95vw}}#startScreen{position:absolute;inset:0;background:#080909 url("../assets/city-outbreak-start-v525.jpg") center center/cover no-repeat;display:block;z-index:5;box-sizing:border-box;overflow:hidden}
 /* v524: softly extend the SAME artwork into the side gutters, behind the full uncropped image. */
-#startScreen::before{content:"";position:absolute;inset:-28px;background:url("../assets/city-outbreak-start-v523.jpg") center center/cover no-repeat;filter:blur(22px) brightness(.48);pointer-events:none;z-index:0}
-#startScreen::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.12),transparent 45%,rgba(0,0,0,.08)) center/100% 100% no-repeat,url("../assets/city-outbreak-start-v523.jpg") center center/contain no-repeat;pointer-events:none;z-index:1}
+
+#startScreen::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.12),transparent 45%,rgba(0,0,0,.08));pointer-events:none;z-index:1}
 /* Match the exact contained image bounds (art is 1672x941), so both buttons track resize. */
-#startPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(100%,177.6833vh);height:min(100%,56.2799vw);z-index:2;text-align:center;pointer-events:none}
+#startPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:max(100%,207.8161vh);height:max(100%,48.1195vw);z-index:2;text-align:center;pointer-events:none}
 #startPanel h1,#startPanel .tagline{display:none}
 #startActions{position:absolute;inset:0;pointer-events:none}
 #startScreen button{cursor:pointer;margin:0}
-#start{position:absolute;left:37.1%;top:50.6%;width:24.6%;height:10%;padding:0;border:0;background:transparent;color:transparent;box-shadow:none;opacity:.01;pointer-events:auto}
+#start{position:absolute;left:40.8%;top:49.9%;width:18.8%;height:9%;padding:0;border:0;background:transparent;color:transparent;box-shadow:none;opacity:.01;pointer-events:auto}
 #restart{display:none}
 /* Invisible click target over the single SETTINGS icon baked into the v523 artwork. */
-#showSettings{position:absolute;right:2.1%;top:3.0%;width:5.7%;height:11.3%;padding:0;border:0;background:transparent;color:transparent;box-shadow:none;opacity:.01;pointer-events:auto;z-index:3}
+#showSettings{position:absolute;right:2.35%;top:3.75%;width:4.65%;height:10.3%;padding:0;border:0;background:transparent;color:transparent;box-shadow:none;opacity:.01;pointer-events:auto;z-index:3}
 #showSettings:focus-visible{outline:2px solid #b2edff;outline-offset:2px;opacity:.75}
 #controlsModal{position:absolute;inset:0;z-index:4;display:none;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:#020405c7;backdrop-filter:blur(4px)}
 #controlsModal.show{display:flex}
@@ -160,3 +160,8 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 
 
 
+
+/* v525: On conventional 16:9 displays keep both image buttons visible and clickable.
+   On much narrower screens, preserve proportions instead of severely stretching the art. */
+@media(max-aspect-ratio:2/1){#startScreen{background-size:100% 100%}#startPanel{width:100%;height:100%}}
+@media(max-aspect-ratio:3/2){#startScreen{background-size:contain}#startPanel{width:min(100%,207.8161vh);height:min(100%,48.1195vw)}}
