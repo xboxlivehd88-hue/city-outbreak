@@ -133,3 +133,13 @@ button{font-size:18px;padding:12px 20px;border:0;border-radius:9px;cursor:pointe
 .graphicsSettingRow select:focus-visible,#closeAdvancedGraphics:focus-visible,.graphicsAdvancedButton:focus-visible{outline:2px solid #a7e6fc;outline-offset:2px}
 .graphicsAdvancedFoot{margin:15px 0 0;color:#9eb7c3;font:12px/1.5 Arial,sans-serif}
 @media(max-width:540px){#graphicsAdvancedPanel{padding:15px 13px;max-height:92vh}.graphicsSettingRow{gap:9px;padding:11px 10px}.graphicsSettingRow select{flex-basis:43%;min-width:100px;font-size:11px;padding:8px 5px}.graphicsSettingRow label{font-size:11px}.graphicsSettingRow small{font-size:11px}}
+
+/* v520: grouped, game-style GPU/CPU quality tabs. */
+.graphicsTabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:13px 0 14px}
+.graphicsTab{box-sizing:border-box;min-width:0;margin:0!important;padding:11px 4px!important;background:#17242b!important;color:#a9bdc7!important;border:1px solid #ffffff26!important;border-radius:7px!important;font:800 10px/1.2 Arial,sans-serif!important;letter-spacing:.6px;cursor:pointer}
+.graphicsTab.is-active{background:#2a5569!important;border-color:#7ab2c8!important;color:#fff!important;box-shadow:inset 0 -2px 0 #8dc2d6}
+.graphicsTab:hover{color:#fff!important}
+.graphicsTab:focus-visible{outline:2px solid #a7e6fc;outline-offset:2px}
+.graphicsTabPanel[hidden]{display:none!important}
+.graphicsTabHint{font:12px/1.5 Arial,sans-serif;color:#b9ccd5;margin:12px 0 4px;padding:10px 11px;border-left:2px solid #78a9bd;background:#21343e55}
+@media(max-width:540px){.graphicsTabs{gap:4px}.graphicsTab{padding:9px 2px!important;font-size:9px!important;letter-spacing:0}}
