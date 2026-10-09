@@ -74,9 +74,10 @@ canvas{display:block;width:100%;height:100%;cursor:none}
 #startScreen button{cursor:pointer;margin:0}
 #start{position:absolute;left:36.5%;top:50.0%;width:27.2%;height:11.0%;padding:0;border:0;background:transparent;color:transparent;box-shadow:none;opacity:.01;pointer-events:auto}
 #restart{display:none}
-#showControls{position:absolute;right:16px;top:14px;width:auto;height:auto;padding:10px 16px;border:1px solid #aed1d475;border-radius:9px;background:#101b20dd;color:#f2f9fb;font:900 13px Arial,sans-serif;letter-spacing:1.3px;box-shadow:0 3px 14px #000a;opacity:1;pointer-events:auto;z-index:3}
-#showControls:hover{background:#233947;border-color:#cae9f2}
-#showControls:focus-visible{outline:2px solid #b2edff;outline-offset:3px}
+/* Restore the original invisible hitbox over the start artwork's SETTINGS
+   control. The expanded settings menu uses this EXISTING button. */
+#showControls{position:absolute;right:1.0%;top:.8%;width:6.4%;height:10.6%;padding:0;border:0;background:transparent;color:transparent;box-shadow:none;opacity:.01;pointer-events:auto;z-index:3}
+#showControls:focus-visible{outline:2px solid #b2edff;outline-offset:2px;opacity:.75}
 #controlsModal{position:absolute;inset:0;z-index:4;display:none;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:#020405c7;backdrop-filter:blur(4px)}
 #controlsModal.show{display:flex}
 #controlsPanel{width:min(560px,92vw);max-height:82vh;overflow:auto;background:#0a0d0ff2;border:1px solid #ffffff30;border-radius:16px;padding:20px 22px;box-shadow:0 20px 70px #000c}
