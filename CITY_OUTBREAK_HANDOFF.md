@@ -1,3 +1,29 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v522 REMOVE OLD CONTROLS ICON; ORIGINAL SETTINGS OPENS EVERYTHING — READ FIRST
+
+**GitHub `main` is authoritative. Read these newest top sections before changing the game.**
+
+## User's current request / screenshot
+- User supplied screenshot `image(20261009-170700).png`: opening screen still visually shows two baked top-right image buttons, SETTINGS (left) and CONTROLS (right). Exact instruction: **"are yu able to remove the controls button and just move everything to the settings button?"**
+- Previous v520/v521 implementation already merged Controls, Display, Graphics, Effects and Performance into one menu, but v521's transparent click hotspot `#showControls` at right 1.0%, width 6.4% was actually over the BAKED CONTROLS artwork button, not the existing SETTINGS graphic. User wanted one Settings button.
+- **v522** makes only the left original SETTINGS graphic interactive, disables the separate Controls icon/click target, and visually covers the old Controls drawing using a softened patch of the same JPG. This is an approximation because the Controls graphic is baked into `assets/city-outbreak-start-v153.jpg.jpg` and original binary was not modified.
+- User-facing v522 has not yet been visually approved and should be tested in browser.
+
+## Commits and current state
+- `index.html` v522 commit `6192f32b530b1fc233abc236417196d4cdd1c0d9` (blob `627620a03b1f6ceb4248919674a656fa375a9a63`): renamed `#showControls` to `#showSettings` and cache-busted JS+CSS loaders to `v=522`. Existing Settings controls pane and 4 other tabs remain.
+- `src/game.js` v522 commit `bd1a10a155e263eaaddd3f4b73a9627c8af30f7f` (blob `f236384f427aa513caf2e67621f7f1edf285815c`): changed only the existing opening menu click event selector to `#showSettings`; continues to invoke `openGraphicsModal("controls")`. Actual graphics/weapon/ragdoll/collision code is from v520 and unchanged.
+- `src/game.css` v522 commits `a3bf7e57a183c6756989ee38ebfb155ee0fed67a`, follow-up `258b4843457bdb99b7ea4848a782d2c78b373ebe` (blob `18ba72c3bb392532b9504587a876270d748eebde`): `#showSettings` invisible hotspot correctly aligned on left icon `right:6.3%;top:1%;width:5.7%;height:11.2%`, with keyboard focus outline. Adds `#startScreen::before` overlay showing a SHIFTED sample of the existing artwork, softly masked using radial-gradient at right icon (~97.1% width, 6.5% height). The overlay covers old baked CONTROLS picture without adding second button. Original JPG file unchanged.
+- Preserve protected `CURRENT_RECOVERY_CHECKPOINT.md` v324. All approved v517 shotgun ejection/chamber, zombie ragdoll until settled, effects and v520 settings unaffected.
+
+## Test and follow-up
+- Confirm opening screen visually shows only SETTINGS icon top-right and old Controls icon is concealed as naturally as possible; if mask artifact is visible, adjust the CSS masked art offset, not gameplay or background replacement. Clicking the left SETTINGS icon should open one GAME SETTINGS modal, defaulting to Controls tab, with Display/Graphics/Effects/Performance still functional. Right old Controls location must not be clickable. Pause settings must still open same controls.
+- Full `src/game.js` syntax passed parsing before commit; code change is selector only. CSS and index changes are local to menu. No live browser rendering test possible yet.
+- Existing v520 graph options include resolution, shadow quality, rain, splashes, streetlights, cosmetic particles and settled-corpse limit, with Low/Medium/High/Custom saved presets. Don't regress.
+- Give cache-busted link `https://xboxlivehd88-hue.github.io/city-outbreak/?v=522-one-settings-button`.
+
+Maintain direct main GitHub commits and top handoffs. Don't claim the old icon looks perfectly erased until user sees the actual Pages UI.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v521 RESTORE EXISTING OPENING-SCREEN SETTINGS BUTTON — READ FIRST
 
 **GitHub main is source of truth. This newest top section supersedes earlier v520 current-state summaries.**
