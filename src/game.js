@@ -1691,13 +1691,22 @@ const FX={
  grenadeDustMat:new THREE.MeshStandardMaterial({color:0x5c5142,roughness:.86}),
  grenadeFlashMat:new THREE.MeshStandardMaterial({color:0xd29a46,roughness:.58,emissive:0x542b08,emissiveIntensity:.30})
 };
-// v528: Immediate explosion-only VFX; absolutely NO floor, crater or growth stage.
+// v529: Immediate explosion plus distinct visible sparks/embers/smoke. NO floor/crater/growth.
 // The uploaded floor_smashedexploded.glb stays in assets for future editing, but
 // is intentionally NOT loaded here: its ground-building sequence was unwanted.
-// Shared textures + short-lived sprites keep this efficient on low-end systems.
+// Shared textures and a single instanced spark mesh per blast stay efficient on low-end systems.
 // Explosion damage, falloff, projectile physics, sound and ragdoll are unaffected.
 let explosionBurstTextures=null;
 const activeExplosionBursts=[];
+const explosionSparkGeometry=new THREE.TetrahedronGeometry(1,0);
+const explosionSparkMaterial=new THREE.MeshBasicMaterial({
+ color:0xffffff,toneMapped:false,fog:false,side:THREE.DoubleSide
+});
+const explosionSparkDummy=new THREE.Object3D();
+const explosionSparkUp=new THREE.Vector3(0,1,0);
+const explosionSparkDirection=new THREE.Vector3();
+const explosionSparkColors=[0xffeeb2,0xffd45f,0xff962a,0xff5020,0xffffff];
+
 function makeExplosionBurstTexture(smoke){
  const canvas=document.createElement("canvas");
  canvas.width=96;canvas.height=96;
@@ -1720,6 +1729,7 @@ function makeExplosionBurstTexture(smoke){
 }
 function clearExplosionBurst(burst){
  for(const particle of burst.particles)particle.sprite.material.dispose();
+ // Spark instancing uses shared geometry/material; do not dispose those per burst.
  if(burst.group.parent)burst.group.parent.remove(burst.group);
 }
 function clearExplosionGlbs(){
@@ -1772,12 +1782,62 @@ function spawnExplosionBurst(position,isLauncher){
        Math.cos(angle)*outward,(smoke?1.25:2.4)+Math.random()*2.0,
        Math.sin(angle)*outward,smoke?.85:.35+Math.random()*.22);
  }
- activeExplosionBursts.push({group,particles,age:0,life:1.0});
+ // v529: highly visible physical sparks / hot fragments. One instanced draw
+ // call per blast: this stays practical even in Low graphics mode.
+ const sparkCount=Math.max(14,cosmeticParticleCount(isLauncher?46:60));
+ const sparkMesh=new THREE.InstancedMesh(explosionSparkGeometry,explosionSparkMaterial,sparkCount);
+ sparkMesh.name="VisibleExplosionSparks";
+ sparkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+ sparkMesh.frustumCulled=false;
+ sparkMesh.castShadow=false;sparkMesh.receiveShadow=false;
+ const sparks=[];
+ for(let i=0;i<sparkCount;i++){
+   const a=Math.random()*Math.PI*2;
+   const outward=3.7+Math.random()*6.7;
+   const vy=3.0+Math.random()*7.0;
+   const v=new THREE.Vector3(Math.cos(a)*outward,vy,Math.sin(a)*outward);
+   const hot=i%sparkCount<Math.floor(sparkCount*.48);
+   const s=hot?.09+Math.random()*.085:.07+Math.random()*.075;
+   const pos=new THREE.Vector3((Math.random()-.5)*.42,.52+Math.random()*.87,(Math.random()-.5)*.42);
+   sparks.push({pos,vel:v,life:.38+Math.random()*.43,age:0,size:s,length:2.2+Math.random()*2.1});
+   sparkMesh.setColorAt(i,new THREE.Color(explosionSparkColors[i%explosionSparkColors.length]));
+ }
+ if(sparkMesh.instanceColor)sparkMesh.instanceColor.needsUpdate=true;
+ group.add(sparkMesh);
+ const burst={group,particles,sparkMesh,sparks,age:0,life:1.0};
+ drawExplosionSparks(burst,0);
+ activeExplosionBursts.push(burst);
+}
+function drawExplosionSparks(fx,dt){
+ const sparks=fx.sparks;
+ for(let i=0;i<sparks.length;i++){
+   const s=sparks[i];
+   if(dt>0){
+     s.age+=dt;
+     s.vel.y-=11*dt;
+     s.pos.addScaledVector(s.vel,dt);
+   }
+   const remain=Math.max(0,1-s.age/s.life);
+   // Only individual spark streaks shorten/fade. The explosion or floor
+   // NEVER grows; no patch, crater mesh, decal or swelling cloud is spawned.
+   const scale=s.size*remain;
+   explosionSparkDummy.position.copy(s.pos);
+   explosionSparkDirection.copy(s.vel);
+   if(explosionSparkDirection.lengthSq()>.001){
+     explosionSparkDirection.normalize();
+     explosionSparkDummy.quaternion.setFromUnitVectors(explosionSparkUp,explosionSparkDirection);
+   }else explosionSparkDummy.quaternion.identity();
+   explosionSparkDummy.scale.set(scale,scale*s.length,scale);
+   explosionSparkDummy.updateMatrix();
+   fx.sparkMesh.setMatrixAt(i,explosionSparkDummy.matrix);
+ }
+ fx.sparkMesh.instanceMatrix.needsUpdate=true;
 }
 function updateExplosionGlbs(dt){
  for(let i=activeExplosionBursts.length-1;i>=0;i--){
    const fx=activeExplosionBursts[i];
    fx.age+=dt;
+   drawExplosionSparks(fx,dt);
    for(const p of fx.particles){
      p.age+=dt;
      const t=Math.min(1,p.age/p.life);

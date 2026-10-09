@@ -1,3 +1,18 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v529 VISIBLE EXPLOSION PARTICLES, NO GROUND — READ FIRST
+
+**Current source of truth: GitHub `main`. User confirmed v528 properly REMOVED the unwanted ground buildup: "so thats gperfect but now there is no particals". Main task: RESTORE VISIBLE airborne explosion sparks/embers while keeping the blast direct and no ground patch. v525 widescreen start menu and Settings user-approved.**
+
+## v529 implementation
+- Preserve v528 immediate fire/smoke sprites and NO loaded explosion GLB. The supplied `assets/floor_smashedexploded.glb` remains in assets, unused, since its ground-building sequence was rejected.
+- Added 3D visible sparks/hot fragments, launching immediately with the fireball. Each blast creates **ONE InstancedMesh draw call** using shared low-poly Tetrahedron geometry and a bright unlit/toneMapping-off material; each spark has its own colorful per-instance color, position, velocity, gravity and lifetime (0.38–0.81s). These are distinct floating orange/yellow/white sparks visible in the world, not part of the ground. Spawn includes center sparkle and airborne outward trajectories.
+- At LOW graphic quality ensure at least 14 visible sparks; higher quality scales count using existing cosmetic particle setting (grenade 60 @100%, grenade-launcher 46 @100%). Sparks appear immediately with fixed initial sizes then shrink away individually, **never grow**. Their 3D meshes share geometry/material, avoiding per-particle drawcalls, and are updated while the game is running (pause freezes them). Existing smoke/fire sprites remain and fade normally; all effect instances are removed automatically within 1 second and reset cleanup remains.
+- Both `explodeGrenade` and `explodeLauncherRound` still call `spawnExplosionBurst` from v528. All blast damage, radius, audio, recoil, ammo, zombie impulses, ragdoll, collisions, and weapon logic remain untouched.
+- `index.html` bumps ONLY `./src/game.js?v=529`, stylesheet stays v525. CSS/title/settings unchanged, protected v324 recovery `CURRENT_RECOVERY_CHECKPOINT.md` untouched. BOTH handoffs updated at TOP. No third-party dependencies.
+- Smoke/fire effects and sparks are purely visual; no floor/crater graphics of any kind. Static JS syntax and verification done; do not claim user's live visuals approved until user confirms.
+- Test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=529-visible-sparks. Throw G grenade and fire unlocked grenade launcher (7) to see bright orange/yellow sparks spraying up/out immediately with explosion and smoke, not a ground patch. Verify Low graphics also still has some sparks and game remains smooth.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v528 GUARANTEED EXPLOSION-ONLY, NO FLOOR / CRATER GLB — READ FIRST
 
 **Live GitHub main authoritative. User rejected v526 AND v527: "still has that gound built then explodes why did you even have it do that?" Their intended visual is ONLY an immediate explosion, NO built-up ground patch and NO artificial growth. v525 title / settings menu remains approved; preserve.**
