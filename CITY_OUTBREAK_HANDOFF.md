@@ -1,3 +1,33 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v506 SHOTGUN CLEAR LEFT-SIDE ROLL DURING RELOAD — READ FIRST
+
+**GitHub main is authoritative. This entry supersedes older current-state handoffs.**
+
+## User feedback and next test
+- User reviewed v505 and confirmed the red reload shell is now **present**, but said the shotgun is still **not turned onto its left side** for a natural right-side reload.
+- Current **v506** is committed for user testing; not yet visually approved.
+- Gameplay commit: `daede8c738107cca1ba354fa253ac08e8c8a4103`.
+- Gameplay blob: `25fae6d16bc9b1c303a7079c5e0dff6e9e9f631a`.
+- Loader: `./src/game.js?v=506`, index commit `b81f6661aaf0b10fdfdd553ccb8f63491f0958c5`.
+- Shotgun model still `assets/shotgun_test.glb?v=501`, CSS still v500, first-person ADS still v503.
+
+## v506 shotgun-only changes
+- Previous v505 shotgun reload: `+.40rad` / ~23° roll and `-.09rad` yaw; barely visibly on its side.
+- NEW: `gun.rotation.z=1.15*shotgunCant` (~66° positive roll **onto its LEFT side**) while `gun.rotation.y=-.21*shotgunCant` shows the receiver's right (+X) loading-port wall to the player. Small localized position changes `x+=.095*shotgunCant`, `y+=.045*shotgunCant`, `z+=.055*shotgunCant`, `rotation.x+=.035*shotgunCant` keep right-side loading area readable and shotgun held near firing hand.
+- Persistent reload blend approaches 1 with damping rate 12 while loading and decays at 6.5 after finish. Hold through multi-shell reload; do NOT tie it to per-shell `rp.arch`.
+- Existing right firing-hand grip pivot stays in place; shotgun, support arm and shell actor rotate together.
+- Visible red/brass shell actor and over-the-top shell path from v505 **untouched**, as are 820ms shell timing and ammo increments.
+- M4, other guns, crosshair circle, shotgun ADS, stats, keybinds and protected v324 recovery **untouched**.
+
+## Verification and pending validation
+- Read newest handoff entries at top of both docs, recovery checkpoint, `index.html`, `src/game.js` on `main` before changes.
+- Full updated JS passed parser check; verified protected M4 ADS zero, shotgun ADS/stats/weapon order, and v505 shell animation remained present.
+- Committed both gameplay and loader on `main`.
+- **User still needs to visually test**: fire 2–4 shells, press R; right side should face toward them as gun rolls left and stays there during over-top insertion, then smoothly returns when finished.
+
+Do not claim v506 visual fix approved until tested. Scope further adjustments to shotgun only. Always commit to GitHub and deliver cache-busted live game URL.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v505 OVER-TOP SHOTGUN SHELL RELOAD / VISIBLE SHELLS — READ FIRST
 
 GitHub `main` is authoritative. This newest section supersedes older current-state notes below.
