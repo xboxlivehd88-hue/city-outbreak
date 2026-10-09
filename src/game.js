@@ -1583,7 +1583,7 @@ new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
 
 // v501: user-supplied replacement pump shotgun GLB. It is a static asset with
 // separate real nodes for base, shell, trigger, inserter and pump.
-let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunShellTemplate=null,shotgunTrigger=null,shotgunInserter=null;
+let shotgunModelTemplate=null,shotgunViewRoot=null,shotgunPump=null,shotgunPumpHome=null,shotgunShell=null,shotgunShellTemplate=null,shotgunTrigger=null,shotgunInserter=null,shotgunHandTargets=null,shotgunLoadPort=null,shotgunReloadShellActor=null;
 new GLTFLoader().load("assets/shotgun_test.glb?v=501",gltf=>{
  shotgunModelTemplate=gltf.scene;
  shotgunModelTemplate.traverse(o=>{
@@ -1711,7 +1711,7 @@ const RIFLE_ADS_ZERO_Y=.040;
 const ADS={
  rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0},
  smg:{x:-.36,y:-.050,z:1.28,fov:55,rx:-.01},
- shotgun:{x:-.36,y:.025,z:-.48,fov:56,rx:0},
+ shotgun:{x:-.36,y:.025,z:-.30,fov:56,rx:0},
  pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:.045},
  dmr:{x:-.36,y:.010,z:-1.00,fov:48,rx:0},
  grenadeLauncher:{x:-.36,y:.040,z:-.45,fov:56,rx:0},
@@ -1743,7 +1743,7 @@ function bevelBox(w,hh,d,mat,x,y,z,parent=gun){
 const HAND_POSES={
  rifle:{left:[.18,-.45,-1.72],right:[.36,-.62,-.74],reload:[.10,-.16,.50]},
  smg:{left:[.22,-.54,-1.72],right:[.50,-.68,-1.18],reload:[.10,-.18,.31]},
- shotgun:{left:[.34,-.30,-1.18],right:[.39,-.40,-.82],reload:[.08,-.14,.63]},
+ shotgun:{left:[.35,-.45,-1.80],right:[.40,-.48,-.88],reload:[.08,-.14,.63]},
  pistol:{left:[.31,-.38,-.84],right:[.40,-.36,-.82],reload:[.14,-.13,.07]},
  dmr:{left:[.17,-.46,-2.00],right:[.36,-.63,-.80],reload:[.10,-.16,.66]},
  grenadeLauncher:{left:[.17,-.46,-1.58],right:[.36,-.62,-.76],reload:[.09,-.13,.58]},
@@ -1799,7 +1799,7 @@ function resetM4ReloadLeftArm(){
  setFpsHandPose(r.left,r.leftHandBase);r.leftGripAnchor.position.copy(r.leftHandBase);r.m4Articulated=false;
 }
 function addPlayerHands(){
- const pose=HAND_POSES[weapon]||HAND_POSES.rifle;
+ const pose=weapon==='shotgun'&&shotgunHandTargets?{...HAND_POSES.shotgun,left:shotgunHandTargets.left.toArray(),right:shotgunHandTargets.right.toArray()}:HAND_POSES[weapon]||HAND_POSES.rifle;
  const sleeve=M(0x27302d,.88),cuff=M(0x171b1b,.90),glove=M(0x111414,.82);
  const right=new THREE.Group(),left=new THREE.Group();right.name='RightPlayerArm';left.name='LeftPlayerArm';gun.add(right,left);
  // The pistol support hand was visually swallowing the reload magazine. Scale only
@@ -1846,6 +1846,8 @@ function clearReloadMagazineFX(showReal=true){
  }
  if(m4BoltCarrier&&m4BoltHome)m4BoltCarrier.position.copy(m4BoltHome);
  if(m4ChargingHandle&&m4ChargingHandleHome)m4ChargingHandle.position.copy(m4ChargingHandleHome);
+ if(shotgunReloadShellActor?.parent)shotgunReloadShellActor.parent.remove(shotgunReloadShellActor);
+ shotgunReloadShellActor=null;
 }
 function beginReloadMagazineFX(){
  clearReloadMagazineFX(true);
@@ -2126,6 +2128,44 @@ function updateMP5ReloadMagazineFX(rp,home,targetQ){
    playerReloadPart.visible=!playerReloadPart.userData.reloadOnly;reloadMagInserted=true;
  }
 }
+
+function updateShotgunReloadFX(rp){
+ if(weapon!=="shotgun"||!reloading||reloadWeapon!=="shotgun"||!playerHandRig)return;
+ const p=rp.p,home=playerHandRig.leftHandBase;
+ const pouch=new THREE.Vector3(-.36,-1.25,.35);
+ const port=shotgunLoadPort||new THREE.Vector3(.66,-.41,-1.08);
+ const approach=port.clone().add(new THREE.Vector3(.17,-.11,.25));
+ // Individual shell motion: leave pump, pick up shell at body, travel to
+ // the RIGHT receiver port, seat the shell, return to support grip.
+ let hand;
+ if(p<.26)hand=home.clone().lerp(pouch,smoothReload01(p/.26));
+ else if(p<.39)hand=pouch.clone();
+ else if(p<.72)hand=pouch.clone().lerp(approach,smoothReload01((p-.39)/.33));
+ else if(p<.87)hand=approach.clone().lerp(port,smoothReload01((p-.72)/.15));
+ else hand=port.clone().lerp(home,smoothReload01((p-.87)/.13));
+ // Reuse anchored-arm IK geometry, never slide the complete shoulder.
+ poseM4ReloadLeftArm(hand.clone().sub(home));
+ const carrying=p>=.39&&p<.87&&!!shotgunShellTemplate;
+ if(!carrying){
+  if(shotgunReloadShellActor?.parent)shotgunReloadShellActor.parent.remove(shotgunReloadShellActor);
+  shotgunReloadShellActor=null;return;
+ }
+ if(!shotgunReloadShellActor){
+  // This is a real copy of the named 'shell' piece from shotgun_test.glb.
+  const actor=new THREE.Group(),visual=shotgunShellTemplate.clone(true);
+  actor.name="RightSideShotgunReloadShell";
+  visual.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+  gun.add(actor);actor.add(visual);
+  gun.updateMatrixWorld(true);
+  const b=new THREE.Box3().setFromObject(visual),sz=b.getSize(new THREE.Vector3());
+  const center=gun.worldToLocal(b.getCenter(new THREE.Vector3()));
+  visual.position.sub(center);
+  actor.scale.setScalar(.21/Math.max(.001,sz.x,sz.y,sz.z));
+  shotgunReloadShellActor=actor;
+ }
+ shotgunReloadShellActor.position.copy(hand).add(new THREE.Vector3(-.035,.030,-.025));
+ shotgunReloadShellActor.rotation.set(0,0,-.35*smoothReload01((p-.72)/.15));
+}
 function updateReloadMagazineFX(rp){
  if(!reloading||!detachableMagazineReload())return;
  const home=playerReloadPart.userData.reloadHome,targetQ=playerReloadPart.userData.reloadHomeQuat||playerReloadPart.quaternion;
@@ -2222,7 +2262,7 @@ function finishReloadMagazineFX(){clearReloadMagazineFX(true)}
 function rebuildGun(){
  clearReloadMagazineFX(true);
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunReloadShellActor=null;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141617,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -2470,6 +2510,25 @@ function rebuildGun(){
      shotgunTrigger=root.getObjectByName("trigger")||root.getObjectByName("trigger_shotgun_0");
      shotgunInserter=root.getObjectByName("inserter")||root.getObjectByName("inserter_shotgun_0");
      if(shotgunPump)shotgunPumpHome=shotgunPump.position.clone();
+     // Position each hand from the actual GLB pump/trigger geometry rather
+     // than the unrelated old procedural shotgun offsets.
+     gun.updateMatrixWorld(true);
+     const centerInGun=part=>{
+      if(!part)return null;
+      const bounds=new THREE.Box3().setFromObject(part);
+      return bounds.isEmpty()?null:gun.worldToLocal(bounds.getCenter(new THREE.Vector3()));
+     };
+     const pumpCenter=centerInGun(shotgunPump),triggerCenter=centerInGun(shotgunTrigger),inserterCenter=centerInGun(shotgunInserter);
+     const clamp=THREE.MathUtils.clamp;
+     shotgunHandTargets={
+      left:pumpCenter?new THREE.Vector3(clamp(pumpCenter.x,.29,.52),clamp(pumpCenter.y-.16,-.66,-.34),clamp(pumpCenter.z,-2.60,-1.20)):new THREE.Vector3(.35,-.45,-1.80),
+      right:triggerCenter?new THREE.Vector3(clamp(triggerCenter.x+.055,.34,.55),clamp(triggerCenter.y-.12,-.70,-.38),clamp(triggerCenter.z+.07,-1.25,-.67)):new THREE.Vector3(.40,-.48,-.88)
+     };
+     // Right-hand SIDE of shotgun receiver (+X viewmodel), not bottom/left.
+     // The LEFT support hand carries shells here; RIGHT hand holds trigger.
+     const portBase=inserterCenter||triggerCenter||new THREE.Vector3(.36,-.34,-1.18);
+     shotgunLoadPort=new THREE.Vector3(clamp(portBase.x+.28,.62,.83),clamp(portBase.y-.07,-.64,-.30),clamp(portBase.z,-1.65,-.78));
+
      // The source GLB includes one loose display shell hanging below the receiver.
      // Keep an exact copy for the future pump-ejection / shell-by-shell reload actor,
      // but never show that loose shell on the idle shotgun.
@@ -5831,7 +5890,7 @@ resolvePlayerZombieContact(oldx,oldz);
 const targetGroundY=samplePlayerGroundY(px,pz,playerGroundY);
 const groundFollowRate=targetGroundY>playerGroundY?18:13;
 playerGroundY=THREE.MathUtils.lerp(playerGroundY,targetGroundY,Math.min(1,dt*groundFollowRate));
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,playerGroundY+1.65*PLAYER_WORLD_SCALE,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:.16);const rp=reloadPoseProgress();
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,playerGroundY+1.65*PLAYER_WORLD_SCALE,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:weapon==="shotgun"?.045:.16);const rp=reloadPoseProgress();
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?.24:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
  gun.position.x=ac2.x*adsScale*aimBlend+rp.arch*(weapon==="pistol"?.05:.10);
@@ -5904,7 +5963,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    m240ViewModel.position.copy(m240ViewBasePos).sub(m240RecoilPoint).applyQuaternion(m240RecoilQuat).add(m240RecoilPoint);
  }
  if(playerHandRig){
-   if(!(reloading&&reloadWeapon==="rifle"))resetM4ReloadLeftArm();
+   if(!(reloading&&(reloadWeapon==="rifle"||reloadWeapon==="shotgun")))resetM4ReloadLeftArm();
    // The imported M4 is much more realistic than the old block rifle. In ADS,
    // fade the procedural arms out so they do not form the giant V around the optic.
    // They remain fully visible at hip-fire and during reload.
@@ -5990,6 +6049,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      playerHandRig.right.rotation.set(.04*rp.arch,0,.05*rp.arch);
    }
  }
+ updateShotgunReloadFX(rp);
  updateReloadMagazineFX(rp);
  updateGrenadeLauncherReloadFX(rp);
  const fullScopeAim=aiming&&weapon==="awm";
