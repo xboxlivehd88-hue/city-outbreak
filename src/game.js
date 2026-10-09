@@ -6020,11 +6020,13 @@ const targetGroundY=samplePlayerGroundY(px,pz,playerGroundY);
 const groundFollowRate=targetGroundY>playerGroundY?18:13;
 playerGroundY=THREE.MathUtils.lerp(playerGroundY,targetGroundY,Math.min(1,dt*groundFollowRate));
 stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,playerGroundY+1.65*PLAYER_WORLD_SCALE,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:weapon==="shotgun"?.045:.16);const rp=reloadPoseProgress();
- // Roll the shotgun LEFT once, then hold the right-side loading port
- // exposed across the entire string of shells. Per-shell rp.arch would snap.
+ // Expose the side chamber ONLY for the FIRST shotgun shell. After it
+ // seats, smoothly roll back to the normal level orientation while all
+ // following shells feed through the BOTTOM gate. Do not use rp.arch.
  if(weapon==="shotgun"){
-  const targetCant=reloading&&reloadWeapon==="shotgun"?1:0;
-  shotgunReloadCant=THREE.MathUtils.damp(shotgunReloadCant,targetCant,targetCant?12:6.5,dt);
+  const chamberLoading=reloading&&reloadWeapon==="shotgun"&&shotgunReloadShellIndex===0;
+  const targetCant=chamberLoading?1:0;
+  shotgunReloadCant=THREE.MathUtils.damp(shotgunReloadCant,targetCant,targetCant?12:8,dt);
   if(!targetCant&&shotgunReloadCant<.0005)shotgunReloadCant=0;
  }else shotgunReloadCant=0;
  const shotgunCant=weapon==="shotgun"?shotgunReloadCant:0;
