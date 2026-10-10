@@ -2054,6 +2054,62 @@ new GLTFLoader().load("assets/m240b_machine_gun.glb",gltf=>{
  if(weapon==="m240")rebuildGun();
 });
 
+// v550: user-uploaded naturally spawning crawler, with ORIGINAL animated skeleton.
+// This is separate from leg-loss conversion (makeZombie(...,"crawler")).
+const NATURAL_CRAWLER_GLB_URL="assets/zombie_number_3_-_animated.glb?v=550";
+const NATURAL_CRAWLER_SCALE=.86;
+let naturalCrawlerAsset=null;
+function crawlerBoneLabel(node){
+ return (node?.name||"").toLowerCase().replace(/[^a-z]/g,"").replace(/^mixamorig/,"");
+}
+function crawlerHipsTranslationTrack(clip){
+ return clip?.tracks?.find(t=>/hips/i.test(t.name)&&t.name.endsWith(".position")&&t.values?.length>=3);
+}
+new GLTFLoader().load(NATURAL_CRAWLER_GLB_URL,gltf=>{
+ const clips=new Map((gltf.animations||[]).map(clip=>[clip.name,clip]));
+ const crawl=clips.get("Crawl"),runningCrawl=clips.get("Running_Crawl");
+ if(!crawl||!runningCrawl){
+  document.documentElement.dataset.naturalCrawlerLoadError="Missing Crawl or Running_Crawl clip";
+  console.warn("Natural crawler GLB missing expected animation clips");
+  return;
+ }
+ let hips=null;
+ gltf.scene.traverse(o=>{if(o.isBone&&crawlerBoneLabel(o)==="hips")hips=o});
+ const crawlTrack=crawlerHipsTranslationTrack(crawl);
+ if(!hips||!crawlTrack){
+  document.documentElement.dataset.naturalCrawlerLoadError="Missing animated crawler hips";
+  console.warn("Natural crawler GLB missing root-motion joint");
+  return;
+ }
+ // Sketchfab/Mixamo uses animation hip translation as movement; the game
+ // already owns physical X/Z movement. Strip that double-motion once from
+ // the uploaded clips, preserving Z-axis joint height/bob in GLB local space.
+ // Also align each clip's first height to Crawl so idle/attack/run transitions
+ // do not jump a full standing person's height above the pavement.
+ const crawlStartHeight=crawlTrack.values[2];
+ for(const clip of clips.values()){
+  const track=crawlerHipsTranslationTrack(clip);
+  if(!track)continue;
+  const dz=crawlStartHeight-track.values[2];
+  for(let i=0;i<track.values.length;i+=3){
+   track.values[i]=hips.position.x;
+   track.values[i+1]=hips.position.y;
+   track.values[i+2]+=dz;
+  }
+ }
+ naturalCrawlerAsset={scene:gltf.scene,clips};
+ document.documentElement.dataset.naturalCrawlerAsset="loaded";
+ document.documentElement.dataset.naturalCrawlerAnimations=[...clips.keys()].join(",");
+ // Model loading may finish after wave 3 has already created crawlers.
+ for(const z of zombies)if(z.naturalCrawlerSpawn&&!z.dead)attachNaturalCrawlerVisual(z);
+ console.log("CITY OUTBREAK v550: naturally spawning crawler GLB ready",{
+  name:NATURAL_CRAWLER_GLB_URL,animations:[...clips.keys()]
+ });
+},undefined,error=>{
+ document.documentElement.dataset.naturalCrawlerLoadError=String(error?.message||error);
+ console.warn("User-provided naturally spawning crawler GLB unavailable; procedural fallback retained",error);
+});
+
 // v392: user-supplied grenade GLB pivots from its bottom center and spins
 // 360 degrees around its vertical Y axis, like a top rotating on its base.
 let grenadeModelTemplate=null;
@@ -4445,7 +4501,10 @@ function releaseZombieVisual(z){
  // game during leg-loss crawler replacement. Stop actions and drop references;
  // the removed mixer/root can then be garbage-collected safely.
  if(z.radiatedGreenMixer){try{z.radiatedGreenMixer.stopAllAction()}catch(_){}}
+ if(z.naturalCrawlerMixer){try{z.naturalCrawlerMixer.stopAllAction()}catch(_){}}
  if(z.mixer){try{z.mixer.stopAllAction()}catch(_){}}
+ z.naturalCrawlerMixer=null;z.naturalCrawlerActions=null;z.naturalCrawlerAction=null;
+ z.naturalCrawlerVisual=null;z.naturalCrawlerBones=null;
  z.radiatedGreenMixer=null;z.mixer=null;z.rigActions=null;z.rigBase=null;z.rigTransient=null;
  if(z.rigMaterials){for(const m of z.rigMaterials){try{m.dispose()}catch(_){}}z.rigMaterials.length=0}
  if(z.ownedGeometries){for(const geo of z.ownedGeometries){try{geo.dispose()}catch(_){}}z.ownedGeometries.length=0}
@@ -4488,12 +4547,115 @@ function rolledZombieKind(w,roll){
  return "shambler";
 }
 
+// v550: The crawler originally spawned by the wave roll gets the new
+// uploaded animated GLB. Converted leg-loss crawlers NEVER reach this path.
+// Preserve the old invisible procedural hitboxes/combat and all wave balancing.
+const NATURAL_CRAWLER_BONE_NAMES=Object.freeze({
+ Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
+ L_UpperArm:"leftarm",L_LowerArm:"leftforearm",L_Hand:"lefthand",
+ R_UpperArm:"rightarm",R_LowerArm:"rightforearm",R_Hand:"righthand",
+ L_UpperLeg:"leftupleg",L_LowerLeg:"leftleg",L_Foot:"leftfoot",
+ R_UpperLeg:"rightupleg",R_LowerLeg:"rightleg",R_Foot:"rightfoot"
+});
+function attachNaturalCrawlerVisual(z){
+ if(!z?.naturalCrawlerSpawn||z.dead||z.naturalCrawlerVisual||!naturalCrawlerAsset)return false;
+ const model=SkeletonUtils.clone(naturalCrawlerAsset.scene);
+ const boneLookup=new Map();
+ model.traverse(o=>{
+  if(o.isBone)boneLookup.set(crawlerBoneLabel(o),o);
+  if(!o.isMesh)return;
+  o.castShadow=false;o.receiveShadow=false;
+  o.frustumCulled=false; // moving skinned limbs must not vanish when crawling.
+  o.userData.visualOnly=true;
+  o.raycast=()=>{}; // stable procedural shot/dismemberment hitboxes remain active.
+ });
+ const bones=new Map();
+ for(const [key,name] of Object.entries(NATURAL_CRAWLER_BONE_NAMES)){
+  const bone=boneLookup.get(name);if(bone)bones.set(key,bone);
+ }
+ if(!bones.has("Hips")||!bones.has("Chest")||!bones.has("Head")||bones.size<13){
+  console.warn("Natural crawler skeleton incompatible; keeping prior crawler",{
+   boneCount:bones.size,names:[...boneLookup.keys()]
+  });
+  return false;
+ }
+ // The old crawler root is pitched -0.14rad. Undo only that old procedural
+ // pose before showing the authentic GLB. The uploaded model looks toward +Z
+ // (eyes at +Z); the game expects zombie meshes facing -Z in local space.
+ const holder=new THREE.Group();
+ holder.name="NativeSpawnCrawlerGLB_v550";
+ holder.rotation.x=.14;
+ holder.scale.setScalar(NATURAL_CRAWLER_SCALE);
+ model.rotation.y=Math.PI;
+ holder.add(model);
+ z.g.add(holder);
+ const mixer=new THREE.AnimationMixer(model),actions={};
+ for(const name of ["Crawl","Running_Crawl","Attack"]){
+  const clip=naturalCrawlerAsset.clips.get(name);
+  if(!clip)continue;
+  const action=mixer.clipAction(clip);
+  if(name==="Attack"){action.setLoop(THREE.LoopOnce,1);action.clampWhenFinished=true;}
+  else action.setLoop(THREE.LoopRepeat,Infinity);
+  actions[name]=action;
+ }
+ const crawl=actions.Crawl;
+ crawl.reset().play();mixer.update(.15);
+ z.g.updateMatrixWorld(true);
+ const box=new THREE.Box3().setFromObject(holder);
+ if(!box.isEmpty()&&Number.isFinite(box.min.y)){
+  const desiredFloor=z.g.position.y+.025;
+  const lift=(desiredFloor-box.min.y)/Math.max(.01,z.g.scale.y);
+  holder.position.y+=THREE.MathUtils.clamp(lift,-1.4,1.4);
+ }
+ // Native procedural meshes stay in place ONLY as raycast/hitbox support.
+ // They continue to follow the approved crawl, shoot, and limb-damage code.
+ z.g.traverse(o=>{
+  if(!o.isMesh||o.userData.visualOnly)return;
+  o.visible=false;o.castShadow=false;o.receiveShadow=false;
+ });
+ z.naturalCrawlerVisual=holder;z.naturalCrawlerBones=bones;
+ z.naturalCrawlerMixer=mixer;z.naturalCrawlerActions=actions;
+ z.naturalCrawlerAction=crawl;z.naturalCrawlerActionName="Crawl";
+ z.naturalCrawlerPrevX=z.g.position.x;z.naturalCrawlerPrevZ=z.g.position.z;
+ document.documentElement.dataset.naturalCrawlerAttached=
+  String(Number(document.documentElement.dataset.naturalCrawlerAttached||0)+1);
+ return true;
+}
+function updateNaturalCrawlerVisual(z,dt){
+ if(!z?.naturalCrawlerVisual||!z.naturalCrawlerMixer||z.dead)return;
+ const sx=z.g.position.x-z.naturalCrawlerPrevX,sz=z.g.position.z-z.naturalCrawlerPrevZ;
+ z.naturalCrawlerPrevX=z.g.position.x;z.naturalCrawlerPrevZ=z.g.position.z;
+ const speed=Math.hypot(sx,sz)/Math.max(dt,.005);
+ // Only actual crawl clips are used for locomotion (the file's "Idle"
+ // is a standing pose). Alternate a faster crawl during rapid pursuits.
+ const attacking=(z.attackAnim||0)>.035&&!!z.naturalCrawlerActions.Attack;
+ const desired=attacking?"Attack":speed>.68?"Running_Crawl":"Crawl";
+ const next=z.naturalCrawlerActions[desired]||z.naturalCrawlerActions.Crawl;
+ if(next!==z.naturalCrawlerAction){
+  if(z.naturalCrawlerAction)z.naturalCrawlerAction.fadeOut(.12);
+  next.reset().fadeIn(.12).play();
+  z.naturalCrawlerAction=next;z.naturalCrawlerActionName=desired;
+ }
+ if(desired==="Attack"){
+  const clip=naturalCrawlerAsset?.clips.get("Attack");
+  next.setEffectiveTimeScale((clip?.duration||2.57)/.62);
+ }else if(desired==="Running_Crawl"){
+  next.setEffectiveTimeScale(THREE.MathUtils.clamp(speed/1.45,.60,1.25));
+ }else{
+  next.setEffectiveTimeScale(speed<.08?.24:THREE.MathUtils.clamp(speed/1.00,.45,1.3));
+ }
+ z.naturalCrawlerMixer.update(dt);
+}
+
 const PLAYER_WORLD_SCALE=1.20;
 const ZOMBIE_WORLD_SCALE=1.15;
 
 function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  let d=diff(wave),g=new THREE.Group(),scale=(.90+rnd()*.045)*ZOMBIE_WORLD_SCALE;
  let roll=rnd(),kind=forcedKind||rolledZombieKind(wave,roll);
+ // Explicit forced "crawler" is the leg-loss conversion path and must
+ // preserve its previous generic/identity-matched body.
+ const naturalCrawlerSpawn=kind==="crawler"&&forcedKind!=="crawler";
 
  const nightmareType = kind==="crawler"?"crawler":(kind==="boss"?"brute":((kind==="sprinter"||kind==="infected"||kind==="acidic")?"twitch":"normal"));
  const bodyType=i%3, outfit=i%4;
@@ -4641,7 +4803,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(kind==="crawler"){speed*=.82;damage=Math.round(damage*.95);hp=Math.ceil(hp*.95)}
  if(kind==="boss"){const spec=bossSpec||bossWaveSpec(wave);speed=spec.speed;damage=spec.damage;hp=spec.hp;attack=spec.attack;strafe*=.10;surge=Math.min(.98,surge+.10);g.scale.multiplyScalar(1.58)}
 
- let zz={g,head,torso,armL,armR,legL,legR,chest,stomach,pelvis,neck,jaw,marker,mouth,shoulderL,shoulderR,elbowL,elbowR,kneeL,kneeR,jacket,hazardMist,ownedMaterials,ownedGeometries:null,
+ let zz={g,head,torso,armL,armR,legL,legR,chest,stomach,pelvis,neck,jaw,marker,mouth,shoulderL,shoulderR,elbowL,elbowR,kneeL,kneeR,jacket,hazardMist,ownedMaterials,ownedGeometries:null,naturalCrawlerSpawn,
    baseArmLX,baseArmRX,headLean,gait,bob,limp,dragSide,hunch:hunchBias,turnRate,lurch:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.10:kind==="boss"?.76:.92,
    shoulderDrop,pauseClock,attackAnim,attackSide,feral,twitch,snapBias,snapRate,nightmareType,armDrop,kind,groundY:0,
    hp,maxHP:hp,dead:false,speed,attack,damage,strafe,surge,bossName:kind==="boss"?(bossSpec?.name||bossWaveName||"BOSS"):"",bossBounty:kind==="boss"?(bossSpec?.bounty||250):0,bossSpecialCd:kind==="boss"?(bossSpec?.specialCd||7.5):0,bossAttackState:"",bossAttackT:0,bossChargeHit:false,
@@ -4868,6 +5030,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  zz.hitMeshes=hitMeshes;
  if(kind==="radiated")buildRadiatedGreenHitboxes(zz);
  if(kind==="shambler")buildBasicWalkerHitboxes(zz);
+ if(naturalCrawlerSpawn)attachNaturalCrawlerVisual(zz);
  zombies.push(zz);if(kind==="boss")currentBoss=zz
 }
 
@@ -5282,6 +5445,10 @@ const bodyPbdTmpA=new THREE.Vector3(),bodyPbdTmpB=new THREE.Vector3(),bodyPbdTmp
 const bodyPbdParentQ=new THREE.Quaternion(),bodyPbdInvQ=new THREE.Quaternion(),bodyPbdDeltaQ=new THREE.Quaternion();
 
 function bodyPbdRig(z){
+ // The new naturally spawned GLB owns its real bones during ragdoll; the
+ // converted legless crawler still uses the approved legacy PBD skeleton.
+ if(z?.naturalCrawlerBones?.size&&z.naturalCrawlerVisual)
+  return{holder:z.naturalCrawlerVisual,bones:z.naturalCrawlerBones,kind:"nativeCrawler"};
  if(z?.walkerBones?.size&&z.walkerVisual)return{holder:z.walkerVisual,bones:z.walkerBones,kind:"walker"};
  if(z?.radiatedGreenBones?.size&&z.radiatedGreenVisual)return{holder:z.radiatedGreenVisual,bones:z.radiatedGreenBones,kind:"radiated"};
  if(z?.rigVisual){
@@ -5869,6 +6036,9 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  // the same pre-fall setup. Stop animation only after leaving the current bone
  // transforms exactly where the last live frame put them.
  if(z.mixer)z.mixer.stopAllAction();
+ // Stop Mixamo crawl keyframes but retain their final joint pose when
+ // switching the new model to the game's existing floppy PBD solver.
+ if(z.naturalCrawlerMixer)z.naturalCrawlerMixer.stopAllAction();
  z.g.rotation.order="YXZ";z.falling=true;
 
  const isBlast=!!blastOrigin;
@@ -7022,6 +7192,7 @@ for(let z of active){
    z.cool=Math.max(0,z.cool-dt);
    z.groan-=dt;z.step-=dt;
    updateKnockdown(z,dt);
+   updateNaturalCrawlerVisual(z,dt);
    syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
    continue;
  }
@@ -7288,6 +7459,7 @@ resolveZombiePlayerContact(z,ox,oz);
      if(z.head)z.head.rotation.z-=lean*.65;
    }
  }
+ updateNaturalCrawlerVisual(z,dt);
  syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 const perfGuard=createPerformanceGuard({
