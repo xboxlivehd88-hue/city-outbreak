@@ -2057,7 +2057,10 @@ new GLTFLoader().load("assets/m240b_machine_gun.glb",gltf=>{
 // v550: user-uploaded naturally spawning crawler, with ORIGINAL animated skeleton.
 // This is separate from leg-loss conversion (makeZombie(...,"crawler")).
 const NATURAL_CRAWLER_GLB_URL="assets/zombie_number_3_-_animated.glb?v=550";
-const NATURAL_CRAWLER_SCALE=.86;
+// v552: GLB was ~0.86 scale relative to the hidden native crawler, appearing
+// miniature at player viewing distance. About 2.3x larger than v551, with the
+// SAME model rig/animations and one-time ground alignment recalculated below.
+const NATURAL_CRAWLER_SCALE=2.0;
 let naturalCrawlerAsset=null;
 function crawlerBoneLabel(node){
  // Three's imported Mixamo names end in a numbered serial (_51, _52).
@@ -4593,6 +4596,12 @@ function attachNaturalCrawlerVisual(z){
  holder.scale.setScalar(NATURAL_CRAWLER_SCALE);
  model.rotation.y=Math.PI;
  holder.add(model);
+ // v552: hide all legacy PROCEDURAL crawler render meshes BEFORE adding the
+ // uploaded model. Previous post-add traverse skipped userData.visualOnly,
+ // leaving original blood/gore (CrawlerBodyBlood, CrawlerForearmBlood, etc)
+ // floating like detached red geometry above the new model. The old meshes
+ // still exist for raycasts/combat, unchanged just as in v436 conversion.
+ hideNativeCrawlerVisual(z);
  z.g.add(holder);
  const mixer=new THREE.AnimationMixer(model),actions={};
  for(const name of ["Crawl","Running_Crawl","Attack"]){
@@ -4612,18 +4621,19 @@ function attachNaturalCrawlerVisual(z){
   const lift=(desiredFloor-box.min.y)/Math.max(.01,z.g.scale.y);
   holder.position.y+=THREE.MathUtils.clamp(lift,-1.4,1.4);
  }
- // Native procedural meshes stay in place ONLY as raycast/hitbox support.
- // They continue to follow the approved crawl, shoot, and limb-damage code.
- z.g.traverse(o=>{
-  if(!o.isMesh||o.userData.visualOnly)return;
-  o.visible=false;o.castShadow=false;o.receiveShadow=false;
- });
+ // The native crawler's legacy gore/body meshes were hidden BEFORE adding
+ // the new model, including their visualOnly blood decals. Their hitboxes
+ // remain active. Never hide visualOnly meshes after adding the GLB here.
  z.naturalCrawlerVisual=holder;z.naturalCrawlerBones=bones;
  z.naturalCrawlerMixer=mixer;z.naturalCrawlerActions=actions;
  z.naturalCrawlerAction=crawl;z.naturalCrawlerActionName="Crawl";
  z.naturalCrawlerPrevX=z.g.position.x;z.naturalCrawlerPrevZ=z.g.position.z;
  document.documentElement.dataset.naturalCrawlerAttached=
   String(Number(document.documentElement.dataset.naturalCrawlerAttached||0)+1);
+ document.documentElement.dataset.naturalCrawlerScale=
+  String(NATURAL_CRAWLER_SCALE);
+ document.documentElement.dataset.naturalCrawlerOldGoreHidden=
+  String(!z.g.getObjectByName("CrawlerBodyBlood")?.visible);
  return true;
 }
 function updateNaturalCrawlerVisual(z,dt){
