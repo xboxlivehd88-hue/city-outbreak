@@ -1,3 +1,11 @@
+# v560 — SUIT BOSS T-POSE RIG ANATOMY FIX — 2026-10-10
+
+- User screenshot v559 shows sleeve distortion and unstable walk: GLB is a static T-pose mesh without imported armature. The old Shambler auto-rig assumed an A-pose with hanging arms, causing incorrect weights and exaggerated deformation.
+- v560 uses a boss-only horizontal T-pose joint profile in the existing auto-skinner: shoulder/elbow/wrist joints follow X across outstretched arms; mesh arm regions are assigned by horizontal reach rather than vertical height, and each arm segment receives rigid skin weights to protect suit sleeves from stretching. Animate arms down ~1.24 rad from T pose. Other walkers retain their original rig profile. Existing v559 headshot sphere, Wave 1 boss test, protected v324 and crawler unchanged. Needs user-side visual test, not approved.
+- Loader ./src/game.js?v=560.
+
+---
+
 # v559 — SUIT BOSS ARM POSE AND HEADSHOT ALIGNMENT — 2026-10-10
 
 - User screenshot of v558: face orientation correct, arms still T/A pose and headshot hit registration appears around crotch. v559 exclusively lowers suit boss shoulders via existing walker auto-rig synchronization; other walker poses unchanged. Adds boss-specific head sphere centered at 2.88 world units with radius .32 and disables legacy hidden head raycasts; other boss hitboxes and combat retained. Test accuracy/visuals needed.
