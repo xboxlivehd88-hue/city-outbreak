@@ -1,11 +1,143 @@
 {
-  "build": "v581-committed",
+  "build": "v582-committed",
   "test": "panzer-original-skeleton-visible-vertex-motion",
-  "startedAt": "2026-10-10T21:45:41.257Z",
+  "startedAt": "2026-10-10T21:48:55.055Z",
   "pass": false,
   "siteStatus": 200,
-  "failure": "page.waitForFunction: Timeout 30000ms exceeded.\n    at /home/runner/work/city-outbreak/city-outbreak/scripts/panzer-browser-audit.cjs:222:14",
+  "modelRequest": {
+    "status": 200,
+    "url": "http://127.0.0.1:4173/assets/panzer_zombie.glb?v=582"
+  },
+  "auditVersion": "v582",
+  "panzerSourceHeight": 0.008063683962353433,
+  "approvedVisualTarget": 3.2,
+  "measuredWorldHeight": 3.2000000000000024,
+  "beforeScale": 396.8409494890548,
+  "afterScale": 19.900143070529403,
+  "preCalibration": {
+    "height": 1262.5712930787563,
+    "minY": -812.5997055764539,
+    "maxY": 449.97158750230255,
+    "sampledVertices": 4817
+  },
+  "postCalibration": {
+    "height": 3.1749387247623604,
+    "minY": -3.8375452104943975e-7,
+    "maxY": 3.1749383410078393,
+    "sampledVertices": 4817
+  },
+  "finalHolderScale": 19.900143070529403,
+  "sourceClip": "panzer zombie",
+  "visibleMeshes": 7,
+  "names": {
+    "L_UpperLeg": "j_hip_le_02",
+    "L_LowerLeg": "j_knee_le_03",
+    "L_Foot": "j_ankle_le_04",
+    "R_UpperLeg": "j_hip_ri_08",
+    "R_LowerLeg": "j_knee_ri_09",
+    "R_Foot": "j_ankle_ri_010"
+  },
+  "skinSamples": {
+    "L_UpperLeg": 60,
+    "L_LowerLeg": 60,
+    "L_Foot": 60,
+    "R_UpperLeg": 60,
+    "R_LowerLeg": 60,
+    "R_Foot": 60
+  },
+  "displacement": {
+    "L_UpperLeg": {
+      "avgMeters": 0.2700635295702843,
+      "maxMeters": 0.4868234134450822,
+      "angleAtLast": 0.20938062790756426
+    },
+    "L_LowerLeg": {
+      "avgMeters": 0.55542460951164,
+      "maxMeters": 0.6503733440910601,
+      "angleAtLast": 1.0026002585370224
+    },
+    "L_Foot": {
+      "avgMeters": 0.7122689795646888,
+      "maxMeters": 0.8226793619065367,
+      "angleAtLast": 0.5379818024398128
+    },
+    "R_UpperLeg": {
+      "avgMeters": 0.295226007446113,
+      "maxMeters": 0.5837805920672354,
+      "angleAtLast": 0.09580540051836067
+    },
+    "R_LowerLeg": {
+      "avgMeters": 0.8631792671015119,
+      "maxMeters": 1.2396387004553815,
+      "angleAtLast": 0.2290285677306186
+    },
+    "R_Foot": {
+      "avgMeters": 1.3593061560684292,
+      "maxMeters": 1.6835724926831783,
+      "angleAtLast": 0.14587784146649946
+    }
+  },
+  "selectedNative": true,
+  "forcedFallback": false,
+  "actualWaveOne": {
+    "wave": 1,
+    "boss": "PANZER ZOMBIE",
+    "isDead": false,
+    "calibrated": true,
+    "calibrationFrames": 2,
+    "rootScale": [
+      1.7158384895226675,
+      1.7194243335922275,
+      1.7158384895226675
+    ],
+    "holderLocalScale": [
+      89.4273402148692,
+      89.4273402148692,
+      89.4273402148692
+    ],
+    "holderWorldScale": [
+      153.44287235631086,
+      153.76354485387688,
+      153.44287235631086
+    ],
+    "worldHeightBox": 24.12666494976042,
+    "renderMeshSkinnedHeight": 23.958877191370597,
+    "renderBounds": {
+      "min": [
+        -10.402091893152221,
+        0.4196012080123728,
+        -10.39938199673408
+      ],
+      "max": [
+        8.582862696522884,
+        24.37847839938297,
+        8.814934155073663
+      ]
+    },
+    "sampled": 6093,
+    "rootPosition": [
+      -2.9484260573388896,
+      -0.09235264046053261,
+      1.8374948581418433
+    ],
+    "holderPosition": [
+      -2.9484260573388896,
+      -0.20566093436510136,
+      1.8374948581418433
+    ],
+    "camera": [
+      0,
+      1.9799999999999998,
+      -15
+    ],
+    "sizeTarget": 3.2,
+    "originalNative": true,
+    "phase": 2.5,
+    "visible": true,
+    "relativePlayerDistance": 17.09369618641761
+  },
+  "failure": "AssertionError [ERR_ASSERTION]: Live Panzer still outsized: 23.958877191370597 vs expected 5.502157867495129\n    at /home/runner/work/city-outbreak/city-outbreak/scripts/panzer-browser-audit.cjs:195:3",
   "errors": [],
   "logs": [],
-  "completedAt": "2026-10-10T21:46:12.463Z"
+  "completedAt": "2026-10-10T21:49:36.958Z"
 }
