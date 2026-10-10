@@ -1,3 +1,18 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v546 FIRST VISIBLE CANOPY FLICKER TRIGGERS ON PLAYER ARRIVAL — READ FIRST
+
+**GitHub main source of truth: `xboxlivehd88-hue/city-outbreak`. User said v544 flicker was invisible throughout a round. v545 addressed hidden tinted glass and too-short/rare events. During pre-release validation, discovered v545's early first-flicker schedule started at async GLB LOAD (even on opening screen), so these guaranteed first flickers might have already ended before the player walked to the gas station. v546 addresses this. Final visible flicker requires user testing.**
+
+## Exact v546 fix
+- `src/game.js` now initializes each of the 3 independent canopy RNG states with `next:Infinity`, i.e., no flickers while the player is distant or in the startup menu before first arriving. On `running &&` player's XZ distance to actual `Gas_Station_01` roof world-AABB EDGE <= **6 game units**, set `gasCanopyFirstApproachArmed=true`, give each of three fixtures a staggered first flicker at **3.2–4.8s, 5.5–7.1s, 7.8–9.4s** after arrival, independently randomized. Do not rearm after initial approach; future repeats remain randomized **18–54s per fixture**, events 680–1020ms with two deep dips, dim textured GLB cover as well as tubes (v545).
+- `html.dataset.gasCanopyFirstFlickerArmed` reflects proximity arming; `gasCanopyFlickerEvents`, `gasCanopyActiveFlickers`, `gasCanopyIndependentFlickerRows`, `gasCanopyBulbMeshes`, `gasCanopyGlassMeshes` remain available. No extra spotlights / no .visible spotlight switches during motion, preserves v537/v538 shader-count optimization.
+- All v545 GLB cover tint/bulb tint flicker, v542 distance glow range 12-34 units beyond canopy, one shared spotlight, original 50% fixtures, v543 targeted hydrant removal, graphics Low/VeryLow, shotgun/zombies/explosions/ragdoll/physics stay unchanged. `CURRENT_RECOVERY_CHECKPOINT.md` v324 untouched.
+- Files touched: `src/game.js`, `index.html` loader v546, TOP of `CITY_OUTBREAK_HANDOFF.md` and `NEXT_CHAT_HANDOFF.md`. CSS v525 and assets unchanged.
+- Verify JS syntax, code assertions, Pages deployment success. **User test:** Walk INTO gas station canopy and STAND looking at all three fixtures for **12 seconds** (first flicker clock starts on arrival); expect visually dimming GLB textured cover and bulb, independent short double blink per fixture. If not visible, investigate dataset counts and runtime GLB loader names and actual material references.
+- Play after verified deploy: https://xboxlivehd88-hue.github.io/city-outbreak/?v=546-arrival-triggered-fluorescent-flicker
+- Always read latest top sections of handoffs, recovery and current `index.html`, `src/game.js`, `src/game.css` from GitHub main when continuing.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v545 MAKE GAS-CANOPY RNG FLICKER ACTUALLY VISIBLE — READ FIRST
 
 **Repo `xboxlivehd88-hue/city-outbreak` `main` is authoritative. User tested v544 watching gas-station fluorescents through a whole round and NEVER witnessed a flicker. That is not visually approved. Fix visibility without affecting all other game mechanics or the streetlamp FPS shader-light budget.**

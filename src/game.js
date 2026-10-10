@@ -1348,6 +1348,7 @@ const gasCanopyFlickerStates=[]; // One independent rare flicker state per fixtu
 let gasCanopyFillLight=null,gasCanopyBounds=null,gasCanopyFade=0;
 let gasCanopyGlowActive=null,gasCanopySharedBrightness=1;
 let gasCanopyFlickerEventCount=0,gasCanopyActiveFlickerCount=-1;
+let gasCanopyFirstApproachArmed=false;
 function syncGasCanopyLighting(){
  if(!gasCanopyFillLight)return;
  // Shader-light count only changes when graphics presets change, never from
@@ -1408,6 +1409,16 @@ function updateGasCanopyLighting(dt,instant=false,t=performance.now()){
  const dx=Math.max(b.minX-px,0,px-b.maxX);
  const dz=Math.max(b.minZ-pz,0,pz-b.maxZ);
  const distance=Math.hypot(dx,dz);
+ // v546: Start the first staggered RNG flickers only AFTER the player has
+ // walked near the pumps. Starting at async model load could expire while
+ // the player was still on the opening screen or crossing the city.
+ if(!gasCanopyFirstApproachArmed&&running&&distance<=6){
+  gasCanopyFirstApproachArmed=true;
+  for(let i=0;i<gasCanopyFlickerStates.length;i++){
+   gasCanopyFlickerStates[i].next=t+3200+i*2300+Math.random()*1600;
+  }
+  document.documentElement.dataset.gasCanopyFirstFlickerArmed="1";
+ }
  const target=THREE.MathUtils.clamp(
   (GAS_CANOPY_OFF_LIGHT_DISTANCE-distance)/
   (GAS_CANOPY_OFF_LIGHT_DISTANCE-GAS_CANOPY_FULL_LIGHT_DISTANCE),0,1
@@ -1503,10 +1514,12 @@ function installGasStationCanopyFixtures(map){
   for(let i=0;i<3;i++){
    const fixture=source.clone(true);
    fixture.name="GasStationCanopyFluorescentRow"+(i+1);
-   // A first visible test flicker within ~4-11 seconds, spaced apart by row.
-   // Afterward every fixture waits independently 18-54 seconds.
+   // Leave the first timer disarmed until the player is at the station;
+   // otherwise the whole initial event could occur during the start menu.
+   // After first proximity trigger: independent 3–9s staggered events.
+   // Subsequent per-row RNG event intervals remain 18–54s.
    gasCanopyFlickerStates.push({
-    next:performance.now()+3500+i*2600+Math.random()*2200,
+    next:Infinity,
     start:0,until:0,seed:Math.random()*1000,brightness:1
    });
    fixture.scale.setScalar(scale);
@@ -1561,6 +1574,8 @@ function installGasStationCanopyFixtures(map){
   gasCanopyFillLight.target=target;
   scene.add(gasCanopyFillLight);
   gasCanopyBounds={minX:roof.min.x,maxX:roof.max.x,minZ:roof.min.z,maxZ:roof.max.z};
+  document.documentElement.dataset.gasCanopyFirstFlickerArmed=
+   String(gasCanopyFirstApproachArmed);
   updateGasCanopyLighting(0,true);
   syncGasCanopyLighting();
   document.documentElement.dataset.gasCanopyLightFadeRange=
