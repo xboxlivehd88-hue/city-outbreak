@@ -24,21 +24,20 @@ new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  panzerBossAsset=gltf;
  // Preserve imported skeleton / animation clips when supplied. Static GLBs
  // instead use a measured auto-rig so they do not simply walk in T-pose.
- // v572: an GLB may contain transform clips without any SKINNED legs.
- // Such clips can slide an intact armored mesh but can never bend a knee.
- // Only static/unskinned Panzer meshes get our existing per-vertex walker rig.
- let skinnedLegs=false;
- gltf.scene.traverse(o=>{if(o.isSkinnedMesh&&o.skeleton?.bones?.length)skinnedLegs=true});
- if(!gltf.animations?.length||!skinnedLegs){
+ // v573: a skeleton existing is not proof its SHINS deform the visible GLB.
+ // Verify skin indices actually weight geometry to BOTH lower-leg joints.
+ // Otherwise armature-only clips can leave the armored legs perfectly stiff.
+ const kneeSkin=inspectPanzerKneeSkin(gltf.scene);
+ if(!gltf.animations?.length||!kneeSkin.bendable){
    const extent=new THREE.Box3().setFromObject(gltf.scene),sz=new THREE.Vector3();
    extent.getSize(sz);
    const tPose=sz.y>0&&sz.x/sz.y>.68;
    panzerBossFallbackTemplate=buildBasicWalkerTemplate(gltf.scene,tPose);
  }
- console.log("CITY OUTBREAK v572: panzer boss source loaded",{
+ console.log("CITY OUTBREAK v573: panzer boss anatomy inspected",{
    animations:gltf.animations?.map(c=>c.name)||[],
-   skinnedLegs,autoRig:!!panzerBossFallbackTemplate,
-   joints:Object.keys(findPanzerLegBones(gltf.scene))
+   kneeSkin,autoRig:!!panzerBossFallbackTemplate,
+   gait:panzerBossFallbackTemplate?"procedural weighted knees":"native plus knee override"
  });
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PANZER_BOSS_NAME&&!z.panzerBossVisual)attachPanzerBossVisual(z);
 },undefined,e=>{panzerBossLoadError=e;console.error("CITY OUTBREAK: Panzer Zombie GLB failed to load",e)});
@@ -66,6 +65,42 @@ function findPanzerLegBones(model){
    if(key&&!bones[key])bones[key]={bone:b,rest:b.quaternion.clone()};
  }
  return bones;
+}
+// v573: direct evidence that a rotated shin bone can move visible vertices.
+// A glTF can have AnimationClips and even SkinnedMesh nodes without having
+// the Panzer armor below its knees weighted to the shin joints.
+function inspectPanzerKneeSkin(model){
+ const joints=findPanzerLegBones(model);
+ const counts={L:0,R:0};
+ let skinnedMeshes=0;
+ model.traverse(mesh=>{
+   if(!mesh.isSkinnedMesh||!mesh.skeleton?.bones?.length)return;
+   skinnedMeshes++;
+   const indices=mesh.geometry?.getAttribute("skinIndex");
+   const weights=mesh.geometry?.getAttribute("skinWeight");
+   if(!indices||!weights)return;
+   const ids={};
+   for(const side of ["L","R"]){
+     const bone=joints[side+"_LowerLeg"]?.bone;
+     ids[side]=bone?mesh.skeleton.bones.indexOf(bone):-1;
+   }
+   if(ids.L<0&&ids.R<0)return;
+   // Inspect each vertex; this runs ONCE when the asset is loaded.
+   for(let i=0;i<indices.count;i++){
+     for(let k=0;k<Math.min(4,indices.itemSize,weights.itemSize);k++){
+       const index=indices.getComponent(i,k);
+       const weight=weights.getComponent(i,k);
+       if(weight<.05)continue;
+       if(index===ids.L)counts.L++;
+       if(index===ids.R)counts.R++;
+     }
+   }
+ });
+ // A shin joint with no skin weights is a dummy control: rotating it cannot
+ // bend a leg visually, regardless of how correct the animation math is.
+ return {skinnedMeshes,weightedLeftShin:counts.L,weightedRightShin:counts.R,
+   namedJoints:Object.keys(joints),
+   bendable:counts.L>=4&&counts.R>=4};
 }
 function panzerHasAnimatedLegTracks(clip){
  // Many imported Idle clips key every bone even though the legs never move.
@@ -172,7 +207,7 @@ function attachPanzerBossVisual(z){
    z.panzerBossAnimation=walk.name;
    z.panzerNativeWalking=panzerHasAnimatedLegTracks(walk)&&!!(walkNamed||walkTracked);
    z.panzerNativeLegBones=findPanzerLegBones(model);
-   console.log("CITY OUTBREAK v571: Panzer native walk",{
+   console.log("CITY OUTBREAK v573: Panzer native walking clip and weighted knees",{
      clip:walk.name,hasLegTracks:z.panzerNativeWalking,
      detectedLegs:Object.keys(z.panzerNativeLegBones),
      availableClips:clips.map(c=>c.name)
@@ -224,7 +259,7 @@ function attachPanzerBossVisual(z){
  z.ownedMaterials.push(mat);z.hitMeshes=hits;z.panzerBossHitboxes=hits;
  z.suitBossBlastHitboxes=hits; // uses v565 body-based splash + swept projectile collision
  if(z.rigVisual)z.rigVisual.visible=false;
- console.log("CITY OUTBREAK v570: Panzer boss awaiting posed-mesh scale calibration",{
+ console.log("CITY OUTBREAK v573: Panzer boss awaiting posed-mesh scale calibration",{
    importedAnimation:z.panzerBossAnimation||null,
    proceduralBones:z.walkerBones?.size||0,
    hitboxes:hits.length
