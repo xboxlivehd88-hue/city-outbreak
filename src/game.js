@@ -60,10 +60,24 @@ function findPanzerLegBones(model){
  return bones;
 }
 function panzerHasAnimatedLegTracks(clip){
- return !!clip?.tracks?.some(t=>
-   /thigh|upleg|upperleg|calf|shin|lowerleg|legupper|leglower/i.test(t.name)
-   &&t.times?.length>=3
- );
+ // Many imported Idle clips key every bone even though the legs never move.
+ // Require actual joint rotation/translation variation, not just keyframe names.
+ return !!clip?.tracks?.some(t=>{
+   if(!/thigh|upleg|upperleg|calf|shin|lowerleg|legupper|leglower/i.test(t.name)||t.times?.length<3)return false;
+   const stride=t.getValueSize?.()||0,values=t.values;
+   if(!stride||!values||values.length<stride*3)return false;
+   const first=Array.from(values.slice(0,stride));
+   for(let i=stride;i<values.length;i+=stride){
+     if(/quaternion/i.test(t.name)&&stride===4){
+       let dot=0;for(let j=0;j<4;j++)dot+=first[j]*values[i+j];
+       if(1-Math.abs(dot)>.0025)return true;
+     }else{
+       let delta=0;for(let j=0;j<stride;j++)delta+=Math.abs(first[j]-values[i+j]);
+       if(delta>.08)return true;
+     }
+   }
+   return false;
+ });
 }
 // A grounded walk cycle follows distance traveled instead of spinning in place.
 // Panzer-only, limited to hip/knee/ankle bones to preserve approved armor pose.
