@@ -5,7 +5,7 @@ const fs=require("fs");
 const os=require("os");
 const assert=require("assert/strict");
 (async()=>{
- const output={build:"v582-committed",test:"panzer-original-skeleton-visible-vertex-motion",startedAt:new Date().toISOString(),pass:false};
+ const output={build:"v583-committed",test:"panzer-original-skeleton-visible-vertex-motion",startedAt:new Date().toISOString(),pass:false};
  let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
@@ -15,7 +15,7 @@ const assert=require("assert/strict");
   page.on("console",msg=>{if(/panzer|glb|webgl|error/i.test(msg.text()))logs.push(msg.type()+": "+msg.text().slice(0,600))});
   page.on("response",resp=>{if(/panzer_zombie.glb/.test(resp.url()))output.modelRequest={status:resp.status(),url:resp.url()}});
   let injected=false;
-  await page.route(/\/src\/game\.js\?v=582$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=583$/,async route=>{
    const resp=await route.fetch();
    const source=await resp.text();
    // Committed v582 test: do not inject any source edits. The test uses the
@@ -156,7 +156,7 @@ const assert=require("assert/strict");
    displacement[key]={avgMeters:avg/A.points[key].length,maxMeters:max,angleAtLast:C.angles[key]};
   }
   return {
-   auditVersion:"v582",panzerSourceHeight:z.panzerSourceHeight,
+   auditVersion:"v583",panzerSourceHeight:z.panzerSourceHeight,
    approvedVisualTarget:PANZER_VISUAL_HEIGHT,
    measuredWorldHeight:worldHeight,
    beforeScale,afterScale,preCalibration,postCalibration,
