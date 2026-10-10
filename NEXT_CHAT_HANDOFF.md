@@ -1,3 +1,18 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v532 SHOTGUN RELOAD ELBOW NATURAL BEND — READ FIRST
+
+**GitHub main authoritative. User uploaded ~50sec 2560x1440 gameplay video showing shotgun reload left/support-arm elbow visibly stiff while the hand moves. User explicitly requested direct fix. Prior assistant incorrectly claimed GitHub tools unavailable; GitHub tools HAVE BEEN USED to commit and deploy past builds. Keep executing directly in repo. v531 user-approved grenade shatter, v530 approved explosion; v525 approved widescreen menu.**
+
+## v532 focused change
+- Inspected current `src/game.js` `updateShotgunReloadFX()` and video. Found ROOT CAUSE: arm blend was `smoothstep(shotgunReloadCant,0,.85)`, which returns 0 after empty-gun chamber shell as shotgun levels. Thus for EVERY BOTTOM-fed shell, hand animated but the shoulder/elbow stayed on their rigid, fixed rest positions.
+- Replaced ONLY the camera-space shoulder/elbow *pose solver* block in `updateShotgunReloadFX()`. The existing approved hand movement stages, shell actor path, side-first-on-empty/bottom-afterward logic, `shotgunReloadCant` motion, firing, ADS and reload timings were untouched.
+- New smooth `stroke=smoothReload01(p/.21)*smoothReload01((1-p)/.12)` drives articulation through each shell cycle, including BOTTOM-feed with zero gun cant. Blend is `max(receiverTurn,stroke)`; preserves side-chamber cant transitions, eases elbow in/out with home-hand pose between shells. Subtle shoulder follow (-0.025x,+0.020y,-0.025z); the elbow is computed from camera-space shoulder-to-wrist reach at 48% plus a projected OUTWARD bend perpendicular to that reach, variable with hand reach and active insertion beat. Helps avoid straight-stiff upper arm and keeps elbow following wrist through loading.
+- Only `src/game.js`, `index.html` (JS cache v532), and BOTH TOP handoff docs changed. `src/game.css?v=525` unchanged, protected v324 `CURRENT_RECOVERY_CHECKPOINT.md` unchanged, grenade-shatter module unchanged. Other weapons M4/MP5/M17 and zombie physics unaffected.
+- JS syntax and targeted simulations: test bottom shell p=0..1 with shotgun cant=0 shows nonzero articulation through loading and 0 at both endpoints; chamber shell still follows gun roll. Actual live visual positioning needs user approval, never claim perfect sight-line prematurely.
+- Playable after Pages success: https://xboxlivehd88-hue.github.io/city-outbreak/?v=532-shotgun-elbow. Test empty shotgun side load then bottom shells; watch elbow visibly flex and shoulder stay near player body. Test partially full gun bottom-only reload too. Verify shell inserts remain on correct ports and timing unchanged.
+- If elbow still appears stiff or swings too wide, adjust ONLY the camera-space elbow bend in `updateShotgunReloadFX()` after user video test, never revert approved hand trajectory.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v531 REAL GRENADE CASING SHATTERS FROM INSIDE — READ FIRST
 
 **GitHub main is source of truth. User approved v530 large explosion spark/fire/smoke effect, but grenade appeared to disappear rather than burst: wants the explosion visibly BEGIN INSIDE spinning grenade and rip the grenade apart, not a swapped particle pop. Keep v525 widescreen title, five-tab Settings, and protected v324.**

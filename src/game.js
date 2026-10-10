@@ -2411,24 +2411,39 @@ function updateShotgunReloadFX(rp){
    .add(overRight.clone().multiplyScalar(2*k*t))
    .add(home.clone().multiplyScalar(t*t));
  }
- // Solve the shoulder -> elbow -> wrist in the player's CAMERA frame.
- // v506-v508 used a gun-local shoulder; rotating the whole shotgun by
- // 66 degrees also swung the upper arm below/behind the receiver, producing
- // that giant vertical pole seen in the player's footage.
+ // v532: The old elbow followed SHOTGUN ROLL only. Once chambering ended
+ // and bottom-port feeding began, cant=0 locked the elbow at its rest pose
+ // while the hand travelled around the receiver, giving a rigid arm/pole.
+ // Keep the approved hand/shell paths, but articulate the shoulder and elbow
+ // from EACH loading stroke, including when the shotgun remains level.
  const rig=playerHandRig,handView=toCamera(hand);
- // v511 fine tuning: keep the left upper arm close to the player's body
- // rather than emerging from behind the camera as a long straight bar.
- // Bias the elbow LEFT and DOWN so the shell hand approaches over the
- // receiver with an obvious human arm bend through both loading strokes.
- const shoulderView=new THREE.Vector3(-.44,-1.00,-.26);
- const elbowView=new THREE.Vector3(
-  Math.min(-.52,handView.x-.38),
-  THREE.MathUtils.clamp(Math.min(-.62,handView.y-.26),-.84,-.62),
-  THREE.MathUtils.lerp(shoulderView.z,handView.z,.52)
- );
- // Blend from the normal foregrip arm as the gun turns in, and back again
- // after the final shell. No first-frame jump or shoulder stuck after reload.
- const blend=THREE.MathUtils.smoothstep(shotgunReloadCant,0,.85);
+ const strokeIn=smoothReload01(THREE.MathUtils.clamp(p/.21,0,1));
+ const strokeOut=smoothReload01(THREE.MathUtils.clamp((1-p)/.12,0,1));
+ const stroke=loading?strokeIn*strokeOut:0;
+ // First empty-gun chamber shell still follows the real left-side gun roll.
+ // Every subsequent BOTTOM-magazine shell now gets its own smooth arm bend.
+ const receiverTurn=THREE.MathUtils.smoothstep(shotgunReloadCant,0,.85);
+ const blend=Math.max(receiverTurn,stroke);
+ // Shoulder moves only a few centimetres: it must remain connected to the
+ // player rather than floating into view as the wrist reaches the load gate.
+ const shoulderView=new THREE.Vector3(-.44-.025*stroke,-1.00+.020*stroke,-.26-.025*stroke);
+ const shoulderToHand=handView.clone().sub(shoulderView);
+ // Two-segment elbow solution: place it partway along shoulder->wrist, then
+ // bow it SIDEWAYS out of that axis. Projecting out the reach component gives
+ // real visible elbow flex instead of extending in a straight line.
+ const elbowBend=new THREE.Vector3(-.90,-.62,.38);
+ elbowBend.addScaledVector(shoulderToHand,
+  -elbowBend.dot(shoulderToHand)/Math.max(.0001,shoulderToHand.lengthSq()));
+ if(elbowBend.lengthSq()<.0001)elbowBend.set(-1,0,0);
+ elbowBend.normalize();
+ const press=smoothReload01(THREE.MathUtils.clamp((p-.60)/.18,0,1))*
+  (1-smoothReload01(THREE.MathUtils.clamp((p-.87)/.13,0,1)));
+ const bow=THREE.MathUtils.clamp(shoulderToHand.length()*.26,.21,.41)
+  +.10*press+(chamberShell?.045*stroke:0);
+ const elbowView=shoulderView.clone().addScaledVector(shoulderToHand,.48)
+  .addScaledVector(elbowBend,bow);
+ // Enter/leave each shell cycle without a snap. This drives BOTH upper arm
+ // and forearm; the actual hand and its attached shell are left untouched.
  const shoulder=rig.leftShoulder.clone().lerp(toGun(shoulderView),blend);
  const elbow=rig.leftElbowBase.clone().lerp(toGun(elbowView),blend);
  rig.left.position.set(0,0,0);rig.left.rotation.set(0,0,0);
