@@ -1,3 +1,20 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v542 DISTANCE-ACTIVATED GAS STATION CANOPY LIGHTS — READ FIRST
+
+**GitHub `main`, repo `xboxlivehd88-hue/city-outbreak`, is authoritative. User likes the 3 smaller gas station lights but reported they remain on no matter how far the player gets. This is a targeted distance-based lighting change only. Visual confirmation PENDING.**
+
+## v542 modifications
+- `src/game.js` adds `updateGasCanopyLighting(dt,instant=false)`: get player's X/Z distance to nearest real canopy footprint edge (zero inside), FULL brightness within 12 world units outside canopy, smoothly fade from 12 to 34, fully dark past 34. Player returns => bulbs/spotlighting fade back on.
+- All 3 authentic single fluorescent fixtures stay at v541 **50% scale**, one per pump bay, long axis front-to-back. Keep dark fixture housing permanently visible; fade real glowing bulb material colors and glass emissive level, skip drawing the bulbs once practically off. One shared warm spot on the ground ramps proportionally (HIGH 355, MEDIUM 210, LOW/VeryLow/Off 0).
+- Keep shared spotlight `visible` constant DURING movement/camera turns (change only when graphics preset changes), altering `intensity` instead. This avoids v536-v537 dynamic shader recompile frame drops and protects six pooled v538 smart streetlamp spots. Do not add real lights or raycasts. Same v541 left-half geometry-trim and GLB assets.
+- Set debug `html.dataset.gasCanopyLightsOn` only when bulb on/off state changes; `gasCanopyLightFadeRange="12-34"`. After async map/light GLB installation apply proximity immediately so far-away bulbs do not flash on; continue every frame inside existing animation function.
+- Existing Low/Very Low remain no canopy spotlight but glowing fluorescent tube material near the player, with the same distance fade. Graphics Settings and mode changes retained.
+- Files touched: only `src/game.js`, `index.html` loader v542, and both handoff docs prepended. Protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 untouched. Preserve approved shotguns, explosions, grenades, settings, zombie AI/ragdoll/waves, camera/collisions, streetlight optimization, v541 fixtures.
+- Static falloff cases tested (inside: 1, outside 12: 1, 23: 0.5, 34+: 0). JS source checked for three clones and half-size scale. Need successful GitHub Pages deployment and user test; no unmeasured FPS or visual claims.
+- PLAY: https://xboxlivehd88-hue.github.io/city-outbreak/?v=542-canopy-distance-lights . Under gas canopy expect three lit fixtures; walk away down road, they should gradually go dark; return and bulbs and the ground light brighten. On High compare turning/stuttering; please share screenshot if anything seems wrong.
+- In next chat read current TOP of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, plus `index.html`, `src/game.js`, `src/game.css` directly from GitHub main before changes.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v541 RESTORE VISIBLE SMALL CANOPY FLUORESCENT FIXTURES — READ FIRST
 
 **GitHub `main` is the source of truth. User tested v540 and provided a screenshot clearly showing ALL THREE fluorescent fixtures MISSING, while the gas-pump area remained illuminated. This was a regression from v539; user requires 3 visible fixtures, at exactly 50% of v539 scale, without the RIGHT luminaire of each original double fixture. User has not yet approved the revised visuals.**

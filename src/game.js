@@ -1339,15 +1339,53 @@ function addStreetLamps(placements){
 // preserving the v538 six-spotlight High frame-stability optimization.
 const GAS_CANOPY_LIGHT_GLB="assets/simple_fluorescent_tube_light.glb?v=539";
 const GAS_CANOPY_UNDERSIDE_OFFSET_LOCAL=.61;
-const gasCanopyFixtures=[];
-let gasCanopyFillLight=null;
+// v542: fade bulbs and pump spotlight based on player distance from the
+// true canopy edge, without changing GPU spotlight count while moving.
+const GAS_CANOPY_FULL_LIGHT_DISTANCE=12;
+const GAS_CANOPY_OFF_LIGHT_DISTANCE=34;
+const gasCanopyFixtures=[],gasCanopyBulbs=[],gasCanopyGlassMaterials=[];
+let gasCanopyFillLight=null,gasCanopyBounds=null,gasCanopyFade=0;
+let gasCanopyGlowActive=null;
 function syncGasCanopyLighting(){
  if(!gasCanopyFillLight)return;
- // Never change active shader light counts when looking/turning the camera.
- // Graphics menu changes (rare) are the only visibility switches.
+ // Shader-light count only changes when graphics presets change, never from
+ // movement or a rapid turn (v538 FPS protection).
  const mode=graphicsOptions.lights;
  gasCanopyFillLight.visible=mode!=="off";
- gasCanopyFillLight.intensity=mode==="full"?355:mode==="half"?210:0;
+ gasCanopyFillLight.intensity=(mode==="full"?355:mode==="half"?210:0)*gasCanopyFade;
+}
+function updateGasCanopyLighting(dt,instant=false){
+ if(!gasCanopyFillLight||!gasCanopyBounds)return;
+ const b=gasCanopyBounds;
+ const dx=Math.max(b.minX-px,0,px-b.maxX);
+ const dz=Math.max(b.minZ-pz,0,pz-b.maxZ);
+ const distance=Math.hypot(dx,dz);
+ const target=THREE.MathUtils.clamp(
+  (GAS_CANOPY_OFF_LIGHT_DISTANCE-distance)/
+  (GAS_CANOPY_OFF_LIGHT_DISTANCE-GAS_CANOPY_FULL_LIGHT_DISTANCE),0,1
+ );
+ const follow=instant?1:1-Math.exp(-Math.max(0,Math.min(dt,.06))*8);
+ gasCanopyFade+=(target-gasCanopyFade)*follow;
+ if(Math.abs(target-gasCanopyFade)<.002)gasCanopyFade=target;
+ const bulbsOn=gasCanopyFade>.015;
+ for(const bulb of gasCanopyBulbs){
+  bulb.mesh.visible=bulbsOn;
+  if(bulbsOn){
+   for(const entry of bulb.colors){
+    entry.material.color.copy(entry.color).multiplyScalar(gasCanopyFade);
+   }
+  }
+ }
+ for(const item of gasCanopyGlassMaterials){
+  item.material.emissiveIntensity=item.intensity*gasCanopyFade;
+ }
+ // No visibility toggles for real spotlight on camera turns/distance checks.
+ gasCanopyFillLight.intensity=
+  (graphicsOptions.lights==="full"?355:graphicsOptions.lights==="half"?210:0)*gasCanopyFade;
+ if(gasCanopyGlowActive!==bulbsOn){
+  gasCanopyGlowActive=bulbsOn;
+  document.documentElement.dataset.gasCanopyLightsOn=String(bulbsOn);
+ }
 }
 function installGasStationCanopyFixtures(map){
  const station=map.getObjectByName("Gas_Station_01");
@@ -1425,6 +1463,10 @@ function installGasStationCanopyFixtures(map){
         color:0xfff9e9,toneMapped:false,side:THREE.DoubleSide
       }));
       if(!Array.isArray(source.getObjectByName(o.name)?.material))o.material=o.material[0];
+      const bulbMats=Array.isArray(o.material)?o.material:[o.material];
+      gasCanopyBulbs.push({mesh:o,colors:bulbMats.filter(m=>m?.color).map(m=>({
+       material:m,color:m.color.clone()
+      }))});
     }else if(/CoverGlass/i.test(o.name||"")){
       const mats=Array.isArray(o.material)?o.material:[o.material];
       o.material=mats.map(m=>{
@@ -1433,6 +1475,10 @@ function installGasStationCanopyFixtures(map){
        return copy;
       });
       if(!Array.isArray(source.getObjectByName(o.name)?.material))o.material=o.material[0];
+      const glassMats=Array.isArray(o.material)?o.material:[o.material];
+      for(const material of glassMats)if(material?.emissive){
+       gasCanopyGlassMaterials.push({material,intensity:material.emissiveIntensity});
+      }
     }
    });
    scene.add(fixture);gasCanopyFixtures.push(fixture);
@@ -1448,7 +1494,11 @@ function installGasStationCanopyFixtures(map){
   gasCanopyFillLight.position.set(roofCenter.x,underside-.23,roofCenter.z);
   gasCanopyFillLight.target=target;
   scene.add(gasCanopyFillLight);
+  gasCanopyBounds={minX:roof.min.x,maxX:roof.max.x,minZ:roof.min.z,maxZ:roof.max.z};
+  updateGasCanopyLighting(0,true);
   syncGasCanopyLighting();
+  document.documentElement.dataset.gasCanopyLightFadeRange=
+   GAS_CANOPY_FULL_LIGHT_DISTANCE+"-"+GAS_CANOPY_OFF_LIGHT_DISTANCE;
   document.documentElement.dataset.gasCanopyFixtures=String(gasCanopyFixtures.length);
   document.documentElement.dataset.gasCanopyRows=gasCanopyFixtures.map(f=>f.position.x.toFixed(2)).join(",");
   document.documentElement.dataset.gasCanopyCeiling=underside.toFixed(3);
@@ -7275,6 +7325,7 @@ function frame(t){
  }
  if(!paused)update(dt);
  updateStreetLampLighting(t);
+ updateGasCanopyLighting(dt);
  updateRainEffect(dt,t);
  earlyNightSky.position.copy(cam.position);
  earlyNightSkyUniforms.uTime.value=t*.001;
