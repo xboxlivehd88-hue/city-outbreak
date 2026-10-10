@@ -1,3 +1,17 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v535 HIGH ENABLES ALL REAL STREETLIGHTS — READ FIRST
+
+**GitHub main is authoritative. User asked: "i think the lights should be all on for max settings". Latest v534 Low/Very Low presets preserve performance. v533 explosions, v532 shotgun elbow, v531 grenade shatter, and v525 widescreen title/settings are user approved.**
+
+## v535 lighting-only adjustments
+- ROOT CAUSE: old `STREET_LAMP_LIGHT_POOL_SIZE=4` allocated only FOUR THREE.SpotLights which moved to the 4 nearest lampheads even on HIGH/FULL. Remaining poles had decorative glowing bulb only, without illuminated pavement. v535 creates one real warm unshadowed spotlight per actual lamp head in `setupStreetLampLighting()` (all GLB replacements plus all manual placements; count dynamically determined). FULL pins every spotlight to its own lamp head aiming at pavement, and all remain simultaneously active. Existing unique rare unsynchronized lamp flicker, range and intensity are preserved.
+- `updateStreetLampLighting()` modes: FULL=all live, pinned lights; HALF/REDUCED=at most TWO nearby real spotlights as before, other allocated spotlights invisible; OFF=zero real spotlights, cheap bulb glow retained. Switching between modes restores correct assignments immediately. In FULL there is no periodic nearest-lamp repinning. Rare approved flicker affects individual spotlight intensity but doesn't disable the rest. Extra lights on HIGH can cost GPU, so LOW/VERY LOW still use OFF, MEDIUM still uses REDUCED.
+- Existing `GRAPHICS_PRESETS.high` already includes `lights:"full"`. Changed the independent Setting options under Graphics to OFF — GLOW ONLY / REDUCED — NEAREST 2 / FULL — ALL STREETLAMPS. No new Settings button/tabs.
+- Only `src/game.js`, `index.html` (game loader v535) and BOTH handoff docs updated. No changes to CSS, approved menu artwork, grenades, shotgun, zombie mechanics, world geometry/collision, or v324 recovery checkpoint.
+- Test: High should light the road/sidewalk underneath every lamp simultaneously. Medium only two nearest pools, Low and Very Low still no real lamp spotlights. Compare visible street illumination and FPS. Static code checks and simulation should be run; live visual result needs user's confirmation.
+- Link after Pages successful deploy: https://xboxlivehd88-hue.github.io/city-outbreak/?v=535-all-lights-high
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v534 ACTUAL LOW-END GRAPHICS + VERY LOW PRESET — READ FIRST
 
 **GitHub main is source of truth. User said previously LOW still looked and ran too high-quality even with all effects disabled. User-approved visuals/gameplay through v533 must be protected: v525 widescreen Settings/start, v531 actual grenade casing breakup, v532 shotgun elbow reload, v533 dramatic explosion.**
