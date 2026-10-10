@@ -1,3 +1,10 @@
+# v559 — SUIT BOSS ARM POSE AND HEADSHOT ALIGNMENT — 2026-10-10
+
+- User screenshot of v558: face orientation correct, arms still T/A pose and headshot hit registration appears around crotch. v559 exclusively lowers suit boss shoulders via existing walker auto-rig synchronization; other walker poses unchanged. Adds boss-specific head sphere centered at 2.88 world units with radius .32 and disables legacy hidden head raycasts; other boss hitboxes and combat retained. Test accuracy/visuals needed.
+- Wave 1 test boss remains, original boss schedule untouched, natural crawler untouched, protected v324 untouched. Loader v559.
+
+---
+
 # v558 — SUIT GUY BOSS FACING AND T-POSE AUTO-RIG — 2026-10-10
 
 - User screenshot confirms Wave 1 boss spawns, but uploaded model faces backward and remains T-pose. Inspection of GLB JSON confirmed no animations and no skins. v558 uses existing proven `buildBasicWalkerTemplate` automatic bone and skin-weight pipeline, with `syncBasicWalkerVisual` for movement/attack/death posing. Visual rotates 180 degrees to face player. Existing boss combat mechanics and Wave 1 test spawn unchanged.
