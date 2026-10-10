@@ -1,3 +1,18 @@
+# NEW-CHAT HANDOFF — 2026-10-10 — v547 MODEST SPRINT + HEALTH REGEN BALANCE — READ FIRST
+
+**Repo `xboxlivehd88-hue/city-outbreak`, branch `main` is authoritative. User requested sprint stamina deplete a bit slower and health regenerate a bit faster. No other gameplay or lighting modifications requested.**
+
+## v547 targeted gameplay balance
+- `src/game.js`: sprint stamina **drain** changed from `33.34 * dt` to `PLAYER_SPRINT_DRAIN_RATE=26.67` units/s (~20% slower). Full 100 sprint stamina now lasts approximately **3.75s** of uninterrupted sprinting instead of **3.00s**. Sprint velocity 9.5, walking velocity 5, recharge 14/s, full-bar sprint unlock condition, stamina cap 100, UI behavior and wave reset all unchanged.
+- Health regeneration **rate** changed from `PLAYER_HEALTH_REGEN_RATE=10` to **12.5 HP/sec** (+25%). Original **5-second no-damage delay** remains unchanged. Damage handling, health max 100, death rules and health reset each wave stay as before.
+- `index.html` loads `src/game.js?v=547` for cache invalidation. Prepend this handoff to BOTH `CITY_OUTBREAK_HANDOFF.md` and `NEXT_CHAT_HANDOFF.md`; `CURRENT_RECOVERY_CHECKPOINT.md` protected v324 remains unchanged, along with `src/game.css` (v525). Do not modify assets or any other game modules.
+- Preserve v546 gas canopy arrival-triggered independent RNG flickering + bulbs/cover tint and distance fade, v543 targeted sidewalk hydrant removal, v538 six-light shader-stable streetlamps, v534 graphics tiers, v533 explosions, v532 reloads, v531 grenade shattering, zombies/ragdolls/weapons/waves and approved Settings menu.
+- Check source invariants (new drain rate exactly one use; regen exactly one rate value; old delay remains 5; sprint refill stays 14 and locked sprint unlock stays at 100; 3 gas canopy fixtures and shared single spotlight still in source). Verify main SHA, optional JS syntax, and GitHub Pages deployment SUCCESS before providing test link.
+- Test: [v547 playable](https://xboxlivehd88-hue.github.io/city-outbreak/?v=547-sprint-health-balance) — from full sprint bar, hold Shift while moving and compare duration; after taking nonfatal damage, go safely without hits for 5 seconds and check quicker recovery. Do not claim playtest confirmed until user approves.
+- Next chat: read latest TOP of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, `src/game.js`, `src/game.css` from GitHub main before edits.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v546 FIRST VISIBLE CANOPY FLICKER TRIGGERS ON PLAYER ARRIVAL — READ FIRST
 
 **GitHub main source of truth: `xboxlivehd88-hue/city-outbreak`. User said v544 flicker was invisible throughout a round. v545 addressed hidden tinted glass and too-short/rare events. During pre-release validation, discovered v545's early first-flicker schedule started at async GLB LOAD (even on opening screen), so these guaranteed first flickers might have already ended before the player walked to the gas station. v546 addresses this. Final visible flicker requires user testing.**
