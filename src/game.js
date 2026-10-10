@@ -21,8 +21,8 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible deployment fingerprint, temporary during Wave 1 Panzer testing.
 // If the browser tab doesn't show v574, it isn't executing this build.
-document.title="CITY OUTBREAK — PANZER WALK v574";
-document.documentElement.dataset.panzerTestBuild="574";
+document.title="CITY OUTBREAK — PANZER WALK v575";
+document.documentElement.dataset.panzerTestBuild="575";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  panzerBossAsset=gltf;
@@ -38,7 +38,7 @@ new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
    const tPose=sz.y>0&&sz.x/sz.y>.68;
    panzerBossFallbackTemplate=buildBasicWalkerTemplate(gltf.scene,tPose);
  }
- console.log("CITY OUTBREAK v573: panzer boss anatomy inspected",{
+ console.log("CITY OUTBREAK v575: panzer boss anatomy inspected",{
    animations:gltf.animations?.map(c=>c.name)||[],
    kneeSkin,autoRig:!!panzerBossFallbackTemplate,
    gait:panzerBossFallbackTemplate?"procedural weighted knees":"native plus knee override"
@@ -104,7 +104,7 @@ function inspectPanzerKneeSkin(model){
  // bend a leg visually, regardless of how correct the animation math is.
  return {skinnedMeshes,weightedLeftShin:counts.L,weightedRightShin:counts.R,
    namedJoints:Object.keys(joints),
-   bendable:counts.L>=4&&counts.R>=4};
+   bendable:counts.L>=32&&counts.R>=32};
 }
 function panzerHasAnimatedLegTracks(clip){
  // Many imported Idle clips key every bone even though the legs never move.
@@ -126,45 +126,54 @@ function panzerHasAnimatedLegTracks(clip){
    return false;
  });
 }
-// A grounded walk cycle follows distance traveled instead of spinning in place.
-// Panzer-only, limited to hip/knee/ankle bones to preserve approved armor pose.
+// v575: coordinated Panzer-only heel strike, planted stance and knee-lift swing.
+// The v571-v574 sine cycle moved individual joints at unrelated moments, and
+// v574's native walk could overwrite or misalign the procedural knee flex.
+// Pose ALL the leg joints together; imported upper body/armor/attacks stay put.
 function syncPanzerBossWalk(z,dt,native=false){
  if(!z||z.dead)return;
  const gx=z.g.position.x,gz=z.g.position.z;
  const dist=Math.hypot(gx-(z.panzerWalkLastX??gx),gz-(z.panzerWalkLastZ??gz));
  z.panzerWalkLastX=gx;z.panzerWalkLastZ=gz;
  const moving=dist>.0003;
- const step=Math.min(1,dt*9);
- z.panzerWalkBlend=THREE.MathUtils.lerp(z.panzerWalkBlend||0,moving?1:0,step);
+ z.panzerWalkBlend=THREE.MathUtils.lerp(z.panzerWalkBlend||0,moving?1:0,Math.min(1,dt*9));
  z.panzerWalkPhase=(z.panzerWalkPhase||0)+Math.min(.50,dist*5.2);
- // Even when native hip tracks are present, supplement any stiff knees.
- // Do not exit here: v571 exited before the shin bend could be applied.
- const gait=z.panzerWalkBlend,s=Math.sin(z.panzerWalkPhase),lf=Math.max(0,s),rf=Math.max(0,-s);
- // Deliberate visible knee lift on each recovery stroke; never lock both
- // lower legs straight just because an imported clip has some thigh motion.
- const lk=(.16+1.03*lf*lf)*gait,rk=(.16+1.03*rf*rf)*gait;
+ const blend=z.panzerWalkBlend,cycle=Math.PI*2;
+ // 60% planted stance, 40% step-through. A foot straightens at heel strike,
+ // bends and lifts during swing, then extends BEFORE the next contact.
+ const legPose=offset=>{
+   const u=((z.panzerWalkPhase+offset)%cycle+cycle)%cycle/cycle;
+   let hip,knee;
+   if(u<.60){
+     const t=u/.60;
+     hip=.49-.98*t;
+     knee=.12+.12*Math.sin(Math.PI*t)**2;
+   }else{
+     const t=(u-.60)/.40,e=t*t*(3-2*t),lift=Math.sin(Math.PI*t);
+     hip=-.49+.98*e;
+     knee=.12+1.10*lift*lift;
+   }
+   hip*=blend;knee*=blend;
+   return {hip,knee,foot:-.57*knee-.16*hip};
+ };
+ const L=legPose(0),R=legPose(Math.PI);
  const rotations={
-   L_UpperLeg:(s*.55-.035)*gait,
-   R_UpperLeg:(-s*.55-.035)*gait,
-   L_LowerLeg:lk,
-   R_LowerLeg:rk,
-   L_Foot:(-.07*s-.55*lk)*gait,
-   R_Foot:(.07*s-.55*rk)*gait
+   L_UpperLeg:L.hip,R_UpperLeg:R.hip,
+   L_LowerLeg:L.knee,R_LowerLeg:R.knee,
+   L_Foot:L.foot,R_Foot:R.foot
  };
  if(native){
    const joints=z.panzerNativeLegBones;
    if(!joints)return;
+   // The GLB mixer continues to play the uploaded clip (upper body etc).
+   // After mixer.update, replace ONLY the six leg-bone local rotations with
+   // one synchronized phase, preventing native thigh keys from fighting knees.
+   // Local hinge axes were measured from the Panzer's visual world-right at
+   // bind pose; native glTF bone X axes are NOT reliably anatomical.
    for(const [key,angle] of Object.entries(rotations)){
      const part=joints[key];if(!part)continue;
-     const nativeStride=z.panzerNativeWalking;
-     // The imported walk retains full ownership of its HIP swing and upper
-     // body. Add knee flex AFTER mixer.update() even when the chosen clip moves
-     // the thighs but has rigid shins. Do not reset animated quaternions.
-     if(nativeStride&&key.endsWith("UpperLeg"))continue;
-     const amount=nativeStride?(key.endsWith("LowerLeg") ? .85 : .38):1;
-     const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),angle*amount);
-     if(nativeStride)part.bone.quaternion.multiply(q);
-     else part.bone.quaternion.copy(part.rest).multiply(q);
+     const q=new THREE.Quaternion().setFromAxisAngle(part.hingeAxis||new THREE.Vector3(1,0,0),angle);
+     part.bone.quaternion.copy(part.rest).multiply(q);
    }
  }else{
    const joints=z.walkerBones;
@@ -211,7 +220,16 @@ function attachPanzerBossVisual(z){
    z.panzerBossAnimation=walk.name;
    z.panzerNativeWalking=panzerHasAnimatedLegTracks(walk)&&!!(walkNamed||walkTracked);
    z.panzerNativeLegBones=findPanzerLegBones(model);
-   console.log("CITY OUTBREAK v573: Panzer native walking clip and weighted knees",{
+   // Compute a REAL knee/hip hinge in each imported bone's coordinate space.
+   // Local X is not necessarily across the Panzer's hips on an uploaded rig.
+   holder.updateWorldMatrix(true,true);
+   const modelRight=new THREE.Vector3(1,0,0).transformDirection(holder.matrixWorld);
+   for(const part of Object.values(z.panzerNativeLegBones)){
+     const worldRotation=new THREE.Quaternion();
+     part.bone.getWorldQuaternion(worldRotation);
+     part.hingeAxis=modelRight.clone().applyQuaternion(worldRotation.invert()).normalize();
+   }
+   console.log("CITY OUTBREAK v575: Panzer native walking clip with coherent leg pivots",{
      clip:walk.name,hasLegTracks:z.panzerNativeWalking,
      detectedLegs:Object.keys(z.panzerNativeLegBones),
      availableClips:clips.map(c=>c.name)
@@ -5881,7 +5899,7 @@ function spawnWave(){
      const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
    }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
-   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v574 WALK TEST — "+(currentBoss?.panzerBossAutoRig?"WEIGHTED KNEES":"NATIVE KNEES"):"PANZER v574 WALK TEST — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v575 STEP CYCLE — "+(currentBoss?.panzerBossAutoRig?"WEIGHTED RIG":"NATIVE RIG"):"PANZER v575 STEP CYCLE — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
    updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
