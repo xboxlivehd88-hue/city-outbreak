@@ -1,3 +1,13 @@
+# v573 — PANZER KNEE SKINNING CHECK AND RIG FALLBACK — 2026-10-10
+
+- User reported that v572 **still appeared completely unchanged**, and questioned whether Pages had updated. GitHub `main` definitively contained the v572 loader and changes; **live browser deployment was not independently readable/verified**. Do NOT tell user a visual fix or deployment is confirmed.
+- Specific root risk found: v572 treated the existence of *any* skinned mesh as sufficient proof that the lower legs could bend. An imported GLB may have animation tracks and skinned upper body while visible armored shins have **no actual knee bone skin weights**, resulting in a stiff-legged walk even though knee quaternions change.
+- v573 adds Panzer-specific `inspectPanzerKneeSkin` to check real geometry `skinIndex` / `skinWeight` data for BOTH lower-leg joints during asset load. If knee skinning is missing, use the existing Panzer-only procedural auto-skin rig with hip/knee/foot weighting rather than using a non-deforming native skeleton. If weighted knees are present, retain the original native skinned mesh + imported walk and supplemental lower-leg flex after mixer updates. Console logs report weighted vertex counts, detected joint names and selected mode for accurate diagnosis.
+- **Still unverified visually.** Preserve `PANZER_VISUAL_HEIGHT=3.20`, v570 post-animation scale and placement calibration, model/armor materials, Panzer hitboxes, attacks, health, AI, approved Suit Guy, natural crawlers scale 1.53, existing boss schedule, and v324 protected recovery.
+- Panzer is temporarily forced solo Wave 1; **not yet in normal 10-wave rotation**. Active loader is `./src/game.js?v=573`. The user should verify that the live page and walking change are visible. If still stiff, use asset-mode console data or screenshot/video rather than asserting success.
+
+---
+
 # v572 — PANZER KNEES ACTUALLY BEND DURING WALK — 2026-10-10
 
 - User tested v571 and reports Panzer still walks **without visible knee joints**; v571 not approved. This fixes Panzer only and still requires browser visual feedback.
