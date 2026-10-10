@@ -1,14 +1,14 @@
 {
-  "build": "v582-committed",
+  "build": "v583-committed",
   "test": "panzer-original-skeleton-visible-vertex-motion",
-  "startedAt": "2026-10-10T21:48:55.055Z",
+  "startedAt": "2026-10-10T21:51:59.178Z",
   "pass": false,
   "siteStatus": 200,
   "modelRequest": {
     "status": 200,
-    "url": "http://127.0.0.1:4173/assets/panzer_zombie.glb?v=582"
+    "url": "http://127.0.0.1:4173/assets/panzer_zombie.glb?v=583"
   },
-  "auditVersion": "v582",
+  "auditVersion": "v583",
   "panzerSourceHeight": 0.008063683962353433,
   "approvedVisualTarget": 3.2,
   "measuredWorldHeight": 3.2000000000000024,
@@ -91,39 +91,39 @@
       1.7158384895226675
     ],
     "holderLocalScale": [
-      89.4273402148692,
-      89.4273402148692,
-      89.4273402148692
+      42.835695962922344,
+      42.835695962922344,
+      42.835695962922344
     ],
     "holderWorldScale": [
-      153.44287235631086,
-      153.76354485387688,
-      153.44287235631086
+      73.4991358586729,
+      73.65273798500702,
+      73.4991358586729
     ],
-    "worldHeightBox": 24.12666494976042,
-    "renderMeshSkinnedHeight": 23.958877191370597,
+    "worldHeightBox": 11.695390482092577,
+    "renderMeshSkinnedHeight": 11.527350132266882,
     "renderBounds": {
       "min": [
-        -10.402091893152221,
-        0.4196012080123728,
-        -10.39938199673408
+        -6.857192714228876,
+        0.16469044952476586,
+        -3.0670422383183245
       ],
       "max": [
-        8.582862696522884,
-        24.37847839938297,
-        8.814934155073663
+        1.629359256570042,
+        11.692040581791648,
+        5.323536335328607
       ]
     },
     "sampled": 6093,
     "rootPosition": [
-      -2.9484260573388896,
-      -0.09235264046053261,
-      1.8374948581418433
+      -3.042220977431895,
+      -0.07215051755088474,
+      2.3731269052318034
     ],
     "holderPosition": [
-      -2.9484260573388896,
-      -0.20566093436510136,
-      1.8374948581418433
+      -3.042220977431895,
+      -0.10005711158499021,
+      2.3731269052318034
     ],
     "camera": [
       0,
@@ -132,12 +132,12 @@
     ],
     "sizeTarget": 3.2,
     "originalNative": true,
-    "phase": 2.5,
+    "phase": 1,
     "visible": true,
-    "relativePlayerDistance": 17.09369618641761
+    "relativePlayerDistance": 17.637478474567043
   },
-  "failure": "AssertionError [ERR_ASSERTION]: Live Panzer still outsized: 23.958877191370597 vs expected 5.502157867495129\n    at /home/runner/work/city-outbreak/city-outbreak/scripts/panzer-browser-audit.cjs:195:3",
+  "failure": "AssertionError [ERR_ASSERTION]: Live Panzer still outsized: 11.527350132266882 vs expected 5.502157867495129\n    at /home/runner/work/city-outbreak/city-outbreak/scripts/panzer-browser-audit.cjs:195:3",
   "errors": [],
   "logs": [],
-  "completedAt": "2026-10-10T21:49:36.958Z"
+  "completedAt": "2026-10-10T21:52:31.209Z"
 }
