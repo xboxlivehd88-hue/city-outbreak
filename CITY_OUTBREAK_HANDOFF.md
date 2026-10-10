@@ -1,3 +1,12 @@
+# v584 — PANZER SMALLER AGAIN, BASED ON REAL WAVE 1 BROWSER HEIGHT — 2026-10-10
+
+- User explicitly says v581 is walking correctly but is **huge**, wants size back down; preserve working six-bone glTF bilateral Panzer leg walk. We measured actual Wave 1 v581 Panzer height ~23.99 world units. Suit Guy-matched target under boss root 1.719 is ~5.50 world units.
+- v583 one-time native Panzer root-specific factor 0.479 (without gait changes) reduced actual live Chromium height to **11.527 world units**, while root scale remained 1.719. So in ACTUAL boss rendering the extra factor moves the model LINEARLY, not quadratically; v583 test FAILED expected 5.50 ±8%. This proves the target correction should be ~.229: `.479*(5.50/11.527)=.2285`. Do not keep trusting detached mesh size/calibration assumptions.
+- v584 changes only this Panzer-native live boss-root factor **.479 → .229**, so expected real size ~5.50 world units. Keeps all other Panzer animation, imported armor, original GLB skin/skeleton, size target constant `PANZER_VISUAL_HEIGHT=3.20`, foot grounding, world scale and hitboxes, specials, attacks, stats, AI untouched. The v582 real-vertex shrink-only safety cap remains (not proven effective in the first few frames). No player, Suit Guy, crawler, common zombie, map/graphics/weapons changes. v324 recovery protected.
+- Still Panzer alone Wave 1 and excluded from every-10-wave boss rotation until user approves. Loader `./src/game.js?v=584`, GLB cache `?v=584`, browser title and Wave 1 message v584. Need committed v584 Wave 1 Chromium actual height validation and deployment confirmation before claiming test success; user visual approval separately required.
+
+---
+
 # v583 — DIRECT PANZER LIVE ROOT SCALE REDUCTION, PRESERVING WALK — 2026-10-10
 
 - User approved v581 bilateral Panzer walking, but said boss is enormous. Live Wave 1 Chromium measurement is 23.99-24.07 units in actual game with boss root scale ~1.719. Required real-world target same as approved Suit Guy: `PANZER_VISUAL_HEIGHT=3.20` times rootScale1.719 = ~5.50 world units. Detached unit-root test falsely indicated 3.17-unit size.
