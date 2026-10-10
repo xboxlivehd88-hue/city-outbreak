@@ -1,3 +1,10 @@
+# v561 — SUIT BOSS LOCOMOTION TEST — 2026-10-10
+
+- User v560 screenshot shows correct facing, distorted shoulders, stiff walk. Source GLB has no skin/skeleton/animations. Temporary boss-specific gait: increased hip strides and knees, more visible opposite arm swing, small footfall bob; regular walkers unaffected. Existing v559 headshot and v560 T-pose skinning retained. This does not substitute for professionally rigged GLB; user test pending.
+- Wave 1 test boss only. Original waves, crawlers, v324 checkpoint unchanged. Loader v561.
+
+---
+
 # v560 — SUIT BOSS T-POSE RIG ANATOMY FIX — 2026-10-10
 
 - User screenshot v559 shows sleeve distortion and unstable walk: GLB is a static T-pose mesh without imported armature. The old Shambler auto-rig assumed an A-pose with hanging arms, causing incorrect weights and exaggerated deformation.
