@@ -1,3 +1,13 @@
+# v564 — SUIT BOSS FORWARD-REACHING ARMS AND BENT-KNEE GAIT — 2026-10-10
+
+- User **approved v563 elbow appearance** and requested the suit boss hold his arms forward toward the player, plus stop walking so straight-legged. No skin-weight, bone layout, rig or headshot changes made.
+- Changed only `syncSuitBossWalk` in `src/game.js`: rotate both shoulder bones toward the character's forward axis while leaving hands just below chest level (small reaching pulse/attack movement); keep the v563 independently weighted elbows and their bends.
+- Adjusted only suit boss walking: more visible hip swing and soft knee flex during each leg's forward recovery, rather than bending the trailing knee while the advancing leg stays straight. Compensating ankle motion limits feet tipping.
+- v564 loader `./src/game.js?v=564`. Wave 1 continues to spawn the suit boss for visual testing. All other zombies, natural crawlers (scale 1.53), weapons, existing headshot system, protected v324 and boss rotation for later waves are unchanged.
+- **Await user visual test before calling either improvement approved**. GitHub Pages status and user-browser animation are separate verifications.
+
+---
+
 # v563 — SUIT BOSS ELBOW SEGMENTATION — 2026-10-10
 
 - User screenshot of v562: walking and facing are very close, but both elbows/sleeves deform into angular folds; do not change approved movement/size/facing.
