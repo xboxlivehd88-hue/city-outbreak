@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '.github/workflows/panzer-browser-audit.yml'
+      - 'scripts/panzer-browser-audit.cjs'
   workflow_dispatch:
 permissions:
   contents: write
