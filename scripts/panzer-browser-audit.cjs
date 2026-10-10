@@ -5,7 +5,7 @@ const fs=require("fs");
 const os=require("os");
 const assert=require("assert/strict");
 (async()=>{
- const output={build:"v581-committed",test:"panzer-original-skeleton-visible-vertex-motion",startedAt:new Date().toISOString(),pass:false};
+ const output={build:"v582-committed",test:"panzer-original-skeleton-visible-vertex-motion",startedAt:new Date().toISOString(),pass:false};
  let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
@@ -15,56 +15,11 @@ const assert=require("assert/strict");
   page.on("console",msg=>{if(/panzer|glb|webgl|error/i.test(msg.text()))logs.push(msg.type()+": "+msg.text().slice(0,600))});
   page.on("response",resp=>{if(/panzer_zombie.glb/.test(resp.url()))output.modelRequest={status:resp.status(),url:resp.url()}});
   let injected=false;
-  await page.route(/\/src\/game\.js\?v=581$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=582$/,async route=>{
    const resp=await route.fetch();
    const source=await resp.text();
-   // v582 candidate: measure actual GPU-skinned vertex motion in the real
-   // Wave 1 boss after a few walking frames; shrink independently of Box3.
-   const mark="function attachSuitBossVisual(z){";
-   if(source.split(mark).length!==2)throw Error("Panzer calibration insertion marker missing");
-   const sizeFix=`
-function finalizePanzerSpawnSize(z){
- if(!z?.panzerBossMixer||!z.panzerSizeCalibrated||z.panzerRealSizeDone||z.dead)return;
- z.panzerRealSizeFrames=(z.panzerRealSizeFrames||0)+1;
- if(z.panzerRealSizeFrames<30)return;
- const holder=z.panzerBossVisual,model=z.panzerBossModel;
- const rootScale=new THREE.Vector3(),rootPos=new THREE.Vector3();
- z.g.getWorldScale(rootScale);z.g.getWorldPosition(rootPos);
- const target=PANZER_VISUAL_HEIGHT*Math.abs(rootScale.y);
- const vertex=new THREE.Vector3(),bounds=new THREE.Box3();
- const measure=()=>{
-   bounds.makeEmpty();model.updateWorldMatrix(true,true);
-   model.traverse(mesh=>{
-     if(!mesh.isSkinnedMesh)return;
-     const attr=mesh.geometry.getAttribute("position");
-     const stride=Math.max(1,Math.floor(attr.count/1700));
-     for(let i=0;i<attr.count;i+=stride){
-       mesh.getVertexPosition(i,vertex);
-       mesh.localToWorld(vertex);
-       bounds.expandByPoint(vertex);
-     }
-   });
-   return bounds.max.y-bounds.min.y;
- };
- const before=measure();let after=before;
- for(let k=0;k<6&&after>.0001;k++){
-   const ratio=target/after;
-   if(Math.abs(1-ratio)<.018)break;
-   holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.sqrt(ratio),.2,4));
-   after=measure();
- }
- const footOffset=(rootPos.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
- if(Number.isFinite(footOffset))holder.position.y+=THREE.MathUtils.clamp(footOffset,-40,40);
- z.panzerRealSizeDone=true;
- console.log("CITY OUTBREAK v582 candidate: live Panzer scaled down",{
-   before,after,target,finalScale:holder.scale.x,footOffset
- });
-}
-`;
-   const insertAfter="     calibratePanzerBossVisual(z);";
-   if(source.split(insertAfter).length!==2)throw Error("native sync marker missing");
-   const correctedSource=source.replace(mark,sizeFix+mark).replace(insertAfter,
-     insertAfter+"\n     finalizePanzerSpawnSize(z);");
+   // Committed v582 test: do not inject any source edits. The test uses the
+   // exact module from GitHub main and checks real spawned Wave 1 geometry.
    const addon=`
 ;globalThis.__panzerOriginalSkinAudit={
  ready:()=>!!panzerBossAsset,
@@ -201,7 +156,7 @@ function finalizePanzerSpawnSize(z){
    displacement[key]={avgMeters:avg/A.points[key].length,maxMeters:max,angleAtLast:C.angles[key]};
   }
   return {
-   auditVersion:"v581",panzerSourceHeight:z.panzerSourceHeight,
+   auditVersion:"v582",panzerSourceHeight:z.panzerSourceHeight,
    approvedVisualTarget:PANZER_VISUAL_HEIGHT,
    measuredWorldHeight:worldHeight,
    beforeScale,afterScale,preCalibration,postCalibration,
@@ -215,7 +170,7 @@ function finalizePanzerSpawnSize(z){
 };
 `;
    injected=true;
-   await route.fulfill({response:resp,body:correctedSource+addon,contentType:"application/javascript"});
+   await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
   const response=await page.goto("http://127.0.0.1:4173/?panzer-browser-audit=1",{waitUntil:"domcontentloaded",timeout:60000});
   output.siteStatus=response?.status();
