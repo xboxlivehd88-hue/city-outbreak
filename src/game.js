@@ -16,8 +16,9 @@ const SUIT_BOSS_NAME="SUIT GUY";
 // v568: panzer_zombie.glb — dedicated, isolated Wave 1 boss test.
 // This model is not part of BOSS_NAME_POOL until its behavior is approved.
 const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
-// v569: significantly smaller than the first Panzer test (1.80 vs 3.20).
-const PANZER_VISUAL_HEIGHT=1.80;
+// v570: match Suit Guy's 3.2-unit boss visual height using the actual
+// post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
+const PANZER_VISUAL_HEIGHT=3.20;
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  panzerBossAsset=gltf;
@@ -55,7 +56,10 @@ function attachPanzerBossVisual(z){
  holder.scale.setScalar(PANZER_VISUAL_HEIGHT/sourceH);
  holder.rotation.y=Math.PI;
  holder.add(model);z.g.add(holder);z.panzerBossVisual=holder;
- z.panzerSourceHeight=sourceH;
+ z.panzerBossModel=model;z.panzerSourceHeight=sourceH;
+ // The original source bounds are only a temporary initial guess: imported
+ // skinning/animations can expand the visible mesh far beyond that estimate.
+ z.panzerSizeCalibrated=false;z.panzerSizeCalibrationFrames=0;
  if(native){
    const clips=panzerBossAsset.animations;
    const walk=clips.find(c=>/walk|locomotion|move|run|shamble/i.test(c.name))||clips.find(c=>/idle/i.test(c.name))||clips[0];
@@ -76,10 +80,11 @@ function attachPanzerBossVisual(z){
  // A separate conservative test collider set matches the full Panzer stature;
  // none of the old procedural hit meshes are allowed to steal shots.
  if(z.hitMeshes)for(const hit of z.hitMeshes)if(hit)hit.raycast=()=>{};
- // Keep body/leg/head shot zones at the same fraction of the new visual size.
- // The original 3.2-high collider profile scales with Panzer's 1.8-high body.
+ // Keep collider proportions matched to the final Suit Guy-sized body.
+ // The boxes below are authored for a 3.2-unit boss and scale with this target.
  const hitRoot=new THREE.Group();hitRoot.name="PanzerBossScaledHitboxes";
  hitRoot.scale.setScalar(PANZER_VISUAL_HEIGHT/3.2);z.g.add(hitRoot);
+ z.panzerBossHitRoot=hitRoot;
  const mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false});
  const hits=[];
  const add=(name,geo,y,part,head=false)=>{
@@ -102,11 +107,12 @@ function attachPanzerBossVisual(z){
    head.position.set(0,sourceH*.05,0);
    const invScale=sourceH/3.2;
    head.scale.multiplyScalar(invScale);
+   z.panzerBoneHeadHitbox=head;
  }
  z.ownedMaterials.push(mat);z.hitMeshes=hits;z.panzerBossHitboxes=hits;
  z.suitBossBlastHitboxes=hits; // uses v565 body-based splash + swept projectile collision
  if(z.rigVisual)z.rigVisual.visible=false;
- console.log("CITY OUTBREAK v569: Panzer boss smaller with matching hitboxes",{
+ console.log("CITY OUTBREAK v570: Panzer boss awaiting posed-mesh scale calibration",{
    importedAnimation:z.panzerBossAnimation||null,
    proceduralBones:z.walkerBones?.size||0,
    hitboxes:hits.length
@@ -120,6 +126,46 @@ new GLTFLoader().load("assets/suit%20guy%20boss.glb?v=556",gltf=>{
   console.log("CITY OUTBREAK v558: suit boss auto-rigged",suitBossTemplate.userData.sourceHeight);
   for(const z of zombies)if(z.kind==="boss"&&z.bossName===SUIT_BOSS_NAME&&!z.suitBossVisual)attachSuitBossVisual(z);
 },undefined,error=>{suitBossLoadError=error;console.error("CITY OUTBREAK: suit boss GLB failed to load",error);});
+// v570: the Panzer GLB's bind-pose bounds can differ drastically from the
+// actually rendered skinned/animated mesh. Measure true posed vertices once
+// after the first animation update, and normalize to the approved Suit Guy
+// visual height in the same zombie root space. Doing this for Panzer only
+// preserves all other bosses and avoids a costly per-frame bounds traversal.
+function calibratePanzerBossVisual(z){
+ if(!z?.panzerBossVisual||!z.panzerBossModel||z.panzerSizeCalibrated||z.dead)return;
+ z.panzerSizeCalibrationFrames=(z.panzerSizeCalibrationFrames||0)+1;
+ if(z.panzerSizeCalibrationFrames<2)return;
+ const holder=z.panzerBossVisual,model=z.panzerBossModel;
+ // precise=true asks THREE to include transformed vertices, including skinned
+ // vertices, instead of stale GLB geometry bounding boxes.
+ model.updateWorldMatrix(true,true);
+ const worldBounds=new THREE.Box3().setFromObject(model,true);
+ const measuredHeight=worldBounds.max.y-worldBounds.min.y;
+ const rootScale=new THREE.Vector3();z.g.getWorldScale(rootScale);
+ const desiredWorldHeight=PANZER_VISUAL_HEIGHT*Math.abs(rootScale.y);
+ if(!Number.isFinite(measuredHeight)||measuredHeight<.001||!Number.isFinite(desiredWorldHeight))return;
+ const correction=desiredWorldHeight/measuredHeight;
+ if(!Number.isFinite(correction)||correction<=0)return;
+ holder.scale.multiplyScalar(correction);
+ // A head volume following the procedural armature must stay proportional to
+ // the body's new target size after this one-time correction.
+ if(z.panzerBoneHeadHitbox)z.panzerBoneHeadHitbox.scale.multiplyScalar(1/correction);
+ model.updateWorldMatrix(true,true);
+ const scaledBounds=new THREE.Box3().setFromObject(model,true);
+ const rootWorldPos=new THREE.Vector3();z.g.getWorldPosition(rootWorldPos);
+ // Keep Panzer's feet planted rather than leaving a large empty offset below
+ // the corrected mesh (some imported clips move the rig root vertically).
+ const offsetY=(rootWorldPos.y-scaledBounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
+ if(Number.isFinite(offsetY))holder.position.y+=THREE.MathUtils.clamp(offsetY,-40,40);
+ z.panzerSizeCalibrated=true;
+ console.log("CITY OUTBREAK v570: Panzer actual animated size matched to Suit Guy",{
+   rawAnimatedHeight:measuredHeight,
+   targetWorldHeight:desiredWorldHeight,
+   correction,
+   resultingScale:holder.scale.x,
+   footOffset:offsetY
+ });
+}
 function attachSuitBossVisual(z){
  if(!z||z.kind!=="boss"||z.bossName!==SUIT_BOSS_NAME||!suitBossTemplate||z.suitBossVisual||z.dead)return;
  const holder=new THREE.Group(),model=SkeletonUtils.clone(suitBossTemplate);
@@ -4441,7 +4487,10 @@ function syncSuitBossWalk(z,dt){
 function syncBasicWalkerVisual(z,dt=0){
  // An imported Panzer animation owns its original skeleton. Never overwrite it
  // with the procedural Shambler bone rotations.
- if(z?.panzerBossMixer){if(!z.dead)z.panzerBossMixer.update(dt);return}
+ if(z?.panzerBossMixer){
+   if(!z.dead){z.panzerBossMixer.update(dt);calibratePanzerBossVisual(z)}
+   return;
+ }
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
  if(z.crawlerUpperVisual===holder&&syncCrawlerUpperVisual(z))return;
  holder.rotation.y=Math.PI;
@@ -4521,7 +4570,11 @@ function syncBasicWalkerVisual(z,dt=0){
    return;
  }
  if(z.knockdown)return;
- if(z.suitBossVisual||z.panzerBossAutoRig){syncSuitBossWalk(z,dt);return;}
+ if(z.suitBossVisual||z.panzerBossAutoRig){
+   syncSuitBossWalk(z,dt);
+   if(z.panzerBossAutoRig)calibratePanzerBossVisual(z);
+   return;
+ }
 
  const gx=z.g.position.x,gz=z.g.position.z,lastX=Number.isFinite(z.walkerLastX)?z.walkerLastX:gx,lastZ=Number.isFinite(z.walkerLastZ)?z.walkerLastZ:gz;
  const moved=Math.hypot(gx-lastX,gz-lastZ);z.walkerLastX=gx;z.walkerLastZ=gz;
