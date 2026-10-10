@@ -37,6 +37,73 @@ new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PANZER_BOSS_NAME&&!z.panzerBossVisual)attachPanzerBossVisual(z);
 },undefined,e=>{panzerBossLoadError=e;console.error("CITY OUTBREAK: Panzer Zombie GLB failed to load",e)});
 
+
+// v571: identify only the native Panzer rig's leg joints. Upper body, attacks
+// and accessory bones continue to use their uploaded animation unchanged.
+function findPanzerLegBones(model){
+ const all=[];model.traverse(o=>{if(o.isBone)all.push(o)});
+ const bones={};
+ const role=(b)=>{
+   const n=(b.name||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+   const side=n.includes("left")||/(^|[a-z0-9])l(thigh|upleg|upperleg|calf|shin|lowerleg)/.test(n)||/(thigh|upleg|upperleg|calf|shin|lowerleg)l$/.test(n)?"L":
+              n.includes("right")||/(^|[a-z0-9])r(thigh|upleg|upperleg|calf|shin|lowerleg)/.test(n)||/(thigh|upleg|upperleg|calf|shin|lowerleg)r$/.test(n)?"R":null;
+   if(!side)return null;
+   if(/thigh|upleg|upperleg|legupper/.test(n))return side+"_UpperLeg";
+   if(/calf|shin|lowerleg|leglower/.test(n))return side+"_LowerLeg";
+   if(/foot|ankle/.test(n))return side+"_Foot";
+   return null;
+ };
+ for(const b of all){
+   const key=role(b);
+   if(key&&!bones[key])bones[key]={bone:b,rest:b.quaternion.clone()};
+ }
+ return bones;
+}
+function panzerHasAnimatedLegTracks(clip){
+ return !!clip?.tracks?.some(t=>
+   /thigh|upleg|upperleg|calf|shin|lowerleg|legupper|leglower/i.test(t.name)
+   &&t.times?.length>=3
+ );
+}
+// A grounded walk cycle follows distance traveled instead of spinning in place.
+// Panzer-only, limited to hip/knee/ankle bones to preserve approved armor pose.
+function syncPanzerBossWalk(z,dt,native=false){
+ if(!z||z.dead)return;
+ const gx=z.g.position.x,gz=z.g.position.z;
+ const dist=Math.hypot(gx-(z.panzerWalkLastX??gx),gz-(z.panzerWalkLastZ??gz));
+ z.panzerWalkLastX=gx;z.panzerWalkLastZ=gz;
+ const moving=dist>.0003;
+ const step=Math.min(1,dt*9);
+ z.panzerWalkBlend=THREE.MathUtils.lerp(z.panzerWalkBlend||0,moving?1:0,step);
+ z.panzerWalkPhase=(z.panzerWalkPhase||0)+Math.min(.50,dist*5.2);
+ // Native GLB walk clips with real leg tracks already own the steps.
+ if(native&&z.panzerNativeWalking)return;
+ const gait=z.panzerWalkBlend,s=Math.sin(z.panzerWalkPhase),lf=Math.max(0,s),rf=Math.max(0,-s);
+ const rotations={
+   L_UpperLeg:(s*.55-.035)*gait,
+   R_UpperLeg:(-s*.55-.035)*gait,
+   L_LowerLeg:(.12+.74*lf*lf)*gait,
+   R_LowerLeg:(.12+.74*rf*rf)*gait,
+   L_Foot:(-.06*s-.48*(.12+.74*lf*lf))*gait,
+   R_Foot:(.06*s-.48*(.12+.74*rf*rf))*gait
+ };
+ if(native){
+   const joints=z.panzerNativeLegBones;
+   if(!joints)return;
+   for(const [key,angle] of Object.entries(rotations)){
+     const part=joints[key];if(!part)continue;
+     const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),angle);
+     part.bone.quaternion.copy(part.rest).multiply(q);
+   }
+ }else{
+   const joints=z.walkerBones;
+   if(!joints?.size)return;
+   for(const [key,angle] of Object.entries(rotations)){
+     const b=joints.get(key);
+     if(b)b.rotation.x=angle;
+   }
+ }
+}
 function attachPanzerBossVisual(z){
  if(!z||z.dead||z.kind!=="boss"||z.bossName!==PANZER_BOSS_NAME||z.panzerBossVisual||!panzerBossAsset)return;
  const native=panzerBossAsset.animations?.length>0;
@@ -62,11 +129,22 @@ function attachPanzerBossVisual(z){
  z.panzerSizeCalibrated=false;z.panzerSizeCalibrationFrames=0;
  if(native){
    const clips=panzerBossAsset.animations;
-   const walk=clips.find(c=>/walk|locomotion|move|run|shamble/i.test(c.name))||clips.find(c=>/idle/i.test(c.name))||clips[0];
+   // Prefer an actual leg-animated walking clip. Exporters frequently name
+   // clips "Armature|Action" rather than literally "Walk".
+   const walkNamed=clips.find(c=>/walk|locomotion|move|run|shamble|march|stride/i.test(c.name)&&panzerHasAnimatedLegTracks(c));
+   const walkTracked=clips.find(c=>panzerHasAnimatedLegTracks(c)&&!/idle|attack|hit|die|death/i.test(c.name));
+   const walk=walkNamed||walkTracked||clips.find(c=>/walk|locomotion|move|run|shamble|march|stride/i.test(c.name))||clips.find(c=>/idle/i.test(c.name))||clips[0];
    const mixer=new THREE.AnimationMixer(model);
    mixer.clipAction(walk).reset().play();
    z.panzerBossMixer=mixer;
    z.panzerBossAnimation=walk.name;
+   z.panzerNativeWalking=panzerHasAnimatedLegTracks(walk)&&!!(walkNamed||walkTracked);
+   z.panzerNativeLegBones=findPanzerLegBones(model);
+   console.log("CITY OUTBREAK v571: Panzer native walk",{
+     clip:walk.name,hasLegTracks:z.panzerNativeWalking,
+     detectedLegs:Object.keys(z.panzerNativeLegBones),
+     availableClips:clips.map(c=>c.name)
+   });
  }else{
    // Retain the approved auto-rig locomotion bridge for unanimated meshes.
    z.panzerBossAutoRig=true;z.walkerVisual=holder;z.walkerModel=model;
@@ -77,6 +155,8 @@ function attachPanzerBossVisual(z){
    }
    z.walkerLastX=z.g.position.x;z.walkerLastZ=z.g.position.z;z.walkerMoveBlend=0;
  }
+ z.panzerWalkLastX=z.g.position.x;z.panzerWalkLastZ=z.g.position.z;
+ z.panzerWalkPhase=0;z.panzerWalkBlend=0;
  // A separate conservative test collider set matches the full Panzer stature;
  // none of the old procedural hit meshes are allowed to steal shots.
  if(z.hitMeshes)for(const hit of z.hitMeshes)if(hit)hit.raycast=()=>{};
@@ -4488,7 +4568,11 @@ function syncBasicWalkerVisual(z,dt=0){
  // An imported Panzer animation owns its original skeleton. Never overwrite it
  // with the procedural Shambler bone rotations.
  if(z?.panzerBossMixer){
-   if(!z.dead){z.panzerBossMixer.update(dt);calibratePanzerBossVisual(z)}
+   if(!z.dead){
+     z.panzerBossMixer.update(dt);
+     syncPanzerBossWalk(z,dt,true);
+     calibratePanzerBossVisual(z);
+   }
    return;
  }
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
@@ -4570,9 +4654,11 @@ function syncBasicWalkerVisual(z,dt=0){
    return;
  }
  if(z.knockdown)return;
- if(z.suitBossVisual||z.panzerBossAutoRig){
-   syncSuitBossWalk(z,dt);
-   if(z.panzerBossAutoRig)calibratePanzerBossVisual(z);
+ if(z.suitBossVisual){syncSuitBossWalk(z,dt);return;}
+ if(z.panzerBossAutoRig){
+   // Only Panzer's leg joints are driven; its approved upper-body pose stays.
+   syncPanzerBossWalk(z,dt,false);
+   calibratePanzerBossVisual(z);
    return;
  }
 
