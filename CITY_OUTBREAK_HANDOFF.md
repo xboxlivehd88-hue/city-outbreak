@@ -1,3 +1,14 @@
+# v577 — VERIFY VISIBLE PANZER RIGHT LEG GEOMETRY, NOT ONLY ANIMATED BONES — 2026-10-10
+
+- User insists that v576 has **no visibly improved right leg despite hard refresh and waiting for GitHub**. Believe browser evidence. v571–v576 source-level tests were not visual verification; do not ask user to wait for deployment again as an explanation.
+- Root code weakness: name detection, right thigh/shin skin-weight counts, and isolated fake-bone unit tests never measured whether the **visible Panzer leg armor vertices** follow those joints. A native rig can pass all checks while its outer right armor remains rigid.
+- v577 adds Panzer-only `auditPanzerLegDeformation`: sample actual Three.js rendered vertices on BOTH lower-body halves of the uploaded scene, rotate each of four real thigh/shin bones separately, measure visible displacement, confirm left/right motions occupy distinct sides and BOTH thigh/shin pairs truly deform. Restore all original bone quaternions after the audit. If native geometry fails the test, force existing separately weighted Panzer-only auto-rig (its rendered vertices are also audited and logged). Never treat real mesh failing as a functioning native rig. No expensive per-frame mesh audit.
+- Console `CITY OUTBREAK v577: Panzer ACTUAL left/right thigh and shin vertex motion` logs `kneeSkin`, `motionAudit`, `fallbackAudit`, and selected `nativeUsable`. Spawn message now says `PANZER v577 REAL MESH TEST` with mode. A passing runtime audit still does NOT prove natural-looking animation to the user.
+- **Preserve** v570 user-approved Panzer size, `PANZER_VISUAL_HEIGHT=3.20`, post-animation precise size/foot placement calibration, armor materials, orientation, Panzer collision/explosion hitboxes, AI/damage/attacks/health, Suit Guy, existing zombie/crawler behavior (natural crawler 1.53), weapons/map/settings/performance, and protected v324 checkpoint. Panzer remains solo Wave 1 and OUT of normal every-10-wave boss rotation.
+- Loader `./src/game.js?v=577`. Browser title shows `PANZER WALK v577`; verify source and runtime. If right-leg problem persists, examine the logged real deformation numbers/screenshot or request short video; DO NOT claim the rig is fixed solely from source syntax/commit.
+
+---
+
 # v576 — PANZER RIGHT LEG SKIN ATTACHMENT FIX — 2026-10-10
 
 - User tested v575 after deployment and reports **right leg still does not move**. The browser test is authoritative; v575 NOT visually approved. Do not suggest waiting for GitHub Pages again without evidence.
