@@ -98,8 +98,8 @@ function syncPanzerBossWalk(z,dt,native=false){
  const step=Math.min(1,dt*9);
  z.panzerWalkBlend=THREE.MathUtils.lerp(z.panzerWalkBlend||0,moving?1:0,step);
  z.panzerWalkPhase=(z.panzerWalkPhase||0)+Math.min(.50,dist*5.2);
- // Native GLB walk clips with real leg tracks already own the steps.
- if(native&&z.panzerNativeWalking)return;
+ // Even when native hip tracks are present, supplement any stiff knees.
+ // Do not exit here: v571 exited before the shin bend could be applied.
  const gait=z.panzerWalkBlend,s=Math.sin(z.panzerWalkPhase),lf=Math.max(0,s),rf=Math.max(0,-s);
  // Deliberate visible knee lift on each recovery stroke; never lock both
  // lower legs straight just because an imported clip has some thigh motion.
@@ -122,7 +122,7 @@ function syncPanzerBossWalk(z,dt,native=false){
      // body. Add knee flex AFTER mixer.update() even when the chosen clip moves
      // the thighs but has rigid shins. Do not reset animated quaternions.
      if(nativeStride&&key.endsWith("UpperLeg"))continue;
-     const amount=nativeStride?(key.endsWith("LowerLeg")?.85:.38):1;
+     const amount=nativeStride?(key.endsWith("LowerLeg") ? .85 : .38):1;
      const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),angle*amount);
      if(nativeStride)part.bone.quaternion.multiply(q);
      else part.bone.quaternion.copy(part.rest).multiply(q);
