@@ -21,42 +21,38 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible deployment fingerprint, temporary during Wave 1 Panzer testing.
 // If the browser tab doesn't show v574, it isn't executing this build.
-document.title="CITY OUTBREAK — PANZER WALK v579";
-document.documentElement.dataset.panzerTestBuild="579";
+document.title="CITY OUTBREAK — PANZER WALK v580";
+document.documentElement.dataset.panzerTestBuild="580";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
-new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
+new GLTFLoader().load("assets/panzer_zombie.glb?v=580",gltf=>{
  panzerBossAsset=gltf;
- // Preserve imported skeleton / animation clips when supplied. Static GLBs
- // instead use a measured auto-rig so they do not simply walk in T-pose.
- // v573: a skeleton existing is not proof its SHINS deform the visible GLB.
- // Verify skin indices actually weight geometry to BOTH lower-leg joints.
- // Otherwise armature-only clips can leave the armored legs perfectly stiff.
- // v579: an explicit alternate rig test. Earlier fixes altered conditional
- // fallback code, but the Panzer could still select the native branch, so the
- // v578 repaired thigh weighting never actually executed in the browser.
- // FORCE the isolated Panzer-only procedural walking rig for Wave 1 here,
- // while retaining the original GLB armor geometry/materials and boss gameplay.
- // No normal zombie or Suit Guy uses this override.
- const extent=new THREE.Box3().setFromObject(gltf.scene),sz=new THREE.Vector3();
- extent.getSize(sz);
- const tPose=sz.y>0&&sz.x/sz.y>.68;
- panzerBossFallbackTemplate=buildBasicWalkerTemplate(gltf.scene,tPose,true);
- if(!panzerBossFallbackTemplate){
-   panzerBossLoadError=new Error("v579 Panzer-only weighted rig could not be built");
-   console.error("CITY OUTBREAK v579: Panzer rig failed to build",panzerBossLoadError);
-   return;
+ // v580: the REAL 8.7 MB GLB was parsed in a GitHub Actions checkout.
+ // Its 52-joint skin HAS a genuine right thigh, knee and ankle (j hip ri_08,
+ // j knee ri_09, j ankle ri_010) with hundreds of weighted armor vertices.
+ // The sole animation clip DOES NOT key any of these right-leg joints.
+ // Earlier versions failed because they guessed left/right leg naming or
+ // re-skinned the already-animated source into a different rig.
+ const nativeLegs=findPanzerLegBones(gltf.scene);
+ const actualSkin=inspectPanzerKneeSkin(gltf.scene);
+ const required=["L_UpperLeg","L_LowerLeg","L_Foot","R_UpperLeg","R_LowerLeg","R_Foot"];
+ const nativeUsable=!!gltf.animations?.length&&actualSkin.bendable&&
+   required.every(k=>nativeLegs[k]?.skinInfluence>12);
+ if(!nativeUsable){
+   // Emergency fail-safe, only if a future uploaded model no longer contains
+   // the actual documented six-joint Panzer anatomy.
+   const extent=new THREE.Box3().setFromObject(gltf.scene),sz=new THREE.Vector3();
+   extent.getSize(sz);
+   panzerBossFallbackTemplate=buildBasicWalkerTemplate(gltf.scene,sz.y>0&&sz.x/sz.y>.68,true);
  }
- const joints=panzerProceduralJoints(panzerBossFallbackTemplate);
- panzerBossRigAudit={
-   sourceAnimations:gltf.animations?.map(c=>c.name)||[],
-   selected:"FORCED_PANZER_PROCEDURAL_LEGS",
-   jointKeys:Object.keys(joints),
-   // Check the ACTUAL weighted skin mapping the renderer consumes, rather
-   // than simply trusting bone names or animation phase values.
-   rigSkin:inspectPanzerKneeSkin(panzerBossFallbackTemplate),
-   rigDeformation:auditPanzerLegDeformation(panzerBossFallbackTemplate,joints)
- };
- console.log("CITY OUTBREAK v579: FORCED dual-leg Panzer rig with independent right thigh/knee",panzerBossRigAudit);
+ panzerBossRigAudit={sourceClip:gltf.animations?.map(c=>c.name)||[],
+   selected:nativeUsable?"ORIGINAL_GLTF_SKELETON_BOTH_LEGS":"PANZER_BACKUP_SKIN",
+   originalRightLegAnimationTracks:0,
+   originalRightThigh:nativeLegs.R_UpperLeg?.bone.name||null,
+   originalRightKnee:nativeLegs.R_LowerLeg?.bone.name||null,
+   originalRightAnkle:nativeLegs.R_Foot?.bone.name||null,
+   originalSkinWeights:actualSkin,
+   selectedJointWeights:Object.fromEntries(required.map(k=>[k,nativeLegs[k]?.skinInfluence||0]))};
+ console.log("CITY OUTBREAK v580: REAL PANZER GLB — right leg exists but source clip does NOT animate it",panzerBossRigAudit);
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PANZER_BOSS_NAME&&!z.panzerBossVisual)attachPanzerBossVisual(z);
 },undefined,e=>{panzerBossLoadError=e;console.error("CITY OUTBREAK: Panzer Zombie GLB failed to load",e)});
 
@@ -84,13 +80,19 @@ function findPanzerLegBones(model){
    mesh.skeleton.bones.forEach((b,i)=>influence.set(b,(influence.get(b)||0)+weighted[i]));
  }
  const role=b=>{
-   const n=(b.name||"").toLowerCase().replace(/[^a-z0-9]/g,"");
-   const side=n.includes("left")||/(?:^|\d|orig|def|bip)l(?:up|upper|lower)?(?:thigh|leg|shin|calf|foot|ankle|knee)/.test(n)||/(?:thigh|leg|shin|calf|foot|ankle|knee)l$/.test(n)?"L":
-              n.includes("right")||/(?:^|\d|orig|def|bip)r(?:up|upper|lower)?(?:thigh|leg|shin|calf|foot|ankle|knee)/.test(n)||/(?:thigh|leg|shin|calf|foot|ankle|knee)r$/.test(n)?"R":null;
+   // THREE.GLTFLoader sanitizes source names such as "j hip ri_08" to
+   // "j_hip_ri_08". Match the exact real Panzer "le"/"ri" naming,
+   // excluding decorative "j knee attach" and booster attachment bones.
+   const raw=(b.name||"").toLowerCase();
+   const words=raw.replace(/[^a-z0-9]+/g," ").trim().split(/\s+/);
+   const side=words.includes("le")||words.includes("left")?"L":
+              words.includes("ri")||words.includes("right")?"R":
+              raw.includes("left")?"L":raw.includes("right")?"R":null;
    if(!side)return null;
-   if(/thigh|upleg|upperleg|legupper/.test(n))return side+"_UpperLeg";
-   if(/calf|shin|lowerleg|leglower|knee|(?:left|right)leg(?:\d+)?$|(?:legleft|legright)(?:\d+)?$|(?:^|mixamorig|bip\d*|def)[lr]leg(?:\d+)?$/.test(n))return side+"_LowerLeg";
-   if(/foot|ankle/.test(n))return side+"_Foot";
+   if(words.includes("attach")||words.includes("booster"))return null;
+   if(words.includes("hip")||words.includes("thigh")||words.includes("upperleg")||words.includes("upleg"))return side+"_UpperLeg";
+   if(words.includes("knee")||words.includes("shin")||words.includes("calf")||words.includes("lowerleg"))return side+"_LowerLeg";
+   if(words.includes("ankle")||words.includes("foot"))return side+"_Foot";
    return null;
  };
  const bones={};
@@ -339,20 +341,23 @@ function attachPanzerBossVisual(z){
  // skinning/animations can expand the visible mesh far beyond that estimate.
  z.panzerSizeCalibrated=false;z.panzerSizeCalibrationFrames=0;
  if(native){
-   const clips=panzerBossAsset.animations;
-   // Prefer an actual leg-animated walking clip. Exporters frequently name
-   // clips "Armature|Action" rather than literally "Walk".
-   const walkNamed=clips.find(c=>/walk|locomotion|move|run|shamble|march|stride/i.test(c.name)&&panzerHasAnimatedLegTracks(c));
-   const walkTracked=clips.find(c=>panzerHasAnimatedLegTracks(c)&&!/idle|attack|hit|die|death/i.test(c.name));
-   const walk=walkNamed||walkTracked||clips.find(c=>/walk|locomotion|move|run|shamble|march|stride/i.test(c.name))||clips.find(c=>/idle/i.test(c.name))||clips[0];
-   const mixer=new THREE.AnimationMixer(model);
-   mixer.clipAction(walk).reset().play();
-   z.panzerBossMixer=mixer;
-   z.panzerBossAnimation=walk.name;
-   z.panzerNativeWalking=panzerHasAnimatedLegTracks(walk)&&!!(walkNamed||walkTracked);
    z.panzerNativeLegBones=findPanzerLegBones(model);
-   // Compute a REAL knee/hip hinge in each imported bone's coordinate space.
-   // Local X is not necessarily across the Panzer's hips on an uploaded rig.
+   const names=new Set(Object.values(z.panzerNativeLegBones).map(x=>x.bone.name));
+   const clips=panzerBossAsset.animations;
+   const baseClip=clips.find(c=>/walk|locomotion|move|run|shamble|march|stride/i.test(c.name))||clips[0];
+   // GLB contains only LEFT-leg animation keys. Strip all leg-joint tracks
+   // so the source clip can keep its original upper-body effects while the
+   // real left+right hip/knee/ankle are driven by one synchronized gait.
+   const nonlegTracks=baseClip.tracks.filter(t=>{
+     const path=t.name.slice(0,t.name.lastIndexOf("."));
+     return !names.has(path);
+   });
+   const upperClip=new THREE.AnimationClip(baseClip.name+"-nonleg",baseClip.duration,nonlegTracks);
+   const mixer=new THREE.AnimationMixer(model);
+   if(nonlegTracks.length)mixer.clipAction(upperClip).reset().play();
+   z.panzerBossMixer=mixer;
+   z.panzerBossAnimation=baseClip.name;
+   z.panzerNativeWalking=false;
    holder.updateWorldMatrix(true,true);
    const modelRight=new THREE.Vector3(1,0,0).transformDirection(holder.matrixWorld);
    for(const part of Object.values(z.panzerNativeLegBones)){
@@ -360,10 +365,10 @@ function attachPanzerBossVisual(z){
      part.bone.getWorldQuaternion(worldRotation);
      part.hingeAxis=modelRight.clone().applyQuaternion(worldRotation.invert()).normalize();
    }
-   console.log("CITY OUTBREAK v577: Panzer native leg pivots, deformation-audited",{
-     clip:walk.name,hasLegTracks:z.panzerNativeWalking,
-     detectedLegs:Object.keys(z.panzerNativeLegBones),
-     availableClips:clips.map(c=>c.name)
+   console.log("CITY OUTBREAK v580: both ORIGINAL Panzer legs now driven",{
+     nativeBoneNames:Object.fromEntries(Object.entries(z.panzerNativeLegBones).map(([k,v])=>[k,v.bone.name])),
+     originalClip:baseClip.name,originalTracks:baseClip.tracks.length,
+     upperTracksPreserved:nonlegTracks.length,legTracksOmitted:baseClip.tracks.length-nonlegTracks.length
    });
  }else{
    // Retain the approved auto-rig locomotion bridge for unanimated meshes.
@@ -6039,7 +6044,7 @@ function spawnWave(){
      const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
    }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
-   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v579 FORCED BOTH LEG RIG": "PANZER v579 — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v580 ORIGINAL SKELETON — BOTH LEGS": "PANZER v580 — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
    updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
