@@ -1,3 +1,12 @@
+# v574 — PANZER WALK DEPLOYMENT FINGERPRINT — 2026-10-10
+
+- User reported the last knee fixes were visually indistinguishable, and asked whether GitHub or Pages updated. v573 added real knee skin-weight validation and Panzer-specific procedural knee fallback. The live GitHub Pages asset could not be independently fetched in this environment, so do NOT claim Pages deployment or browser visual success is verified.
+- v574 adds a **temporary visible diagnostic** without modifying combat or animation: the browser tab title includes **PANZER WALK v574**, and the Wave 1 Panzer spawn message identifies **v574 WALK TEST** plus native knees versus weighted procedural knee mode if loaded. This lets user distinguish stale deployment from a current build that still has visual animation problems.
+- Preserve the v573 shin skinning selection and v572 knee bends, the approved v570 Panzer size and calibration (`PANZER_VISUAL_HEIGHT=3.20`), orientation, armor, collision, specials, approved Suit Guy, crawlers, all other systems, and v324 protected checkpoint.
+- Panzer remains Wave 1 solo test and OUT of regular boss-name rotation. Loader `./src/game.js?v=574`. Source checks passed; user browser/PAGES deployment still requires confirmation.
+
+---
+
 # v573 — PANZER KNEE SKINNING CHECK AND RIG FALLBACK — 2026-10-10
 
 - User reported that v572 **still appeared completely unchanged**, and questioned whether Pages had updated. GitHub `main` definitively contained the v572 loader and changes; **live browser deployment was not independently readable/verified**. Do NOT tell user a visual fix or deployment is confirmed.
