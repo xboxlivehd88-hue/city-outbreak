@@ -1,3 +1,11 @@
+# v556 — SUIT GUY TEST BOSS — 2026-10-10
+
+- Uploaded `assets/suit guy boss.glb` at commit `0d686bb8bba2710dfa14e399c72689cc15d778ef`.
+- Temporary TEST: Wave 1 always uses existing boss wave combat/spawning with name `SUIT GUY — TEST BOSS`; original boss wave rotation remains for later boss waves. Existing boss rig/hitboxes preserved while GLB is shown at an initial auto-sized height of 3.2 units. Visual animation/ragdoll of uploaded model is NOT yet validated.
+- v555 natural crawler visual scale 1.53, all prior mechanics, protected v324 checkpoint unchanged. User must visually test model and Wave 1 behavior. Loader `./src/game.js?v=556`.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-10 — v555 GAMEPLAY + BROKEN PLAY-LINK REPORT — READ THIS FIRST
 
 ## Authoritative sources / state
