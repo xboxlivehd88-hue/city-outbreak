@@ -1,3 +1,13 @@
+# v578 — PANZER RIGHT THIGH ARMOR CLASSIFIED AS ARMS BEFORE LEGS — 2026-10-10
+
+- User reports Panzer right leg still frozen despite hard refresh and waiting for GitHub. Believe their observed gameplay; past versions were genuinely committed but not visually effective. Do not blame caching.
+- v577 added an imported-model vertex deformation test to reject native Panzer leg bones if visible armor does not actually bend, with auto-rig fallback. However the **auto-rig** itself had an identifiable ordering defect: `buildBasicWalkerTemplate` classified hanging arms for source Y=.31–.74h BEFORE it classified thighs below Y=.46h. Wide Panzer thigh/armor vertices could therefore get skinned to the arm bones rather than the thigh/knee.
+- v578 adds a default-OFF, third argument `panzerLegRig` to `buildBasicWalkerTemplate`. Only Panzer fallback passes `true`. The Panzer-only vertex classification now prioritizes both symmetric leg regions below 46% of model height, near the body center (X magnitude less than 27.5% of height), assigning thigh, shin and foot skin indices explicitly BEFORE the ordinary arm branch. Existing seam blending at the knee/ankle remains. Widely extended hands stay handled by original arm classifier. All other models use `panzerLegRig=false` by default.
+- Keep v577 runtime TRUE mesh displacement audit: if native Panzer visible thighs/shins do not move independently, select now-corrected Panzer-only weighted fallback. Source GLB, original armor materials, facing, approved `PANZER_VISUAL_HEIGHT=3.20`, exact post-animation calibration, hitboxes/explosion checks, AI/attacks/stats preserved. Suit Guy and every other zombie/crawler (natural crawler scale 1.53), lighting/graphics/map/weapons preserved. Protected v324 recovery untouched.
+- Panzer SOLO Wave 1 remains, OUT of 10-wave boss-name rotation pending user's walking approval. `index.html` loader v578; browser title says PANZER WALK v578 and Wave 1 banner marks new Panzer leg skinning. This is a targeted source fix, not verified in a running browser. If right leg stays still, inspect **actual** `CITY OUTBREAK v578` `motionAudit` and `fallbackAudit` numbers, not speculative adjustments.
+
+---
+
 # v577 — VERIFY VISIBLE PANZER RIGHT LEG GEOMETRY, NOT ONLY ANIMATED BONES — 2026-10-10
 
 - User insists that v576 has **no visibly improved right leg despite hard refresh and waiting for GitHub**. Believe browser evidence. v571–v576 source-level tests were not visual verification; do not ask user to wait for deployment again as an explanation.
