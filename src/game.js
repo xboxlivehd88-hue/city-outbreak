@@ -21,9 +21,9 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible deployment fingerprint, temporary during Wave 1 Panzer testing.
 // If the browser tab doesn't show v574, it isn't executing this build.
-document.title="CITY OUTBREAK — PANZER WALK v576";
-document.documentElement.dataset.panzerTestBuild="576";
-let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null;
+document.title="CITY OUTBREAK — PANZER WALK v577";
+document.documentElement.dataset.panzerTestBuild="577";
+let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  panzerBossAsset=gltf;
  // Preserve imported skeleton / animation clips when supplied. Static GLBs
@@ -32,16 +32,23 @@ new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  // Verify skin indices actually weight geometry to BOTH lower-leg joints.
  // Otherwise armature-only clips can leave the armored legs perfectly stiff.
  const kneeSkin=inspectPanzerKneeSkin(gltf.scene);
- if(!gltf.animations?.length||!kneeSkin.bendable){
+ // v577: do not trust names or weight counts until the uploaded mesh actually
+ // DEFORMS on both thighs AND knees. This probes its own vertex positions.
+ const motionAudit=kneeSkin.bendable?auditPanzerLegDeformation(gltf.scene,findPanzerLegBones(gltf.scene)):null;
+ const nativeUsable=!!gltf.animations?.length&&kneeSkin.bendable&&motionAudit?.bilateral===true;
+ if(!nativeUsable){
    const extent=new THREE.Box3().setFromObject(gltf.scene),sz=new THREE.Vector3();
    extent.getSize(sz);
    const tPose=sz.y>0&&sz.x/sz.y>.68;
    panzerBossFallbackTemplate=buildBasicWalkerTemplate(gltf.scene,tPose);
  }
- console.log("CITY OUTBREAK v576: panzer thigh AND knee anatomy inspected",{
+ // The fallback is also tested against its ACTUAL vertices, not just bones.
+ const rebuiltJoints=panzerBossFallbackTemplate?panzerProceduralJoints(panzerBossFallbackTemplate):null;
+ const fallbackAudit=rebuiltJoints?auditPanzerLegDeformation(panzerBossFallbackTemplate,rebuiltJoints):null;
+ panzerBossRigAudit={kneeSkin,motionAudit,fallbackAudit,nativeUsable};
+ console.log("CITY OUTBREAK v577: Panzer ACTUAL left/right thigh and shin vertex motion",{
    animations:gltf.animations?.map(c=>c.name)||[],
-   kneeSkin,autoRig:!!panzerBossFallbackTemplate,
-   gait:panzerBossFallbackTemplate?"procedural weighted knees":"native plus knee override"
+   ...panzerBossRigAudit,autoRig:!!panzerBossFallbackTemplate
  });
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PANZER_BOSS_NAME&&!z.panzerBossVisual)attachPanzerBossVisual(z);
 },undefined,e=>{panzerBossLoadError=e;console.error("CITY OUTBREAK: Panzer Zombie GLB failed to load",e)});
@@ -128,6 +135,100 @@ function inspectPanzerKneeSkin(model){
                  balanced(counts.L_LowerLeg,counts.R_LowerLeg);
  return {skinnedMeshes,weightedLegVertices:counts,
    namedJoints:Object.keys(joints),bendable};
+}
+// v577: inspect source-GLB *rendered mesh vertices*, not just named bones.
+// At load time test independent thigh and knee flex on each leg, then restore
+// ALL original joint quaternions before either native or fallback is used.
+// This is Panzer-only and runs once, outside the game loop.
+function panzerProceduralJoints(model){
+ const keys=["L_UpperLeg","L_LowerLeg","L_Foot","R_UpperLeg","R_LowerLeg","R_Foot"],parts={};
+ for(const key of keys){
+   const bone=model.getObjectByName("Walker"+key);
+   if(bone)parts[key]={bone,rest:bone.quaternion.clone()};
+ }
+ return parts;
+}
+function auditPanzerLegDeformation(model,joints){
+ const required=["L_UpperLeg","L_LowerLeg","R_UpperLeg","R_LowerLeg"];
+ if(!required.every(key=>joints[key]?.bone))return {bilateral:false,reason:"missing thigh/shin bone"};
+ const v=new THREE.Vector3(),bounds=new THREE.Box3();
+ const rest=new Map(),axisByKey=new Map();
+ try{
+   model.updateWorldMatrix(true,true);
+   bounds.setFromObject(model,true);
+   const height=bounds.max.y-bounds.min.y,width=bounds.max.x-bounds.min.x;
+   if(!Number.isFinite(height)||height<.001||width<.001)return {bilateral:false,reason:"bad visual bounds"};
+   const midX=(bounds.max.x+bounds.min.x)*.5;
+   const modelRight=new THREE.Vector3(1,0,0).transformDirection(model.matrixWorld);
+   for(const [key,part] of Object.entries(joints)){
+     rest.set(part.bone,part.bone.quaternion.clone());
+     const worldQ=new THREE.Quaternion();
+     part.bone.getWorldQuaternion(worldQ);
+     axisByKey.set(key,modelRight.clone().applyQuaternion(worldQ.invert()).normalize());
+   }
+   // Sample the exact mesh deformation that Three.js will render. This also
+   // detects non-skinned armor meshes that stay frozen around animated bones.
+   const halves={negative:[],positive:[]};
+   const temp=new THREE.Vector3();
+   model.traverse(mesh=>{
+     if(!mesh.isMesh||!mesh.geometry?.getAttribute("position"))return;
+     const attr=mesh.geometry.getAttribute("position");
+     const stride=Math.max(1,Math.floor(attr.count/2400));
+     let taken=0;
+     for(let i=0;i<attr.count&&taken<220;i+=stride){
+       if(mesh.isSkinnedMesh)mesh.getVertexPosition(i,temp);
+       else temp.fromBufferAttribute(attr,i);
+       const p=temp.clone().applyMatrix4(mesh.matrixWorld);
+       // Below the hips, excluding the centerline. Sample both separate legs.
+       if(p.y>bounds.min.y+height*.44||Math.abs(p.x-midX)<width*.016)continue;
+       const side=p.x<midX?"negative":"positive";
+       if(halves[side].length>=850)continue;
+       halves[side].push({mesh,index:i,initial:p});taken++;
+     }
+   });
+   if(halves.negative.length<12||halves.positive.length<12)
+     return {bilateral:false,reason:"visible lower-leg vertices missing on a side",
+       samples:[halves.negative.length,halves.positive.length]};
+   const metrics={};
+   for(const key of required){
+     const part=joints[key],axis=axisByKey.get(key);
+     const turn=key.endsWith("UpperLeg")?.58:.88;
+     part.bone.quaternion.copy(rest.get(part.bone)).multiply(
+       new THREE.Quaternion().setFromAxisAngle(axis,turn));
+     model.updateWorldMatrix(true,true);
+     const sideMotion={};
+     for(const side of ["negative","positive"]){
+       let sum=0,significant=0;
+       for(const item of halves[side]){
+         const {mesh,index,initial}=item;
+         if(mesh.isSkinnedMesh)mesh.getVertexPosition(index,v);
+         else v.fromBufferAttribute(mesh.geometry.getAttribute("position"),index);
+         v.applyMatrix4(mesh.matrixWorld);
+         const delta=v.distanceTo(initial);
+         sum+=delta;if(delta>height*.008)significant++;
+       }
+       sideMotion[side]=sum/halves[side].length;
+       sideMotion[side+"Moved"]=significant;
+     }
+     metrics[key]=sideMotion;
+     part.bone.quaternion.copy(rest.get(part.bone));
+     model.updateWorldMatrix(true,true);
+   }
+   const dominant=key=>metrics[key].negative>=metrics[key].positive?"negative":"positive";
+   const main=key=>Math.max(metrics[key].negative,metrics[key].positive);
+   const sideAligned=dominant("L_UpperLeg")===dominant("L_LowerLeg")&&
+     dominant("R_UpperLeg")===dominant("R_LowerLeg")&&
+     dominant("L_UpperLeg")!==dominant("R_UpperLeg");
+   const bilateral=sideAligned&&required.every(key=>main(key)>=height*.012);
+   return {bilateral,sideAligned,metrics,
+     visualHeight:height,samples:[halves.negative.length,halves.positive.length]};
+ }catch(e){
+   console.warn("CITY OUTBREAK: Panzer leg vertex deformation audit failed",e);
+   return {bilateral:false,reason:String(e)};
+ }finally{
+   for(const [bone,q] of rest)bone.quaternion.copy(q);
+   model.updateWorldMatrix(true,true);
+ }
 }
 function panzerHasAnimatedLegTracks(clip){
  // Many imported Idle clips key every bone even though the legs never move.
@@ -252,7 +353,7 @@ function attachPanzerBossVisual(z){
      part.bone.getWorldQuaternion(worldRotation);
      part.hingeAxis=modelRight.clone().applyQuaternion(worldRotation.invert()).normalize();
    }
-   console.log("CITY OUTBREAK v576: Panzer weighted native leg pivots",{
+   console.log("CITY OUTBREAK v577: Panzer native leg pivots, deformation-audited",{
      clip:walk.name,hasLegTracks:z.panzerNativeWalking,
      detectedLegs:Object.keys(z.panzerNativeLegBones),
      availableClips:clips.map(c=>c.name)
@@ -5922,7 +6023,7 @@ function spawnWave(){
      const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
    }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
-   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v576 RIGHT-LEG TEST — "+(currentBoss?.panzerBossAutoRig?"DUAL LEG AUTO-RIG":"SKINNED LEG RIG"):"PANZER v576 RIGHT-LEG TEST — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v577 REAL MESH TEST — "+(currentBoss?.panzerBossAutoRig?"RE-RIGGED LEGS":"DEFORMATION-CHECKED NATIVE"):"PANZER v577 REAL MESH TEST — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
    updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
