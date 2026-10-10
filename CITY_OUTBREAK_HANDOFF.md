@@ -1,3 +1,19 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v541 RESTORE VISIBLE SMALL CANOPY FLUORESCENT FIXTURES — READ FIRST
+
+**GitHub `main` is the source of truth. User tested v540 and provided a screenshot clearly showing ALL THREE fluorescent fixtures MISSING, while the gas-pump area remained illuminated. This was a regression from v539; user requires 3 visible fixtures, at exactly 50% of v539 scale, without the RIGHT luminaire of each original double fixture. User has not yet approved the revised visuals.**
+
+## v541 root cause and fix
+- v540 returned early in `installGasStationCanopyFixtures(map)` when `source.getObjectByName("Zlight.001")` (and `Zlight`) failed to match loader-generated scene node names. Three.js GLTFLoader sanitizes or renames names, especially punctuation. As a result, **NO THREE CLONES or shared canopy light were added**; screenshot confirms all 3 fixtures absent.
+- Removed that name-dependent early-return block. Now determine source midpoint X from `new THREE.Box3().setFromObject(source)` and iterate actual mesh descendants; each mesh world-bounds midpoint to the RIGHT of original model center belongs to duplicate right fixture. Remove ONLY those mesh descendants, keeping complete left housing, cover glass and both internal tubes regardless of GLTFLoader mesh/node names. The previously inspected actual GLB geometry (12 mesh primitives, separated at X≈0) supports this split. Validate at least 4 mesh components in each half; if an uploaded GLB changes unexpectedly, log a warning but **never make all three light fixtures disappear again**.
+- Maintain v540 half of original v539 model scale by computing scale from the ORIGINAL full-GLB bounds (before trim), then multiply by 0.50. Recenter remaining authentic left fixture so all 3 copies are front-to-back under the 3 gas canopy bays. Keep original GLB asset unchanged. Keep shared spotlight identical and shadowless and v538 fixed six-light streetlight budget.
+- Expose `dataset.gasCanopyFixtures=3`, `dataset.gasCanopySingleLeftLights=3` when trim successful, `gasCanopyRemovedRightMeshes`, `gasCanopyTrimError`, `gasCanopyScaleRatio=0.50` for debugging.
+- Change ONLY `src/game.js`, `index.html` game loader v541, and the newest section at TOP of BOTH handoff documents. `src/game.css` remains v525. Do NOT alter approved shotgun, grenades, explosions, zombies, graphics Settings, collisions, waves or protected `CURRENT_RECOVERY_CHECKPOINT.md` v324.
+- Verify code has 3 clones, GLB bounds determine split, no name lookup early-return, shared spotlight unchanged; check GitHub Pages deploy, then user screenshot visual test. We cannot truthfully assert live in-game visual quality without user's inspection.
+- TEST: https://xboxlivehd88-hue.github.io/city-outbreak/?v=541-visible-small-canopy-fixtures . Look up from beneath the gas station canopy; expect THREE separate small fixture housings, each with two glowing tubes, mounted centrally in each lane. No side-by-side duplicate housings. Confirm placement/brightness/FPS.
+- On next chat read new TOP of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, `src/game.js`, `src/game.css`. Latest GitHub `main` supersedes older notes.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v540 HALF-SIZE SINGLE FLUORESCENT CANOPY LIGHT PER BAY — READ FIRST
 
 **Repo `xboxlivehd88-hue/city-outbreak`, branch `main` remains source of truth. User visually tested v539 and supplied a screenshot: the 3 fixtures were far too large and each had an unwanted duplicate fixture on the RIGHT. User requested: “make them 50% smaller and we dont need the lights on the right of each set”. v539 was NOT visually approved. v540 changes only that requested canopy model size/composition.**

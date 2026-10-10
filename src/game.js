@@ -1367,18 +1367,33 @@ function installGasStationCanopyFixtures(map){
   const fullBox=new THREE.Box3().setFromObject(source);
   if(fullBox.isEmpty())return;
   const originalSize=fullBox.getSize(new THREE.Vector3());
-  // v540: The original uploaded GLB has TWO complete parallel luminaires:
-  // Zlight at source X[-0.79,-0.08] and Zlight.001 at X[0.07,0.78].
-  // Keep only the left Zlight assembly (casing, glass, both fluorescent tubes).
-  // Removing the right subtree also saves its GPU mesh draw calls.
-  const leftAssembly=source.getObjectByName("Zlight");
-  const rightAssembly=source.getObjectByName("Zlight.001");
-  if(!leftAssembly||!rightAssembly?.parent){
-   document.documentElement.dataset.gasCanopyTrimError="Expected Zlight and Zlight.001";
-   console.warn("Gas station fluorescent GLB did not contain its expected parallel assemblies");
-   return;
+  // v541: v540 relied on exact raw GLB node names. GLTFLoader may sanitize
+  // the "." in "Zlight.001"; the mismatch caused an early return, leaving
+  // all THREE canopy rows empty. Select the unwanted RIGHT luminaire by its
+  // actual geometry instead, independent of runtime scene-graph names.
+  // The source GLB has 12 mesh parts: left X[-0.79,-0.08], right X[0.07,0.78].
+  const splitX=fullBox.getCenter(new THREE.Vector3()).x;
+  const rightMeshes=[];
+  let leftMeshCount=0;
+  source.traverse(o=>{
+   if(!o.isMesh)return;
+   const meshBounds=new THREE.Box3().setFromObject(o);
+   if(meshBounds.isEmpty())return;
+   if(meshBounds.getCenter(new THREE.Vector3()).x>splitX)rightMeshes.push(o);
+   else leftMeshCount++;
+  });
+  // A valid original asset has 6 mesh parts in each half. If the model
+  // ever changes, keep it visible rather than returning with NO lights.
+  if(leftMeshCount>=4&&rightMeshes.length>=4){
+   for(const mesh of rightMeshes)mesh.parent?.remove(mesh);
+   document.documentElement.dataset.gasCanopyTrimError="";
+  }else{
+   document.documentElement.dataset.gasCanopyTrimError=
+    "Unexpected mesh split: left "+leftMeshCount+", right "+rightMeshes.length;
+   console.warn("Canopy light trimming skipped, preserving visible fixtures",{
+    leftMeshCount,rightMeshCount:rightMeshes.length
+   });
   }
-  rightAssembly.parent.remove(rightAssembly);
   source.updateMatrixWorld(true);
   const baseBox=new THREE.Box3().setFromObject(source);
   if(baseBox.isEmpty())return;
@@ -1437,9 +1452,13 @@ function installGasStationCanopyFixtures(map){
   document.documentElement.dataset.gasCanopyFixtures=String(gasCanopyFixtures.length);
   document.documentElement.dataset.gasCanopyRows=gasCanopyFixtures.map(f=>f.position.x.toFixed(2)).join(",");
   document.documentElement.dataset.gasCanopyCeiling=underside.toFixed(3);
-  document.documentElement.dataset.gasCanopySingleLeftLights="3";
+  document.documentElement.dataset.gasCanopySingleLeftLights=
+   leftMeshCount>=4&&rightMeshes.length>=4?"3":"0";
+  document.documentElement.dataset.gasCanopyRemovedRightMeshes=String(
+   leftMeshCount>=4&&rightMeshes.length>=4?rightMeshes.length:0
+  );
   document.documentElement.dataset.gasCanopyScaleRatio="0.50";
-  console.log("CITY OUTBREAK: 3 half-size single fluorescent GLB fixtures under station canopy",{
+  console.log("CITY OUTBREAK: 3 half-size canopy fixtures with geometry-trimmed right duplicates",{
    rows:gasCanopyFixtures.length,model:GAS_CANOPY_LIGHT_GLB,
    underside,roofCenter:roofCenter.toArray(),scale,sharedLight:true
   });
