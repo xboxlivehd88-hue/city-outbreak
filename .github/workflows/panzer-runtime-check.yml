@@ -1,0 +1,24 @@
+name: Panzer actual right-leg browser test
+on:
+  push:
+    paths:
+      - '.github/workflows/panzer-runtime-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  panzer-legs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless Chromium
+        run: |
+          npm init -y >/dev/null
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Inspect actual native right hip/knee and skinned vertices
+        run: node scripts/panzer_runtime_smoke.cjs
