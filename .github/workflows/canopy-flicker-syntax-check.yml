@@ -1,4 +1,4 @@
-name: v552 natural crawler scale and obsolete gore validation
+name: Inspect native crawler face materials and animation offsets
 on:
   push:
     branches: [canopy-inspection-probe]
@@ -10,29 +10,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Confirm v552 ES-module syntax and targeted crawler changes
+      - name: Inspect face alpha, local geometry and original rest pose
         run: |
-          node --input-type=module --check < src/game.js
-          grep -F 'src="./src/game.js?v=552"' index.html
-          grep -F 'const NATURAL_CRAWLER_SCALE=2.0;' src/game.js
-          grep -F 'const naturalCrawlerSpawn=kind==="crawler"&&forcedKind!=="crawler";' src/game.js
-          grep -F 'makeZombie(x,zp,oldIndex,"crawler")' src/game.js
-          grep -F 'hideNativeCrawlerVisual(z);' src/game.js
-          test -f MODEL_CREDITS.md
-          node <<'NODE'
-          const fs=require('fs'),assert=require('assert');
-          const g=fs.readFileSync('src/game.js','utf8');
-          const start=g.indexOf('function attachNaturalCrawlerVisual(');
-          const end=g.indexOf('function updateNaturalCrawlerVisual(');
-          assert(start>0&&end>start,'native crawler function present');
-          const block=g.slice(start,end);
-          const hide=block.indexOf('hideNativeCrawlerVisual(z);');
-          const add=block.indexOf('z.g.add(holder);');
-          assert(hide>=0&&add>hide,'old gore hidden before the new GLB is added');
-          assert(!block.includes('if(!o.isMesh||o.userData.visualOnly)return;'),'old red gore no longer skipped by hiding loop');
-          assert(block.includes('holder.scale.setScalar(NATURAL_CRAWLER_SCALE);'),'only visual scale adjusted');
-          assert(g.includes('function hideNativeCrawlerVisual(crawler)'),'legacy hide helper preserved');
-          assert(g.includes('function convertLeglessToCrawler(z)'),'converted crawlers preserved');
-          assert(g.includes('function updateBodyPbd(z,rag,dt)'),'ragdoll preserved');
-          console.log('PASS: v552 scale and pre-GLB all-legacy-gore hiding, leg-loss isolation');
-          NODE
+          python3 - <<'PY'
+          import json,struct
+          from pathlib import Path
+          b=Path('assets/zombie_number_3_-_animated.glb').read_bytes()
+          n,t=struct.unpack_from('<II',b,12);j=json.loads(b[20:20+n])
+          for k,v in enumerate(j.get('materials',[])):
+           p=v.get('pbrMetallicRoughness',{})
+           print('MATERIAL',k,v.get('name'),'alphaMode',v.get('alphaMode'),'baseColor',p.get('baseColorFactor'),'doubleSided',v.get('doubleSided'),'alphaCutoff',v.get('alphaCutoff'))
+          for k,v in enumerate(j.get('nodes',[])):
+           if any(s in v.get('name','').lower() for s in ['head_','neck_','hips_','spine2_','leftforearm_','righthand_','rightfoot_']):
+            print('BONE',k,v.get('name'),'T',v.get('translation'),'Q',v.get('rotation'),'scale',v.get('scale'))
+          for k,v in enumerate(j.get('meshes',[])):
+           print('MESH',k,v.get('name'),[x.get('material') for x in v['primitives']])
+          print('FACE_MATERIAL_CHECK_COMPLETE')
+          PY
