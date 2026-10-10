@@ -1,3 +1,15 @@
+# v575 — PANZER COORDINATED LEG STEP AND NATIVE HINGE AXES — 2026-10-10
+
+- User tested v574 and says Panzer's walk **still does not look right**. Not visually approved; do not put him in the normal boss rotation.
+- Identified source-level weakness: v571-v574 relied on sinusoidal thigh/squat/ankle values that were not phased as a complete stance-and-swing step, while imported thigh animation could fight independent knee angles. More importantly, native bones were rotated about their arbitrary local X axes, which are not guaranteed to be knee/hip hinge axes in uploaded glTF skeletons.
+- v575 uses a Panzer-only, distance-driven **60% planted stance + 40% recovery swing**. Each leg has coordinated hip sweep, small stance flex, pronounced knee fold during foot recovery, and counter-rotating ankle; left/right legs are precisely half a stride apart. Smoothly blends down when Panzer stops.
+- For a native-skinned Panzer, preserve the uploaded clip's non-leg movement, while overwriting ONLY the six lower-body bone rotations after mixer update with the coordinated stepping gait. Calculate each joint's LOCAL hinge axis from the Panzer model's actual world-space right vector at bind pose instead of assuming arbitrary glTF local X aligns with the knee pivot. Any imported upper-body animation continues to play.
+- For the procedural Panzer auto-rig, use the same synchronized step on its known Walker leg bones. The v573 skin-weight test now requires 32 influenced vertex assignments per shin (rather than four, which could be incidental) before trusting a native deforming knee. If insufficient, keep the existing Panzer-specific weighted auto-rig.
+- Keep **approved** `PANZER_VISUAL_HEIGHT=3.20` and v570 post-animation world-bound calibration and ground placement EXACTLY untouched; preserve Panzer source appearance, orientation, all hitboxes and explosion checks, stats/attacks, boss AI, Suit Guy, other zombies, natural crawler size 1.53, graphics/weapons/map and protected v324 recovery.
+- Temporary solo **Wave 1 Panzer** remains. `index.html` loads `./src/game.js?v=575`. Browser tab and spawn message show v575 so user can confirm new code delivered. Source and isolated gait tests are not a visual confirmation; user must watch feet/knees walking toward player and approve.
+
+---
+
 # v574 — PANZER WALK DEPLOYMENT FINGERPRINT — 2026-10-10
 
 - User reported the last knee fixes were visually indistinguishable, and asked whether GitHub or Pages updated. v573 added real knee skin-weight validation and Panzer-specific procedural knee fallback. The live GitHub Pages asset could not be independently fetched in this environment, so do NOT claim Pages deployment or browser visual success is verified.
