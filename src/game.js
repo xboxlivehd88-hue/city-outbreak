@@ -19,6 +19,10 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
 // v570: match Suit Guy's 3.2-unit boss visual height using the actual
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
+// Visible deployment fingerprint, temporary during Wave 1 Panzer testing.
+// If the browser tab doesn't show v574, it isn't executing this build.
+document.title="CITY OUTBREAK — PANZER WALK v574";
+document.documentElement.dataset.panzerTestBuild="574";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  panzerBossAsset=gltf;
@@ -5877,7 +5881,7 @@ function spawnWave(){
      const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
    }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
-   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER ZOMBIE SPAWNED NEARBY":"PANZER ZOMBIE — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v574 WALK TEST — "+(currentBoss?.panzerBossAutoRig?"WEIGHTED KNEES":"NATIVE KNEES"):"PANZER v574 WALK TEST — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
    updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
