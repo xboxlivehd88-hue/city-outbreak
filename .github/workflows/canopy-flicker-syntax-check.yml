@@ -1,4 +1,4 @@
-name: v545 canopy flicker JavaScript syntax check
+name: v546 canopy flicker JavaScript syntax check
 on:
   push:
     branches: [canopy-inspection-probe]
@@ -19,4 +19,6 @@ jobs:
           grep -F 'const scale=.5*Math.min' src/game.js
           grep -F 'return t+18000+Math.random()*36000;' src/game.js
           grep -F 'item.material.color.copy(item.color)' src/game.js
+          grep -F 'gasCanopyFirstApproachArmed&&running&&distance<=6' src/game.js
+          grep -F 'next:Infinity' src/game.js
           grep -F 'document.documentElement.dataset.gasCanopyFlickerEvents' src/game.js
