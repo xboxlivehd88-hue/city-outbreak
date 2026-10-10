@@ -77,5 +77,35 @@ jobs:
            if 'tube_light' in filename:
             print('LIGHT NODE LIST')
             for idx,n in enumerate(nodes):print(idx,n.get('name'),n.get('translation'),n.get('rotation'),n.get('scale'),n.get('mesh'))
+          # Additional canopy roof vertex measurements for placement precision.
+          from collections import Counter
+          raw=Path('assets/chicken_gun_fruzer_-_city.glb').read_bytes()
+          doc=open_glb('assets/chicken_gun_fruzer_-_city.glb')
+          jlen=struct.unpack_from('<I',raw,12)[0]
+          boff=20+jlen+8
+          nodes=doc['nodes'];accessors=doc['accessors'];views=doc['bufferViews'];meshes=doc['meshes']
+          found=[]
+          def find_world(i,anc):
+           n=nodes[i];world=mul(anc,mats(n))
+           if i==605:found.append(world)
+           for child in n.get('children',[]):find_world(child,world)
+          for root in doc['scenes'][0]['nodes']:find_world(root,I)
+          wm=found[0]
+          for p in meshes[nodes[605]['mesh']]['primitives']:
+           a=accessors[p['attributes']['POSITION']];view=views[a['bufferView']]
+           at=boff+view.get('byteOffset',0)+a.get('byteOffset',0)
+           stride=view.get('byteStride',12)
+           verts=[]
+           for k in range(a['count']):
+            v=struct.unpack_from('<fff',raw,at+k*stride)
+            verts.append([sum(wm[c*4+r]*[v[0],v[1],v[2],1][c] for c in range(4)) for r in range(3)])
+           ylevels=Counter(round(v[1],2) for v in verts)
+           print('GAS_STATION_PRIMITIVE',len(verts),'material',p.get('material'))
+           print('GAS_TOP_Y_LEVELS',ylevels.most_common(26))
+           for yi,count in ylevels.most_common(22):
+            if yi<-17.0:continue
+            group=[v for v in verts if abs(v[1]-yi)<.009]
+            print('HEIGHT_SLICE',yi,count,'X',round(min(v[0] for v in group),3),round(max(v[0] for v in group),3),'Z',round(min(v[2] for v in group),3),round(max(v[2] for v in group),3))
+          print('ROOF_PROFILE_COMPLETE')
           print('PROBE_COMPLETE')
           PY
