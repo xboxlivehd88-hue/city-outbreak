@@ -1,3 +1,12 @@
+# v565 — SUIT BOSS CHEST AND EXPLOSION HITBOXES — 2026-10-10
+
+- User reports no chest hitbox and explosion contact on v564 suit boss. Source inspection: old `BossChestHitbox` and launcher contact at y=1.43 (procedural model), while uploaded suit model is larger. Splash area damage previously measured only from feet.
+- v565 invokes the existing skinned hitbox builder for the **suit boss only**, attaches torso/hip/limb collision to the animated suit rig, moderately widens chest and hip zones, disables old procedural raycasts, and preserves the v559 head hitbox as the only active headshot target.
+- The grenade launcher now checks a swept flight segment against the suit body volumes. Hand grenades and launcher blasts measure distance to those volumes for the suit boss. Original damage values and all non-suit zombie blast behavior unchanged.
+- Preserve boss v563 elbow skinning, v564 reaching/knee gait, Wave 1 test spawn, natural crawler scale 1.53, all weapons, and v324 recovery. **Needs user testing; not yet approved.** Active loader `./src/game.js?v=565`.
+
+---
+
 # v564 — SUIT BOSS FORWARD-REACHING ARMS AND BENT-KNEE GAIT — 2026-10-10
 
 - User **approved v563 elbow appearance** and requested the suit boss hold his arms forward toward the player, plus stop walking so straight-legged. No skin-weight, bone layout, rig or headshot changes made.
