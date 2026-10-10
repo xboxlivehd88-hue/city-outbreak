@@ -1,3 +1,13 @@
+# v571 — PANZER ONLY WALKING CYCLE, APPROVED SIZE PRESERVED — 2026-10-10
+
+- User **approved v570 Panzer size** and requested that he actually walk while leaving every other Panzer feature unchanged. Do NOT change his size, armor pose, orientation, hitboxes, attacks, stats or the approved Suit Guy.
+- Native Panzer GLB: loader already plays an imported clip if available, but v570 can choose an `Idle` or unnamed action rather than walking. v571 selects a walking/locomotion clip **with real leg animation tracks** first, then checks unnamed clips with leg motion, before falling back to existing clip selection. Detects lower-body bones in the imported GLB.
+- If no usable imported walking clip exists, a new independent `syncPanzerBossWalk` applies a distance-driven gait **only to thigh/knee/ankle joints**, without modifying the approved upper-body/accessories/attacks; automatic skinning fallback also uses the Panzer-only leg gait instead of Suit Guy's arm-and-torso animation. If an imported walk clip already animates legs, v571 leaves the native clip in charge.
+- `PANZER_VISUAL_HEIGHT=3.20` and **post-animation precise world-bound size calibration** are exactly unchanged, including root contact/placement. Existing scaled Panzer chest/head/leg/explosive hitboxes remain untouched. Other zombie types and all boss rotation including Suit Guy untouched.
+- Panzer remains solo Wave 1 test, NOT added to 10-wave boss rotation until user approves walking; v324 recovery untouched. Loader v571. User must verify natural leg stepping in browser and report if still sliding/no walk; no unverified visual-success claims.
+
+---
+
 # v570 — PANZER MODEL SCALE CALIBRATED FROM ANIMATED GEOMETRY — 2026-10-10
 
 - User screenshot of v569 shows Panzer **still dramatically oversized**, even after 3.2->1.8 normalized height reduction. User explicitly requests Panzer match **Suit Guy** boss dimensions.
