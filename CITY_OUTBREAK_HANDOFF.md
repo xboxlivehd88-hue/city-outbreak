@@ -1,3 +1,13 @@
+# v562 — SUIT BOSS SKELETON WEIGHTS AND WALK CYCLE REWORK — 2026-10-10
+
+- v561 REJECTED by user screenshot: shoulders deform into wings, stiff/unnatural walk. Model asset is static with no glTF skin or animation tracks (verified source).
+- Compared actual GLB vertex bounds, especially T-pose arms concentrated near original local Y~0.35; prior inferred shoulders were too high. Corrected boss-only upper arm joint Y relative to chest from +.025h to -.035h, narrowed T-pose arm region, and smoothly blends root arm vertices into chest across the shoulder seam instead of rigid torso/arm division.
+- New separate `syncSuitBossWalk` uses distance-traveled stride phase, gentler legs with knee follow-through, stable torso counterrotation, and dedicated hanging-arm front/back swings. Regular Shambler animations stay on their existing pathway and are NOT modified. Existing v559 boss headshot volume remains in place.
+- Wave 1 boss test stays mandatory; all other systems including v555 crawler scale 1.53 and protected v324 untouched. Needs user to visually test; no approval or live-browser testing claimed.
+- Loader `./src/game.js?v=562`.
+
+---
+
 # v561 — SUIT BOSS LOCOMOTION TEST — 2026-10-10
 
 - User v560 screenshot shows correct facing, distorted shoulders, stiff walk. Source GLB has no skin/skeleton/animations. Temporary boss-specific gait: increased hip strides and knees, more visible opposite arm swing, small footfall bob; regular walkers unaffected. Existing v559 headshot and v560 T-pose skinning retained. This does not substitute for professionally rigged GLB; user test pending.
