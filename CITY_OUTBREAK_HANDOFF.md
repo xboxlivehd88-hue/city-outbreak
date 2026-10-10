@@ -1,3 +1,19 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v544 GAS-STATION FLUORESCENTS MATCH RARE STREETLAMP RNG FLICKER — READ FIRST
+
+**Repo `xboxlivehd88-hue/city-outbreak`, branch `main` is authoritative. User requested: give the three already-approved size/placement gas-station fluorescents the SAME rare, independent random flicker as the city's streetlights. Keep distance behavior and fixed spotlight budget, do not touch v543 hydrant removal or other game mechanics. Visual approval of flickering pending user test.**
+
+## v544 changes
+- `src/game.js` adds three independent `gasCanopyFlickerStates`, initialized once during existing v541 fixture cloning. Each fixture (not its individual twin tubes) flickers separately, independent of the other two and independent of streetlamp heads. Uses **same** `nextStreetLampFlickerTime(t)` for randomized 14-90s wait, extra per-fixture initial 0-12s offset; same `90+random*330` millisecond short flicker interval, fresh random seed, and exact same `chaos=sin((t+seed)*.082)+sin((t+seed*7.1)*.193)` / brightness `0.08, 0.34, 0.72` dips. Otherwise each remains full brightness. Not a frequent synchronized horror strobe.
+- Bulb MeshBasicMaterial colors and translucent-glass emissive intensity multiply their original brightness by **both** v542 distance fade and their own corresponding fixture's RNG flicker factor. Off distance remains 34 game units beyond gas canopy edge, fully on within 12, smooth in between. After async load apply initial state immediately, then update per frame using same clock `t` as streetlights.
+- One stationary gas canopy warm fill SpotLight intensity follows distance and **average flicker of the 3 independent fixtures**, so the pump floor subtly reacts. Crucial: no new real lights, no `.visible` changes on moving/flicker, fixed six streetlamps on High and fixed one gas-canopy light remain. Graphics preset Off still disables real canopy SpotLight; v534 Low/Very Low remain cheap. `syncGasCanopyLighting` respects cached average brightness on preset changes.
+- Exposes `html.dataset.gasCanopyIndependentFlickerRows=3` for source diagnostic. Keeps authentic GLB, three rows, original-size ×0.50 single-luminaire geometry-trim, front-to-back placement; do not remove lights again. Existing `gasCanopyFixtures=3`, v542 distance fade, v543 OFFICE hydrant removal, v538 fixed streetlamp budget all protected.
+- Only `src/game.js`, `index.html` loader v544, and both handoff documents updated. `src/game.css` v525, city/fixture GLBs, `CURRENT_RECOVERY_CHECKPOINT.md` (v324), gameplay physics/weapons/zombies and all other modules untouched.
+- Verify exact-3 fixture count, independent 3 RNG states, same streetlight timing/dip function, unchanged spotlight count/visibility, distance fade, `src/game.js?v=544`, and successful Pages deploy. User should test near gas station for up to ~1–2 minutes to witness RARE flickers, watch that the three never all blink deliberately in sync and floor glow responds subtly. No unverified FPS or live visual claims.
+- Play after successful deploy: https://xboxlivehd88-hue.github.io/city-outbreak/?v=544-independent-gas-canopy-flicker
+- Next chat MUST read newest TOP sections of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, `src/game.js`, `src/game.css` from GitHub main before touching anything.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v543 REMOVE ONE MISPLACED OFFICE SIDEWALK HYDRANT — READ FIRST
 
 **GitHub `main` on `xboxlivehd88-hue/city-outbreak` is authoritative. User provided 3 screenshots of a red hydrant standing awkwardly in the middle of the sidewalk near the OFFICE entry and explicitly clarified that the object the crosshair is pointing at should be removed. THIS is the specific red fire hydrant, not the OFFICE entrance structure. All prior approved gameplay/lighting retained; visual verification still needed.**

@@ -1344,18 +1344,48 @@ const GAS_CANOPY_UNDERSIDE_OFFSET_LOCAL=.61;
 const GAS_CANOPY_FULL_LIGHT_DISTANCE=12;
 const GAS_CANOPY_OFF_LIGHT_DISTANCE=34;
 const gasCanopyFixtures=[],gasCanopyBulbs=[],gasCanopyGlassMaterials=[];
+const gasCanopyFlickerStates=[]; // One independent rare flicker state per fixture.
 let gasCanopyFillLight=null,gasCanopyBounds=null,gasCanopyFade=0;
-let gasCanopyGlowActive=null;
+let gasCanopyGlowActive=null,gasCanopySharedBrightness=1;
 function syncGasCanopyLighting(){
  if(!gasCanopyFillLight)return;
  // Shader-light count only changes when graphics presets change, never from
  // movement or a rapid turn (v538 FPS protection).
  const mode=graphicsOptions.lights;
  gasCanopyFillLight.visible=mode!=="off";
- gasCanopyFillLight.intensity=(mode==="full"?355:mode==="half"?210:0)*gasCanopyFade;
+ gasCanopyFillLight.intensity=(mode==="full"?355:mode==="half"?210:0)*
+  gasCanopyFade*gasCanopySharedBrightness;
 }
-function updateGasCanopyLighting(dt,instant=false){
+// v544: use the EXACT same rare randomized timings and chaotic 0.08 / 0.34
+// / 0.72 dip levels as the streetlamps, but a separate state for each fixture.
+function updateGasCanopyFlicker(t){
+ let total=0;
+ for(const s of gasCanopyFlickerStates){
+  if(!s.until&&t>=s.next){
+   s.until=t+90+Math.random()*330;
+   s.seed=Math.random()*1000;
+  }
+  let brightness=1;
+  if(s.until){
+   if(t>=s.until){
+    s.until=0;
+    s.next=nextStreetLampFlickerTime(t);
+   }else{
+    const chaos=Math.sin((t+s.seed)*.082)+Math.sin((t+s.seed*7.1)*.193);
+    brightness=chaos>1.0?.08:chaos>.30?.34:.72;
+   }
+  }
+  s.brightness=brightness;
+  total+=brightness;
+ }
+ // One shared static pump spotlight averages the three luminaires' flicker;
+ // do not add 3 new dynamic spotlights or change light visibility in motion.
+ gasCanopySharedBrightness=gasCanopyFlickerStates.length?
+  total/gasCanopyFlickerStates.length:1;
+}
+function updateGasCanopyLighting(dt,instant=false,t=performance.now()){
  if(!gasCanopyFillLight||!gasCanopyBounds)return;
+ updateGasCanopyFlicker(t);
  const b=gasCanopyBounds;
  const dx=Math.max(b.minX-px,0,px-b.maxX);
  const dz=Math.max(b.minZ-pz,0,pz-b.maxZ);
@@ -1371,17 +1401,21 @@ function updateGasCanopyLighting(dt,instant=false){
  for(const bulb of gasCanopyBulbs){
   bulb.mesh.visible=bulbsOn;
   if(bulbsOn){
+   const brightness=gasCanopyFlickerStates[bulb.row]?.brightness??1;
    for(const entry of bulb.colors){
-    entry.material.color.copy(entry.color).multiplyScalar(gasCanopyFade);
+    entry.material.color.copy(entry.color).multiplyScalar(gasCanopyFade*brightness);
    }
   }
  }
  for(const item of gasCanopyGlassMaterials){
-  item.material.emissiveIntensity=item.intensity*gasCanopyFade;
+  const brightness=gasCanopyFlickerStates[item.row]?.brightness??1;
+  item.material.emissiveIntensity=item.intensity*gasCanopyFade*brightness;
  }
- // No visibility toggles for real spotlight on camera turns/distance checks.
+ // Shared light dims naturally with the 3 bulbs' average brightness, while
+ // spotlight visibility stays constant so camera turns do not recompile shaders.
  gasCanopyFillLight.intensity=
-  (graphicsOptions.lights==="full"?355:graphicsOptions.lights==="half"?210:0)*gasCanopyFade;
+  (graphicsOptions.lights==="full"?355:graphicsOptions.lights==="half"?210:0)*
+  gasCanopyFade*gasCanopySharedBrightness;
  if(gasCanopyGlowActive!==bulbsOn){
   gasCanopyGlowActive=bulbsOn;
   document.documentElement.dataset.gasCanopyLightsOn=String(bulbsOn);
@@ -1446,6 +1480,11 @@ function installGasStationCanopyFixtures(map){
   for(let i=0;i<3;i++){
    const fixture=source.clone(true);
    fixture.name="GasStationCanopyFluorescentRow"+(i+1);
+   // Match streetlamp rare events, offset independently for every fixture.
+   gasCanopyFlickerStates.push({
+    next:nextStreetLampFlickerTime(performance.now()+Math.random()*12000),
+    until:0,seed:Math.random()*1000,brightness:1
+   });
    fixture.scale.setScalar(scale);
    const rowX=roof.min.x+width*(i+.5)/3;
    // top edge of lamp mounts flush just BELOW the measured roof underside.
@@ -1464,7 +1503,7 @@ function installGasStationCanopyFixtures(map){
       }));
       if(!Array.isArray(source.getObjectByName(o.name)?.material))o.material=o.material[0];
       const bulbMats=Array.isArray(o.material)?o.material:[o.material];
-      gasCanopyBulbs.push({mesh:o,colors:bulbMats.filter(m=>m?.color).map(m=>({
+      gasCanopyBulbs.push({row:i,mesh:o,colors:bulbMats.filter(m=>m?.color).map(m=>({
        material:m,color:m.color.clone()
       }))});
     }else if(/CoverGlass/i.test(o.name||"")){
@@ -1477,7 +1516,7 @@ function installGasStationCanopyFixtures(map){
       if(!Array.isArray(source.getObjectByName(o.name)?.material))o.material=o.material[0];
       const glassMats=Array.isArray(o.material)?o.material:[o.material];
       for(const material of glassMats)if(material?.emissive){
-       gasCanopyGlassMaterials.push({material,intensity:material.emissiveIntensity});
+       gasCanopyGlassMaterials.push({row:i,material,intensity:material.emissiveIntensity});
       }
     }
    });
@@ -1508,6 +1547,8 @@ function installGasStationCanopyFixtures(map){
    leftMeshCount>=4&&rightMeshes.length>=4?rightMeshes.length:0
   );
   document.documentElement.dataset.gasCanopyScaleRatio="0.50";
+  document.documentElement.dataset.gasCanopyIndependentFlickerRows=
+   String(gasCanopyFlickerStates.length);
   console.log("CITY OUTBREAK: 3 half-size canopy fixtures with geometry-trimmed right duplicates",{
    rows:gasCanopyFixtures.length,model:GAS_CANOPY_LIGHT_GLB,
    underside,roofCenter:roofCenter.toArray(),scale,sharedLight:true
@@ -7362,7 +7403,7 @@ function frame(t){
  }
  if(!paused)update(dt);
  updateStreetLampLighting(t);
- updateGasCanopyLighting(dt);
+ updateGasCanopyLighting(dt,false,t);
  updateRainEffect(dt,t);
  earlyNightSky.position.copy(cam.position);
  earlyNightSkyUniforms.uTime.value=t*.001;
