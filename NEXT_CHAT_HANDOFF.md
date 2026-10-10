@@ -1,3 +1,10 @@
+# v557 — SUIT BOSS WAVE 1 VISIBILITY FIX — 2026-10-10
+
+- User reported v556 suit guy boss did not show up. First-wave test spawn used normal boss distance 36–70m; v557 uses reachable candidate 12–22m and near fallback. Remaining boss waves unchanged. Adds console diagnostics and visible GLB-load error and non-culled model rendering. User validation pending.
+- Loader ./src/game.js?v=557. New GLB remains assets/suit guy boss.glb. Original boss combat and protected v324, natural crawler, other gameplay unchanged.
+
+---
+
 # v556 — SUIT GUY TEST BOSS — 2026-10-10
 
 - Uploaded `assets/suit guy boss.glb` at commit `0d686bb8bba2710dfa14e399c72689cc15d778ef`.
