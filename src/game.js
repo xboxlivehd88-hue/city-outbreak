@@ -13,6 +13,100 @@ import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments} fro
 // v567: suit boss model is selected only when its name is drawn on a normal
 // boss wave (every 10th wave); preserve the approved v566 rig and collision.
 const SUIT_BOSS_NAME="SUIT GUY";
+// v568: panzer_zombie.glb — dedicated, isolated Wave 1 boss test.
+// This model is not part of BOSS_NAME_POOL until its behavior is approved.
+const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
+let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null;
+new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
+ panzerBossAsset=gltf;
+ // Preserve imported skeleton / animation clips when supplied. Static GLBs
+ // instead use a measured auto-rig so they do not simply walk in T-pose.
+ if(!gltf.animations?.length){
+   const extent=new THREE.Box3().setFromObject(gltf.scene),sz=new THREE.Vector3();
+   extent.getSize(sz);
+   const tPose=sz.y>0&&sz.x/sz.y>.68;
+   panzerBossFallbackTemplate=buildBasicWalkerTemplate(gltf.scene,tPose);
+ }
+ console.log("CITY OUTBREAK v568: panzer boss source loaded",{
+   animations:gltf.animations?.map(c=>c.name)||[],
+   autoRig:!!panzerBossFallbackTemplate
+ });
+ for(const z of zombies)if(z.kind==="boss"&&z.bossName===PANZER_BOSS_NAME&&!z.panzerBossVisual)attachPanzerBossVisual(z);
+},undefined,e=>{panzerBossLoadError=e;console.error("CITY OUTBREAK: Panzer Zombie GLB failed to load",e)});
+
+function attachPanzerBossVisual(z){
+ if(!z||z.dead||z.kind!=="boss"||z.bossName!==PANZER_BOSS_NAME||z.panzerBossVisual||!panzerBossAsset)return;
+ const native=panzerBossAsset.animations?.length>0;
+ const model=native?SkeletonUtils.clone(panzerBossAsset.scene):
+             panzerBossFallbackTemplate?SkeletonUtils.clone(panzerBossFallbackTemplate):null;
+ if(!model){console.error("CITY OUTBREAK: Panzer model has no compatible scene/auto-rig");return}
+ const holder=new THREE.Group();holder.name="PanzerBossVisual";
+ let sourceH=0;
+ if(native){
+   const box=new THREE.Box3().setFromObject(model),center=new THREE.Vector3();
+   box.getCenter(center);sourceH=box.max.y-box.min.y;
+   model.position.x-=center.x;model.position.y-=box.min.y;model.position.z-=center.z;
+ }else{
+   sourceH=panzerBossFallbackTemplate.userData.sourceHeight;
+ }
+ if(!Number.isFinite(sourceH)||sourceH<.001){console.error("CITY OUTBREAK: Panzer GLB has invalid height",sourceH);return}
+ holder.scale.setScalar(3.2/sourceH);
+ holder.rotation.y=Math.PI;
+ holder.add(model);z.g.add(holder);z.panzerBossVisual=holder;
+ z.panzerSourceHeight=sourceH;
+ if(native){
+   const clips=panzerBossAsset.animations;
+   const walk=clips.find(c=>/walk|locomotion|move|run|shamble/i.test(c.name))||clips.find(c=>/idle/i.test(c.name))||clips[0];
+   const mixer=new THREE.AnimationMixer(model);
+   mixer.clipAction(walk).reset().play();
+   z.panzerBossMixer=mixer;
+   z.panzerBossAnimation=walk.name;
+ }else{
+   // Retain the approved auto-rig locomotion bridge for unanimated meshes.
+   z.panzerBossAutoRig=true;z.walkerVisual=holder;z.walkerModel=model;
+   z.walkerSourceHeight=sourceH;z.walkerBones=new Map();
+   for(const key of BASIC_WALKER_BONE_KEYS){
+     const bone=model.getObjectByName("Walker"+key);
+     if(bone)z.walkerBones.set(key,bone);
+   }
+   z.walkerLastX=z.g.position.x;z.walkerLastZ=z.g.position.z;z.walkerMoveBlend=0;
+ }
+ // A separate conservative test collider set matches the full Panzer stature;
+ // none of the old procedural hit meshes are allowed to steal shots.
+ if(z.hitMeshes)for(const hit of z.hitMeshes)if(hit)hit.raycast=()=>{};
+ const mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false});
+ const hits=[];
+ const add=(name,geo,y,part,head=false)=>{
+   const hit=new THREE.Mesh(geo,mat);hit.name=name;hit.position.set(0,y,0);
+   hit.userData.zombie=z;hit.userData.part=part;if(head)hit.userData.isHead=true;
+   hit.castShadow=false;hit.receiveShadow=false;
+   z.g.add(hit);hits.push(hit);z.ownedGeometries.push(geo);return hit;
+ };
+ add("PanzerChestHitbox",new THREE.BoxGeometry(.86,.85,.61),2.15,"torso");
+ add("PanzerAbdomenHitbox",new THREE.BoxGeometry(.72,.66,.56),1.46,"torso");
+ add("PanzerPelvisHitbox",new THREE.BoxGeometry(.60,.44,.51),.98,"torso");
+ add("PanzerLeftLegHitbox",new THREE.BoxGeometry(.30,.92,.38),.48,"leftLeg").position.x=-.19;
+ add("PanzerRightLegHitbox",new THREE.BoxGeometry(.30,.92,.38),.48,"rightLeg").position.x=.19;
+ const headGeo=new THREE.SphereGeometry(1,14,10),head=add("PanzerHeadHitbox",headGeo,2.92,"head",true);
+ head.scale.set(.235,.245,.22);
+ // Procedural Panzer can follow the animated head bone instead of the root.
+ if(!native&&z.walkerBones?.get("Head")){
+   const bone=z.walkerBones.get("Head");
+   z.g.remove(head);bone.add(head);
+   head.position.set(0,sourceH*.05,0);
+   const invScale=sourceH/3.2;
+   head.scale.multiplyScalar(invScale);
+ }
+ z.ownedMaterials.push(mat);z.hitMeshes=hits;z.panzerBossHitboxes=hits;
+ z.suitBossBlastHitboxes=hits; // uses v565 body-based splash + swept projectile collision
+ if(z.rigVisual)z.rigVisual.visible=false;
+ console.log("CITY OUTBREAK v568: Panzer boss attached",{
+   importedAnimation:z.panzerBossAnimation||null,
+   proceduralBones:z.walkerBones?.size||0,
+   hitboxes:hits.length
+ });
+}
+
 let suitBossTemplate=null,suitBossLoadError=null;
 new GLTFLoader().load("assets/suit%20guy%20boss.glb?v=556",gltf=>{
   suitBossTemplate=buildBasicWalkerTemplate(gltf.scene,true);
@@ -4339,6 +4433,9 @@ function syncSuitBossWalk(z,dt){
  rot("R_Foot",-.58*rk+.08*s*walking);
 }
 function syncBasicWalkerVisual(z,dt=0){
+ // An imported Panzer animation owns its original skeleton. Never overwrite it
+ // with the procedural Shambler bone rotations.
+ if(z?.panzerBossMixer){if(!z.dead)z.panzerBossMixer.update(dt);return}
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
  if(z.crawlerUpperVisual===holder&&syncCrawlerUpperVisual(z))return;
  holder.rotation.y=Math.PI;
@@ -4418,7 +4515,7 @@ function syncBasicWalkerVisual(z,dt=0){
    return;
  }
  if(z.knockdown)return;
- if(z.suitBossVisual){syncSuitBossWalk(z,dt);return;}
+ if(z.suitBossVisual||z.panzerBossAutoRig){syncSuitBossWalk(z,dt);return;}
 
  const gx=z.g.position.x,gz=z.g.position.z,lastX=Number.isFinite(z.walkerLastX)?z.walkerLastX:gx,lastZ=Number.isFinite(z.walkerLastZ)?z.walkerLastZ:gz;
  const moved=Math.hypot(gx-lastX,gz-lastZ);z.walkerLastX=gx;z.walkerLastZ=gz;
@@ -5255,7 +5352,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(kind==="radiated")buildRadiatedGreenHitboxes(zz);
  if(kind==="shambler")buildBasicWalkerHitboxes(zz);
  if(naturalCrawlerSpawn)attachNaturalCrawlerVisual(zz);
- zombies.push(zz);if(kind==="boss"){currentBoss=zz;attachSuitBossVisual(zz)}
+ zombies.push(zz);if(kind==="boss"){currentBoss=zz;attachSuitBossVisual(zz);attachPanzerBossVisual(zz)}
 }
 
 function medkit(x,z){let g=new THREE.Group();box(1,.38,.72,M(0xe7e4da),0,.35,0,g);box(.18,.05,.5,M(0xa52c2c),0,.56,0,g);box(.5,.05,.18,M(0xa52c2c),0,.56,0,g);g.position.set(x,0,z);scene.add(g);kits.push({g,used:false})}medkit(-10,8);medkit(16,56);medkit(-17,91);
@@ -5547,18 +5644,29 @@ function spawnQueuedZombies(){
 }
 function spawnWave(){
  let d=diff(wave);currentBoss=null;recentZombieSpawnPoints.length=0;zombieSpawnAngleOffset=rnd()*Math.PI*2;
- if(isBossWave(wave)){
-   // v567: use the standard 10-wave boss schedule and existing rotating boss names.
-   const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
+ if(isBossWave(wave)||wave===PANZER_BOSS_TEST_WAVE){
+   // v568: Wave 1 is ONLY a Panzer testing wave; every 10th wave still uses
+   // the established Suit Guy + original randomized boss-name rotation.
+   const panzerTest=wave===PANZER_BOSS_TEST_WAVE;
+   const spec=panzerTest?{...bossWaveSpec(5),name:PANZER_BOSS_NAME}:bossWaveSpec(wave);
+   waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=findReachableZombieSpawn(36,70,false,null);
+   const bossSpawn=panzerTest?findReachableZombieSpawn(12,22,false,null):findReachableZombieSpawn(36,70,false,null);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
-     // Keep the original reachable fallback for all boss types.
-     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=36+rnd()*34;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
+     for(let tries=0;tries<60&&!ok;tries++){
+       const a=rnd()*Math.PI*2,dist=panzerTest?12+rnd()*10:36+rnd()*34;
+       sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)
+     }
    }
-   if(!ok){const a=rnd()*Math.PI*2,dist=38+rnd()*30;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
-   makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
+   if(!ok){
+     const a=rnd()*Math.PI*2,dist=panzerTest?18:38+rnd()*30;
+     sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;
+     const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
+   }
+   makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
+   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER ZOMBIE SPAWNED NEARBY":"PANZER ZOMBIE — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
 }
@@ -6919,7 +7027,7 @@ function explodeLauncherRound(g){
  scene.remove(g.q);
  spawnExplosionBurst(visualOrigin,true,.055);
  for(const z of living()){
-   const d=z.suitBossVisual?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
+   const d=z.suitBossBlastHitboxes?.length?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
    if(d<6.5){
      const blast=Math.max(2,Math.ceil((7-d)*1.55))*damageLevel;
      const force=Math.max(.35,1-d/6.5);
@@ -6959,7 +7067,7 @@ function explodeGrenade(g){
  scene.remove(g.q);
  spawnExplosionBurst(visualOrigin,false,.055);
  for(const z of living()){
-   const d=z.suitBossVisual?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
+   const d=z.suitBossBlastHitboxes?.length?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
    if(d<7.5){
      const blast=Math.max(1,Math.ceil((8-d)/2))*damageLevel,force=Math.max(.25,1-d/7.5);
      z.hp-=blast;
