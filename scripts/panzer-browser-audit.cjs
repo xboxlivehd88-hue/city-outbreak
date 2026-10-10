@@ -5,7 +5,7 @@ const fs=require("fs");
 const os=require("os");
 const assert=require("assert/strict");
 (async()=>{
- const output={build:"v580",test:"panzer-original-skeleton-visible-vertex-motion",startedAt:new Date().toISOString(),pass:false};
+ const output={build:"v580+calibration-candidate",test:"panzer-original-skeleton-visible-vertex-motion",startedAt:new Date().toISOString(),pass:false};
  let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
@@ -18,6 +18,11 @@ const assert=require("assert/strict");
   await page.route(/\/src\/game\.js\?v=580$/,async route=>{
    const resp=await route.fetch();
    const source=await resp.text();
+   // Test the corrected quadratic skinning scale before committing it to main.
+   const oldCorrection="const correction=desiredWorldHeight/measuredHeight;";
+   if(source.split(oldCorrection).length!==2)throw Error("Expected original Panzer calibration");
+   const correctedSource=source.replace(oldCorrection,
+     "const correction=z.panzerBossMixer?Math.sqrt(desiredWorldHeight/measuredHeight):desiredWorldHeight/measuredHeight;");
    const addon=`
 ;globalThis.__panzerOriginalSkinAudit={
  ready:()=>!!panzerBossAsset,
@@ -134,7 +139,7 @@ const assert=require("assert/strict");
 };
 `;
    injected=true;
-   await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
+   await route.fulfill({response:resp,body:correctedSource+addon,contentType:"application/javascript"});
   });
   const response=await page.goto("http://127.0.0.1:4173/?panzer-browser-audit=1",{waitUntil:"domcontentloaded",timeout:60000});
   output.siteStatus=response?.status();
