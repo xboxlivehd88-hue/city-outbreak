@@ -1,3 +1,17 @@
+# NEW-CHAT HANDOFF — 2026-10-10 — v551 FIX MIXAMO SPINE2 BONE BINDING IN NATIVE CRAWLER GLB — READ FIRST
+
+**Repo `xboxlivehd88-hue/city-outbreak` branch `main` authoritative. v550 installed uploaded `assets/zombie_number_3_-_animated.glb` only for naturally rolled/spawned crawlers, preserving leg-loss conversions. A real GitHub Actions GLB rig validation before handoff uncovered critical v550 error: `crawlerBoneLabel()` stripped ALL numerical characters with `/[^a-z]/g`. This misidentified `mixamorig:Spine2_51` as `spine` and failed required `Chest` binding, meaning new model would NEVER attach. v551 corrects this before user testing.**
+
+## Fix
+- `crawlerBoneLabel` now removes only the trailing serial suffix `/_\\d+$/` (GLTF's node index) before stripping punctuation with `/[^a-z0-9]/g`, and removes `mixamorig` prefix. Examples: `mixamorig:Hips_64 -> hips`, `mixamorig:Spine_53 -> spine`, `mixamorig:Spine2_51 -> spine2`, `mixamorig:LeftForeArm_24 -> leftforearm`. This maps the actual 17 important Mixamo bones uniquely for the naturally spawned crawler's skinned animations and existing PBD ragdoll. Every `NATURAL_CRAWLER_BONE_NAMES` key remains unchanged; no skipped crawler visual.
+- Bump `index.html` game loader v550 -> **v551**; original GLB path remains v550 unchanged, asset binary checksum `14ef35769c43686d6b508fd7db831fc853350527`.
+- Only game.js, index.html, and both newest handoff tops changed; credits file, CSS, checkpoint v324 and ALL unrelated game logic unchanged. v550 user's new model functionality as documented in previous TOP section still applies: GLB built-in Crawl/Running_Crawl/Attack animations, stripped horizontal hip root motion, body alignment and original game hitbox, naturally spawning crawlers ONLY, leg-loss conversion remains old model.
+- MUST verify actual uploaded GLB normalized labels set contains all 17 mapping keys, Node game.js syntax, expected main HEAD, game Pages deploy successful. No visual approval until user checks.
+- Play after Pages successful: https://xboxlivehd88-hue.github.io/city-outbreak/?v=551-native-crawler-skeleton-fix . Crawlers start rolling in **WAVE 3**. Look for the NEW clothed GLB crawling toward you, proper height/orientation/attack, correct bullets and ragdoll. Cutting off both legs on a standing walker still uses original crawler body. If old procedural model remains for native spawns, inspect `html.dataset.naturalCrawlerAsset`, `naturalCrawlerLoadError`, `naturalCrawlerAttached` and animations.
+- Next chat FIRST read newest TOP of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md` and current `index.html`, `src/game.js`, `src/game.css` on main. Current working v549 gameplay+uploaded asset commit `60d7eb98f2d334f17920bca93aa3c59ed9a6717c` is targeted rollback; v324 protection preserved.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-10 — v550 NEW ANIMATED GLB FOR NATURALLY SPAWNING CRAWLERS ONLY — READ FIRST
 
 **Authoritative repo `xboxlivehd88-hue/city-outbreak`, `main`. User uploaded `assets/zombie_number_3_-_animated.glb` and explicitly wants to REPLACE only the NATURALLY SPAWNING crawler. Do NOT change crawler conversion from leg-damaged walker/Green Guy/special zombie. User must visually test before model scale/orientation/animation is approved. Rollback if needed to v549 commit `60d7eb98f2d334f17920bca93aa3c59ed9a6717c` (which contains new asset and untouched gameplay), and preserve protected recovery v324.**

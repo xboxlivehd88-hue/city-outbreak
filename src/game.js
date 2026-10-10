@@ -2060,7 +2060,12 @@ const NATURAL_CRAWLER_GLB_URL="assets/zombie_number_3_-_animated.glb?v=550";
 const NATURAL_CRAWLER_SCALE=.86;
 let naturalCrawlerAsset=null;
 function crawlerBoneLabel(node){
- return (node?.name||"").toLowerCase().replace(/[^a-z]/g,"").replace(/^mixamorig/,"");
+ // Three's imported Mixamo names end in a numbered serial (_51, _52).
+ // Discard THAT suffix, not digits within actual bone names such as Spine2.
+ // v550's /[^a-z]/ removed "2", incorrectly mapping BOTH Spine and Spine2
+ // to "spine"; this prevented the 13-bone minimum native GLB attach.
+ return (node?.name||"").toLowerCase().replace(/_\d+$/,"")
+  .replace(/[^a-z0-9]/g,"").replace(/^mixamorig/,"");
 }
 function crawlerHipsTranslationTrack(clip){
  return clip?.tracks?.find(t=>/hips/i.test(t.name)&&t.name.endsWith(".position")&&t.values?.length>=3);
