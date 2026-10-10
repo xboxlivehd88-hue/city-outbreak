@@ -1,3 +1,14 @@
+# v576 — PANZER RIGHT LEG SKIN ATTACHMENT FIX — 2026-10-10
+
+- User tested v575 after deployment and reports **right leg still does not move**. The browser test is authoritative; v575 NOT visually approved. Do not suggest waiting for GitHub Pages again without evidence.
+- Source bug found: v573/v575 checked whether BOTH shins had some skinned vertices but **never checked whether the right THIGH had actual skinned geometry**. Additionally v571 joint detection selected the first bone with a matching name; models with duplicate/decorative leg bones could select an unweighted dummy rather than the joint driving the armor.
+- v576 selects each native Panzer left/right thigh, shin, and foot joint by the SUM of real skin weights on visible geometry rather than by name alone. It checks all FOUR thigh/shin joints for >=32 influenced vertices per side and a reasonable left/right weight ratio; if the right thigh/shin is functionally absent, it forces the existing isolated Panzer auto-skin rig so BOTH legs are weighted to walk. Keeps v575 coherent, distance-driven planted/swing walking cycle and anatomical hinge axis.
+- Additional diagnostic: browser tab displays PANZER WALK v576, Wave 1 spawn banner states v576 RIGHT-LEG TEST and selected SKINNED LEG RIG / DUAL LEG AUTO-RIG. The banner indicates code branch, not visual verification.
+- Preserve approved v570 Panzer size `PANZER_VISUAL_HEIGHT=3.20`, exact post-animation geometric calibration/ground placement, appearance, armor, facing, attacks, boss stats, explosive/raycast hitboxes. Do not touch Suit Guy or other zombies/crawlers (natural crawler remains 1.53), map, guns, settings, v324 recovery.
+- Panzer solo Wave 1 test ONLY. **Do not add Panzer to normal every-10-wave boss rotation** until user approves walking. Loader `./src/game.js?v=576`. No browser animation confirmation; continue diagnosis if the right leg remains still.
+
+---
+
 # v575 — PANZER COORDINATED LEG STEP AND NATIVE HINGE AXES — 2026-10-10
 
 - User tested v574 and says Panzer's walk **still does not look right**. Not visually approved; do not put him in the normal boss rotation.
