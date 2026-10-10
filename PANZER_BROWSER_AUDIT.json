@@ -1,70 +1,15 @@
 {
   "build": "v580",
   "test": "panzer-original-skeleton-visible-vertex-motion",
-  "startedAt": "2026-10-10T21:26:44.639Z",
+  "startedAt": "2026-10-10T21:28:33.244Z",
   "pass": false,
   "siteStatus": 200,
   "modelRequest": {
     "status": 200,
     "url": "http://127.0.0.1:4173/assets/panzer_zombie.glb?v=580"
   },
-  "auditVersion": "v580",
-  "panzerSourceHeight": 0.008063683962353433,
-  "approvedVisualTarget": 3.2,
-  "sourceClip": "panzer zombie",
-  "visibleMeshes": 7,
-  "names": {
-    "L_UpperLeg": "j_hip_le_02",
-    "L_LowerLeg": "j_knee_le_03",
-    "L_Foot": "j_ankle_le_04",
-    "R_UpperLeg": "j_hip_ri_08",
-    "R_LowerLeg": "j_knee_ri_09",
-    "R_Foot": "j_ankle_ri_010"
-  },
-  "skinSamples": {
-    "L_UpperLeg": 60,
-    "L_LowerLeg": 60,
-    "L_Foot": 60,
-    "R_UpperLeg": 60,
-    "R_LowerLeg": 60,
-    "R_Foot": 60
-  },
-  "displacement": {
-    "L_UpperLeg": {
-      "avgMeters": 107.43115527633971,
-      "maxMeters": 193.606790645169,
-      "angleAtLast": 0.20938062790756426
-    },
-    "L_LowerLeg": {
-      "avgMeters": 220.8807666087924,
-      "maxMeters": 258.635000937469,
-      "angleAtLast": 1.0026002585370224
-    },
-    "L_Foot": {
-      "avgMeters": 283.24871155274076,
-      "maxMeters": 327.1550783080349,
-      "angleAtLast": 0.5379818024398128
-    },
-    "R_UpperLeg": {
-      "avgMeters": 117.40984430234008,
-      "maxMeters": 232.153471311448,
-      "angleAtLast": 0.09580540051836067
-    },
-    "R_LowerLeg": {
-      "avgMeters": 343.26070916748205,
-      "maxMeters": 492.965799410637,
-      "angleAtLast": 0.2290285677306186
-    },
-    "R_Foot": {
-      "avgMeters": 540.5536050295755,
-      "maxMeters": 669.5036995092416,
-      "angleAtLast": 0.14587784146649946
-    }
-  },
-  "selectedNative": true,
-  "forcedFallback": false,
-  "failure": "AssertionError [ERR_ASSERTION]: Right and left thigh displacement wildly differ\n    at /home/runner/work/city-outbreak/city-outbreak/scripts/panzer-browser-audit.cjs:117:3",
+  "failure": "page.evaluate: Error: Panzer fails approved height calibration: 0.008046915033578074 vs 3.2\n    at Object.run (http://127.0.0.1:4173/src/game.js?v=580:8501:11)\n    at eval (eval at evaluate (:291:30), <anonymous>:1:42)\n    at UtilityScript.evaluate (<anonymous>:293:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /home/runner/work/city-outbreak/city-outbreak/scripts/panzer-browser-audit.cjs:127:27",
   "errors": [],
   "logs": [],
-  "completedAt": "2026-10-10T21:26:50.935Z"
+  "completedAt": "2026-10-10T21:28:38.122Z"
 }
