@@ -1,3 +1,12 @@
+# v566 — SUIT BOSS HEADSHOT ZONE ALIGNMENT — 2026-10-10
+
+- User reports headshot multiplier starts well below visible neck in v565. Root cause: the separate legacy boss headshot sphere radius .32 was attached to `z.g`, multiplied by enlarged boss world scale, and extended below the visible skull.
+- Replaced only the **suit boss** custom headshot collider with a small ellipsoid attached to the animated `WalkerHead` bone of the existing suit auto-rig. Calibrated to the source GLB's facial/head height: center +0.055 of source height above head bone and radii (0.063, 0.070, 0.062) times source height. Bottom stays at approximately 86.5% of full visual stature (top of neck/skull area); unlike v565 it rotates/tilts with the head.
+- Previous generic walker head collider remains disabled for raycast; no body/chest/limb hitbox or explosive blast changes. Compact fallback sphere if future rig omits head bone.
+- Preserve v563 approved elbow appearance; v564 arms/knees; v565 body/launcher/explosion collision; Wave 1 boss test; normal zombies/crawlers; v324 recovery. **Needs user headshot vs neck/chest testing and approval**. Loader `./src/game.js?v=566`.
+
+---
+
 # v565 — SUIT BOSS CHEST AND EXPLOSION HITBOXES — 2026-10-10
 
 - User reports no chest hitbox and explosion contact on v564 suit boss. Source inspection: old `BossChestHitbox` and launcher contact at y=1.43 (procedural model), while uploaded suit model is larger. Splash area damage previously measured only from feet.
