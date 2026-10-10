@@ -1,3 +1,13 @@
+# v583 — DIRECT PANZER LIVE ROOT SCALE REDUCTION, PRESERVING WALK — 2026-10-10
+
+- User approved v581 bilateral Panzer walking, but said boss is enormous. Live Wave 1 Chromium measurement is 23.99-24.07 units in actual game with boss root scale ~1.719. Required real-world target same as approved Suit Guy: `PANZER_VISUAL_HEIGHT=3.20` times rootScale1.719 = ~5.50 world units. Detached unit-root test falsely indicated 3.17-unit size.
+- v582 attempted a delayed real skinned-vertex sampling/calibration but actual browser Wave 1 test `PANZER_BROWSER_AUDIT.json` still FAILED ~23.96 world-unit body height. Do not claim v582 size fixed. No walking regressions were reported.
+- v583 applies a grounded reduction of 0.479 to Panzer's native visual holder in the special live boss root-scale case >1.3 only, immediately after v581 initial calibration, because the original glTF skeleton's visual skin size tracks holder scale approximately quadratically: `sqrt(5.50/24)=.479`. Detached unit-root test and original Panzer six leg bones remain unchanged. Existing v582 post-calibration real-vertex measurement remains as shrink-only protective cap, never enlarges. Size constant remains EXACTLY `PANZER_VISUAL_HEIGHT=3.20`.
+- User-visible style, original GLB, proper bilateral distance-driven walk, armor, attacks, hitboxes, explosions, AI, sound, map, weapons, Suit Guy, common zombies and natural crawler size 1.53 unchanged. Panzer solo Wave 1 and NOT in every10-boss rotation pending user approval. Protected recovery v324 untouched.
+- Active loader `./src/game.js?v=583`, glb `panzer_zombie.glb?v=583`, title/spawn v583. Need actual committed v583 Wave 1 browser measurement and successful GitHub Pages deployment before claiming source verification. User gameplay appearance still needs approval.
+
+---
+
 # v582 — SHRINK PANZER TO APPROVED SUIT GUY SIZE WITHOUT DISTURBING REAL LEG WALK — 2026-10-10
 
 - User verified v581 BOTH LEGS walking, but reported Panzer **enormous** and requested scaling down again. Preserve that working v580-v581 ORIGINAL GLB six-leg-bone gait. Do NOT return to procedural auto-rig or edit walking joints.
