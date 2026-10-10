@@ -1,3 +1,15 @@
+# v581 — REAL PANZER SKINNING SCALE FIX CONFIRMED IN CHROMIUM — 2026-10-10
+
+- User pointed out v580 was unfinished, so a genuine GitHub Actions Chromium test was built and executed against the uploaded 8.7 MB GLB and actual `src/game.js`, not fake bone rotations. See `PANZER_BROWSER_AUDIT.json` and `scripts/panzer-browser-audit.cjs`.
+- The test found a NEW ROOT CAUSE: the GLB skinned vertex height depends approximately QUADRATICALLY on Panzer's holder scale in Three.js. The existing v570 **linear** correction was catastrophically shrinking the native Panzer mesh from 1262.57 units in its temporary pose to ~0.008 units, leaving real vertex movements around 0.001–0.003 units. It was not a GitHub cache problem.
+- The browser tested the exact **square-root native scale correction** `Math.sqrt(desiredWorldHeight/measuredHeight)` via a temporary intercepted game module, and PASSed. Calibrated original-model vertex height **3.17494 units** (approved target 3.20); stable-root actual left thigh 0.2701, left shin 0.5554, left foot 0.7123, right thigh 0.2952, right shin 0.8632 and right foot 1.3593 world-unit average displacement across the walking poses. Original GLB skeleton and all seven skinned meshes were used, not an auto-rig.
+- v581 commits the EXACT successfully tested formula, only for native Panzer with mixer, while retaining existing linear fallback. It also keeps v580 native six-leg-joint identification (`j hip/knee/ankle le/ri`) and strips missing/one-sided original leg tracks so both real weighted skeleton legs use the synchronized gait.
+- REQUIRED NEXT CHECK: rerun Chromium test against the committed v581 URL **WITHOUT patch injection** and confirm it still passes. A passed actual mesh audit is NOT a substitute for user appearance approval. Do not add Panzer to normal 10-wave rotation until user approves.
+- Preserve target `PANZER_VISUAL_HEIGHT=3.20`, foot-grounding, armor, orientation, hitboxes, stats, attacks/AI, explosions, Suit Guy, all other zombies and natural crawler scale 1.53, settings, map, weapons, and protected v324 recovery. Panzer is temporary SOLO Wave 1 test.
+- Loader `./src/game.js?v=581`; Panzer GLB URL cache-busted `?v=581`; title and spawn text show v581.
+
+---
+
 # v580 — REAL PANZER GLB ANALYZED; ANIMATION OMITTED RIGHT LEG — 2026-10-10
 
 - User still saw no right-leg motion in v579. **Stop guessing.** A real GitHub Actions audit of the actual 8,704,788-byte `assets/panzer_zombie.glb` was completed and saved to `PANZER_MODEL_AUDIT.json`. It has 79 nodes, 1 skin with 52 joints, 7 skinned meshes, and ONE clip named `panzer zombie` with 47 channels. The only animated leg channels target LEFT: `j hip le_02`, `j knee le_03`, `j ankle le_04`. **Zero clip tracks target the actual RIGHT `j hip ri_08`, `j knee ri_09`, `j ankle ri_010`.**
