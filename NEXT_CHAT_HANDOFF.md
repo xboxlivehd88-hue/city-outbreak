@@ -1,3 +1,33 @@
+# NEW-CHAT HANDOFF — 2026-10-10 — v555 GAMEPLAY + BROKEN PLAY-LINK REPORT — READ THIS FIRST
+
+## Authoritative sources / state
+- **Repo:** `xboxlivehd88-hue/city-outbreak`, branch **`main`**. ALWAYS read GitHub current main; do not resurrect code from an old chat response.
+- **Latest game build:** **v555**. Verified gameplay-source commit SHA before this docs-only handoff: **`0602d6cb8b18d4a6aa2911fc82d9870e8f2df081`** (its tree `6b950af8f4d661a3dc901a29281f23336c976d0c`).
+- **Active loader in `index.html`: `./src/game.js?v=555`**, stylesheet `./src/game.css?v=525`. The docs-only commit adding this handoff will update main HEAD but NOT the gameplay code, assets, or loader.
+- **GitHub Pages:** Actions run **`38069044476`** completed **SUCCESS** for the v555 game commit. **HOWEVER the user explicitly reports the most recently supplied PLAY LINK IS BROKEN.** Successful Pages Actions status does NOT confirm that the page opens, boots and plays in the user's browser. Verify base site, exact path, HTTP response/browser loading and cache behavior before claiming the link works. Historically used URL `https://xboxlivehd88-hue.github.io/city-outbreak/?v=555-native-crawler-15pct-smaller`; canonical root `https://xboxlivehd88-hue.github.io/city-outbreak/`. Do NOT present the reported broken URL as independently tested. In our environment external Pages URL could not be loaded, so user-side confirmation is needed.
+- **Protected recovery:** `CURRENT_RECOVERY_CHECKPOINT.md`, v324 gameplay SHA `afddcebb47e06a82b4196638716f05e6f1adc941`, protected tree `5721309fc27f9f16ee7a2568a7f73fd429342502`, loader v324. Never modify protected checkpoint.
+- **Read first** NEWEST TOP sections of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, `src/game.js`, `src/game.css`; read relevant GLBs and `MODEL_CREDITS.md` when dealing with crawler.
+
+## Current priority: NATURALLY SPAWNING crawlers only
+- User uploaded `assets/zombie_number_3_-_animated.glb` and wanted it to replace **ONLY natural wave-spawned crawlers**. They begin spawning Wave 3+. Real GLB contains Mixamo rig, `Crawl`, `Running_Crawl`, `Attack`, and other clips; runtime uses skinned animation with root-motion stripping and reuses the already working gameplay hitboxes. Model credits/license are documented in `MODEL_CREDITS.md` (creator tonyflanagan, CC BY 4.0).
+- Very important exclusion: `naturalCrawlerSpawn=kind==="crawler"&&forcedKind!=="crawler"`. Leg-loss conversion `makeZombie(x,zp,oldIndex,"crawler")` must keep old crawler mechanics/visual identity. Do not alter existing normal/radiated zombie models, AI/waves, damage, or zombie ragdoll generally.
+- **Evolution:** v550 initially added model; v551 fixed Spine2 Mixamo bone label; v552 fixed floating legacy red gore by `hideNativeCrawlerVisual(z)` BEFORE adding GLB and raised its visual scale to 2.0; v553 aimed to fix missing face, sinking into ground, and death popping to T-pose; v554 reduced visual scale exactly 10% to **1.8**; user said **"still too big"**, so v555 reduced another 15% from 1.8 to **1.53**.
+- **Current in-source value CONFIRMED: `NATURAL_CRAWLER_SCALE=1.53`**. This is **23.5% smaller than scale 2.0**. User has NOT yet visually approved scale 1.53; do not make further size reductions without a screenshot/test. Latest user message after release was **"that link is proken"**, not a visual judgment of 1.53.
+- v553 face/ground/death changes remain present and also require gameplay inspection: GLB body/face alpha depth handling, face/head tilt compensation, recalculated surface clearance based on head/chest/hands/feet, uncapped initial grounding correction, and freezing mixer `timeScale=0` at death instead of `stopAllAction()` resetting the T-pose before PBD. Do not regress these when modifying scale. v549 dead-ragdoll swept wall/stair collision remains active.
+- User screenshots: v551 was miniature with floating red pieces; v552 was larger but face seemed missing, corpse jumped to a T-pose, and crawler sank into ground. v553 contains source-code fixes but visual confirmation was interrupted by size requests. **All of these need testing on v555**, specifically head/face orientation, ground contact, size relative to standing walkers, death collapse and performance.
+- Explicit rollback references: v554 `cc32fdff5c031126b312fadcac1e50abbace703d`; v553 `b82b9b2eca3d63d7bbfdb0ab1499ea009351e3e3`; pre-new-GLB v549 gameplay with upload `60d7eb98f2d334f17920bca93aa3c59ed9a6717c`; protected v324 must remain untouched.
+
+## Other protected gameplay
+- Preserve v548 noticeable shotgun Faster Reload per-shell formula `Math.round(380+440*Math.pow(.53,reloadLevel))`, v547 sprint drain `26.67/s` and health regeneration `12.5 HP/s` after 5-second delay, v546 3 canopy fluorescents with distance falloff and independent RNG flicker, v543 specific misplaced OFFICE sidewalk hydrant removal, v538 streetlight fixed-budget FPS optimization, graphics settings and v549 dead-ragdoll collision. Preserve shotgun reload motion, grenade explosion, zombie headshots/limb dismemberment, collisions, performance and waves. No change to all these for crawler size or a broken link.
+
+## Safe next actions / user experience
+1. Start by verifying the latest live main SHA, script loader v555, `NATURAL_CRAWLER_SCALE=1.53`, and Pages workflow/deployment URL. Resolve **BROKEN LINK FIRST** or explain the exact blocker; avoid giving a stale or unverified playable link.
+2. Once user can open game, request Wave 3+ screenshots/video of NATURAL crawler at scale 1.53, then test face, surface clipping, animations, death transition, FPS, and also verify leg-loss conversion remains unchanged.
+3. If a change is approved/requested, directly edit GitHub main (no manual coding instructions), preserve rollback, syntax/source-check, bump version/cache key, update BOTH handoffs at TOP, verify GitHub Pages, give current link and what to test. Never claim visual success solely from passing syntax or a Pages deployment.
+4. Current handoff preparation intentionally changes ONLY these two Markdown handoff documents. It makes **NO gameplay changes**.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-10 — v555 REDUCE NATIVE-SPAWN CRAWLER ANOTHER 15% — READ FIRST
 
 **Repo `xboxlivehd88-hue/city-outbreak`, branch `main` is authoritative. User tested v554 10%-smaller naturally spawning crawler (visual scale 2.0 -> 1.8) and said STILL TOO BIG. Made ONLY another measured reduction to natural crawler GLB visual scale, retaining all v553 fixes. Do not treat size as visually approved until user tests.**
