@@ -1,3 +1,14 @@
+# v570 — PANZER MODEL SCALE CALIBRATED FROM ANIMATED GEOMETRY — 2026-10-10
+
+- User screenshot of v569 shows Panzer **still dramatically oversized**, even after 3.2->1.8 normalized height reduction. User explicitly requests Panzer match **Suit Guy** boss dimensions.
+- Cause targeted: previous Panzer GLB sizing used `Box3.setFromObject(model)` on initial unloaded/rest pose, which may not match the post-animation skinned geometry, particularly imported glTF rigs. A smaller numeric normalized target alone cannot fix mismatch.
+- Added Panzer-only **post-animation precise world bounds normalization** `calibratePanzerBossVisual`: after two animation frames, use `Box3.setFromObject(model,true)` to measure actual animated/skinned world-space height. Compute suit-equivalent target world height `3.2 * abs(z.g.getWorldScale().y)`, scale only Panzer holder by measured ratio, and vertically ground the lowest mesh point against the zombie root. Store completion to avoid expensive repeated work. Handles native mixer or procedural fallback rig. Logs true measured animated height, correction and foot offset to console.
+- Panzer collider root now matches canonical 3.2-high boss proportions; any head collider on its procedural armature is inverse-compensated for holder re-scaling. All Panzer collision volumes and existing blast/launcher logic stay enabled.
+- Panzer still forced Wave 1 for visual review, NOT in 10-wave rotation. Suit Guy 3.2-unit approved size, animation, hitboxes, boss rotation, normal zombies, natural crawlers (1.53), all weapons/map and v324 protected checkpoint untouched.
+- Loader `./src/game.js?v=570`. Need **user screenshot** of size next to player/world before approval. JavaScript syntax and GitHub commit do NOT prove actual browser scale is right.
+
+---
+
 # v569 — PANZER BOSS SCALE REDUCED SUBSTANTIALLY — 2026-10-10
 
 - User reported v568 Wave 1 Panzer Zombie was **super huge** and requested a large size reduction.
