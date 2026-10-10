@@ -5338,7 +5338,10 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,op
    const random=distal?(isBlast?2.35:1.18):(isBlast?1.25:.62);
    vx+=(rnd()-.5)*random;vy+=(rnd()-.5)*random*.72;vz+=(rnd()-.5)*random;
    const invMass=(key==="Hips"||key==="Chest")?.62:key==="Spine"?.72:1;
-   const radius=key==="Head"?.17:key.includes("Hand")||key.includes("Foot")?.075:.10;
+   // v549: modest skull/core contact clearance prevents the rendered head
+   // and torso from dipping below ground while joints stay simulated.
+   const radius=key==="Head"?.20:key==="Hips"||key==="Chest"?.16:
+    key.includes("Hand")||key.includes("Foot")?.085:.10;
    nodes.set(key,{key,bone,pos,vel:new THREE.Vector3(vx,vy,vz),old:new THREE.Vector3(),invMass,radius,lastGroundY:rag.floorY});
  }
  // v427: feet need their own segment. Create a lightweight virtual toe in the
@@ -5401,15 +5404,42 @@ function solveBodyPbdEdge(e){
  const corr=(dist-e.len)/dist,w1=e.a.invMass,w2=e.b.invMass,ws=w1+w2;if(ws<=0)return;
  d.multiplyScalar(corr);e.a.pos.addScaledVector(d,w1/ws);e.b.pos.addScaledVector(d,-w2/ws);
 }
+// v549: swept collision ONLY for dead PBD ragdoll nodes. The previous
+// one-step slideBuilding missed thin walls during explosive launches.
+// Resolve each small increment against the actual existing wall colliders.
+function sweepBodyPbdWall(n,pad){
+ const dx=n.pos.x-n.old.x,dz=n.pos.z-n.old.z;
+ let x=n.old.x,z=n.old.z;
+ if(insideBuilding(x,z,pad)){
+   // An earlier fast impact may already have embedded the node.
+   const safe=pushOutsideBuilding(x,z,pad);
+   x=safe.x;z=safe.z;
+ }
+ const steps=Math.max(1,Math.min(16,Math.ceil(Math.hypot(dx,dz)/.14)));
+ const sx=dx/steps,sz=dz/steps;
+ for(let i=0;i<steps;i++){
+   // Use the LAST collision-resolved point, not an absolute end-of-step
+   // waypoint that could jump entirely across the far side of a wall.
+   const slide=slideBuilding(x,z,x+sx,z+sz,pad);
+   x=slide.x;z=slide.z;
+ }
+ n.pos.x=x;n.pos.z=z;
+}
 function collideBodyPbdNode(n,rag){
- const pad=Math.max(.055,n.radius*.72),slide=slideBuilding(n.old.x,n.old.z,n.pos.x,n.pos.z,pad);
- n.pos.x=slide.x;n.pos.z=slide.z;
+ const pad=Math.max(.055,n.radius*.72);
+ sweepBodyPbdWall(n,pad);
  for(const c of parkedCars){
    if(carPointCollision(c,n.pos.x,n.pos.z,pad)){const pushed=bodyPbdPushOutsideCar(c,n.pos.x,n.pos.z,pad);n.pos.x=pushed.x;n.pos.z=pushed.z}
  }
- let gy=sampleRagdollGroundY(n.pos.x,n.pos.z,rag.floorY,n.pos.y);
+ // Sample the joint BEFORE and AFTER a fall: explosive velocity can cross a
+ // raised step/ground plane before the below-floor endpoint is evaluated.
+ let gy=sampleRagdollGroundY(n.pos.x,n.pos.z,rag.floorY,Math.max(n.old.y,n.pos.y));
  if(Number.isFinite(n.lastGroundY)&&gy>n.lastGroundY+.18&&n.pos.y<gy+n.radius+.24){
-   n.pos.x=n.old.x;n.pos.z=n.old.z;gy=n.lastGroundY;
+   // Descending from ABOVE the tread is a valid landing. Reject only
+   // horizontal penetration into a higher stair from its lower side.
+   if(n.old.y<gy+n.radius-.08){
+     n.pos.x=n.old.x;n.pos.z=n.old.z;gy=n.lastGroundY;
+   }
  }
  const floor=gy+n.radius,touched=n.pos.y<floor;
  if(touched)n.pos.y=floor;
