@@ -1,68 +1,53 @@
-name: v549 ragdoll contact safety and syntax regression
+name: Inspect new crawler GLB for exact rig and crawl clips
 on:
   push:
     branches: [canopy-inspection-probe]
     paths: [.github/workflows/canopy-flicker-syntax-check.yml]
 jobs:
-  check:
+  inspect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Validate v549 syntax and swept contact behavior
+      - name: Print uploaded crawler GLB structure, clip timings, rest transforms
         run: |
-          node --input-type=module --check < src/game.js
-          grep -F 'src="./src/game.js?v=549"' index.html
-          grep -F 'Math.max(n.old.y,n.pos.y)' src/game.js
-          grep -F 'sweepBodyPbdWall(n,pad);' src/game.js
-          grep -F 'Math.round(380+440*Math.pow(.53,reloadLevel))' src/game.js
-          node <<'NODE'
-          const fs=require('fs'),vm=require('vm');
-          const src=fs.readFileSync('src/game.js','utf8');
-          const extract=(name)=>{
-            const start=src.indexOf('function '+name+'(');
-            if(start<0)throw Error('Missing function '+name);
-            const open=src.indexOf('{',start);
-            let depth=0,i=open;
-            for(;i<src.length;i++){
-              if(src[i]==='{')depth++;
-              if(src[i]==='}'&&!--depth)break;
-            }
-            return src.slice(start,i+1);
-          };
-          // Thin wall at X=.45-.51, Z=-.55...55; representative
-          // sub-cell obstacle that the old endpoint-only test tunnels through.
-          const inside=(x,z,p=0)=>x>.45-p&&x<.51+p&&z>-.55-p&&z<.55+p;
-          const slide=(ox,oz,nx,nz,p)=>{
-            if(!inside(nx,nz,p))return{x:nx,z:nz};
-            if(!inside(nx,oz,p))return{x:nx,z:oz};
-            if(!inside(ox,nz,p))return{x:ox,z:nz};
-            return{x:ox,z:oz};
-          };
-          const push=(x,z,p)=>{
-            const v=[{d:x-(.45-p),x:.45-p,z},{d:(.51+p)-x,x:.51+p,z},
-            {d:z-(-.55-p),x,z:-.55-p},{d:(.55+p)-z,x,z:.55+p}];
-            v.sort((a,b)=>a.d-b.d);return{x:v[0].x,z:v[0].z};
-          };
-          const context={Math,Number,insideBuilding:inside,slideBuilding:slide,pushOutsideBuilding:push,
-            parkedCars:[],carPointCollision:()=>false,bodyPbdPushOutsideCar:()=>{throw Error('unexpected car')},
-            sampleRagdollGroundY:(x,z,floor,bodyY)=>bodyY>=-.15?.40:floor};
-          vm.createContext(context);
-          vm.runInContext(extract('sweepBodyPbdWall')+'\n'+extract('collideBodyPbdNode'),context);
-          const wall={old:{x:-1,z:0,y:1},pos:{x:1.2,z:0,y:1},radius:.10,lastGroundY:0};
-          context.sweepBodyPbdWall(wall,.08);
-          if(wall.pos.x>.45-.08+1e-6||inside(wall.pos.x,wall.pos.z,.08))
-            throw Error('Dead ragdoll tunneled through thin wall: '+wall.pos.x);
-          const free={old:{x:-1,z:1.3,y:1},pos:{x:1.2,z:1.3,y:1},radius:.10,lastGroundY:0};
-          context.sweepBodyPbdWall(free,.08);
-          if(Math.abs(free.pos.x-1.2)>1e-5)throw Error('Open corridor blocked');
-          const embedded={old:{x:.48,z:0,y:1},pos:{x:.75,z:0,y:1},radius:.10,lastGroundY:0};
-          context.sweepBodyPbdWall(embedded,.08);
-          if(inside(embedded.pos.x,embedded.pos.z,.08))throw Error('Embedded wall node not recovered');
-          const landing={old:{x:1,z:1,y:.9},pos:{x:1,z:1,y:-.25},radius:.10,lastGroundY:0};
-          const contact=context.collideBodyPbdNode(landing,{floorY:0});
-          if(!contact||Math.abs(landing.pos.y-.5)>1e-6||Math.abs(landing.lastGroundY-.4)>1e-6)
-            throw Error('High-speed fall missed raised stair tread: '+JSON.stringify(landing));
-          console.log('PASS: swept wall, free corridor, embedded recovery, raised stair landing');
-          NODE
+          python3 - <<'PY'
+          import json,struct,collections,math
+          from pathlib import Path
+          name="assets/zombie_number_3_-_animated.glb"
+          raw=Path(name).read_bytes()
+          assert raw[:4]==b"glTF", "invalid GLB"
+          total=struct.unpack_from("<I",raw,8)[0];assert total==len(raw)
+          ln,typ=struct.unpack_from("<II",raw,12)
+          j=json.loads(raw[20:20+ln]); nodes=j.get("nodes",[])
+          print("GLB_BYTES",len(raw),"NODES",len(nodes),"MESHES",len(j.get("meshes",[])),"SKINS",len(j.get("skins",[])),"ANIMS",len(j.get("animations",[])),"SCENES",j.get("scenes"))
+          print("ROOTS",[(q,j["nodes"][q].get("name")) for sc in j.get("scenes",[]) for q in sc.get("nodes",[])])
+          print("ASSET",j.get("asset"))
+          for i,s in enumerate(j.get("skins",[])):
+           print("SKIN",i,"JOINTS",len(s.get("joints",[])),"SKELETON",s.get("skeleton"),"JOINT_NAMES",[nodes[k].get("name") for k in s.get("joints",[])[:60]])
+          allnames=[n.get("name","") for n in nodes]
+          for i,n in enumerate(nodes):
+           nm=n.get("name","")
+           if ("mesh" in n or "skin" in n or any(k in nm.lower() for k in ["root","hips","arm","head","leg","spine","neck","foot","hand"])):
+            print("NODE",i,repr(nm),"mesh",n.get("mesh"),"skin",n.get("skin"),"t",n.get("translation"),"rot",n.get("rotation"),"scale",n.get("scale"),"childCount",len(n.get("children",[])))
+          for i,m in enumerate(j.get("meshes",[])):
+           geos=[]
+           for p in m.get("primitives",[]):
+            a=j["accessors"][p["attributes"]["POSITION"]]
+            geos.append({"min":a.get("min"),"max":a.get("max"),"count":a.get("count"),"material":p.get("material"),"joints":'JOINTS_0' in p["attributes"]})
+           print("MESH",i,repr(m.get("name")),"parts",geos[:8])
+          for i,mat in enumerate(j.get("materials",[])):
+           print("MATERIAL",i,mat.get("name"),"alpha",mat.get("alphaMode"))
+          for i,a in enumerate(j.get("animations",[])):
+           samplers=a.get("samplers",[]);channels=a.get("channels",[])
+           bounds=[]
+           for sa in samplers:
+            acc=j["accessors"][sa["input"]]
+            if "min" in acc and "max" in acc: bounds.append((acc["min"][0],acc["max"][0]))
+           cb=collections.Counter(ch["target"]["path"] for ch in channels)
+           names=collections.Counter(nodes[ch["target"]["node"]].get("name","") for ch in channels)
+           duration=max((r[1] for r in bounds),default=None)
+           print("ANIM",i,repr(a.get("name")),"secs",duration,"channels",len(channels),"pathCounts",dict(cb),"targetNames",names.most_common(25))
+          print("CRAWLER_GLB_INSPECTION_COMPLETE")
+          PY
