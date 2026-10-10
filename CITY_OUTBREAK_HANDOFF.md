@@ -1,3 +1,14 @@
+# v580 — REAL PANZER GLB ANALYZED; ANIMATION OMITTED RIGHT LEG — 2026-10-10
+
+- User still saw no right-leg motion in v579. **Stop guessing.** A real GitHub Actions audit of the actual 8,704,788-byte `assets/panzer_zombie.glb` was completed and saved to `PANZER_MODEL_AUDIT.json`. It has 79 nodes, 1 skin with 52 joints, 7 skinned meshes, and ONE clip named `panzer zombie` with 47 channels. The only animated leg channels target LEFT: `j hip le_02`, `j knee le_03`, `j ankle le_04`. **Zero clip tracks target the actual RIGHT `j hip ri_08`, `j knee ri_09`, `j ankle ri_010`.**
+- Both actual right-leg joints ARE skinned correctly. Audit reports 591 right hip, 771 right knee and 186 right ankle weighted vertex counts in the main original mesh, closely matching the left. The problem is absent right animation plus earlier name recognition, NOT missing right-leg mesh.
+- v580 updates `findPanzerLegBones` to recognize the actual `j hip/knee/ankle le/ri_NN` names (including GLTFLoader underscore sanitation). Discards `j knee attach` decorative controls. It prefers the GLB's real skinned skeleton whenever all six joints and both leg meshes are weighted.
+- v580 REMOVES v579's forced fabricated fallback for this known GLB. In native mode it retains the original armor meshes, skeleton and nonleg upper-body clip tracks, removes the original leg-only tracks (which key only the left), and moves **both** real thigh/knee/ankle chains with the synchronized, distance-driven v575 gait. Thus right-leg vertices are driven by the actual weighted `j hip ri_08` and `j knee ri_09` joints, rather than guessed bones.
+- Important preservation: approved `PANZER_VISUAL_HEIGHT=3.20`, v570 world-bounds calibration, appearance, original armor, orientation, Panzer combat/hitboxes/explosions/health/AI/attacks, Suit Guy, common zombies, crawler scale 1.53, map/lighting/weapons/settings and protected v324 recovery. Panzer remains isolated Wave 1 and OUT of 10-wave rotation.
+- Source `src/game.js` loader `./src/game.js?v=580`, asset query `?v=580`. Tab and spawn banner show v580. **User has not visually approved v580.** Verify actual leg motion by game testing, not commit claims. The static asset audit is definitive about the missing RIGHT animation channels.
+
+---
+
 # v579 — FORCE ACTUAL PANZER FALLBACK RIG FOR AN ISOLATED WAVE 1 WALKING TEST — 2026-10-10
 
 - User emphatically reports v578 looks identical despite repeated hard refreshes. The source analysis found a concrete reason: v578 modified only `buildBasicWalkerTemplate(..., panzerLegRig=true)`, but **that template is used only if native leg selection fails**. If the native GLB passed the v577 audit, every v578 fallback improvement did NOTHING to the visible Panzer. Don't misrepresent unexecuted branch fixes as gameplay changes.
