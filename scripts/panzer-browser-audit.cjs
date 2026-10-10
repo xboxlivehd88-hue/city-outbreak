@@ -29,6 +29,18 @@ const assert=require("assert/strict");
   if(!z.panzerBossVisual)throw Error("Panzer visual was not constructed");
   if(!z.panzerBossMixer)throw Error("Native Panzer GLB was not selected; forced fallback?");
   if(z.panzerBossAutoRig)throw Error("Expected original GLB skin, found procedural replacement");
+  // Match production update order: advance mixer, pose both legs, then
+  // perform the v570 one-time height calibration before ANY mesh measurements.
+  z.panzerBossMixer.update(.016);
+  z.panzerWalkLastX=z.g.position.x-.04;
+  syncPanzerBossWalk(z,.016,true);
+  calibratePanzerBossVisual(z);
+  calibratePanzerBossVisual(z);
+  z.panzerBossModel.updateWorldMatrix(true,true);
+  const posedBounds=new THREE.Box3().setFromObject(z.panzerBossModel,true);
+  const worldHeight=posedBounds.max.y-posedBounds.min.y;
+  if(Math.abs(worldHeight-PANZER_VISUAL_HEIGHT)>.25)
+    throw Error("Panzer fails approved height calibration: "+worldHeight+" vs "+PANZER_VISUAL_HEIGHT);
   const joints=z.panzerNativeLegBones;
   const keys=["L_UpperLeg","L_LowerLeg","L_Foot","R_UpperLeg","R_LowerLeg","R_Foot"];
   for(const key of keys)if(!joints[key]?.bone)throw Error("MISSING "+key);
@@ -61,7 +73,9 @@ const assert=require("assert/strict");
   if(keys.some(k=>counts[k]<12))throw Error("Not enough original GLB skin vertices per joint "+JSON.stringify(counts));
   function poseAt(phase){
    z.panzerWalkBlend=1;z.panzerWalkPhase=phase;
-   z.g.position.x+=.04;z.panzerWalkLastX=z.g.position.x-.04;z.panzerWalkLastZ=z.g.position.z;
+   // Trigger normal moving gait WITHOUT moving root: displacement must come
+   // from actual deformed limbs, not the fake boss sliding through the scene.
+   z.panzerWalkLastX=z.g.position.x-.04;z.panzerWalkLastZ=z.g.position.z;
    syncPanzerBossWalk(z,.016,true);
    z.panzerBossModel.updateWorldMatrix(true,true);
    z.panzerBossModel.traverse(mesh=>{if(mesh.isSkinnedMesh)mesh.skeleton.update()});
@@ -93,6 +107,8 @@ const assert=require("assert/strict");
   return {
    auditVersion:"v580",panzerSourceHeight:z.panzerSourceHeight,
    approvedVisualTarget:PANZER_VISUAL_HEIGHT,
+   measuredWorldHeight:worldHeight,
+   finalHolderScale:z.panzerBossVisual.scale.x,
    sourceClip:z.panzerBossAnimation,visibleMeshes:meshes,
    names:Object.fromEntries(keys.map(k=>[k,joints[k].bone.name])),
    skinSamples:counts,
@@ -114,8 +130,10 @@ const assert=require("assert/strict");
   for(const key of ["L_UpperLeg","L_LowerLeg","R_UpperLeg","R_LowerLeg"]){
    assert(result.displacement[key].avgMeters>.015,key+" real skinned mesh did not move enough: "+result.displacement[key].avgMeters);
   }
-  assert(Math.abs(result.displacement.R_UpperLeg.avgMeters-result.displacement.L_UpperLeg.avgMeters)<.75,
-   "Right and left thigh displacement wildly differ");
+  const ratio=result.displacement.R_UpperLeg.avgMeters/result.displacement.L_UpperLeg.avgMeters;
+  assert(ratio>.30&&ratio<3.3,"Right/left thigh movement ratio incorrect: "+ratio);
+  assert(result.measuredWorldHeight>2.95&&result.measuredWorldHeight<3.45,
+    "Approved Panzer height changed during motion test: "+result.measuredWorldHeight);
   output.pass=true;
   output.errors=errors.slice(0,15);output.logs=logs.slice(-20);
  }catch(e){
