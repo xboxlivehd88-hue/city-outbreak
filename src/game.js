@@ -125,14 +125,15 @@ function groan(v){
 }
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x171b22);scene.fog=new THREE.FogExp2(0x242321,.0047);
 const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,1.10));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.18;
-// High matches v517 exactly. Graphics presets never modify collision, AI,
-// weapon handling, models or world geometry.
+// v534: lower tiers really reduce rendered pixels, city shaders and sky cost.
+// High preserves the approved full-quality original; physics never changes.
 const GRAPHICS_QUALITY_KEY="city-outbreak-graphics-v1";
 const GRAPHICS_CUSTOM_KEY="city-outbreak-graphics-custom-v2";
 const GRAPHICS_PRESETS={
- high:{resolution:1.10,shadowQuality:"high",rain:620,splashes:true,lights:"full",particles:100,corpses:20},
- medium:{resolution:.85,shadowQuality:"off",rain:310,splashes:false,lights:"half",particles:50,corpses:10},
- low:{resolution:.60,shadowQuality:"off",rain:0,splashes:false,lights:"off",particles:25,corpses:4}
+ high:{resolution:1.10,viewDistance:220,textureQuality:"high",skyQuality:"full",shadowQuality:"high",rain:620,splashes:true,lights:"full",particles:100,corpses:20},
+ medium:{resolution:.85,viewDistance:165,textureQuality:"medium",skyQuality:"full",shadowQuality:"off",rain:310,splashes:false,lights:"half",particles:50,corpses:10},
+ low:{resolution:.45,viewDistance:115,textureQuality:"low",skyQuality:"simple",shadowQuality:"off",rain:0,splashes:false,lights:"off",particles:25,corpses:2},
+ veryLow:{resolution:.35,viewDistance:75,textureQuality:"veryLow",skyQuality:"simple",shadowQuality:"off",rain:0,splashes:false,lights:"off",particles:10,corpses:0}
 };
 let graphicsQuality="high",graphicsOptions={...GRAPHICS_PRESETS.high};
 let graphicsRainCount=620,graphicsLightLimit=Infinity,graphicsCustomOptions=null;
@@ -143,7 +144,7 @@ scene.add(new THREE.HemisphereLight(0x73879a,0x4b4036,.92));
 let sun=new THREE.DirectionalLight(0xb9c9d6,1.35);
 sun.position.set(18,35,-92);sun.castShadow=true;sun.shadow.mapSize.set(768,768);sun.shadow.camera.left=-62;sun.shadow.camera.right=62;sun.shadow.camera.top=62;sun.shadow.camera.bottom=-62;scene.add(sun);
 
-const earlyNightSkyUniforms={uTime:{value:0}};
+const earlyNightSkyUniforms={uTime:{value:0},uSimplified:{value:0}};
 const earlyNightSkyMaterial=new THREE.ShaderMaterial({
  side:THREE.BackSide,
  depthWrite:false,
@@ -160,6 +161,7 @@ const earlyNightSkyMaterial=new THREE.ShaderMaterial({
  precision highp float;
  varying vec3 vDir;
  uniform float uTime;
+ uniform float uSimplified;
 
  float hash3(vec3 p){
    p=fract(p*.3183099+.1);
@@ -191,6 +193,16 @@ const earlyNightSkyMaterial=new THREE.ShaderMaterial({
    vec3 sky=mix(zenith,horizonCol,horizon*.82);
    float lowGlow=exp(-abs(d.y-.035)*7.0);
    sky+=vec3(.105,.073,.040)*lowGlow;
+   // Cheap LOW sky retains moon and night colors but skips procedural FBM clouds.
+   if(uSimplified>.5){
+     vec3 moonAxis=normalize(vec3(.18,.25,-.963));
+     float moonDot=dot(d,moonAxis);
+     float moon=smoothstep(cos(.027),cos(.0198),moonDot);
+     sky+=vec3(.035,.030,.020)*smoothstep(cos(.07),cos(.0275),moonDot);
+     sky=mix(sky,vec3(.92,.86,.69),moon);
+     gl_FragColor=vec4(sky,1.0);
+     return;
+   }
 
    vec3 drift=vec3(uTime*.0022,0.0,-uTime*.0014);
    float n1=fbm(d*3.55+drift);
@@ -1263,6 +1275,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  });
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
  applyWetCityMaterials(map);
+ applyCityTextureQuality(); // saved preset may be active before async GLB load.
  buildNewCitySpawnZones(map);
  const streetLampPlacements=scanExactCityLampAnchors(map);
  buildNewCityCollision(map);
@@ -6858,19 +6871,71 @@ const perfGuard=createPerformanceGuard({
 }); // HUD stays visible; console spam stays off unless explicitly needed
 setupWebGLContextLossHandler(cv,()=>show("GRAPHICS RESET — REFRESH IF NEEDED"));
 const resizeRenderer=setupRendererResize({renderer:ren,camera:cam});
+// v534: Per-city-material cheap shaders and texture filtering, reversible.
+const cityMaterialOriginals=new WeakMap(),cityTextureOriginals=new WeakMap();
+function applyCityTextureQuality(){
+ if(!newCityRoot)return;
+ const tier=graphicsOptions.textureQuality;
+ const visitedMaterials=new Set(),visitedTextures=new Set();
+ newCityRoot.traverse(mesh=>{
+  if(!mesh.isMesh)return;
+  for(const material of (Array.isArray(mesh.material)?mesh.material:[mesh.material])){
+   if(!material||visitedMaterials.has(material))continue;
+   visitedMaterials.add(material);
+   let original=cityMaterialOriginals.get(material);
+   if(!original){
+    original={map:material.map,normalMap:material.normalMap,roughnessMap:material.roughnessMap,
+      metalnessMap:material.metalnessMap,aoMap:material.aoMap,emissiveMap:material.emissiveMap};
+    cityMaterialOriginals.set(material,original);
+   }
+   // Low retains visible city color maps; Very Low uses only flat GLB colors.
+   const detail=tier==="high"||tier==="medium";
+   const desired={map:tier==="veryLow"?null:original.map,
+     normalMap:detail?original.normalMap:null,
+     roughnessMap:detail?original.roughnessMap:null,
+     metalnessMap:detail?original.metalnessMap:null,
+     aoMap:detail?original.aoMap:null,
+     emissiveMap:detail?original.emissiveMap:null};
+   let changed=false;
+   for(const key of Object.keys(desired)){
+    if(material[key]!==desired[key]){material[key]=desired[key];changed=true}
+   }
+   if(changed)material.needsUpdate=true;
+   for(const texture of Object.values(original)){
+    if(!texture?.isTexture||visitedTextures.has(texture))continue;
+    visitedTextures.add(texture);
+    let base=cityTextureOriginals.get(texture);
+    if(!base){
+     base={mag:texture.magFilter,min:texture.minFilter,aniso:texture.anisotropy};
+     cityTextureOriginals.set(texture,base);
+    }
+    const cheap=tier==="low"||tier==="veryLow";
+    const mag=cheap?THREE.NearestFilter:base.mag;
+    const min=cheap?THREE.NearestMipmapNearestFilter:base.min;
+    const aniso=tier==="high"?base.aniso:tier==="medium"?Math.min(2,base.aniso):1;
+    if(texture.magFilter!==mag||texture.minFilter!==min||texture.anisotropy!==aniso){
+      texture.magFilter=mag;texture.minFilter=min;texture.anisotropy=aniso;texture.needsUpdate=true;
+    }
+   }
+  }
+ });
+}
 // Switch presets instantly from the startup menu or pause overlay.
 // Presets remain the quick shortcuts; each advanced option is independently
 // adjustable like a typical PC game Video/Graphics menu.
 function normalizeGraphicsOptions(input){
  const src=input&&typeof input==="object"?input:GRAPHICS_PRESETS.high;
  return {
-  resolution:[.60,.75,.85,1.10].includes(Number(src.resolution))?Number(src.resolution):1.10,
+  resolution:[.35,.45,.60,.75,.85,1.10].includes(Number(src.resolution))?Number(src.resolution):1.10,
+  viewDistance:[75,115,165,220].includes(Number(src.viewDistance))?Number(src.viewDistance):220,
+  textureQuality:["veryLow","low","medium","high"].includes(src.textureQuality)?src.textureQuality:"high",
+  skyQuality:["simple","full"].includes(src.skyQuality)?src.skyQuality:"full",
   shadowQuality:["off","low","medium","high"].includes(src.shadowQuality)?src.shadowQuality:(src.shadows===false?"off":"high"),
   rain:[0,310,620].includes(Number(src.rain))?Number(src.rain):620,
   splashes:src.splashes===true,
   lights:["off","half","full"].includes(src.lights)?src.lights:"full",
-  particles:[25,50,75,100].includes(Number(src.particles))?Number(src.particles):100,
-  corpses:[0,4,10,20].includes(Number(src.corpses))?Number(src.corpses):20
+  particles:[10,25,50,75,100].includes(Number(src.particles))?Number(src.particles):100,
+  corpses:[0,2,4,10,20].includes(Number(src.corpses))?Number(src.corpses):20
  };
 }
 function applyGraphicsOptions(input,presetName="custom"){
@@ -6879,6 +6944,12 @@ function applyGraphicsOptions(input,presetName="custom"){
  graphicsQuality=presetName;
  ren.setPixelRatio(Math.min(devicePixelRatio||1,settings.resolution));
  resizeRenderer();
+ cam.far=settings.viewDistance;cam.updateProjectionMatrix();
+ // Sky stays within camera's reduced render far-plane.
+ earlyNightSky.scale.setScalar(Math.min(1,(settings.viewDistance-8)/185));
+ earlyNightSkyUniforms.uSimplified.value=settings.skyQuality==="simple"?1:0;
+ scene.fog.density=settings.viewDistance<=75?.014:settings.viewDistance<=115?.009:settings.viewDistance<=165?.0065:.0047;
+ applyCityTextureQuality();
  const castShadows=settings.shadowQuality!=="off";
  const shadowPixels=settings.shadowQuality==="low"?256:settings.shadowQuality==="medium"?512:768;
  if(sun.shadow.mapSize.x!==shadowPixels){
@@ -6902,6 +6973,9 @@ function applyGraphicsOptions(input,presetName="custom"){
  const label=document.querySelector("#graphicsPresetState");
  if(label)label.textContent=graphicsQuality==="custom"?"CUSTOM — your settings":"PRESET — "+graphicsQuality.toUpperCase();
  document.documentElement.dataset.graphicsQuality=graphicsQuality;
+ document.documentElement.dataset.renderPixelRatio=ren.getPixelRatio().toFixed(2);
+ document.documentElement.dataset.drawDistance=String(cam.far);
+ document.documentElement.dataset.textureQuality=settings.textureQuality;
  try{
   localStorage.setItem(GRAPHICS_QUALITY_KEY,graphicsQuality);
   if(graphicsQuality==="custom"){

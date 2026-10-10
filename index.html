@@ -14,7 +14,7 @@
 <div class="stats"><span id="ammo">8 / 30</span><br><span id="kills">KILLS 0</span><br><span id="heads">HEADSHOTS 0</span><br><span id="wave">WAVE 1</span><br><span id="remaining">ZOMBIES 6</span><br><span id="cash">CASH $0</span><br><span id="weaponName">SHOTGUN</span><br><span id="grenadeCount">GRENADES 2</span><br><span id="nukeCount">NUKES 0</span></div><button id="pauseBtn" type="button">PAUSE [P]</button><div id="bossHUD"><div id="bossName"></div><div id="bossSub">BOSS THREAT</div><div id="bossTrack"><div id="bossFill"></div></div></div>
 <div id="crosshair"></div><div id="scopeOverlay"><div id="scopeReticle"></div></div><div id="hitmarker">×</div><div id="damage"></div><div id="nukeFlash"></div><div id="nukeShock"></div>
 <div id="announce"><b id="big"></b><span id="small"></span></div>
-<div id="pauseOverlay"><div id="pausePanel"><h2>PAUSED</h2><p>The outbreak is frozen exactly where you left it.<br>Press P or choose Resume when you are ready.</p><div class="graphicsOptions graphicsPauseOptions"><label for="graphicsQualityPause">GRAPHICS QUALITY</label><select id="graphicsQualityPause" class="graphicsQualitySelect" aria-label="Graphics quality while paused"><option value="low">LOW — FASTEST</option><option value="medium">MEDIUM — BALANCED</option><option value="high">HIGH — ORIGINAL</option><option value="custom">CUSTOM — MANUAL</option></select><button type="button" class="openAdvancedGraphics graphicsAdvancedButton">ADVANCED GRAPHICS...</button><span>Changes apply immediately and are saved on this device.</span></div><button id="resumeGame" type="button">RESUME GAME</button></div></div>
+<div id="pauseOverlay"><div id="pausePanel"><h2>PAUSED</h2><p>The outbreak is frozen exactly where you left it.<br>Press P or choose Resume when you are ready.</p><div class="graphicsOptions graphicsPauseOptions"><label for="graphicsQualityPause">GRAPHICS QUALITY</label><select id="graphicsQualityPause" class="graphicsQualitySelect" aria-label="Graphics quality while paused"><option value="veryLow">VERY LOW — MAX FPS</option><option value="low">LOW — PERFORMANCE</option><option value="medium">MEDIUM — BALANCED</option><option value="high">HIGH — ORIGINAL</option><option value="custom">CUSTOM — MANUAL</option></select><button type="button" class="openAdvancedGraphics graphicsAdvancedButton">ADVANCED GRAPHICS...</button><span>Changes apply immediately and are saved on this device.</span></div><button id="resumeGame" type="button">RESUME GAME</button></div></div>
 <div id="death"><div id="deathTitle">YOU DIED</div><div id="deathStats"><div class="deathStat"><span>KILLS</span><b id="deathKills">0</b></div><div class="deathStat"><span>RUN TIME</span><b id="deathTime">00:00</b></div><div class="deathStat"><span>WAVE REACHED</span><b id="deathWave">1</b></div><div class="deathStat"><span>ROUNDS CLEARED</span><b id="deathRounds">0</b></div></div><button id="deathRestart">RESTART GAME</button></div><div id="msg"></div>
 <div id="shop">
 <div id="shopHeader"><h2>WAVE SHOP</h2><div id="shopCash">CASH $0</div></div>
@@ -58,7 +58,7 @@
       <div><h2 id="graphicsAdvancedTitle">GAME SETTINGS</h2><p id="graphicsPresetState">PRESET — HIGH</p></div>
       <button type="button" id="closeAdvancedGraphics">CLOSE</button>
     </header>
-    <div class="graphicsSettingsPreset"><label for="graphicsQualityStart">QUALITY PRESET</label><select id="graphicsQualityStart" class="graphicsQualitySelect" aria-label="Graphics quality preset"><option value="low">LOW — FASTEST</option><option value="medium">MEDIUM — BALANCED</option><option value="high">HIGH — ORIGINAL</option><option value="custom">CUSTOM — MANUAL</option></select></div>
+    <div class="graphicsSettingsPreset"><label for="graphicsQualityStart">QUALITY PRESET</label><select id="graphicsQualityStart" class="graphicsQualitySelect" aria-label="Graphics quality preset"><option value="veryLow">VERY LOW — MAX FPS</option><option value="low">LOW — PERFORMANCE</option><option value="medium">MEDIUM — BALANCED</option><option value="high">HIGH — ORIGINAL</option><option value="custom">CUSTOM — MANUAL</option></select></div>
     <p class="graphicsAdvancedIntro">Choose a quality preset or customize individual settings. Changes apply instantly and are saved automatically.</p>
     <nav class="graphicsTabs" aria-label="Game settings category">
       <button type="button" class="graphicsTab is-active" data-graphics-tab="controls" aria-selected="true">CONTROLS</button>
@@ -83,12 +83,15 @@
     </div>
     <div class="graphicsTabPanel" data-graphics-panel="display" hidden>
       <div class="graphicsSettingGrid">
-        <div class="graphicsSettingRow"><div><label for="graphicsResolution">RENDER RESOLUTION</label><small>Lower this first on slower computers. It reduces pixels drawn without changing gameplay.</small></div><select id="graphicsResolution" data-graphics-option="resolution"><option value="0.6">60% — FASTEST</option><option value="0.75">75%</option><option value="0.85">85% — BALANCED</option><option value="1.1">ORIGINAL</option></select></div>
+        <div class="graphicsSettingRow"><div><label for="graphicsResolution">RENDER RESOLUTION</label><small>Reduce actual GPU pixel workload without blurring the text/UI. 35% is for very weak laptops.</small></div><select id="graphicsResolution" data-graphics-option="resolution"><option value="0.35">35% — VERY LOW</option><option value="0.45">45% — LOW</option><option value="0.6">60%</option><option value="0.75">75%</option><option value="0.85">85% — BALANCED</option><option value="1.1">110% — ORIGINAL</option></select></div>
+         <div class="graphicsSettingRow"><div><label for="graphicsViewDistance">VIEW DISTANCE</label><small>Draw less distant scenery. Zombie movement, gameplay and collisions never change.</small></div><select id="graphicsViewDistance" data-graphics-option="viewDistance"><option value="75">SHORT — FASTEST</option><option value="115">LOW</option><option value="165">MEDIUM</option><option value="220">FAR — ORIGINAL</option></select></div>
       </div>
     </div>
     <div class="graphicsTabPanel" data-graphics-panel="graphics" hidden>
       <div class="graphicsSettingGrid">
         <div class="graphicsSettingRow"><div><label for="graphicsShadows">SHADOW QUALITY</label><small>Lower resolutions cost less GPU power. Off is fastest.</small></div><select id="graphicsShadows" data-graphics-option="shadowQuality"><option value="off">OFF — FASTEST</option><option value="low">LOW (256)</option><option value="medium">MEDIUM (512)</option><option value="high">HIGH (768)</option></select></div>
+         <div class="graphicsSettingRow"><div><label for="graphicsTextureQuality">WORLD TEXTURE DETAIL</label><small>Low removes costly surface detail maps; Very Low draws the city with simple flat colors.</small></div><select id="graphicsTextureQuality" data-graphics-option="textureQuality"><option value="veryLow">VERY LOW — FLAT COLORS</option><option value="low">LOW — BASIC TEXTURES</option><option value="medium">MEDIUM</option><option value="high">HIGH — ORIGINAL</option></select></div>
+         <div class="graphicsSettingRow"><div><label for="graphicsSkyQuality">SKY / CLOUD DETAIL</label><small>Simple sky removes the expensive procedural cloud shader while retaining nighttime colors and the moon.</small></div><select id="graphicsSkyQuality" data-graphics-option="skyQuality"><option value="simple">SIMPLE — FASTEST</option><option value="full">FULL — ORIGINAL CLOUDS</option></select></div>
         <div class="graphicsSettingRow"><div><label for="graphicsStreetlights">REAL STREETLIGHT LIGHTING</label><small>Switch off expensive spotlights while keeping decorative lamp glow.</small></div><select id="graphicsStreetlights" data-graphics-option="lights"><option value="off">OFF</option><option value="half">REDUCED</option><option value="full">FULL</option></select></div>
       </div>
     </div>
@@ -100,10 +103,10 @@
     </div>
     <div class="graphicsTabPanel" data-graphics-panel="performance" hidden>
       <div class="graphicsSettingGrid">
-        <div class="graphicsSettingRow"><div><label for="graphicsParticles">COSMETIC PARTICLES</label><small>Reduces blood, bullet dust and explosion debris visuals. Blast damage stays the same.</small></div><select id="graphicsParticles" data-graphics-option="particles"><option value="25">25% — FASTEST</option><option value="50">50%</option><option value="75">75%</option><option value="100">100% — ORIGINAL</option></select></div>
-        <div class="graphicsSettingRow"><div><label for="graphicsCorpses">MAX VISIBLE CORPSES</label><small>Clears oldest dead bodies only AFTER their ragdoll physics settle. Active ragdolls stay intact.</small></div><select id="graphicsCorpses" data-graphics-option="corpses"><option value="0">0 — CLEAR WHEN SETTLED</option><option value="4">4 — FASTEST</option><option value="10">10 — BALANCED</option><option value="20">20 — ORIGINAL</option></select></div>
+        <div class="graphicsSettingRow"><div><label for="graphicsParticles">COSMETIC PARTICLES</label><small>Reduces blood, bullet dust and explosion debris visuals. Blast damage stays the same.</small></div><select id="graphicsParticles" data-graphics-option="particles"><option value="10">10% — MINIMAL</option><option value="25">25% — LOW</option><option value="50">50%</option><option value="75">75%</option><option value="100">100% — ORIGINAL</option></select></div>
+        <div class="graphicsSettingRow"><div><label for="graphicsCorpses">MAX VISIBLE CORPSES</label><small>Clears oldest dead bodies only AFTER their ragdoll physics settle. Active ragdolls stay intact.</small></div><select id="graphicsCorpses" data-graphics-option="corpses"><option value="0">0 — CLEAR WHEN SETTLED</option><option value="2">2 — LOW</option><option value="4">4</option><option value="10">10 — BALANCED</option><option value="20">20 — ORIGINAL</option></select></div>
       </div>
-      <p class="graphicsTabHint">LOW preset uses 25% cosmetic particles and up to 4 settled corpses. Living zombies and ragdoll falls are unaffected.</p>
+      <p class="graphicsTabHint">VERY LOW uses 35% resolution, simple sky and flat-colored city. LOW uses 45%, basic textures and shorter view distance. Zombie gameplay and ragdoll physics are unchanged.</p>
     </div>
     <p class="graphicsAdvancedFoot">Start with LOW on older laptops, then raise individual settings as performance allows. Custom choices are saved.</p>
   </section>
@@ -112,6 +115,6 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <!-- v463 Pages deployment retrigger: no gameplay change -->
 <!-- v470 final deployment sync -->
-<script type="module" src="./src/game.js?v=533"></script>
+<script type="module" src="./src/game.js?v=534"></script>
 </body>
 </html>
