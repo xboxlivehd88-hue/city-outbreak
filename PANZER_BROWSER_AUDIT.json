@@ -1,8 +1,8 @@
 {
-  "build": "v580",
+  "build": "v580+calibration-candidate",
   "test": "panzer-original-skeleton-visible-vertex-motion",
-  "startedAt": "2026-10-10T21:30:35.046Z",
-  "pass": false,
+  "startedAt": "2026-10-10T21:32:28.797Z",
+  "pass": true,
   "siteStatus": 200,
   "modelRequest": {
     "status": 200,
@@ -11,9 +11,9 @@
   "auditVersion": "v580",
   "panzerSourceHeight": 0.008063683962353433,
   "approvedVisualTarget": 3.2,
-  "measuredWorldHeight": 0.008046915033578074,
+  "measuredWorldHeight": 3.2000000000000024,
   "beforeScale": 396.8409494890548,
-  "afterScale": 0.997920438244647,
+  "afterScale": 19.900143070529403,
   "preCalibration": {
     "height": 1262.5712930787563,
     "minY": -812.5997055764539,
@@ -21,12 +21,12 @@
     "sampledVertices": 4817
   },
   "postCalibration": {
-    "height": 0.00798389442343107,
-    "minY": -1.781976129155982e-11,
-    "maxY": 0.007983894405611308,
+    "height": 3.1749387247623604,
+    "minY": -3.8375452104943975e-7,
+    "maxY": 3.1749383410078393,
     "sampledVertices": 4817
   },
-  "finalHolderScale": 0.997920438244647,
+  "finalHolderScale": 19.900143070529403,
   "sourceClip": "panzer zombie",
   "visibleMeshes": 7,
   "names": {
@@ -47,40 +47,45 @@
   },
   "displacement": {
     "L_UpperLeg": {
-      "avgMeters": 0.0006791182112875865,
-      "maxMeters": 0.001224195826359071,
+      "avgMeters": 0.2700635295702843,
+      "maxMeters": 0.4868234134450822,
       "angleAtLast": 0.20938062790756426
     },
     "L_LowerLeg": {
-      "avgMeters": 0.0013967045750932642,
-      "maxMeters": 0.001635468450001498,
+      "avgMeters": 0.55542460951164,
+      "maxMeters": 0.6503733440910601,
       "angleAtLast": 1.0026002585370224
     },
     "L_Foot": {
-      "avgMeters": 0.001791114987378252,
-      "maxMeters": 0.002068759664106287,
+      "avgMeters": 0.7122689795646888,
+      "maxMeters": 0.8226793619065367,
       "angleAtLast": 0.5379818024398128
     },
     "R_UpperLeg": {
-      "avgMeters": 0.000742393311756674,
-      "maxMeters": 0.0014680102570677957,
+      "avgMeters": 0.295226007446113,
+      "maxMeters": 0.5837805920672354,
       "angleAtLast": 0.09580540051836067
     },
     "R_LowerLeg": {
-      "avgMeters": 0.0021706031940975164,
-      "maxMeters": 0.0031172710296561218,
+      "avgMeters": 0.8631792671015119,
+      "maxMeters": 1.2396387004553815,
       "angleAtLast": 0.2290285677306186
     },
     "R_Foot": {
-      "avgMeters": 0.0034181941070319573,
-      "maxMeters": 0.004233614000465865,
+      "avgMeters": 1.3593061560684292,
+      "maxMeters": 1.6835724926831783,
       "angleAtLast": 0.14587784146649946
     }
   },
   "selectedNative": true,
   "forcedFallback": false,
-  "failure": "AssertionError [ERR_ASSERTION]: L_UpperLeg real skinned mesh did not move enough: 0.0006791182112875865\n    at /home/runner/work/city-outbreak/city-outbreak/scripts/panzer-browser-audit.cjs:147:4",
   "errors": [],
-  "logs": [],
-  "completedAt": "2026-10-10T21:30:41.977Z"
+  "logs": [
+    "log: CITY OUTBREAK v580: REAL PANZER GLB — right leg exists but source clip does NOT animate it {sourceClip: Array(1), selected: ORIGINAL_GLTF_SKELETON_BOTH_LEGS, originalRightLegAnimationTracks: 0, originalRightThigh: j_hip_ri_08, originalRightKnee: j_knee_ri_09}",
+    "log: CITY OUTBREAK: walkers.glb loaded {animations: Array(0), autoRig: true, height: 9.460575103759766}",
+    "log: CITY OUTBREAK v580: both ORIGINAL Panzer legs now driven {nativeBoneNames: Object, originalClip: panzer zombie, originalTracks: 47, upperTracksPreserved: 43, legTracksOmitted: 4}",
+    "log: CITY OUTBREAK v573: Panzer boss awaiting posed-mesh scale calibration {importedAnimation: panzer zombie, proceduralBones: 0, hitboxes: 6}",
+    "log: CITY OUTBREAK v570: Panzer actual animated size matched to Suit Guy {rawAnimatedHeight: 1272.5373583877365, targetWorldHeight: 3.2, correction: 0.050146395164489606, resultingScale: 19.900143070529403, footOffset: 1.9806641949787787}"
+  ],
+  "completedAt": "2026-10-10T21:32:31.415Z"
 }
