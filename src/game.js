@@ -1331,6 +1331,106 @@ function addStreetLamps(placements){
  });
 }
 
+// v539 gas-station canopy: three copies of the actual uploaded fluorescent
+// GLB, aligned lengthwise front-to-back along the three pump bays. The roof
+// underside offset is measured from Gas_Station_01's own GLB vertices:
+// canopy top -14.64; underside -15.25 (0.61 local game-map units).
+// Only ONE broad, shadowless SpotLight lights all three fixtures/pump lanes,
+// preserving the v538 six-spotlight High frame-stability optimization.
+const GAS_CANOPY_LIGHT_GLB="assets/simple_fluorescent_tube_light.glb?v=539";
+const GAS_CANOPY_UNDERSIDE_OFFSET_LOCAL=.61;
+const gasCanopyFixtures=[];
+let gasCanopyFillLight=null;
+function syncGasCanopyLighting(){
+ if(!gasCanopyFillLight)return;
+ // Never change active shader light counts when looking/turning the camera.
+ // Graphics menu changes (rare) are the only visibility switches.
+ const mode=graphicsOptions.lights;
+ gasCanopyFillLight.visible=mode!=="off";
+ gasCanopyFillLight.intensity=mode==="full"?355:mode==="half"?210:0;
+}
+function installGasStationCanopyFixtures(map){
+ const station=map.getObjectByName("Gas_Station_01");
+ if(!station||gasCanopyFixtures.length)return;
+ map.updateMatrixWorld(true);
+ const roof=new THREE.Box3().setFromObject(station);
+ if(roof.isEmpty()||!Number.isFinite(roof.max.y))return;
+ // Use the model's real roof bounds rather than guessing positions from a
+ // screenshot or placing any new fixtures in the gas pump collision volume.
+ const underside=roof.max.y-GAS_CANOPY_UNDERSIDE_OFFSET_LOCAL*NEW_CITY_SCALE;
+ const roofCenter=roof.getCenter(new THREE.Vector3());
+ const width=roof.max.x-roof.min.x,depth=roof.max.z-roof.min.z;
+ if(width<5||depth<5)return;
+ new GLTFLoader().load(GAS_CANOPY_LIGHT_GLB,gltf=>{
+  const source=gltf.scene;
+  source.updateMatrixWorld(true);
+  const baseBox=new THREE.Box3().setFromObject(source);
+  if(baseBox.isEmpty())return;
+  const sourceCenter=baseBox.getCenter(new THREE.Vector3());
+  const sourceSize=baseBox.getSize(new THREE.Vector3());
+  // The uploaded model already runs on its Z axis (source ±1.51 Z).
+  // Maintain its proportions and center it front-to-back in every bay.
+  const laneWidth=width/3;
+  const scale=Math.min(2.05,laneWidth*.73/Math.max(.1,sourceSize.x),
+                      depth*.66/Math.max(.1,sourceSize.z));
+  if(!Number.isFinite(scale)||scale<=0)return;
+  for(let i=0;i<3;i++){
+   const fixture=source.clone(true);
+   fixture.name="GasStationCanopyFluorescentRow"+(i+1);
+   fixture.scale.setScalar(scale);
+   const rowX=roof.min.x+width*(i+.5)/3;
+   // top edge of lamp mounts flush just BELOW the measured roof underside.
+   fixture.position.set(rowX-sourceCenter.x*scale,
+     underside-.04-baseBox.max.y*scale,
+     roofCenter.z-sourceCenter.z*scale);
+   fixture.traverse(o=>{
+    if(!o.isMesh)return;
+    o.castShadow=false;o.receiveShadow=false;
+    // Distinct bulbs in the uploaded "Light*_LigthBulb_0" submeshes, not a
+    // replacement/generic fixture. Give those bulbs convincing tube emission.
+    if(/LigthBulb/i.test(o.name||"")){
+      const previous=Array.isArray(o.material)?o.material:[o.material];
+      o.material=previous.map(()=>new THREE.MeshBasicMaterial({
+        color:0xfff9e9,toneMapped:false,side:THREE.DoubleSide
+      }));
+      if(!Array.isArray(source.getObjectByName(o.name)?.material))o.material=o.material[0];
+    }else if(/CoverGlass/i.test(o.name||"")){
+      const mats=Array.isArray(o.material)?o.material:[o.material];
+      o.material=mats.map(m=>{
+       const copy=m.clone();
+       if(copy.emissive){copy.emissive.setHex(0xffefd0);copy.emissiveIntensity=.42}
+       return copy;
+      });
+      if(!Array.isArray(source.getObjectByName(o.name)?.material))o.material=o.material[0];
+    }
+   });
+   scene.add(fixture);gasCanopyFixtures.push(fixture);
+  }
+  // A single overlapping warm-white pool lights all pump bays; non-shadowing
+  // and stationary, so turning the camera cannot recompile light shaders.
+  const target=new THREE.Object3D();
+  target.position.set(roofCenter.x,roof.min.y+.12,roofCenter.z);
+  scene.add(target);
+  gasCanopyFillLight=new THREE.SpotLight(0xfff5db,355,16,Math.PI/2.65,.70,1.65);
+  gasCanopyFillLight.name="GasStationCanopySharedPool";
+  gasCanopyFillLight.castShadow=false;
+  gasCanopyFillLight.position.set(roofCenter.x,underside-.23,roofCenter.z);
+  gasCanopyFillLight.target=target;
+  scene.add(gasCanopyFillLight);
+  syncGasCanopyLighting();
+  document.documentElement.dataset.gasCanopyFixtures=String(gasCanopyFixtures.length);
+  document.documentElement.dataset.gasCanopyRows=gasCanopyFixtures.map(f=>f.position.x.toFixed(2)).join(",");
+  document.documentElement.dataset.gasCanopyCeiling=underside.toFixed(3);
+  console.log("CITY OUTBREAK: 3 actual fluorescent GLB fixtures under station canopy",{
+   rows:gasCanopyFixtures.length,model:GAS_CANOPY_LIGHT_GLB,
+   underside,roofCenter:roofCenter.toArray(),scale,sharedLight:true
+  });
+ },undefined,error=>{
+  document.documentElement.dataset.gasCanopyLightLoadError=String(error?.message||error);
+  console.warn("Gas station fluorescent light GLB could not load",error);
+ });
+}
+
 new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  const map=gltf.scene;
  map.name="ChickenGunCityMap";
@@ -1350,6 +1450,7 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  });
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
  applyWetCityMaterials(map);
+ installGasStationCanopyFixtures(map);
  applyCityTextureQuality(); // saved preset may be active before async GLB load.
  buildNewCitySpawnZones(map);
  const streetLampPlacements=scanExactCityLampAnchors(map);
@@ -7040,6 +7141,7 @@ function applyGraphicsOptions(input,presetName="custom"){
  rainSplashes.visible=graphicsRainCount>0&&settings.splashes;
  graphicsLightLimit=settings.lights==="off"?0:settings.lights==="half"?Math.min(STREET_LAMP_REDUCED_LIGHT_COUNT,streetLampLightPool.length):Infinity;
  updateStreetLampLighting(performance.now(),true);
+ syncGasCanopyLighting();
  for(const select of document.querySelectorAll(".graphicsQualitySelect"))select.value=graphicsQuality;
  for(const input of document.querySelectorAll("[data-graphics-option]")){
   const key=input.dataset.graphicsOption;
