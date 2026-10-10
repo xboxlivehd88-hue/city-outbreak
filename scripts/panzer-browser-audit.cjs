@@ -64,7 +64,7 @@ function finalizePanzerSpawnSize(z){
    const insertAfter="     calibratePanzerBossVisual(z);";
    if(source.split(insertAfter).length!==2)throw Error("native sync marker missing");
    const correctedSource=source.replace(mark,sizeFix+mark).replace(insertAfter,
-     insertAfter+"\\n     finalizePanzerSpawnSize(z);");
+     insertAfter+"\n     finalizePanzerSpawnSize(z);");
    const addon=`
 ;globalThis.__panzerOriginalSkinAudit={
  ready:()=>!!panzerBossAsset,
