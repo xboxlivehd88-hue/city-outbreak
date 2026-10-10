@@ -2105,6 +2105,18 @@ new GLTFLoader().load(NATURAL_CRAWLER_GLB_URL,gltf=>{
    track.values[i+2]+=dz;
   }
  }
+ // v553: The GLB's visible face/skin uses BLEND (transparent, double-sided).
+ // That makes overlapping forehead/cheek triangles sort incorrectly or vanish
+ // behind the hair. Keep its texture/alpha cutout, but give the face depth.
+ gltf.scene.traverse(o=>{
+  if(!o.isMesh)return;
+  const mats=Array.isArray(o.material)?o.material:[o.material];
+  for(const m of mats){
+   if(m?.name!=="Body")continue;
+   m.transparent=false;m.alphaTest=.09;m.depthWrite=true;
+   m.side=THREE.DoubleSide;m.needsUpdate=true;
+  }
+ });
  naturalCrawlerAsset={scene:gltf.scene,clips};
  document.documentElement.dataset.naturalCrawlerAsset="loaded";
  document.documentElement.dataset.naturalCrawlerAnimations=[...clips.keys()].join(",");
@@ -4618,8 +4630,12 @@ function attachNaturalCrawlerVisual(z){
  const box=new THREE.Box3().setFromObject(holder);
  if(!box.isEmpty()&&Number.isFinite(box.min.y)){
   const desiredFloor=z.g.position.y+.025;
+  // v553: v552's hard +/-1.4 offset was still sized for the old 0.86 GLB;
+  // the 2.0-size crawler could NEVER be lifted onto the pavement fully.
   const lift=(desiredFloor-box.min.y)/Math.max(.01,z.g.scale.y);
-  holder.position.y+=THREE.MathUtils.clamp(lift,-1.4,1.4);
+  if(Number.isFinite(lift)&&Math.abs(lift)<8)holder.position.y+=lift;
+  document.documentElement.dataset.naturalCrawlerGroundLift=
+   Number.isFinite(lift)?lift.toFixed(3):"invalid";
  }
  // The native crawler's legacy gore/body meshes were hidden BEFORE adding
  // the new model, including their visualOnly blood decals. Their hitboxes
@@ -4627,6 +4643,8 @@ function attachNaturalCrawlerVisual(z){
  z.naturalCrawlerVisual=holder;z.naturalCrawlerBones=bones;
  z.naturalCrawlerMixer=mixer;z.naturalCrawlerActions=actions;
  z.naturalCrawlerAction=crawl;z.naturalCrawlerActionName="Crawl";
+ z.naturalCrawlerBaseHeight=holder.position.y;
+ updateNaturalCrawlerGroundPose(z,0,true);
  z.naturalCrawlerPrevX=z.g.position.x;z.naturalCrawlerPrevZ=z.g.position.z;
  document.documentElement.dataset.naturalCrawlerAttached=
   String(Number(document.documentElement.dataset.naturalCrawlerAttached||0)+1);
@@ -4635,6 +4653,41 @@ function attachNaturalCrawlerVisual(z){
  document.documentElement.dataset.naturalCrawlerOldGoreHidden=
   String(!z.g.getObjectByName("CrawlerBodyBlood")?.visible);
  return true;
+}
+// v553: use real animated head/hand/foot joints as a cheap live floor probe.
+ // This touches only naturally spawning crawler's visible holder; existing
+ // navigation, health, hitboxes, raycasts and converted crawlers stay intact.
+const naturalCrawlerGroundProbe=new THREE.Vector3();
+function updateNaturalCrawlerGroundPose(z,dt,immediate=false){
+ const holder=z?.naturalCrawlerVisual,bones=z?.naturalCrawlerBones;
+ if(!holder||!bones?.size||z.dead)return;
+ // Imported Crawl clips pitch the face down. A modest neck/head lift keeps
+ // the face aimed forward and above the ground, without changing locomotion.
+ bones.get("Neck")?.rotateX(-.12);
+ bones.get("Head")?.rotateX(-.26);
+ z.g.updateMatrixWorld(true);
+ const ground=z.g.position.y,base=z.naturalCrawlerBaseHeight??holder.position.y;
+ let minClearance=Infinity;
+ const checks=[
+  ["Head",.32],["Chest",.26],["L_Hand",.08],["R_Hand",.08],
+  ["L_Foot",.05],["R_Foot",.05]
+ ];
+ for(const [key,pad] of checks){
+  const bone=bones.get(key);
+  if(!bone)continue;
+  bone.getWorldPosition(naturalCrawlerGroundProbe);
+  minClearance=Math.min(minClearance,naturalCrawlerGroundProbe.y-(ground+pad));
+ }
+ if(!Number.isFinite(minClearance))return;
+ const current=holder.position.y-base;
+ const parentScale=Math.max(.01,z.g.scale.y);
+ // Adjust up when any visible contact joint clips a curb/road, and gently
+ // settle back toward the original ground-calibrated height when clear.
+ const desired=THREE.MathUtils.clamp(current-minClearance/parentScale,0,1.8);
+ const adjustment=immediate?desired:THREE.MathUtils.damp(current,desired,12,Math.max(0,dt));
+ holder.position.y=base+adjustment;
+ document.documentElement.dataset.naturalCrawlerClearance=
+  minClearance.toFixed(3);
 }
 function updateNaturalCrawlerVisual(z,dt){
  if(!z?.naturalCrawlerVisual||!z.naturalCrawlerMixer||z.dead)return;
@@ -4660,6 +4713,7 @@ function updateNaturalCrawlerVisual(z,dt){
   next.setEffectiveTimeScale(speed<.08?.24:THREE.MathUtils.clamp(speed/1.00,.45,1.3));
  }
  z.naturalCrawlerMixer.update(dt);
+ updateNaturalCrawlerGroundPose(z,dt);
 }
 
 const PLAYER_WORLD_SCALE=1.20;
@@ -6051,9 +6105,13 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  // the same pre-fall setup. Stop animation only after leaving the current bone
  // transforms exactly where the last live frame put them.
  if(z.mixer)z.mixer.stopAllAction();
- // Stop Mixamo crawl keyframes but retain their final joint pose when
- // switching the new model to the game's existing floppy PBD solver.
- if(z.naturalCrawlerMixer)z.naturalCrawlerMixer.stopAllAction();
+ // v553: stopAllAction() UNBINDS and restores the Mixamo T-pose instantly,
+ // causing the visible crawler to spring upright at death. Freeze the last
+ // animated pose in place (keep actions bound), then release it into PBD.
+ if(z.naturalCrawlerMixer){
+  z.naturalCrawlerMixer.timeScale=0;
+  document.documentElement.dataset.naturalCrawlerDeathPose="frozen";
+ }
  z.g.rotation.order="YXZ";z.falling=true;
 
  const isBlast=!!blastOrigin;
