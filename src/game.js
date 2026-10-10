@@ -37,14 +37,23 @@ function attachSuitBossVisual(z){
    if(bone)z.walkerBones.set(key,bone);
  }
  z.walkerLastX=z.g.position.x;z.walkerLastZ=z.g.position.z;z.walkerMoveBlend=0;
- // Match the visible head of the new 3.2-unit model; old boss head collision is lower.
- if(z.hitMeshes)for(const hit of z.hitMeshes){if(hit.userData?.isHead||hit.userData?.part==="head")hit.raycast=()=>{};}
+ // v565: raycast against suit-aligned animated torso, hips and limbs instead
+ // of the legacy procedural boss hitboxes below the new model's actual chest.
+ buildBasicWalkerHitboxes(z);
+ const chestHit=z.walkerHitboxes?.find(o=>o.name==="BasicWalkerHit_torso_Chest");
+ if(chestHit)chestHit.scale.set(1.25,1.30,1.34);
+ const hipsHit=z.walkerHitboxes?.find(o=>o.name==="BasicWalkerHit_torso_Hips");
+ if(hipsHit)hipsHit.scale.set(1.10,1.12,1.15);
+ // Only the correctly placed v559 face sphere can register headshots.
+ for(const hit of z.walkerHitboxes||[])if(hit.userData?.isHead)hit.raycast=()=>{};
  const headHitGeo=new THREE.SphereGeometry(.32,12,8);
- const headHit=new THREE.Mesh(headHitGeo,new THREE.MeshBasicMaterial({visible:false}));
+ const headHitMat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false});
+ const headHit=new THREE.Mesh(headHitGeo,headHitMat);
  headHit.position.set(0,2.88,0);headHit.name="SuitBossHeadHitbox";
  headHit.userData.zombie=z;headHit.userData.part="head";headHit.userData.isHead=true;
- z.g.add(headHit);z.hitMeshes.push(headHit);z.ownedGeometries.push(headHitGeo);z.ownedMaterials.push(headHit.material);
+ z.g.add(headHit);z.hitMeshes.push(headHit);z.ownedGeometries.push(headHitGeo);z.ownedMaterials.push(headHitMat);
  z.suitBossHeadHitbox=headHit;
+ z.suitBossBlastHitboxes=[...z.walkerHitboxes.filter(hit=>!hit.userData?.isHead),headHit];
  // Preserve existing boss physics, hitboxes and attack logic; replace visible body only.
  if(z.rigVisual)z.rigVisual.visible=false;
  console.log("CITY OUTBREAK v562: suit boss anatomical shoulder weights + grounded gait",z.walkerBones.size);
@@ -6849,6 +6858,32 @@ function updateKnockdown(z,dt){
  }
  return true;
 }
+// v565: suit-boss explosions use animated body hit volumes, rather than
+// measuring radius from the ground pivot or an outdated chest height.
+function suitBossBlastDistance(z,p){
+ if(!z.suitBossBlastHitboxes?.length)return z.g.position.distanceTo(p);
+ const box=new THREE.Box3();let min=Infinity;
+ for(const hit of z.suitBossBlastHitboxes){
+   if(!hit?.parent)continue;
+   box.setFromObject(hit);
+   min=Math.min(min,box.distanceToPoint(p));
+ }
+ return Number.isFinite(min)?min:z.g.position.distanceTo(p);
+}
+function suitBossProjectileContact(z,from,to){
+ if(!z.suitBossBlastHitboxes?.length)return false;
+ const dir=to.clone().sub(from),len=dir.length();
+ if(len<.001)return false;
+ const ray=new THREE.Ray(from,dir.multiplyScalar(1/len));
+ const box=new THREE.Box3(),point=new THREE.Vector3();
+ for(const hit of z.suitBossBlastHitboxes){
+   if(!hit?.parent)continue;
+   box.setFromObject(hit).expandByScalar(.12);
+   if(box.containsPoint(from)||box.containsPoint(to))return true;
+   if(ray.intersectBox(box,point)&&point.distanceToSquared(from)<=(len+.01)*(len+.01))return true;
+ }
+ return false;
+}
 function blastReact(z,origin,strength=1){
  if(!z||z.dead)return;
  if(z.kind==="boss"){
@@ -6869,7 +6904,7 @@ function explodeLauncherRound(g){
  scene.remove(g.q);
  spawnExplosionBurst(visualOrigin,true,.055);
  for(const z of living()){
-   const d=z.g.position.distanceTo(p);
+   const d=z.suitBossVisual?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
    if(d<6.5){
      const blast=Math.max(2,Math.ceil((7-d)*1.55))*damageLevel;
      const force=Math.max(.35,1-d/6.5);
@@ -6909,7 +6944,7 @@ function explodeGrenade(g){
  scene.remove(g.q);
  spawnExplosionBurst(visualOrigin,false,.055);
  for(const z of living()){
-   const d=z.g.position.distanceTo(p);
+   const d=z.suitBossVisual?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
    if(d<7.5){
      const blast=Math.max(1,Math.ceil((8-d)/2))*damageLevel,force=Math.max(.25,1-d/7.5);
      z.hp-=blast;
@@ -7300,9 +7335,14 @@ for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;
      if(z.dead)continue;
      const dx=g.q.position.x-z.g.position.x,dz=g.q.position.z-z.g.position.z;
      if(z.kind==="boss"){
-       const chestY=z.g.position.y+1.43*(z.g.scale.y||1),dy=g.q.position.y-chestY;
-       if(dx*dx+dz*dz<.92*.92&&Math.abs(dy)<1.12){impact=true;break}
-     }else{
+        if(z.suitBossBlastHitboxes?.length){
+          // Segment sweep stops fast rounds tunneling through the model.
+          if(suitBossProjectileContact(z,grenadeOldPos,g.q.position)){impact=true;break}
+        }else{
+          const chestY=z.g.position.y+1.43*(z.g.scale.y||1),dy=g.q.position.y-chestY;
+          if(dx*dx+dz*dz<.92*.92&&Math.abs(dy)<1.12){impact=true;break}
+        }
+      }else{
        const crawler=z.kind==="crawler";
        const dy=g.q.position.y-(z.g.position.y+(crawler?.55:1));
        const rr=crawler?.78:.70;
