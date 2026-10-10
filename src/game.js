@@ -21,8 +21,8 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible deployment fingerprint, temporary during Wave 1 Panzer testing.
 // If the browser tab doesn't show v574, it isn't executing this build.
-document.title="CITY OUTBREAK — PANZER WALK v575";
-document.documentElement.dataset.panzerTestBuild="575";
+document.title="CITY OUTBREAK — PANZER WALK v576";
+document.documentElement.dataset.panzerTestBuild="576";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  panzerBossAsset=gltf;
@@ -38,7 +38,7 @@ new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
    const tPose=sz.y>0&&sz.x/sz.y>.68;
    panzerBossFallbackTemplate=buildBasicWalkerTemplate(gltf.scene,tPose);
  }
- console.log("CITY OUTBREAK v575: panzer boss anatomy inspected",{
+ console.log("CITY OUTBREAK v576: panzer thigh AND knee anatomy inspected",{
    animations:gltf.animations?.map(c=>c.name)||[],
    kneeSkin,autoRig:!!panzerBossFallbackTemplate,
    gait:panzerBossFallbackTemplate?"procedural weighted knees":"native plus knee override"
@@ -50,23 +50,41 @@ new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
 // v571: identify only the native Panzer rig's leg joints. Upper body, attacks
 // and accessory bones continue to use their uploaded animation unchanged.
 function findPanzerLegBones(model){
- const all=[];model.traverse(o=>{if(o.isBone)all.push(o)});
- const bones={};
- const role=(b)=>{
+ const all=[],meshes=[];
+ model.traverse(o=>{
+   if(o.isBone)all.push(o);
+   if(o.isSkinnedMesh&&o.geometry?.getAttribute("skinIndex")&&o.geometry?.getAttribute("skinWeight"))meshes.push(o);
+ });
+ // v576: do not select a decorative/dummy joint just because its name
+ // contains "RightLeg". Imported Panzer armor can have multiple armatures,
+ // attachments and extra leg controls. Rank matching bones by the ACTUAL
+ // amount of visible skinned geometry that follows each bone.
+ const influence=new Map();
+ for(const mesh of meshes){
+   const idx=mesh.geometry.getAttribute("skinIndex"),w=mesh.geometry.getAttribute("skinWeight");
+   const weighted=new Float64Array(mesh.skeleton.bones.length);
+   for(let i=0;i<idx.count;i++)for(let k=0;k<Math.min(4,idx.itemSize,w.itemSize);k++){
+     const id=idx.getComponent(i,k),weight=w.getComponent(i,k);
+     if(id>=0&&id<weighted.length&&weight>.05)weighted[id]+=weight;
+   }
+   mesh.skeleton.bones.forEach((b,i)=>influence.set(b,(influence.get(b)||0)+weighted[i]));
+ }
+ const role=b=>{
    const n=(b.name||"").toLowerCase().replace(/[^a-z0-9]/g,"");
-   const side=n.includes("left")||/(^|[a-z0-9])l(thigh|upleg|upperleg|calf|shin|lowerleg|knee|leg|foot|ankle)/.test(n)||/(thigh|upleg|upperleg|calf|shin|lowerleg|knee|leg|foot|ankle)l$/.test(n)?"L":
-              n.includes("right")||/(^|[a-z0-9])r(thigh|upleg|upperleg|calf|shin|lowerleg|knee|leg|foot|ankle)/.test(n)||/(thigh|upleg|upperleg|calf|shin|lowerleg|knee|leg|foot|ankle)r$/.test(n)?"R":null;
+   const side=n.includes("left")||/(?:^|\d|orig|def|bip)l(?:up|upper|lower)?(?:thigh|leg|shin|calf|foot|ankle|knee)/.test(n)||/(?:thigh|leg|shin|calf|foot|ankle|knee)l$/.test(n)?"L":
+              n.includes("right")||/(?:^|\d|orig|def|bip)r(?:up|upper|lower)?(?:thigh|leg|shin|calf|foot|ankle|knee)/.test(n)||/(?:thigh|leg|shin|calf|foot|ankle|knee)r$/.test(n)?"R":null;
    if(!side)return null;
    if(/thigh|upleg|upperleg|legupper/.test(n))return side+"_UpperLeg";
-   // Mixamo uses LeftLeg / RightLeg for the CALF (below the knee).
-   // v571 omitted these bones, so a native thigh track could walk stiff-legged.
    if(/calf|shin|lowerleg|leglower|knee|(?:left|right)leg(?:\d+)?$|(?:legleft|legright)(?:\d+)?$|(?:^|mixamorig|bip\d*|def)[lr]leg(?:\d+)?$/.test(n))return side+"_LowerLeg";
    if(/foot|ankle/.test(n))return side+"_Foot";
    return null;
  };
+ const bones={};
  for(const b of all){
-   const key=role(b);
-   if(key&&!bones[key])bones[key]={bone:b,rest:b.quaternion.clone()};
+   const key=role(b);if(!key)continue;
+   const weight=influence.get(b)||0;
+   if(!bones[key]||weight>bones[key].skinInfluence)
+     bones[key]={bone:b,rest:b.quaternion.clone(),skinInfluence:weight};
  }
  return bones;
 }
@@ -75,7 +93,7 @@ function findPanzerLegBones(model){
 // the Panzer armor below its knees weighted to the shin joints.
 function inspectPanzerKneeSkin(model){
  const joints=findPanzerLegBones(model);
- const counts={L:0,R:0};
+ const counts={L_UpperLeg:0,L_LowerLeg:0,R_UpperLeg:0,R_LowerLeg:0};
  let skinnedMeshes=0;
  model.traverse(mesh=>{
    if(!mesh.isSkinnedMesh||!mesh.skeleton?.bones?.length)return;
@@ -83,28 +101,33 @@ function inspectPanzerKneeSkin(model){
    const indices=mesh.geometry?.getAttribute("skinIndex");
    const weights=mesh.geometry?.getAttribute("skinWeight");
    if(!indices||!weights)return;
-   const ids={};
-   for(const side of ["L","R"]){
-     const bone=joints[side+"_LowerLeg"]?.bone;
-     ids[side]=bone?mesh.skeleton.bones.indexOf(bone):-1;
+   const idMap=new Map();
+   for(const key of Object.keys(counts)){
+     const bone=joints[key]?.bone,id=bone?mesh.skeleton.bones.indexOf(bone):-1;
+     if(id>=0)idMap.set(id,key);
    }
-   if(ids.L<0&&ids.R<0)return;
-   // Inspect each vertex; this runs ONCE when the asset is loaded.
+   if(!idMap.size)return;
    for(let i=0;i<indices.count;i++){
      for(let k=0;k<Math.min(4,indices.itemSize,weights.itemSize);k++){
-       const index=indices.getComponent(i,k);
-       const weight=weights.getComponent(i,k);
-       if(weight<.05)continue;
-       if(index===ids.L)counts.L++;
-       if(index===ids.R)counts.R++;
+       if(weights.getComponent(i,k)<.05)continue;
+       const key=idMap.get(indices.getComponent(i,k));
+       if(key)counts[key]++;
      }
    }
  });
- // A shin joint with no skin weights is a dummy control: rotating it cannot
- // bend a leg visually, regardless of how correct the animation math is.
- return {skinnedMeshes,weightedLeftShin:counts.L,weightedRightShin:counts.R,
-   namedJoints:Object.keys(joints),
-   bendable:counts.L>=32&&counts.R>=32};
+ // All four joint groups must control actual armor. The v573 test only
+ // checked both shins: an unweighted RIGHT THIGH can remain completely rigid
+ // even while a few right-shin vertices technically bend. Also reject a
+ // dramatically one-sided rig; v576 then re-skins the original Panzer meshes
+ // through the existing auto-rig for working bilateral hip/knee control.
+ const balanced=(a,b)=>{
+   const low=Math.min(a,b),high=Math.max(a,b);
+   return high>=32&&low>=32&&low/high>=.25;
+ };
+ const bendable=balanced(counts.L_UpperLeg,counts.R_UpperLeg)&&
+                 balanced(counts.L_LowerLeg,counts.R_LowerLeg);
+ return {skinnedMeshes,weightedLegVertices:counts,
+   namedJoints:Object.keys(joints),bendable};
 }
 function panzerHasAnimatedLegTracks(clip){
  // Many imported Idle clips key every bone even though the legs never move.
@@ -229,7 +252,7 @@ function attachPanzerBossVisual(z){
      part.bone.getWorldQuaternion(worldRotation);
      part.hingeAxis=modelRight.clone().applyQuaternion(worldRotation.invert()).normalize();
    }
-   console.log("CITY OUTBREAK v575: Panzer native walking clip with coherent leg pivots",{
+   console.log("CITY OUTBREAK v576: Panzer weighted native leg pivots",{
      clip:walk.name,hasLegTracks:z.panzerNativeWalking,
      detectedLegs:Object.keys(z.panzerNativeLegBones),
      availableClips:clips.map(c=>c.name)
@@ -5899,7 +5922,7 @@ function spawnWave(){
      const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
    }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
-   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v575 STEP CYCLE — "+(currentBoss?.panzerBossAutoRig?"WEIGHTED RIG":"NATIVE RIG"):"PANZER v575 STEP CYCLE — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v576 RIGHT-LEG TEST — "+(currentBoss?.panzerBossAutoRig?"DUAL LEG AUTO-RIG":"SKINNED LEG RIG"):"PANZER v576 RIGHT-LEG TEST — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
    updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
