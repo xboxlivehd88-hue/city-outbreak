@@ -37,6 +37,14 @@ function attachSuitBossVisual(z){
    if(bone)z.walkerBones.set(key,bone);
  }
  z.walkerLastX=z.g.position.x;z.walkerLastZ=z.g.position.z;z.walkerMoveBlend=0;
+ // Match the visible head of the new 3.2-unit model; old boss head collision is lower.
+ if(z.hitMeshes)for(const hit of z.hitMeshes){if(hit.userData?.isHead||hit.userData?.part==="head")hit.raycast=()=>{};}
+ const headHitGeo=new THREE.SphereGeometry(.32,12,8);
+ const headHit=new THREE.Mesh(headHitGeo,new THREE.MeshBasicMaterial({visible:false}));
+ headHit.position.set(0,2.88,0);headHit.name="SuitBossHeadHitbox";
+ headHit.userData.zombie=z;headHit.userData.part="head";headHit.userData.isHead=true;
+ z.g.add(headHit);z.hitMeshes.push(headHit);z.ownedGeometries.push(headHitGeo);z.ownedMaterials.push(headHit.material);
+ z.suitBossHeadHitbox=headHit;
  // Preserve existing boss physics, hitboxes and attack logic; replace visible body only.
  if(z.rigVisual)z.rigVisual.visible=false;
  console.log("CITY OUTBREAK v558: animated suit boss attached",z.walkerBones.size);
@@ -4340,12 +4348,14 @@ function syncBasicWalkerVisual(z,dt=0){
  const supportLua=rigBone(z,"L_UpperArm"),supportRua=rigBone(z,"R_UpperArm"),
        supportLla=rigBone(z,"L_LowerArm"),supportRla=rigBone(z,"R_LowerArm");
  if(lua){
-   if(supportLua)lua.rotation.set(supportLua.rotation.x,supportLua.rotation.y*.65,.34+supportLua.rotation.z*.65);
-   else lua.rotation.set(armBase-s*armAmp-attack*.42,0,.34);
+   const armDown=z.suitBossVisual?1.12:.34;
+   if(supportLua)lua.rotation.set(supportLua.rotation.x,supportLua.rotation.y*.65,armDown+supportLua.rotation.z*.65);
+   else lua.rotation.set(armBase-s*armAmp-attack*.42,0,armDown);
  }
  if(rua){
-   if(supportRua)rua.rotation.set(supportRua.rotation.x,supportRua.rotation.y*.65,-.34+supportRua.rotation.z*.65);
-   else rua.rotation.set(armBase+s*armAmp-attack*.42,0,-.34);
+   const armDown=z.suitBossVisual?-1.12:-.34;
+   if(supportRua)rua.rotation.set(supportRua.rotation.x,supportRua.rotation.y*.65,armDown+supportRua.rotation.z*.65);
+   else rua.rotation.set(armBase+s*armAmp-attack*.42,0,armDown);
  }
  if(lla){
    if(supportLla)lla.rotation.set(supportLla.rotation.x,supportLla.rotation.y*.65,.06+supportLla.rotation.z*.65);
