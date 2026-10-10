@@ -1,14 +1,14 @@
 {
-  "build": "v580+calibration-candidate",
+  "build": "v581-committed",
   "test": "panzer-original-skeleton-visible-vertex-motion",
-  "startedAt": "2026-10-10T21:32:28.797Z",
+  "startedAt": "2026-10-10T21:34:41.336Z",
   "pass": true,
   "siteStatus": 200,
   "modelRequest": {
     "status": 200,
-    "url": "http://127.0.0.1:4173/assets/panzer_zombie.glb?v=580"
+    "url": "http://127.0.0.1:4173/assets/panzer_zombie.glb?v=581"
   },
-  "auditVersion": "v580",
+  "auditVersion": "v581",
   "panzerSourceHeight": 0.008063683962353433,
   "approvedVisualTarget": 3.2,
   "measuredWorldHeight": 3.2000000000000024,
@@ -81,11 +81,15 @@
   "forcedFallback": false,
   "errors": [],
   "logs": [
-    "log: CITY OUTBREAK v580: REAL PANZER GLB — right leg exists but source clip does NOT animate it {sourceClip: Array(1), selected: ORIGINAL_GLTF_SKELETON_BOTH_LEGS, originalRightLegAnimationTracks: 0, originalRightThigh: j_hip_ri_08, originalRightKnee: j_knee_ri_09}",
     "log: CITY OUTBREAK: walkers.glb loaded {animations: Array(0), autoRig: true, height: 9.460575103759766}",
+    "error: CITY OUTBREAK: green guy radiated model failed to load ReferenceError: bossTPose is not defined\n    at chooseRigidBone (http://127.0.0.1:4173/src/game.js?v=581:4353:4)\n    at buildRadiatedGreenGuyTemplate (http://127.0.0.1:4173/src/game.js?v=581:4381:22)\n    at GLTFLoader.load.radiatedGreenGuyError (http://127.0.0.1:4173/src/game.js?v=581:548:27)\n    at https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js:311:6\n    at https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js:2771:5",
+    "log: CITY OUTBREAK v580: REAL PANZER GLB — right leg exists but source clip does NOT animate it {sourceClip: Array(1), selected: ORIGINAL_GLTF_SKELETON_BOTH_LEGS, originalRightLegAnimationTracks: 0, originalRightThigh: j_hip_ri_08, originalRightKnee: j_knee_ri_09}",
+    "log: CITY OUTBREAK: shotgun_test.glb loaded {animations: Array(0), pump: true, shell: true, trigger: true, inserter: true}",
+    "log: CITY OUTBREAK v550: naturally spawning crawler GLB ready {name: assets/zombie_number_3_-_animated.glb?v=550, animations: Array(11)}",
+    "log: CITY OUTBREAK: new city GLB loaded {scale: 1.55, size: Array(3), position: Array(3)}",
     "log: CITY OUTBREAK v580: both ORIGINAL Panzer legs now driven {nativeBoneNames: Object, originalClip: panzer zombie, originalTracks: 47, upperTracksPreserved: 43, legTracksOmitted: 4}",
     "log: CITY OUTBREAK v573: Panzer boss awaiting posed-mesh scale calibration {importedAnimation: panzer zombie, proceduralBones: 0, hitboxes: 6}",
-    "log: CITY OUTBREAK v570: Panzer actual animated size matched to Suit Guy {rawAnimatedHeight: 1272.5373583877365, targetWorldHeight: 3.2, correction: 0.050146395164489606, resultingScale: 19.900143070529403, footOffset: 1.9806641949787787}"
+    "log: CITY OUTBREAK v581: Panzer actual skinned height calibrated to 3.20 {rawAnimatedHeight: 1272.5373583877365, targetWorldHeight: 3.2, correction: 0.050146395164489606, resultingScale: 19.900143070529403, footOffset: 1.9806641949787787}"
   ],
-  "completedAt": "2026-10-10T21:32:31.415Z"
+  "completedAt": "2026-10-10T21:34:46.017Z"
 }
