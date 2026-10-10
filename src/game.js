@@ -21,10 +21,10 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible deployment fingerprint, temporary during Wave 1 Panzer testing.
 // If the browser tab doesn't show v574, it isn't executing this build.
-document.title="CITY OUTBREAK — PANZER SIZE v583";
-document.documentElement.dataset.panzerTestBuild="583";
+document.title="CITY OUTBREAK — PANZER SIZE v584";
+document.documentElement.dataset.panzerTestBuild="584";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
-new GLTFLoader().load("assets/panzer_zombie.glb?v=583",gltf=>{
+new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
  // v580: the REAL 8.7 MB GLB was parsed in a GitHub Actions checkout.
  // Its 52-joint skin HAS a genuine right thigh, knee and ankle (j hip ri_08,
@@ -459,14 +459,16 @@ function calibratePanzerBossVisual(z){
  const correction=z.panzerBossMixer?Math.sqrt(desiredWorldHeight/measuredHeight):desiredWorldHeight/measuredHeight;
  if(!Number.isFinite(correction)||correction<=0)return;
  holder.scale.multiplyScalar(correction);
- // v583: live Wave 1 root is 1.719x, not the unit root used by the
- // detached skin-motion audit. With the new original skeleton the ACTUAL
- // spawned Panzer was measured at ~24 world units vs Suit Guy-sized 5.50.
- // Scale is quadratic for this GLB, so sqrt(5.50/24)=0.479. This
- // root-specific correction shrinks ONLY the real in-game native boss,
- // never the detached rig or Suit Guy. Keeps every leg animation intact.
+ // v584: Chromium measured the ACTUAL spawned Wave 1 Panzer:
+ // v581 live 23.99 world units at native holder scale 89.43;
+ // v583 with factor .479 was still 11.53 world units.
+ // This confirms the displayed game actor responds LINEARLY to this
+ // extra root-specific scale. Factor .229 = .479*(5.50/11.53),
+ // targeting approved Suit Guy world height ~5.50 at boss root 1.719.
+ // Only native Panzer on the live boss-root gets the correction;
+ // the detached mesh audit, model appearance and real 2-leg gait stay.
  if(z.panzerBossMixer&&Math.abs(rootScale.y)>1.3){
-   holder.scale.multiplyScalar(.479);
+   holder.scale.multiplyScalar(.229);
  }
  // A head volume following the procedural armature must stay proportional to
  // the body's new target size after this one-time correction.
@@ -479,7 +481,7 @@ function calibratePanzerBossVisual(z){
  const offsetY=(rootWorldPos.y-scaledBounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
  if(Number.isFinite(offsetY))holder.position.y+=THREE.MathUtils.clamp(offsetY,-40,40);
  z.panzerSizeCalibrated=true;
- console.log("CITY OUTBREAK v583: Panzer live-root verified skin scale correction",{
+ console.log("CITY OUTBREAK v584: Panzer native live-root suit-sized correction",{
    rawAnimatedHeight:measuredHeight,
    targetWorldHeight:desiredWorldHeight,
    correction,
@@ -530,7 +532,7 @@ function finalizePanzerSpawnSize(z){
    if(Number.isFinite(footOffset))holder.position.y+=THREE.MathUtils.clamp(footOffset,-40,40);
  }
  z.panzerMeasuredSize=after;
- console.log("CITY OUTBREAK v583: live Panzer true skin resized to approved boss scale",{
+ console.log("CITY OUTBREAK v584: live Panzer true skin resized to approved boss scale",{
    sampledFrame:z.panzerRealSizeFrames,before,after,target,
    rootScale:rootScale.y,finalScale:holder.scale.x
  });
@@ -6109,7 +6111,7 @@ function spawnWave(){
      const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
    }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
-   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v583 SMALLER WALKING BOSS": "PANZER v583 — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v584 SUIT-SIZED WALK TEST": "PANZER v584 — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
    updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
