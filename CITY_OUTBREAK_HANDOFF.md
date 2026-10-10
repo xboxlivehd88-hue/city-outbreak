@@ -1,3 +1,18 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v538 EARLIER SMART STREETLIGHT ACTIVATION — READ FIRST
+
+**GitHub main is authoritative. User reported severe frame drops turning the camera after v535/v536. v537 fixed by keeping exactly 6 real live spotlights on High (2 Medium, 0 Low/VeryLow) and reassigning/fading without .visible toggles. User asks that lights "come on a little sooner". Keep v537 stable shader-light count and all previously approved gameplay.**
+
+## v538 targeted lighting timing (no other gameplay/render changes)
+- Preserves `src/game.js` v537 fixed real-light pool of SIX on High, TWO Reduced, zero Off/Low/Very Low. These six remain `visible=true` at all times within High; 3D shader spotlight counts do NOT fluctuate with camera turns. Bulbs at every physical lamp still glow independently. No return to v535 all-20 live spotlights or v536 variable visibility per frame.
+- `chooseStreetLampHeads()` now selects possible lamp heads to prelight up to **78 game units** away (was 62), with expanded **27-unit all-direction near activation** / **34-unit sticky keep radius** (was 19/25). Widened camera-space candidate angle beyond actual horizontal FOV by **29° entering** / **36° exit/keep** (previous 12°/20°), plus the existing spotlight spill estimate. Candidates thus start lighting substantially sooner on turn/approach and avoid obvious screen-edge popping.
+- More predictive ranking: slight near/ahead priority and stronger incumbent retention, still capped at six. Selection every **150 ms instead of 250 ms**, inexpensive scan of existing head list only, no raycasts. Fade interpolation rate **15 instead of 11** for smoother yet quicker turnover; still dims to black BEFORE teleporting a pool light to its new head. No added particle physics, geometry, new lamp models or shadowmaps.
+- Existing High lighting intensity, range, rare individual flicker, High materials/sky, v534 graphics menu and Low presets unchanged. v532 shotgun, v531 grenade breakup, v533 explosion and v525 opening menu unaffected.
+- Files changed: only `src/game.js`, `index.html` JS loader bumped from v537 to v538, and both handoff documents prepended. Protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 unchanged; CSS v525 and `src/grenade-shatter.js` unmodified.
+- Verify JS syntax, mock candidate angle/distance selection and fixed spotlight visibility under fast turns, then commit main and wait for Pages deploy success. User needs visually test! Do not claim measured FPS gains.
+- Cache-busted test link after deployment: https://xboxlivehd88-hue.github.io/city-outbreak/?v=538-early-smart-lights. On HIGH walk/turn toward rows of lamps; should already see warm ground illumination near the edge of view. Look rapidly around and compare FPS with v537; six real lights stay stable. If frame drops persist investigate render info/frame budget rather than adding spotlights.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v537 FIX CAMERA-TURN FRAME DROPS FROM SPOTLIGHT SHADERS — READ FIRST
 
 **GitHub main authoritative. User reports "its frame dropping real bad when looking around" after v535 all-lights and v536 view-cone visibility. v536 spawned a real SpotLight for every actual streetlamp and repeatedly toggled .visible as camera turned; this changes active Three.js spotlight count and can recompile expensive lighting shaders, causing stalls. Preserve approved visual realism while fixing severe FPS.**

@@ -1062,10 +1062,11 @@ const streetLampFlickerStates=[];
 const streetLampNearestScratch=[];
 let streetLampGlowPoints=null;
 let streetLampGlowBrightness=null;
-// v537: fixed real-spotlight count avoids Three.js lighting-shader recompiles
-// when the player turns; distant/rear lamp bulbs remain cheaply emissive.
-const STREET_LAMP_PICK_INTERVAL_MS=250;
-const STREET_LAMP_REASSIGN_FADE_RATE=11;
+// v538: light candidate selection is more predictive, with wider camera-cone
+// safety margins and earlier distant/near activation. Six FIXED live spotlights
+// on High still prevent shader recompile stalls when turning the camera.
+const STREET_LAMP_PICK_INTERVAL_MS=150;
+const STREET_LAMP_REASSIGN_FADE_RATE=15;
 const streetLampCandidateIndices=new Set();
 let streetLampLastPickAt=-1e9,streetLampLastFadeAt=-1e9;
 let streetLampVisibleCount=-1,streetLampLightingMode="off";
@@ -1204,14 +1205,20 @@ function chooseStreetLampHeads(mode){
    const head=streetLampLightHeads[i],dx=head.x-px,dz=head.z-pz;
    const ds=dx*dx+dz*dz,dist=Math.sqrt(ds);
    if(mode==="full"){
-     if(dist>Math.min(cam.far,62))continue;
+     // Start selecting lights while still WELL outside the screen's edge,
+     // leaving time for a former lamp to fade out and a new lamp to fade in.
+     if(dist>Math.min(cam.far,78))continue;
      const dot=dist>.001?(dx*fx+dz*fz)/dist:1;
      const keep=existing.has(i);
-     const close=dist<(keep?25:19);
+     // Nearby lamps stay active even when behind the camera, and the larger
+     // activation bubble avoids turning into a suddenly dark street.
+     const close=dist<(keep?34:27);
      const angle=halfFov+Math.atan2(STREET_LAMP_LIGHT_RANGE+2,Math.max(1,dist))+
-       THREE.MathUtils.degToRad(keep?20:12);
+       THREE.MathUtils.degToRad(keep?36:29);
      if(!close&&dot<Math.cos(Math.min(Math.PI,angle)))continue;
-     chosen.push({i,score:dist-(close?9:0)-Math.max(0,dot)*5-(keep?8:0)});
+     // Give ahead/near lights priority inside the fixed 6-light budget.
+     // Sticky incumbents and a wider exit cone reduce lamp swapping.
+     chosen.push({i,score:dist-(close?11:0)-Math.max(0,dot)*8-(keep?10:0)});
    }else{
      // Medium's old reduced mode follows the two nearest lampheads.
      chosen.push({i,score:ds});
