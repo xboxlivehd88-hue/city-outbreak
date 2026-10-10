@@ -4335,11 +4335,15 @@ function syncBasicWalkerVisual(z,dt=0){
        lul=bones.get("L_UpperLeg"),lll=bones.get("L_LowerLeg"),rul=bones.get("R_UpperLeg"),rll=bones.get("R_LowerLeg"),
        lfoot=bones.get("L_Foot"),rfoot=bones.get("R_Foot");
 
- const thighAmp=(.38+(.72-.38)*run)*walk;
- const kneeBase=.10+.05*run,kneeAmp=.62+.54*run;
+ const suitWalk=!!z.suitBossVisual;
+ // v561: boss locomotion has its own slower, weightier stride; unlike the
+ // Shambler, its gait must remain active even when short frame deltas report no travel.
+ const stride=suitWalk?Math.max(.45,walk):walk;
+ const thighAmp=suitWalk?( .80+.18*run)*stride:(.38+(.72-.38)*run)*walk;
+ const kneeBase=suitWalk?.14:.10+.05*run,kneeAmp=suitWalk?.95:.62+.54*run;
  const armBase=.12+.05*run,armAmp=(.38+.34*run)*walk;
 
- holder.position.y=(.010+.020*run)*(1-Math.cos(phase*2))*.5*walk;
+ holder.position.y=suitWalk?.035*(1-Math.cos(phase*2))*.5:(.010+.020*run)*(1-Math.cos(phase*2))*.5*walk;
  holder.rotation.x=-.018*walk-attack*.018;
  holder.rotation.z=s*(.012+.010*run)*walk+(z.staggerDir||1)*stagger*.035;
 
@@ -4355,13 +4359,15 @@ function syncBasicWalkerVisual(z,dt=0){
  const supportLua=rigBone(z,"L_UpperArm"),supportRua=rigBone(z,"R_UpperArm"),
        supportLla=rigBone(z,"L_LowerArm"),supportRla=rigBone(z,"R_LowerArm");
  if(lua){
-   const armDown=z.suitBossVisual?1.24:.34;
-   if(supportLua)lua.rotation.set(supportLua.rotation.x,supportLua.rotation.y*.65,armDown+supportLua.rotation.z*.65);
+   const armDown=suitWalk?1.24:.34;
+   if(suitWalk)lua.rotation.set(.06-s*.48-attack*.28,0,armDown);
+   else if(supportLua)lua.rotation.set(supportLua.rotation.x,supportLua.rotation.y*.65,armDown+supportLua.rotation.z*.65);
    else lua.rotation.set(armBase-s*armAmp-attack*.42,0,armDown);
  }
  if(rua){
-   const armDown=z.suitBossVisual?-1.24:-.34;
-   if(supportRua)rua.rotation.set(supportRua.rotation.x,supportRua.rotation.y*.65,armDown+supportRua.rotation.z*.65);
+   const armDown=suitWalk?-1.24:-.34;
+   if(suitWalk)rua.rotation.set(.06+s*.48-attack*.28,0,armDown);
+   else if(supportRua)rua.rotation.set(supportRua.rotation.x,supportRua.rotation.y*.65,armDown+supportRua.rotation.z*.65);
    else rua.rotation.set(armBase+s*armAmp-attack*.42,0,armDown);
  }
  if(lla){
