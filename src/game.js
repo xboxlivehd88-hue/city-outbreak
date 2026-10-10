@@ -21,8 +21,8 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible deployment fingerprint, temporary during Wave 1 Panzer testing.
 // If the browser tab doesn't show v574, it isn't executing this build.
-document.title="CITY OUTBREAK — PANZER WALK v577";
-document.documentElement.dataset.panzerTestBuild="577";
+document.title="CITY OUTBREAK — PANZER WALK v578";
+document.documentElement.dataset.panzerTestBuild="578";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  panzerBossAsset=gltf;
@@ -40,13 +40,13 @@ new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
    const extent=new THREE.Box3().setFromObject(gltf.scene),sz=new THREE.Vector3();
    extent.getSize(sz);
    const tPose=sz.y>0&&sz.x/sz.y>.68;
-   panzerBossFallbackTemplate=buildBasicWalkerTemplate(gltf.scene,tPose);
+   panzerBossFallbackTemplate=buildBasicWalkerTemplate(gltf.scene,tPose,true);
  }
  // The fallback is also tested against its ACTUAL vertices, not just bones.
  const rebuiltJoints=panzerBossFallbackTemplate?panzerProceduralJoints(panzerBossFallbackTemplate):null;
  const fallbackAudit=rebuiltJoints?auditPanzerLegDeformation(panzerBossFallbackTemplate,rebuiltJoints):null;
  panzerBossRigAudit={kneeSkin,motionAudit,fallbackAudit,nativeUsable};
- console.log("CITY OUTBREAK v577: Panzer ACTUAL left/right thigh and shin vertex motion",{
+ console.log("CITY OUTBREAK v578: Panzer ACTUAL left/right thigh and shin vertex motion",{
    animations:gltf.animations?.map(c=>c.name)||[],
    ...panzerBossRigAudit,autoRig:!!panzerBossFallbackTemplate
  });
@@ -4542,7 +4542,7 @@ const BASIC_WALKER_BONE_KEYS=Object.freeze([
  "L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm",
  "L_UpperLeg","L_LowerLeg","R_UpperLeg","R_LowerLeg","L_Hand","R_Hand","L_Foot","R_Foot"
 ]);
-function buildBasicWalkerTemplate(source,bossTPose=false){
+function buildBasicWalkerTemplate(source,bossTPose=false,panzerLegRig=false){
  if(!source)return null;
  source.updateMatrixWorld(true);
  const invRoot=new THREE.Matrix4().copy(source.matrixWorld).invert(),pieces=[];
@@ -4596,6 +4596,15 @@ function buildBasicWalkerTemplate(source,bossTPose=false){
      if(distance>.385)return left?bi.lhand:bi.rhand;
      if(distance>.285)return left?bi.lla:bi.rla;
      return left?bi.lua:bi.rua;
+   }
+   // v578 PANZER ONLY: the old generic rig classified bulky THIGH armor at
+   // y=.31-.46h as hanging ARMS, before the leg clause below could execute.
+   // Let symmetrical lower-body regions skin to their true hip/knee/foot
+   // joints FIRST. Hands farther from the torso keep their old weights.
+   if(panzerLegRig&&yf<.46&&ax<h*.275){
+     if(yf<.095)return left?bi.lfoot:bi.rfoot;
+     if(yf<.245)return left?bi.lll:bi.rll;
+     return left?bi.lul:bi.rul;
    }
    // v406: keep the full head/neck visual shell rigidly together. Splitting
    // these triangles between Head and Neck made the face tear apart on death.
@@ -6023,7 +6032,7 @@ function spawnWave(){
      const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
    }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
-   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v577 REAL MESH TEST — "+(currentBoss?.panzerBossAutoRig?"RE-RIGGED LEGS":"DEFORMATION-CHECKED NATIVE"):"PANZER v577 REAL MESH TEST — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v578 RIGHT LEG SKINNING — "+(currentBoss?.panzerBossAutoRig?"ARMORED LEG RIG":"NATIVE TEST PASSED"):"PANZER v578 RIGHT LEG SKINNING — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
    updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
