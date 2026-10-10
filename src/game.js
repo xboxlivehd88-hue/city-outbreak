@@ -44,14 +44,31 @@ function attachSuitBossVisual(z){
  if(chestHit)chestHit.scale.set(1.25,1.30,1.34);
  const hipsHit=z.walkerHitboxes?.find(o=>o.name==="BasicWalkerHit_torso_Hips");
  if(hipsHit)hipsHit.scale.set(1.10,1.12,1.15);
- // Only the correctly placed v559 face sphere can register headshots.
+ // v566: the old root-mounted .32-radius sphere was enlarged by the boss
+ // world scale and extended below his neckline. Bind a compact ellipsoid to
+ // the *animated head bone*, not the static boss root, so only the visible
+ // skull/face registers headshot multipliers through turns and reactions.
  for(const hit of z.walkerHitboxes||[])if(hit.userData?.isHead)hit.raycast=()=>{};
- const headHitGeo=new THREE.SphereGeometry(.32,12,8);
+ const headHitGeo=new THREE.SphereGeometry(1,16,12);
  const headHitMat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false});
  const headHit=new THREE.Mesh(headHitGeo,headHitMat);
- headHit.position.set(0,2.88,0);headHit.name="SuitBossHeadHitbox";
+ headHit.name="SuitBossHeadHitbox";
  headHit.userData.zombie=z;headHit.userData.part="head";headHit.userData.isHead=true;
- z.g.add(headHit);z.hitMeshes.push(headHit);z.ownedGeometries.push(headHitGeo);z.ownedMaterials.push(headHitMat);
+ const suitHeadBone=z.walkerBones.get("Head");
+ if(suitHeadBone){
+   // Suit GLB head spans roughly 86.5-100% of source height;
+   // this volume covers the face/skull without reaching the neck/chest.
+   headHit.position.set(0,h*.055,0);
+   headHit.scale.set(h*.063,h*.070,h*.062);
+   suitHeadBone.add(headHit);
+ }else{
+   // Defensive fallback if a future GLB imports without a named head bone.
+   headHit.position.set(0,2.98,0);
+   headHit.scale.set(.21,.23,.21);
+   z.g.add(headHit);
+   console.warn("CITY OUTBREAK: suit boss head bone unavailable; using compact fallback head hitbox");
+ }
+ z.hitMeshes.push(headHit);z.ownedGeometries.push(headHitGeo);z.ownedMaterials.push(headHitMat);
  z.suitBossHeadHitbox=headHit;
  z.suitBossBlastHitboxes=[...z.walkerHitboxes.filter(hit=>!hit.userData?.isHead),headHit];
  // Preserve existing boss physics, hitboxes and attack logic; replace visible body only.
