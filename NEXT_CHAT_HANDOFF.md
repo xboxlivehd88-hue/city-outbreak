@@ -1,3 +1,16 @@
+# NEW-CHAT HANDOFF — 2026-10-10 — v555 REDUCE NATIVE-SPAWN CRAWLER ANOTHER 15% — READ FIRST
+
+**Repo `xboxlivehd88-hue/city-outbreak`, branch `main` is authoritative. User tested v554 10%-smaller naturally spawning crawler (visual scale 2.0 -> 1.8) and said STILL TOO BIG. Made ONLY another measured reduction to natural crawler GLB visual scale, retaining all v553 fixes. Do not treat size as visually approved until user tests.**
+
+## v555 crawler adjustment
+- `src/game.js` `NATURAL_CRAWLER_SCALE=1.53`, reduced a further **15% from v554's 1.8** (23.5% smaller than v552/v553 original 2.0). Controls ONLY the holder for `assets/zombie_number_3_-_animated.glb?v=550` used by naturally rolled spawning `crawler` zombies. Leg-damage conversion via `makeZombie(x,zp,oldIndex,"crawler")` is excluded by `naturalCrawlerSpawn=kind==="crawler"&&forcedKind!=="crawler"`; don't change that path.
+- Preserve all recent approved/ongoing behavior from **v553**: face/body material visibility, actual GLB face rendering, ground calibration/height safeguards and no-T-pose death-to-PBD pose handoff. Animation `Crawl`, `Running_Crawl`, `Attack`, real skeleton and death PBD unchanged. Scale-dependent grounding automatically recalculates with holder size.
+- No other changes to gameplay, weapons, upgrades, sprint/health, zombies, ragdolls, map, lighting or collision; original uploaded GLB, protected v324 checkpoint and `src/game.css` untouched. Only `src/game.js`, `index.html` loader **v555**, TOP of `CITY_OUTBREAK_HANDOFF.md` and `NEXT_CHAT_HANDOFF.md` changed.
+- Verify GitHub main, v555 loader, exact scale, preserve animation/death/ground path, syntax check and GitHub Pages deployment. Test link after successful deployment: https://xboxlivehd88-hue.github.io/city-outbreak/?v=555-native-crawler-15pct-smaller . Wave 3+ native crawler: compare size with standing zombie, face/head clear, crawl not ground-phasing, and no jump/T-pose on death. If still large, adjust in small increments based on screenshot. User visual approval still pending.
+- Next chat read latest TOP of both handoffs, recovery checkpoint, index.html, src/game.js and src/game.css from current `main` BEFORE edits. v554 rollback commit `cc32fdff5c031126b312fadcac1e50abbace703d`; never modify protected v324 checkpoint.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-10 — v554 NATURAL-SPAWN CRAWLER 10% SMALLER — READ FIRST
 
 **GitHub `main` is source of truth: `xboxlivehd88-hue/city-outbreak`. User says the newly uploaded naturally spawning crawlers are a little too big; requested exactly 10% smaller for visual test. v553 face/ground/death pose fixes are already in main and MUST remain intact. This release ONLY changes native GLB visual size; visual approval remains pending.**
