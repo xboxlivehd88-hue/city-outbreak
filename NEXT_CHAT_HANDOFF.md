@@ -1,3 +1,13 @@
+# v567 — SUIT GUY BACK IN BOSS ROTATION — 2026-10-10
+
+- User confirmed v566 headshot fix works and approves ending the temporary Wave 1 Suit Guy test.
+- Removed forced first-wave boss override and its short 12–22 unit test spawn. Wave 1 is restored to its usual 10 zombies; the existing boss schedule remains **every tenth wave** (10, 20, 30, ...), with the established 36–70 unit boss spawn distances.
+- Added `SUIT GUY` to the existing `BOSS_NAME_POOL` of named bosses. Normal `nextBossName()` randomly draws without replacement until its pool is exhausted. Suit Guy can appear on any regular boss wave, **but not necessarily wave 10**, and will not repeat before other names have been drawn.
+- Only attach `assets/suit guy boss.glb` and its approved v566 animation, headshot/body/explosion hitboxes when the selected boss name is `SUIT GUY`. Other named bosses use their existing rigs and behavior. Existing boss scaling, specials, bounty, UI, and other gameplay unchanged.
+- Keep v555 natural crawler scale 1.53 and all protected v324 checkpoint files untouched. Active loader `./src/game.js?v=567`. Source-level verification required; browser wave playtest still pending.
+
+---
+
 # v566 — SUIT BOSS HEADSHOT ZONE ALIGNMENT — 2026-10-10
 
 - User reports headshot multiplier starts well below visible neck in v565. Root cause: the separate legacy boss headshot sphere radius .32 was attached to `z.g`, multiplied by enlarged boss world scale, and extended below the visible skull.
