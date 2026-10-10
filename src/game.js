@@ -4122,6 +4122,16 @@ function buildBasicWalkerTemplate(source,bossTPose=false){
  });
  const chooseRigidBone=(x,y,z)=>{
    const yf=y/h,ax=Math.abs(x),left=x<0;
+   // v563: T-pose suit-boss arms lie sideways around 67% of mesh height.
+   // Classify by *horizontal distance* before the usual head/body rules;
+   // the generic Shambler classifier otherwise assigns the entire sleeve to
+   // the upper arm (and some upper sleeve vertices to the head).
+   if(bossTPose&&yf>.59&&yf<.82&&ax>h*.135){
+     const distance=ax/h;
+     if(distance>.385)return left?bi.lhand:bi.rhand;
+     if(distance>.285)return left?bi.lla:bi.rla;
+     return left?bi.lua:bi.rua;
+   }
    // v406: keep the full head/neck visual shell rigidly together. Splitting
    // these triangles between Head and Neck made the face tear apart on death.
    if(yf>.745)return bi.head;
@@ -4151,12 +4161,20 @@ function buildBasicWalkerTemplate(source,bossTPose=false){
    const yf=y/h,primary=chooseRigidBone(x,y,z);
    let secondary=primary,w=0;
    const blend=(idx,boundary,width=.035)=>{const bw=jointBlend(yf,boundary,width);if(bw>w){secondary=idx;w=bw}};
-   // v562: smooth the jacket's shoulder seam into the chest. A rigid
-   // 100%-arm versus 100%-chest split caused giant triangular shoulder wings.
+   // v563: keep the already improved soft jacket shoulder, but let the
+   // actual forearm and hand joints own their own mesh. Smooth the two
+   // anatomical bends across narrow X-axis bands, avoiding rigid elbow seams.
    if(bossTPose&&[bi.lua,bi.rua,bi.lla,bi.rla,bi.lhand,bi.rhand].includes(primary)){
-     const u=THREE.MathUtils.clamp((Math.abs(x)/h-.115)/.082,0,1);
-     const armWeight=u*u*(3-2*u);
-     return armWeight>.999?[primary,1,0,0]:[primary,armWeight,bi.chest,1-armWeight];
+     const xf=Math.abs(x)/h,left=x<0;
+     const upper=left?bi.lua:bi.rua,lower=left?bi.lla:bi.rla,hand=left?bi.lhand:bi.rhand;
+     const smooth=(from,to)=>{const t=THREE.MathUtils.clamp((xf-from)/(to-from),0,1);return t*t*(3-2*t)};
+     const pair=(first,second,blend)=>blend<=.001?[first,1,0,0]:blend>=.999?[second,1,0,0]:[first,1-blend,second,blend];
+     if(xf<.205)return pair(bi.chest,upper,smooth(.135,.205));
+     if(xf<.252)return [upper,1,0,0];
+     if(xf<.318)return pair(upper,lower,smooth(.252,.318));
+     if(xf<.365)return [lower,1,0,0];
+     if(xf<.405)return pair(lower,hand,smooth(.365,.405));
+     return [hand,1,0,0];
    }
    if(primary===bi.lua){blend(bi.lla,.56);blend(bi.chest,.70,.045)}
    else if(primary===bi.rua){blend(bi.rla,.56);blend(bi.chest,.70,.045)}
@@ -4271,8 +4289,10 @@ function syncSuitBossWalk(z,dt){
  // front/back arm swing; the old hidden rig's arm angles did not.
  rot("L_UpperArm",.06-s*.38*walking-a*.26,0,1.38);
  rot("R_UpperArm",.06+s*.38*walking-a*.26,0,-1.38);
- rot("L_LowerArm",.08+Math.max(0,s)*.18*walking);
- rot("R_LowerArm",.08+Math.max(0,-s)*.18*walking);
+ // Elbows bend in the plane of the actual arm bones (local Y/Z).
+ // Rotating only around local X twists the sleeve without bending it.
+ rot("L_LowerArm",0,-.12-.06*Math.max(0,s)*walking,.15+.06*Math.max(0,s)*walking);
+ rot("R_LowerArm",0,.12+.06*Math.max(0,-s)*walking,-.15-.06*Math.max(0,-s)*walking);
  rot("L_Hand",-.06);
  rot("R_Hand",-.06);
  // Controlled walk rather than the oversized stiff high-stepping v561 gait.
