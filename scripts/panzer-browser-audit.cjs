@@ -18,25 +18,53 @@ const assert=require("assert/strict");
   await page.route(/\/src\/game\.js\?v=581$/,async route=>{
    const resp=await route.fetch();
    const source=await resp.text();
-   // v582 CANDIDATE: refine after first Panzer scaling using the world-size
-   // bound of the ACTUAL spawned boss. No unrelated gameplay modifications.
-   const oldBlock="holder.scale.multiplyScalar(correction);";
-   if(source.split(oldBlock).length!==2)throw Error("unexpected calibration block");
-   const candidate=`
-holder.scale.multiplyScalar(correction);
-if(z.panzerBossMixer){
- for(let pass=0;pass<7;pass++){
-   model.updateWorldMatrix(true,true);
-   const refined=new THREE.Box3().setFromObject(model,true);
-   const renderedH=refined.max.y-refined.min.y;
-   if(!Number.isFinite(renderedH)||renderedH<.0001)break;
-   const ratio=desiredWorldHeight/renderedH;
-   if(Math.abs(1-ratio)<.008)break;
+   // v582 candidate: measure actual GPU-skinned vertex motion in the real
+   // Wave 1 boss after a few walking frames; shrink independently of Box3.
+   const mark="function attachSuitBossVisual(z){";
+   if(source.split(mark).length!==2)throw Error("Panzer calibration insertion marker missing");
+   const sizeFix=`
+function finalizePanzerSpawnSize(z){
+ if(!z?.panzerBossMixer||!z.panzerSizeCalibrated||z.panzerRealSizeDone||z.dead)return;
+ z.panzerRealSizeFrames=(z.panzerRealSizeFrames||0)+1;
+ if(z.panzerRealSizeFrames<30)return;
+ const holder=z.panzerBossVisual,model=z.panzerBossModel;
+ const rootScale=new THREE.Vector3(),rootPos=new THREE.Vector3();
+ z.g.getWorldScale(rootScale);z.g.getWorldPosition(rootPos);
+ const target=PANZER_VISUAL_HEIGHT*Math.abs(rootScale.y);
+ const vertex=new THREE.Vector3(),bounds=new THREE.Box3();
+ const measure=()=>{
+   bounds.makeEmpty();model.updateWorldMatrix(true,true);
+   model.traverse(mesh=>{
+     if(!mesh.isSkinnedMesh)return;
+     const attr=mesh.geometry.getAttribute("position");
+     const stride=Math.max(1,Math.floor(attr.count/1700));
+     for(let i=0;i<attr.count;i+=stride){
+       mesh.getVertexPosition(i,vertex);
+       mesh.localToWorld(vertex);
+       bounds.expandByPoint(vertex);
+     }
+   });
+   return bounds.max.y-bounds.min.y;
+ };
+ const before=measure();let after=before;
+ for(let k=0;k<6&&after>.0001;k++){
+   const ratio=target/after;
+   if(Math.abs(1-ratio)<.018)break;
    holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.sqrt(ratio),.2,4));
+   after=measure();
  }
+ const footOffset=(rootPos.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
+ if(Number.isFinite(footOffset))holder.position.y+=THREE.MathUtils.clamp(footOffset,-40,40);
+ z.panzerRealSizeDone=true;
+ console.log("CITY OUTBREAK v582 candidate: live Panzer scaled down",{
+   before,after,target,finalScale:holder.scale.x,footOffset
+ });
 }
 `;
-   const correctedSource=source.replace(oldBlock,candidate);
+   const insertAfter="     calibratePanzerBossVisual(z);";
+   if(source.split(insertAfter).length!==2)throw Error("native sync marker missing");
+   const correctedSource=source.replace(mark,sizeFix+mark).replace(insertAfter,
+     insertAfter+"\\n     finalizePanzerSpawnSize(z);");
    const addon=`
 ;globalThis.__panzerOriginalSkinAudit={
  ready:()=>!!panzerBossAsset,
