@@ -1692,7 +1692,7 @@ const FX={
  grenadeDustMat:new THREE.MeshStandardMaterial({color:0x5c5142,roughness:.86}),
  grenadeFlashMat:new THREE.MeshStandardMaterial({color:0xd29a46,roughness:.58,emissive:0x542b08,emissiveIntensity:.30})
 };
-// v530: Dense, layered explosion VFX on High, without the rejected ground patch.
+// v533: Fuller airborne fire/smoke, flash, and sparks on High; never a floor patch.
 // The uploaded floor_smashedexploded.glb is deliberately NOT used: its ground
 // buildup is unwanted. This fire/smoke/fragment effect is purely cosmetic.
 // The existing graphics particle percentage controls every density tier.
@@ -1773,6 +1773,8 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
    };
  }
  const quality=Math.max(0,Math.min(1,graphicsOptions.particles/100));
+ // Extra spectacle ramps in ABOVE Medium; Low stays almost exactly v532.
+ const spectacle=THREE.MathUtils.clamp((quality-.5)/.5,0,1);
  const limit=graphicsQuality==="low"?2:graphicsQuality==="medium"?3:4;
  while(activeExplosionBursts.length>=limit)clearExplosionBurst(activeExplosionBursts.shift());
  const group=new THREE.Group();
@@ -1803,26 +1805,37 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  add(false,0,.86,0,radius*1.14,0xfff3c4,.98,0,.18,0,.18);
  add(false,0,1.1,0,radius*.99,0xffa031,.92,0,1.00,0,.29);
  add(false,0,1.42,0,radius*.80,0xff551a,.84,0,1.55,0,.43);
- // High: ~110 volume puffs for a hand grenade, plus 200 instanced hot/debris
- // streaks. Low: ~11 puffs and ~16 sparks; Medium stays in between.
- const puffCount=Math.max(8,Math.round((isLauncher?85:110)*Math.pow(quality,1.65)));
+ // High-only fiery tongues tear out in different upward/outward directions.
+ // They are visible from the FIRST fiery frame, never a swelling ground mesh.
+ const tongues=Math.round(7*spectacle);
+ for(let i=0;i<tongues;i++){
+   const a=(i+Math.random()*.48)*Math.PI*2/Math.max(1,tongues);
+   const dist=.15+Math.random()*.40,vel=3.9+Math.random()*2.2;
+   add(false,Math.cos(a)*dist,.50+Math.random()*.90,Math.sin(a)*dist,
+       .75+Math.random()*.78,i%3===0?0xffe6a2:i%2===0?0xff982f:0xf94d10,
+       .86,Math.cos(a)*vel,2.7+Math.random()*1.6,Math.sin(a)*vel,
+       .24+Math.random()*.21);
+ }
+ // High now carries about 35% more airborne smoke/fire than v532;
+ // effects scale smoothly with existing Custom particle density.
+ const puffCount=Math.max(8,Math.round((isLauncher?85:110)*(1+.35*spectacle)*Math.pow(quality,1.65)));
  for(let i=0;i<puffCount;i++){
    const smoke=i%5<3; // 60% smoke for a convincing rolling airborne plume
    const angle=Math.random()*Math.PI*2;
-   const spread=Math.sqrt(Math.random())*(smoke?1.00:.82);
+   const spread=Math.sqrt(Math.random())*(smoke?1.00:.82)*(1+.14*spectacle);
    const x=Math.cos(angle)*spread,z=Math.sin(angle)*spread;
    const y=.60+Math.random()*(smoke?1.7:1.25);
-   const speed=(smoke?1.35:2.90)+Math.random()*(smoke?2.25:3.4);
-   const up=(smoke?1.2:2.5)+Math.random()*(smoke?2.5:2.4);
+   const speed=((smoke?1.35:2.90)+Math.random()*(smoke?2.25:3.4))*(1+.14*spectacle);
+   const up=((smoke?1.2:2.5)+Math.random()*(smoke?2.5:2.4))*(1+.11*spectacle);
    const size=smoke?.85+Math.random()*1.10:.45+Math.random()*1.05;
    const color=smoke?
      (i%4===0?0xa29b90:i%3===0?0x675c53:0x393838):
      (i%7===0?0xfff0aa:i%3===0?0xffa33a:0xcc4218);
-   const life=smoke?.88+Math.random()*.77:.28+Math.random()*.43;
+   const life=smoke?.88+Math.random()*.77+.31*spectacle:.28+Math.random()*.43;
    add(smoke,x,y,z,size,color,smoke?.71:.84,
        Math.cos(angle)*speed,up,Math.sin(angle)*speed,life);
  }
- const sparkCount=Math.max(14,Math.round((isLauncher?160:200)*Math.pow(quality,1.8)));
+ const sparkCount=Math.max(14,Math.round((isLauncher?160:200)*(1+.28*spectacle)*Math.pow(quality,1.8)));
  const sparkMesh=new THREE.InstancedMesh(explosionSparkGeometry,explosionSparkMaterial,sparkCount);
  sparkMesh.name="DenseExplosionSparksAndFragments";
  sparkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -1832,11 +1845,11 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  for(let i=0;i<sparkCount;i++){
    const angle=Math.random()*Math.PI*2;
    const elevation=.2+Math.random()*.95;
-   const magnitude=4.0+Math.random()*8.6;
+   const magnitude=(4.0+Math.random()*8.6)*(1+.17*spectacle);
    const debris=i%9===0;
    const vel=new THREE.Vector3(
      Math.cos(angle)*magnitude,
-     (3.8+Math.random()*6.6)*elevation,
+     (3.8+Math.random()*6.6)*elevation*(1+.16*spectacle),
      Math.sin(angle)*magnitude
    );
    const pos=new THREE.Vector3((Math.random()-.5)*.43,.45+Math.random()*1.02,(Math.random()-.5)*.43);
@@ -1853,12 +1866,12 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  // nearby surfaces; no shadow map is allocated, and disabling Lights omits it.
  let flash=null;
  if(quality>=.85&&graphicsOptions.lights!=="off"){
-   flash=new THREE.PointLight(0xff9b42,3.2,8.0,2);
+   flash=new THREE.PointLight(0xffa55b,3.2+2.0*spectacle,8.0+2.3*spectacle,2);
    flash.castShadow=false;
    flash.position.set(0,1.45,0);
    group.add(flash);
  }
- const burst={group,particles,sparkMesh,sparks,flash,ruptureDelay,age:0,life:1.75};
+ const burst={group,particles,sparkMesh,sparks,flash,flashPeak:3.2+2.0*spectacle,ruptureDelay,age:0,life:1.75+.43*spectacle};
  if(ruptureDelay>0)for(const part of particles)if(!part.core)part.sprite.visible=false;
  drawExplosionSparks(burst,0);
  activeExplosionBursts.push(burst);
@@ -1868,7 +1881,7 @@ function updateExplosionGlbs(dt){
    const fx=activeExplosionBursts[i];
    fx.age+=dt;
    drawExplosionSparks(fx,dt);
-   if(fx.flash)fx.flash.intensity=3.2*Math.max(0,1-fx.age/.20)**2;
+   if(fx.flash)fx.flash.intensity=fx.flashPeak*Math.max(0,1-fx.age/.23)**2;
    for(const p of fx.particles){
      if(!p.core&&fx.age<fx.ruptureDelay)continue;
      p.sprite.visible=true;

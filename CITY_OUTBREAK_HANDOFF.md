@@ -1,3 +1,19 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v533 MORE DRAMATIC HIGH-QUALITY EXPLOSIONS — READ FIRST
+
+**GitHub main is source of truth. User approved the v532 shotgun elbow fix ("thats great"), and now wants explosions "a little more dramatic". Keep the approved shotgun reload, v531 REAL grenade-casing breakup, v530 explosion architecture, v525 title and settings, and protected v324 recovery unchanged.**
+
+## v533 visual-only adjustments
+- Targeted only the existing `spawnExplosionBurst()` + flash updater in `src/game.js`. Current approved v531 shattering occurs first, then center core flash, then the larger explosion after ~55ms. Those calls/timings are UNCHANGED.
+- New High-extra intensity coefficient `spectacle=clamp((graphicsOptions.particles/100-.5)/.5,0,1)`; remains ZERO through 50% particles (Low and Medium), smoothly rises for Custom, equals 1 at High. No new settings or gameplay knobs.
+- High grenade: ~149 irregular fire/smoke puff sprites vs 110 on v532; 256 visible instanced sparks/debris vs 200; launcher ~115 puffs vs 85 and 205 sparks vs 160. +7 fiery tongues burst outward/upward at High (zero in Low/Medium), added as ordinary existing fire sprites; initial brightness and higher spark trajectory speed make blast punchier. Smoke moves slightly faster/higher and persists ~0.31s longer at High, with total effect lifetime 2.18s High vs 1.75s Low/Medium. Existing center flash and 3-layer fireball retained.
+- High transient point light intensity increased from 3.2 to 5.2, radius from 8.0 to 10.3 world units, NO shadows, decays over 0.23 seconds; respects `graphicsOptions.lights==="off"`. Light only created if effective quality >=85%.
+- Crucial: no ground-growing GLB, ground decals, craters, expanding ground, or mesh scale animation. Airborne smoke/fire/sparks only. Reuses shared textures and single instanced spark draw call per blast, max concurrent visual explosions unchanged. Low/Medium remain near v532 load; Custom scales.
+- Both grenade and launcher still use `spawnExplosionBurst`; original damage/radius/knockback/sounds/fuse/ragdoll unchanged. Grenade-shatter helper file unchanged. `src/game.js` and `index.html` JS cache bump to 533 plus two handoff updates ONLY. `src/game.css?v=525` and protected `CURRENT_RECOVERY_CHECKPOINT.md` unchanged.
+- Static JS parse and lightweight effect-loop test must pass; *live visual outcome requires user's review*, do not claim it is user-approved until tested.
+- Play link after Pages successful deploy: https://xboxlivehd88-hue.github.io/city-outbreak/?v=533-dramatic-explosion. Test grenade G and unlocked launcher (7) at HIGH vs LOW. Confirm shell bursts from grenade, no floor patch, bright flash and smoke/sparks, and smooth performance.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v532 SHOTGUN RELOAD ELBOW NATURAL BEND — READ FIRST
 
 **GitHub main authoritative. User uploaded ~50sec 2560x1440 gameplay video showing shotgun reload left/support-arm elbow visibly stiff while the hand moves. User explicitly requested direct fix. Prior assistant incorrectly claimed GitHub tools unavailable; GitHub tools HAVE BEEN USED to commit and deploy past builds. Keep executing directly in repo. v531 user-approved grenade shatter, v530 approved explosion; v525 approved widescreen menu.**
