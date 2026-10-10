@@ -10,6 +10,31 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments} from "./grenade-shatter.js?v=531";
+// v556: temporary first-wave boss visual test. Boss combat/hitboxes remain unchanged.
+const SUIT_BOSS_TEST_WAVE=1;
+let suitBossTemplate=null;
+new GLTFLoader().load("assets/suit%20guy%20boss.glb?v=556",gltf=>{
+  suitBossTemplate=gltf.scene;
+  for(const z of zombies)if(z.kind==="boss"&&!z.suitBossVisual)attachSuitBossVisual(z);
+},undefined,error=>console.error("CITY OUTBREAK: suit boss GLB failed to load",error));
+function attachSuitBossVisual(z){
+  if(!z||z.kind!=="boss"||!suitBossTemplate||z.suitBossVisual||z.dead)return;
+  const model=SkeletonUtils.clone(suitBossTemplate);
+  model.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(model);
+  const size=box.getSize(new THREE.Vector3());
+  if(size.y<.001)return;
+  const center=box.getCenter(new THREE.Vector3());
+  const scale=3.2/size.y;
+  model.scale.setScalar(scale);
+  model.position.set(-center.x*scale,-box.min.y*scale,-center.z*scale);
+  model.traverse(o=>{if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true;}});
+  z.g.add(model);
+  z.suitBossVisual=model;
+  // Hide the existing boss appearance, but preserve its gameplay rig/hitboxes.
+  if(z.rigVisual)z.rigVisual.visible=false;
+  z.g.traverse(o=>{if(o.isMesh&&o!==model&&!model.getObjectById(o.id)&&!o.userData.visualOnly)o.visible=false;});
+}
 let zombieRigAsset=null,zombieRigError=null;
 try{
  zombieRigAsset=await new Promise((resolve,reject)=>new GLTFLoader().parse(ZOMBIE_RIG_GLTF,"",resolve,reject));
@@ -5100,7 +5125,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(kind==="radiated")buildRadiatedGreenHitboxes(zz);
  if(kind==="shambler")buildBasicWalkerHitboxes(zz);
  if(naturalCrawlerSpawn)attachNaturalCrawlerVisual(zz);
- zombies.push(zz);if(kind==="boss")currentBoss=zz
+ zombies.push(zz);if(kind==="boss"){currentBoss=zz;attachSuitBossVisual(zz)}
 }
 
 function medkit(x,z){let g=new THREE.Group();box(1,.38,.72,M(0xe7e4da),0,.35,0,g);box(.18,.05,.5,M(0xa52c2c),0,.56,0,g);box(.5,.05,.18,M(0xa52c2c),0,.56,0,g);g.position.set(x,0,z);scene.add(g);kits.push({g,used:false})}medkit(-10,8);medkit(16,56);medkit(-17,91);
@@ -5392,8 +5417,8 @@ function spawnQueuedZombies(){
 }
 function spawnWave(){
  let d=diff(wave);currentBoss=null;recentZombieSpawnPoints.length=0;zombieSpawnAngleOffset=rnd()*Math.PI*2;
- if(isBossWave(wave)){
-   const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
+ if(isBossWave(wave)||wave===SUIT_BOSS_TEST_WAVE){
+   const spec=wave===SUIT_BOSS_TEST_WAVE?{...bossWaveSpec(5),name:"SUIT GUY — TEST BOSS"}:bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
    const bossSpawn=findReachableZombieSpawn(36,70,false,null);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
