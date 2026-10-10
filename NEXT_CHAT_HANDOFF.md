@@ -1,3 +1,10 @@
+# v558 — SUIT GUY BOSS FACING AND T-POSE AUTO-RIG — 2026-10-10
+
+- User screenshot confirms Wave 1 boss spawns, but uploaded model faces backward and remains T-pose. Inspection of GLB JSON confirmed no animations and no skins. v558 uses existing proven `buildBasicWalkerTemplate` automatic bone and skin-weight pipeline, with `syncBasicWalkerVisual` for movement/attack/death posing. Visual rotates 180 degrees to face player. Existing boss combat mechanics and Wave 1 test spawn unchanged.
+- Source asset unchanged, all normal zombies/crawlers unchanged, v324 protected. Loader `./src/game.js?v=558`. Needs user visual test; no claim of approved animation or ragdoll.
+
+---
+
 # v557 — SUIT BOSS WAVE 1 VISIBILITY FIX — 2026-10-10
 
 - User reported v556 suit guy boss did not show up. First-wave test spawn used normal boss distance 36–70m; v557 uses reachable candidate 12–22m and near fallback. Remaining boss waves unchanged. Adds console diagnostics and visible GLB-load error and non-culled model rendering. User validation pending.
