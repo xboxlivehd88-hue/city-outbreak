@@ -1,14 +1,14 @@
 {
-  "build": "v583-committed",
+  "build": "v584-committed",
   "test": "panzer-original-skeleton-visible-vertex-motion",
-  "startedAt": "2026-10-10T21:51:59.178Z",
-  "pass": false,
+  "startedAt": "2026-10-10T21:54:14.509Z",
+  "pass": true,
   "siteStatus": 200,
   "modelRequest": {
     "status": 200,
-    "url": "http://127.0.0.1:4173/assets/panzer_zombie.glb?v=583"
+    "url": "http://127.0.0.1:4173/assets/panzer_zombie.glb?v=584"
   },
-  "auditVersion": "v583",
+  "auditVersion": "v584",
   "panzerSourceHeight": 0.008063683962353433,
   "approvedVisualTarget": 3.2,
   "measuredWorldHeight": 3.2000000000000024,
@@ -91,27 +91,27 @@
       1.7158384895226675
     ],
     "holderLocalScale": [
-      42.835695962922344,
-      42.835695962922344,
-      42.835695962922344
+      20.47886090920505,
+      20.47886090920505,
+      20.47886090920505
     ],
     "holderWorldScale": [
-      73.4991358586729,
-      73.65273798500702,
-      73.4991358586729
+      35.13841776959519,
+      35.21185177153781,
+      35.13841776959519
     ],
-    "worldHeightBox": 11.695390482092577,
-    "renderMeshSkinnedHeight": 11.527350132266882,
+    "worldHeightBox": 5.591324468474322,
+    "renderMeshSkinnedHeight": 5.510987850290428,
     "renderBounds": {
       "min": [
-        -6.857192714228876,
-        0.16469044952476586,
-        -3.0670422383183245
+        -4.866080116735671,
+        0.047832122928622836,
+        -0.22770552456564852
       ],
       "max": [
-        1.629359256570042,
-        11.692040581791648,
-        5.323536335328607
+        -0.8088350200489227,
+        5.558819973219051,
+        3.783656674526518
       ]
     },
     "sampled": 6093,
@@ -122,7 +122,7 @@
     ],
     "holderPosition": [
       -3.042220977431895,
-      -0.10005711158499021,
+      -0.07873821421988213,
       2.3731269052318034
     ],
     "camera": [
@@ -136,8 +136,22 @@
     "visible": true,
     "relativePlayerDistance": 17.637478474567043
   },
-  "failure": "AssertionError [ERR_ASSERTION]: Live Panzer still outsized: 11.527350132266882 vs expected 5.502157867495129\n    at /home/runner/work/city-outbreak/city-outbreak/scripts/panzer-browser-audit.cjs:195:3",
   "errors": [],
-  "logs": [],
-  "completedAt": "2026-10-10T21:52:31.209Z"
+  "logs": [
+    "log: CITY OUTBREAK v580: REAL PANZER GLB — right leg exists but source clip does NOT animate it {sourceClip: Array(1), selected: ORIGINAL_GLTF_SKELETON_BOTH_LEGS, originalRightLegAnimationTracks: 0, originalRightThigh: j_hip_ri_08, originalRightKnee: j_knee_ri_09}",
+    "log: CITY OUTBREAK: new city GLB loaded {scale: 1.55, size: Array(3), position: Array(3)}",
+    "error: CITY OUTBREAK: green guy radiated model failed to load ReferenceError: bossTPose is not defined\n    at chooseRigidBone (http://127.0.0.1:4173/src/game.js?v=584:4412:4)\n    at buildRadiatedGreenGuyTemplate (http://127.0.0.1:4173/src/game.js?v=584:4440:22)\n    at GLTFLoader.load.radiatedGreenGuyError (http://127.0.0.1:4173/src/game.js?v=584:607:27)\n    at https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js:311:6\n    at https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js:2771:5",
+    "log: CITY OUTBREAK: walkers.glb loaded {animations: Array(0), autoRig: true, height: 9.460575103759766}",
+    "log: CITY OUTBREAK: shotgun_test.glb loaded {animations: Array(0), pump: true, shell: true, trigger: true, inserter: true}",
+    "log: CITY OUTBREAK v550: naturally spawning crawler GLB ready {name: assets/zombie_number_3_-_animated.glb?v=550, animations: Array(11)}",
+    "log: CITY OUTBREAK v580: both ORIGINAL Panzer legs now driven {nativeBoneNames: Object, originalClip: panzer zombie, originalTracks: 47, upperTracksPreserved: 43, legTracksOmitted: 4}",
+    "log: CITY OUTBREAK v573: Panzer boss awaiting posed-mesh scale calibration {importedAnimation: panzer zombie, proceduralBones: 0, hitboxes: 6}",
+    "log: CITY OUTBREAK v584: Panzer native live-root suit-sized correction {rawAnimatedHeight: 1272.5373583877365, targetWorldHeight: 3.2, correction: 0.050146395164489606, resultingScale: 19.900143070529403, footOffset: 1.9806641949787787}",
+    "log: CITY OUTBREAK: 3 half-size canopy fixtures with geometry-trimmed right duplicates {rows: 3, model: assets/simple_fluorescent_tube_light.glb?v=539, underside: 5.041657310417142, roofCenter: Array(3), scale: 1.025}",
+    "log: CITY OUTBREAK v580: both ORIGINAL Panzer legs now driven {nativeBoneNames: Object, originalClip: panzer zombie, originalTracks: 47, upperTracksPreserved: 43, legTracksOmitted: 4}",
+    "log: CITY OUTBREAK v573: Panzer boss awaiting posed-mesh scale calibration {importedAnimation: panzer zombie, proceduralBones: 0, hitboxes: 6}",
+    "log: CITY OUTBREAK v584: Panzer native live-root suit-sized correction {rawAnimatedHeight: 108.34911769791724, targetWorldHeight: 5.502157867495129, correction: 0.22534806533955154, resultingScale: 20.47886090920505, footOffset: -0.002161409736504715}",
+    "log: CITY OUTBREAK v584: live Panzer true skin resized to approved boss scale {sampledFrame: 1, before: 0.2841450588528337, after: 0.2841450588528337, target: 5.502157867495129, rootScale: 1.7194243335922275}"
+  ],
+  "completedAt": "2026-10-10T21:54:40.076Z"
 }
