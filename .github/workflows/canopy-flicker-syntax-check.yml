@@ -1,4 +1,4 @@
-name: Inspect new crawler GLB for exact rig and crawl clips
+name: Inspect crawler animation locomotion and root motion
 on:
   push:
     branches: [canopy-inspection-probe]
@@ -10,44 +10,40 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Print uploaded crawler GLB structure, clip timings, rest transforms
+      - name: Report crawler GLB root transforms and skeletal motion
         run: |
           python3 - <<'PY'
-          import json,struct,collections,math
+          import json,struct,collections
           from pathlib import Path
-          name="assets/zombie_number_3_-_animated.glb"
-          raw=Path(name).read_bytes()
-          assert raw[:4]==b"glTF", "invalid GLB"
-          total=struct.unpack_from("<I",raw,8)[0];assert total==len(raw)
-          ln,typ=struct.unpack_from("<II",raw,12)
-          j=json.loads(raw[20:20+ln]); nodes=j.get("nodes",[])
-          print("GLB_BYTES",len(raw),"NODES",len(nodes),"MESHES",len(j.get("meshes",[])),"SKINS",len(j.get("skins",[])),"ANIMS",len(j.get("animations",[])),"SCENES",j.get("scenes"))
-          print("ROOTS",[(q,j["nodes"][q].get("name")) for sc in j.get("scenes",[]) for q in sc.get("nodes",[])])
-          print("ASSET",j.get("asset"))
-          for i,s in enumerate(j.get("skins",[])):
-           print("SKIN",i,"JOINTS",len(s.get("joints",[])),"SKELETON",s.get("skeleton"),"JOINT_NAMES",[nodes[k].get("name") for k in s.get("joints",[])[:60]])
-          allnames=[n.get("name","") for n in nodes]
-          for i,n in enumerate(nodes):
-           nm=n.get("name","")
-           if ("mesh" in n or "skin" in n or any(k in nm.lower() for k in ["root","hips","arm","head","leg","spine","neck","foot","hand"])):
-            print("NODE",i,repr(nm),"mesh",n.get("mesh"),"skin",n.get("skin"),"t",n.get("translation"),"rot",n.get("rotation"),"scale",n.get("scale"),"childCount",len(n.get("children",[])))
-          for i,m in enumerate(j.get("meshes",[])):
-           geos=[]
-           for p in m.get("primitives",[]):
-            a=j["accessors"][p["attributes"]["POSITION"]]
-            geos.append({"min":a.get("min"),"max":a.get("max"),"count":a.get("count"),"material":p.get("material"),"joints":'JOINTS_0' in p["attributes"]})
-           print("MESH",i,repr(m.get("name")),"parts",geos[:8])
-          for i,mat in enumerate(j.get("materials",[])):
-           print("MATERIAL",i,mat.get("name"),"alpha",mat.get("alphaMode"))
-          for i,a in enumerate(j.get("animations",[])):
-           samplers=a.get("samplers",[]);channels=a.get("channels",[])
-           bounds=[]
-           for sa in samplers:
-            acc=j["accessors"][sa["input"]]
-            if "min" in acc and "max" in acc: bounds.append((acc["min"][0],acc["max"][0]))
-           cb=collections.Counter(ch["target"]["path"] for ch in channels)
-           names=collections.Counter(nodes[ch["target"]["node"]].get("name","") for ch in channels)
-           duration=max((r[1] for r in bounds),default=None)
-           print("ANIM",i,repr(a.get("name")),"secs",duration,"channels",len(channels),"pathCounts",dict(cb),"targetNames",names.most_common(25))
-          print("CRAWLER_GLB_INSPECTION_COMPLETE")
+          data=Path('assets/zombie_number_3_-_animated.glb').read_bytes()
+          size,t=struct.unpack_from('<II',data,12);j=json.loads(data[20:20+size])
+          off=20+size
+          off+=(4-size%4)%4
+          blen,btyp=struct.unpack_from('<II',data,off);binary=data[off+8:off+8+blen]
+          nodes=j['nodes']
+          for i in range(18):
+           n=nodes[i]
+           print('TOPNODE',i,n.get('name'),'translation',n.get('translation'),'rotation',n.get('rotation'),'scale',n.get('scale'),'matrix',n.get('matrix'),'children',n.get('children'))
+          ty={5126:('f',4),5123:('H',2),5125:('I',4)}
+          def acc_values(i):
+           a=j['accessors'][i]
+           view=j['bufferViews'][a['bufferView']]
+           count={'SCALAR':1,'VEC3':3,'VEC4':4}[a['type']]
+           f,w=ty[a['componentType']]
+           stride=view.get('byteStride',w*count)
+           start=view.get('byteOffset',0)+a.get('byteOffset',0)
+           return [struct.unpack_from('<'+f*count,binary,start+k*stride) for k in range(a['count'])]
+          for ai,a in enumerate(j.get('animations',[])):
+           if a.get('name') not in ('Running_Crawl','Crawl','Idle','Attack','Death'):continue
+           print('CLIP',ai,a.get('name'))
+           for ch in a.get('channels',[]):
+            node=ch['target']['node']
+            path=ch['target']['path']
+            if path!='translation' or node not in (5,18,19,20,21,22,23,73,78):continue
+            track=a['samplers'][ch['sampler']]
+            vals=acc_values(track['output'])
+            low=[min(v[k] for v in vals) for k in range(len(vals[0]))]
+            high=[max(v[k] for v in vals) for k in range(len(vals[0]))]
+            print('TRACK',nodes[node].get('name'),path,'frames',len(vals),'first',tuple(round(q,3) for q in vals[0]),'min',tuple(round(q,3) for q in low),'max',tuple(round(q,3) for q in high))
+          print('ROOT_MOTION_INSPECTION_COMPLETE')
           PY
