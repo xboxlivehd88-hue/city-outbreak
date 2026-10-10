@@ -1,3 +1,20 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v540 HALF-SIZE SINGLE FLUORESCENT CANOPY LIGHT PER BAY — READ FIRST
+
+**Repo `xboxlivehd88-hue/city-outbreak`, branch `main` remains source of truth. User visually tested v539 and supplied a screenshot: the 3 fixtures were far too large and each had an unwanted duplicate fixture on the RIGHT. User requested: “make them 50% smaller and we dont need the lights on the right of each set”. v539 was NOT visually approved. v540 changes only that requested canopy model size/composition.**
+
+## v540 changes and exact source-GLB diagnosis
+- The v539 probe's REAL source GLB scene list shows the original `assets/simple_fluorescent_tube_light.glb` has two full side-by-side luminaires: **`Zlight` at source X[-0.79,-0.08]**, and the parallel **`Zlight.001` at X[0.07,0.78]**. Each luminaire has its own base, glass cover and two `LigthBulb` meshes. The user wants the right entire luminaire removed, not just one glowing bulb.
+- In `installGasStationCanopyFixtures(map)`, after loading the original unchanged GLB, remove its entire `Zlight.001` subtree before making three clones, leaving the authentic complete left `Zlight` assembly (one housing, glass, TWO internal tubes) per canopy bay. No geometry cutting, third-party replacement, shader clipping, new draw calls or mesh copies. Recenter on the bounds of the remaining housing.
+- Capture v539's ORIGINAL full-GLB dimensions BEFORE removing the right duplicate, calculate the EXACT same v539 roof-bounded size, then multiply by **0.50**. This prevents auto-width sizing from compensating for removal. Based on inspected GLB/map geometry, v539 scale was 2.05 and v540 scale is ~1.025; fixture front-back length reduces ~6.19 to ~3.10 world units.
+- Keep the THREE rows aligned front-to-back centered under the three real canopy bays, mounted immediately below actual roof underside. Do not change the shared warm-white shadowless pump spotlight, the fixed six-streetlight High shader budget, or graphics presets.
+- Bump `index.html` module loader from v539 to **v540**; CSS v525, unchanged original fluorescent GLB path and other modules untouched. Record `dataset.gasCanopySingleLeftLights=3`, `gasCanopyScaleRatio=0.50` for debug.
+- Protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 untouched; preserve all v539 and prior gameplay, zombie AI, weapon reloads, grenade breakup, graphics presets, opening screen and UI.
+- Validation: assert exact `Zlight`/`Zlight.001` names against v539 probe logs, one removed before cloning, scale half original, 3 loops, v540 loader; JS syntax and GitHub Pages deploy. **No visual approval until user tests**.
+- New test link after Pages deployment: https://xboxlivehd88-hue.github.io/city-outbreak/?v=540-single-half-size-canopy-lights . At the gas station look UP: THREE small separate single housings, ONE centered per bay (not pairs); each single housing still has its two built-in glowing tubes. Compare size vs screenshot, roof mount, brightness and FPS. Ask user for a screenshot if further tweak needed.
+- GitHub main remains authoritative. On next chat read newest sections of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, `src/game.js` and `src/game.css` first.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v539 GAS STATION CANOPY FLUORESCENT LIGHTS — READ FIRST
 
 **Repo `xboxlivehd88-hue/city-outbreak`, branch `main` is source of truth. User requested directly installing 3 newly uploaded `assets/simple_fluorescent_tube_light.glb` instances underneath gas-station canopy, one centered in each of 3 bays front-to-back, all illuminated, plus deploy/test link/handoff. User screenshot on v538 showed canopy from beneath. Keep v538 FIXED SIX smart streetlight shader budget; past 20-spotlight High caused camera-turn frame drops.**

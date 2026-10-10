@@ -1364,15 +1364,31 @@ function installGasStationCanopyFixtures(map){
  new GLTFLoader().load(GAS_CANOPY_LIGHT_GLB,gltf=>{
   const source=gltf.scene;
   source.updateMatrixWorld(true);
+  const fullBox=new THREE.Box3().setFromObject(source);
+  if(fullBox.isEmpty())return;
+  const originalSize=fullBox.getSize(new THREE.Vector3());
+  // v540: The original uploaded GLB has TWO complete parallel luminaires:
+  // Zlight at source X[-0.79,-0.08] and Zlight.001 at X[0.07,0.78].
+  // Keep only the left Zlight assembly (casing, glass, both fluorescent tubes).
+  // Removing the right subtree also saves its GPU mesh draw calls.
+  const leftAssembly=source.getObjectByName("Zlight");
+  const rightAssembly=source.getObjectByName("Zlight.001");
+  if(!leftAssembly||!rightAssembly?.parent){
+   document.documentElement.dataset.gasCanopyTrimError="Expected Zlight and Zlight.001";
+   console.warn("Gas station fluorescent GLB did not contain its expected parallel assemblies");
+   return;
+  }
+  rightAssembly.parent.remove(rightAssembly);
+  source.updateMatrixWorld(true);
   const baseBox=new THREE.Box3().setFromObject(source);
   if(baseBox.isEmpty())return;
   const sourceCenter=baseBox.getCenter(new THREE.Vector3());
-  const sourceSize=baseBox.getSize(new THREE.Vector3());
-  // The uploaded model already runs on its Z axis (source ±1.51 Z).
-  // Maintain its proportions and center it front-to-back in every bay.
+  // Preserve v539's calculated size BEFORE removing the duplicate, then
+  // reduce the kept light to exactly 50% of the previous overall scale.
+  // Its Z axis still runs front-to-back, with a centered mount per bay.
   const laneWidth=width/3;
-  const scale=Math.min(2.05,laneWidth*.73/Math.max(.1,sourceSize.x),
-                      depth*.66/Math.max(.1,sourceSize.z));
+  const scale=.5*Math.min(2.05,laneWidth*.73/Math.max(.1,originalSize.x),
+                         depth*.66/Math.max(.1,originalSize.z));
   if(!Number.isFinite(scale)||scale<=0)return;
   for(let i=0;i<3;i++){
    const fixture=source.clone(true);
@@ -1421,7 +1437,9 @@ function installGasStationCanopyFixtures(map){
   document.documentElement.dataset.gasCanopyFixtures=String(gasCanopyFixtures.length);
   document.documentElement.dataset.gasCanopyRows=gasCanopyFixtures.map(f=>f.position.x.toFixed(2)).join(",");
   document.documentElement.dataset.gasCanopyCeiling=underside.toFixed(3);
-  console.log("CITY OUTBREAK: 3 actual fluorescent GLB fixtures under station canopy",{
+  document.documentElement.dataset.gasCanopySingleLeftLights="3";
+  document.documentElement.dataset.gasCanopyScaleRatio="0.50";
+  console.log("CITY OUTBREAK: 3 half-size single fluorescent GLB fixtures under station canopy",{
    rows:gasCanopyFixtures.length,model:GAS_CANOPY_LIGHT_GLB,
    underside,roofCenter:roofCenter.toArray(),scale,sharedLight:true
   });
