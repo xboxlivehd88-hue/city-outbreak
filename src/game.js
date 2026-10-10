@@ -10,32 +10,36 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments} from "./grenade-shatter.js?v=531";
-// v556: temporary first-wave boss visual test. Boss combat/hitboxes remain unchanged.
+// v558: auto-rig the static uploaded boss GLB using the existing tested walker skinning system.
+// The source contains no skins or animation clips, so a raw scene clone stays in T-pose.
 const SUIT_BOSS_TEST_WAVE=1;
 let suitBossTemplate=null,suitBossLoadError=null;
 new GLTFLoader().load("assets/suit%20guy%20boss.glb?v=556",gltf=>{
-  suitBossTemplate=gltf.scene;
-  console.log("CITY OUTBREAK v557: suit boss GLB loaded",gltf.scene);
+  suitBossTemplate=buildBasicWalkerTemplate(gltf.scene);
+  if(!suitBossTemplate)throw new Error("Suit guy boss: failed to build automatic skinning rig");
+  console.log("CITY OUTBREAK v558: suit boss auto-rigged",suitBossTemplate.userData.sourceHeight);
   for(const z of zombies)if(z.kind==="boss"&&!z.suitBossVisual)attachSuitBossVisual(z);
-},undefined,error=>{suitBossLoadError=error;console.error("CITY OUTBREAK: suit boss GLB failed to load",error);if(typeof show==="function")show("SUIT BOSS MODEL FAILED TO LOAD — check console")});
+},undefined,error=>{suitBossLoadError=error;console.error("CITY OUTBREAK: suit boss GLB failed to load",error);});
 function attachSuitBossVisual(z){
-  if(!z||z.kind!=="boss"||!suitBossTemplate||z.suitBossVisual||z.dead)return;
-  const model=SkeletonUtils.clone(suitBossTemplate);
-  model.updateMatrixWorld(true);
-  const box=new THREE.Box3().setFromObject(model);
-  const size=box.getSize(new THREE.Vector3());
-  if(!Number.isFinite(size.y)||size.y<.001){console.error("Suit boss empty/invalid model bounds",box);show("SUIT BOSS GLB HAS INVALID BOUNDS");return;}
-  const center=box.getCenter(new THREE.Vector3());
-  const scale=3.2/size.y;
-  model.scale.setScalar(scale);
-  model.position.set(-center.x*scale,-box.min.y*scale,-center.z*scale);
-  model.traverse(o=>{o.visible=true;if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true;o.frustumCulled=false;}});
-  z.g.add(model);
-  z.suitBossVisual=model;
-  console.log("CITY OUTBREAK v557: suit boss attached",size,scale,model.position);
-  // Hide the existing boss appearance, but preserve its gameplay rig/hitboxes.
-  if(z.rigVisual)z.rigVisual.visible=false;
-  z.g.traverse(o=>{if(o.isMesh&&o!==model&&!model.getObjectById(o.id)&&!o.userData.visualOnly)o.visible=false;});
+ if(!z||z.kind!=="boss"||!suitBossTemplate||z.suitBossVisual||z.dead)return;
+ const holder=new THREE.Group(),model=SkeletonUtils.clone(suitBossTemplate);
+ const h=suitBossTemplate.userData.sourceHeight;
+ holder.name="SuitBossAutoRigVisual";
+ holder.scale.setScalar(3.2/h);
+ // Screenshot v557 showed his back; rotate the authored model 180 degrees.
+ holder.rotation.y=Math.PI;
+ holder.add(model);z.g.add(holder);
+ z.suitBossVisual=holder;
+ z.walkerVisual=holder;z.walkerModel=model;z.walkerSourceHeight=h;
+ z.walkerBones=new Map();
+ for(const key of BASIC_WALKER_BONE_KEYS){
+   const bone=model.getObjectByName("Walker"+key);
+   if(bone)z.walkerBones.set(key,bone);
+ }
+ z.walkerLastX=z.g.position.x;z.walkerLastZ=z.g.position.z;z.walkerMoveBlend=0;
+ // Preserve existing boss physics, hitboxes and attack logic; replace visible body only.
+ if(z.rigVisual)z.rigVisual.visible=false;
+ console.log("CITY OUTBREAK v558: animated suit boss attached",z.walkerBones.size);
 }
 let zombieRigAsset=null,zombieRigError=null;
 try{
