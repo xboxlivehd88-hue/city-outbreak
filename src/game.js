@@ -21,10 +21,10 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible deployment fingerprint, temporary during Wave 1 Panzer testing.
 // If the browser tab doesn't show v574, it isn't executing this build.
-document.title="CITY OUTBREAK — PANZER WALK v581";
-document.documentElement.dataset.panzerTestBuild="581";
+document.title="CITY OUTBREAK — PANZER SIZE v582";
+document.documentElement.dataset.panzerTestBuild="582";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
-new GLTFLoader().load("assets/panzer_zombie.glb?v=581",gltf=>{
+new GLTFLoader().load("assets/panzer_zombie.glb?v=582",gltf=>{
  panzerBossAsset=gltf;
  // v580: the REAL 8.7 MB GLB was parsed in a GitHub Actions checkout.
  // Its 52-joint skin HAS a genuine right thigh, knee and ankle (j hip ri_08,
@@ -476,6 +476,54 @@ function calibratePanzerBossVisual(z){
    correction,
    resultingScale:holder.scale.x,
    footOffset:offsetY
+ });
+}
+// v582: Unlike a disconnected test model, the actual Wave 1 Panzer inherits
+// a much larger boss ROOT scale (~1.72). The old Three.js Box3-based single
+// pass did not match its rendered skin: actual live Wave 1 vertices measured
+// ~24 units high, more than FOUR TIMES the intended Suit Guy-sized ~5.5 units.
+// Measure actual animated SKINNED VERTICES in world coordinates, only on a few
+// early frames. Shrink if too large, check again after new animation frames;
+// never amplify existing size, preserving both real leg chains and their gait.
+function finalizePanzerSpawnSize(z){
+ if(!z?.panzerBossMixer||!z.panzerSizeCalibrated||z.dead)return;
+ z.panzerRealSizeFrames=(z.panzerRealSizeFrames||0)+1;
+ if(![1,8,24].includes(z.panzerRealSizeFrames))return;
+ const holder=z.panzerBossVisual,model=z.panzerBossModel;
+ const rootScale=new THREE.Vector3(),rootPos=new THREE.Vector3();
+ z.g.getWorldScale(rootScale);z.g.getWorldPosition(rootPos);
+ const target=PANZER_VISUAL_HEIGHT*Math.abs(rootScale.y);
+ const vertex=new THREE.Vector3(),bounds=new THREE.Box3();
+ const measure=()=>{
+   bounds.makeEmpty();model.updateWorldMatrix(true,true);
+   model.traverse(mesh=>{
+     if(!mesh.isSkinnedMesh)return;
+     const attr=mesh.geometry?.getAttribute("position");if(!attr)return;
+     const stride=Math.max(1,Math.floor(attr.count/1700));
+     for(let i=0;i<attr.count;i+=stride){
+       mesh.getVertexPosition(i,vertex);
+       mesh.localToWorld(vertex);
+       bounds.expandByPoint(vertex);
+     }
+   });
+   return bounds.max.y-bounds.min.y;
+ };
+ const before=measure();let after=before;
+ if(Number.isFinite(before)&&before>.0001&&Number.isFinite(target)&&target>0){
+   for(let k=0;k<6;k++){
+     const ratio=target/after;
+     if(ratio>=.985)break; // shrink only; do NOT suddenly enlarge Panzer
+     holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.sqrt(ratio),.2,1));
+     after=measure();
+     if(!Number.isFinite(after)||after<.0001)break;
+   }
+   const footOffset=(rootPos.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
+   if(Number.isFinite(footOffset))holder.position.y+=THREE.MathUtils.clamp(footOffset,-40,40);
+ }
+ z.panzerMeasuredSize=after;
+ console.log("CITY OUTBREAK v582: live Panzer true skin resized to approved boss scale",{
+   sampledFrame:z.panzerRealSizeFrames,before,after,target,
+   rootScale:rootScale.y,finalScale:holder.scale.x
  });
 }
 function attachSuitBossVisual(z){
@@ -4813,6 +4861,7 @@ function syncBasicWalkerVisual(z,dt=0){
      z.panzerBossMixer.update(dt);
      syncPanzerBossWalk(z,dt,true);
      calibratePanzerBossVisual(z);
+     finalizePanzerSpawnSize(z);
    }
    return;
  }
@@ -6051,7 +6100,7 @@ function spawnWave(){
      const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
    }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
-   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v581 BILATERAL WALK TEST": "PANZER v581 — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v582 SCALED WALKING BOSS": "PANZER v582 — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
    updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
