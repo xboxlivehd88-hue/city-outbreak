@@ -92,7 +92,7 @@
         <div class="graphicsSettingRow"><div><label for="graphicsShadows">SHADOW QUALITY</label><small>Lower resolutions cost less GPU power. Off is fastest.</small></div><select id="graphicsShadows" data-graphics-option="shadowQuality"><option value="off">OFF — FASTEST</option><option value="low">LOW (256)</option><option value="medium">MEDIUM (512)</option><option value="high">HIGH (768)</option></select></div>
          <div class="graphicsSettingRow"><div><label for="graphicsTextureQuality">WORLD TEXTURE DETAIL</label><small>Low removes costly surface detail maps; Very Low draws the city with simple flat colors.</small></div><select id="graphicsTextureQuality" data-graphics-option="textureQuality"><option value="veryLow">VERY LOW — FLAT COLORS</option><option value="low">LOW — BASIC TEXTURES</option><option value="medium">MEDIUM</option><option value="high">HIGH — ORIGINAL</option></select></div>
          <div class="graphicsSettingRow"><div><label for="graphicsSkyQuality">SKY / CLOUD DETAIL</label><small>Simple sky removes the expensive procedural cloud shader while retaining nighttime colors and the moon.</small></div><select id="graphicsSkyQuality" data-graphics-option="skyQuality"><option value="simple">SIMPLE — FASTEST</option><option value="full">FULL — ORIGINAL CLOUDS</option></select></div>
-        <div class="graphicsSettingRow"><div><label for="graphicsStreetlights">REAL STREETLIGHT LIGHTING</label><small>On High, real light follows what you can see and nearby lamps, fading out behind you to save FPS. Reduced uses two nearby spotlights; Off keeps the inexpensive lamp glow.</small></div><select id="graphicsStreetlights" data-graphics-option="lights"><option value="off">OFF — GLOW ONLY</option><option value="half">REDUCED — NEAREST 2</option><option value="full">FULL — SMART VIEW LIGHTING</option></select></div>
+        <div class="graphicsSettingRow"><div><label for="graphicsStreetlights">REAL STREETLIGHT LIGHTING</label><small>On High, six stable real spotlights follow nearby/in-view streetlamps without frame-stuttering shader changes. Every bulb still glows. Reduced uses two; Off uses glow only.</small></div><select id="graphicsStreetlights" data-graphics-option="lights"><option value="off">OFF — GLOW ONLY</option><option value="half">REDUCED — NEAREST 2</option><option value="full">FULL — SMART VIEW LIGHTING</option></select></div>
       </div>
     </div>
     <div class="graphicsTabPanel" data-graphics-panel="effects" hidden>
@@ -115,6 +115,6 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <!-- v463 Pages deployment retrigger: no gameplay change -->
 <!-- v470 final deployment sync -->
-<script type="module" src="./src/game.js?v=536"></script>
+<script type="module" src="./src/game.js?v=537"></script>
 </body>
 </html>

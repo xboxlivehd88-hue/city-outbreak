@@ -1051,6 +1051,7 @@ function addStreetLampColliders(placements){
 // Keep the approved rare individual lamp flicker on every graphics tier.
 const STREET_LAMP_HEAD_LOCAL_X=2.607625;
 const STREET_LAMP_HEAD_LOCAL_Y=5.785485;
+const STREET_LAMP_HIGH_LIGHT_BUDGET=6;
 const STREET_LAMP_REDUCED_LIGHT_COUNT=2;
 const STREET_LAMP_LIGHT_RANGE=17;
 const STREET_LAMP_LIGHT_INTENSITY=220;
@@ -1061,15 +1062,13 @@ const streetLampFlickerStates=[];
 const streetLampNearestScratch=[];
 let streetLampGlowPoints=null;
 let streetLampGlowBrightness=null;
-// v536: cull expensive REAL spotlights (not decorative bulb glows) by camera
-// direction and light reach. Nearby lamps remain lit behind the player.
-const STREET_LAMP_CULL_RECHECK_MS=160;
-const STREET_LAMP_CLOSE_ON=25;
-const STREET_LAMP_CLOSE_OFF=33;
-const streetLampViewForward=new THREE.Vector3();
-let streetLampLastCullingAt=-1e9,streetLampLastFadeAt=-1e9;
-let streetLampLastVisibleCount=-1;
-let streetLampLightLastUpdate=-1e9,streetLampLightingMode="off";
+// v537: fixed real-spotlight count avoids Three.js lighting-shader recompiles
+// when the player turns; distant/rear lamp bulbs remain cheaply emissive.
+const STREET_LAMP_PICK_INTERVAL_MS=250;
+const STREET_LAMP_REASSIGN_FADE_RATE=11;
+const streetLampCandidateIndices=new Set();
+let streetLampLastPickAt=-1e9,streetLampLastFadeAt=-1e9;
+let streetLampVisibleCount=-1,streetLampLightingMode="off";
 
 function nextStreetLampFlickerTime(t){
  return t+14000+Math.random()*76000;
@@ -1154,149 +1153,144 @@ function updateStreetLampFlicker(t){
 function setupStreetLampLighting(placements){
  if(streetLampLightPool.length||!placements.length)return;
  for(const p of placements){
-   const headX=p.x+Math.cos(p.rotY)*STREET_LAMP_HEAD_LOCAL_X;
-   const headZ=p.z-Math.sin(p.rotY)*STREET_LAMP_HEAD_LOCAL_X;
-   const headY=p.y+STREET_LAMP_HEAD_LOCAL_Y*STREET_LAMP_HEIGHT_SCALE;
-   streetLampLightHeads.push({x:headX,y:headY,z:headZ,groundY:p.y});
+   const x=p.x+Math.cos(p.rotY)*STREET_LAMP_HEAD_LOCAL_X;
+   const z=p.z-Math.sin(p.rotY)*STREET_LAMP_HEAD_LOCAL_X;
+   const y=p.y+STREET_LAMP_HEAD_LOCAL_Y*STREET_LAMP_HEIGHT_SCALE;
+   streetLampLightHeads.push({x,y,z,groundY:p.y});
  }
  setupStreetLampGlow();
- // Allocate one per authored/replacement/manual lamp head; inactive lights
- // remain invisible on MEDIUM, LOW and VERY LOW to preserve performance.
- for(let i=0;i<streetLampLightHeads.length;i++){
+ // IMPORTANT: create no more than SIX real lights, NOT one per actual pole.
+ // All decorative glow positions still represent every original streetlamp.
+ const count=Math.min(STREET_LAMP_HIGH_LIGHT_BUDGET,streetLampLightHeads.length);
+ for(let i=0;i<count;i++){
    const target=new THREE.Object3D();
    scene.add(target);
-   const light=new THREE.SpotLight(
-     0xffd27a,
-     STREET_LAMP_LIGHT_INTENSITY,
-     STREET_LAMP_LIGHT_RANGE,
-     Math.PI/3.25,
-     .58,
-     1.65
-   );
+   const light=new THREE.SpotLight(0xffd27a,0,STREET_LAMP_LIGHT_RANGE,
+     Math.PI/3.25,.58,1.65);
    light.castShadow=false;
    light.visible=false;
    light.target=target;
-   light.userData.streetLampHeadIndex=i;
-   light.userData.viewTarget=false;
-   light.userData.viewFade=0;
-   const head=streetLampLightHeads[i];
-   light.position.set(head.x,head.y,head.z);
-   target.position.set(head.x,head.groundY+.05,head.z);
+   const h=streetLampLightHeads[i];
+   light.position.set(h.x,h.y,h.z);
+   target.position.set(h.x,h.groundY+.05,h.z);
+   // Physical slot, as opposed to a permanent light tied to a given pole.
+   light.userData.currentHead=-1;
+   light.userData.desiredHead=-1;
+   light.userData.fade=0;
    scene.add(light);
    streetLampLightTargets.push(target);
    streetLampLightPool.push(light);
  }
  document.documentElement.dataset.streetLampRealLights=String(streetLampLightPool.length);
  document.documentElement.dataset.streetLampAlwaysOnGlow=String(streetLampLightHeads.length);
- // The city GLB (and therefore its lamp pool) loads asynchronously.
- // Recompute the chosen light budget as soon as lamps become available.
- graphicsLightLimit=graphicsOptions.lights==="off"?0:graphicsOptions.lights==="half"?Math.min(STREET_LAMP_REDUCED_LIGHT_COUNT,streetLampLightPool.length):Infinity;
+ graphicsLightLimit=graphicsOptions.lights==="off"?0:
+   graphicsOptions.lights==="half"?Math.min(STREET_LAMP_REDUCED_LIGHT_COUNT,streetLampLightPool.length):
+   Infinity;
  updateStreetLampLighting(performance.now(),true);
+}
+// Determine only a few plausible illuminating lamps, preferring lamps
+// in/just outside the view and keeping any already assigned lamp stable.
+// Lamps close enough to light visible nearby pavement may remain behind us.
+function chooseStreetLampHeads(mode){
+ const fx=-Math.sin(yaw),fz=-Math.cos(yaw);
+ const halfFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(cam.fov)*.5)*cam.aspect);
+ const chosen=[];
+ const existing=new Set();
+ for(const light of streetLampLightPool){
+   if(light.userData.desiredHead>=0)existing.add(light.userData.desiredHead);
+   if(light.userData.currentHead>=0)existing.add(light.userData.currentHead);
+ }
+ for(let i=0;i<streetLampLightHeads.length;i++){
+   const head=streetLampLightHeads[i],dx=head.x-px,dz=head.z-pz;
+   const ds=dx*dx+dz*dz,dist=Math.sqrt(ds);
+   if(mode==="full"){
+     if(dist>Math.min(cam.far,62))continue;
+     const dot=dist>.001?(dx*fx+dz*fz)/dist:1;
+     const keep=existing.has(i);
+     const close=dist<(keep?25:19);
+     const angle=halfFov+Math.atan2(STREET_LAMP_LIGHT_RANGE+2,Math.max(1,dist))+
+       THREE.MathUtils.degToRad(keep?20:12);
+     if(!close&&dot<Math.cos(Math.min(Math.PI,angle)))continue;
+     chosen.push({i,score:dist-(close?9:0)-Math.max(0,dot)*5-(keep?8:0)});
+   }else{
+     // Medium's old reduced mode follows the two nearest lampheads.
+     chosen.push({i,score:ds});
+   }
+ }
+ chosen.sort((a,b)=>a.score-b.score);
+ return chosen.slice(0,mode==="full"?streetLampLightPool.length:
+   Math.min(STREET_LAMP_REDUCED_LIGHT_COUNT,streetLampLightPool.length)).map(x=>x.i);
+}
+function assignStreetLampHeads(selected,activeBudget){
+ streetLampCandidateIndices.clear();
+ for(const index of selected)streetLampCandidateIndices.add(index);
+ const unclaimed=new Set(selected);
+ // Preserve existing slots for lamps that remain desirable, avoiding flashes
+ // and the overhead of pointlessly reassigning lights when rotating slightly.
+ for(let i=0;i<streetLampLightPool.length;i++){
+   const light=streetLampLightPool[i];
+   if(i>=activeBudget){light.userData.desiredHead=-1;continue}
+   const index=light.userData.desiredHead;
+   if(unclaimed.has(index))unclaimed.delete(index);
+   else light.userData.desiredHead=-1;
+ }
+ for(let i=0;i<activeBudget;i++){
+   const light=streetLampLightPool[i];
+   if(light.userData.desiredHead>=0)continue;
+   const next=unclaimed.values().next();
+   if(next.done)break;
+   light.userData.desiredHead=next.value;
+   unclaimed.delete(next.value);
+ }
 }
 function updateStreetLampLighting(t,force=false){
  if(!streetLampLightPool.length)return;
  updateStreetLampFlicker(t);
- const mode=graphicsLightLimit===0?"off":graphicsLightLimit===Infinity?"full":"half";
- const modeChanged=streetLampLightingMode!==mode;
- if(mode==="off"){
-   // Preserve inexpensive emissive lamp bulbs while real lights are invisible.
-   for(const light of streetLampLightPool)light.visible=false;
-   streetLampLightingMode=mode;
-   if(streetLampLastVisibleCount!==0){
-     streetLampLastVisibleCount=0;
-     document.documentElement.dataset.streetLampVisibleRealLights="0";
-   }
-   return;
- }
- if(mode==="full"){
-   // FULL quality still creates one light per streetlamp, but only lights
-   // intersecting the player's VIEW + a margin contribute at render time.
-   // Other world geometry, enemy simulation and collision are unaffected.
-   if(force||modeChanged){
-     for(let i=0;i<streetLampLightPool.length;i++){
-       const head=streetLampLightHeads[i],light=streetLampLightPool[i],target=streetLampLightTargets[i];
-       light.position.set(head.x,head.y,head.z);
-       target.position.set(head.x,head.groundY+.05,head.z);
-       light.userData.streetLampHeadIndex=i;
-     }
-   }
-   if(force||modeChanged||t-streetLampLastCullingAt>=STREET_LAMP_CULL_RECHECK_MS){
-     streetLampLastCullingAt=t;
-     cam.getWorldDirection(streetLampViewForward);
-     // A horizontal cone is steadier than the camera's pitch-dependent view.
-     const forwardLength=Math.hypot(streetLampViewForward.x,streetLampViewForward.z);
-     const forwardX=forwardLength>.01?streetLampViewForward.x/forwardLength:-Math.sin(yaw);
-     const forwardZ=forwardLength>.01?streetLampViewForward.z/forwardLength:-Math.cos(yaw);
-     const halfHorizontalFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(cam.fov)*.5)*cam.aspect);
-     for(let i=0;i<streetLampLightPool.length;i++){
-       const head=streetLampLightHeads[i],light=streetLampLightPool[i];
-       const dx=head.x-px,dz=head.z-pz,distSq=dx*dx+dz*dz;
-       const wasInView=light.userData.viewTarget===true;
-       // A nearby light can illuminate the player and visible pavement even
-       // when its pole is behind them. Hysteresis prevents rapid toggles.
-       const nearby=distSq<=Math.pow(wasInView?STREET_LAMP_CLOSE_OFF:STREET_LAMP_CLOSE_ON,2);
-       const d=Math.sqrt(distSq);
-       const forwardDot=d>.001?(dx*forwardX+dz*forwardZ)/d:1;
-       // Allow off-screen light spill, especially when the lamp is closer.
-       // A wider EXIT cone than ENTRY cone avoids popping on slow turns.
-       const spillAngle=Math.atan2(STREET_LAMP_LIGHT_RANGE+5,Math.max(1,d));
-       const margin=THREE.MathUtils.degToRad(wasInView?27:17);
-       const angle=Math.min(Math.PI,halfHorizontalFov+spillAngle+margin);
-       const visibleDirection=forwardDot>=Math.cos(angle);
-       light.userData.viewTarget=(nearby||visibleDirection)&&d<cam.far+STREET_LAMP_LIGHT_RANGE;
-     }
-   }
- }else if(force||modeChanged||t-streetLampLightLastUpdate>=220){
-   // MEDIUM/Custom REDUCED retains only TWO nearest active real spotlights.
-   streetLampLightLastUpdate=t;
-   if(streetLampNearestScratch.length!==streetLampLightHeads.length){
-     streetLampNearestScratch.length=0;
-     for(let i=0;i<streetLampLightHeads.length;i++)streetLampNearestScratch.push({i,d:0});
-   }
-   for(let i=0;i<streetLampLightHeads.length;i++){
-     const head=streetLampLightHeads[i],pick=streetLampNearestScratch[i];
-     pick.i=i;
-     pick.d=(head.x-px)*(head.x-px)+(head.z-pz)*(head.z-pz);
-   }
-   streetLampNearestScratch.sort((a,b)=>a.d-b.d);
-   for(let i=0;i<graphicsLightLimit;i++){
-     const light=streetLampLightPool[i],target=streetLampLightTargets[i],pick=streetLampNearestScratch[i];
-     if(!pick)continue;
-     const head=streetLampLightHeads[pick.i];
-     light.position.set(head.x,head.y,head.z);
-     target.position.set(head.x,head.groundY+.05,head.z);
-     light.userData.streetLampHeadIndex=pick.i;
-   }
+ const mode=graphicsLightLimit===0?"off":
+   graphicsLightLimit===Infinity?"full":"half";
+ const modeChanged=mode!==streetLampLightingMode;
+ const budget=mode==="full"?streetLampLightPool.length:
+   mode==="half"?Math.min(STREET_LAMP_REDUCED_LIGHT_COUNT,streetLampLightPool.length):0;
+ if(modeChanged||force||t-streetLampLastPickAt>=STREET_LAMP_PICK_INTERVAL_MS){
+   streetLampLastPickAt=t;
+   if(mode==="off"){
+     for(const light of streetLampLightPool)light.userData.desiredHead=-1;
+   }else assignStreetLampHeads(chooseStreetLampHeads(mode),budget);
  }
  streetLampLightingMode=mode;
- // Fade real light intensity gently as the camera sweeps past a light.
- // Hidden spotlight nodes are excluded from Three.js's active GPU lights list.
- const fadeDt=streetLampLastFadeAt<0?.016:Math.min(.06,Math.max(0,(t-streetLampLastFadeAt)/1000));
+ const dt=streetLampLastFadeAt<0?.016:Math.min(.06,Math.max(0,(t-streetLampLastFadeAt)/1000));
  streetLampLastFadeAt=t;
- const follow=1-Math.exp(-fadeDt*11);
- let activeLights=0;
+ const follow=1-Math.exp(-dt*STREET_LAMP_REASSIGN_FADE_RATE);
  for(let i=0;i<streetLampLightPool.length;i++){
-   const light=streetLampLightPool[i],headIndex=light.userData.streetLampHeadIndex;
-   const brightness=headIndex>=0&&streetLampGlowBrightness?streetLampGlowBrightness[headIndex]:1;
-   if(mode==="full"){
-     const target=light.userData.viewTarget?1:0;
-     const current=light.userData.viewFade||0;
-     const blend=current+(target-current)*follow;
-     light.userData.viewFade=blend;
-     light.visible=blend>.018;
-     light.intensity=STREET_LAMP_LIGHT_INTENSITY*brightness*blend;
-   }else{
-     light.visible=i<graphicsLightLimit;
-     light.intensity=STREET_LAMP_LIGHT_INTENSITY*brightness;
+   const light=streetLampLightPool[i],u=light.userData;
+   const allocated=i<budget;
+   const destination=allocated?u.desiredHead:-1;
+   // During a swap, dim the OLD location first; never teleport a bright light.
+   const changing=u.currentHead!==destination;
+   let goal=(!changing&&destination>=0)?1:0;
+   u.fade+=(goal-u.fade)*follow;
+   if(changing&&u.fade<.065){
+     u.currentHead=destination;
+     if(destination>=0){
+       const h=streetLampLightHeads[destination];
+       light.position.set(h.x,h.y,h.z);
+       streetLampLightTargets[i].position.set(h.x,h.groundY+.05,h.z);
+     }
+     u.fade=0;
    }
-   if(light.visible)activeLights++;
+   const brightness=u.currentHead>=0&&streetLampGlowBrightness?
+     streetLampGlowBrightness[u.currentHead]:1;
+   light.intensity=STREET_LAMP_LIGHT_INTENSITY*brightness*u.fade;
+   // Fixed VISIBLE light count per preset. Only intensity and positions change;
+   // the active Three.js spotlight shader count never changes while looking around.
+   light.visible=allocated;
  }
- // Debug count lets FPS tests confirm that rear lights were actually culled.
- if(streetLampLastVisibleCount!==activeLights){
-   streetLampLastVisibleCount=activeLights;
-   document.documentElement.dataset.streetLampVisibleRealLights=String(activeLights);
+ if(streetLampVisibleCount!==budget){
+   streetLampVisibleCount=budget;
+   document.documentElement.dataset.streetLampVisibleRealLights=String(budget);
  }
 }
+
 function addStreetLamps(placements){
  if(streetLampInstances.length||!placements.length)return;
  new GLTFLoader().load(STREET_LAMP_URL,gltf=>{

@@ -1,3 +1,18 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v537 FIX CAMERA-TURN FRAME DROPS FROM SPOTLIGHT SHADERS — READ FIRST
+
+**GitHub main authoritative. User reports "its frame dropping real bad when looking around" after v535 all-lights and v536 view-cone visibility. v536 spawned a real SpotLight for every actual streetlamp and repeatedly toggled .visible as camera turned; this changes active Three.js spotlight count and can recompile expensive lighting shaders, causing stalls. Preserve approved visual realism while fixing severe FPS.**
+
+## v537 targeted fix
+- Instead of spawning a REAL spotlight for all ~20 heads as in v535/v536, allocate a maximum of **SIX shadowless real SpotLights** for High/Full and **TWO** for Medium/Reduced; zero in Low and Very Low. Keep original independently flickering bulb point glows for EVERY lamp head regardless of real-light budget.
+- Stable render shader count: on High keep all six spotlight objects `visible=true` even when out of view and set their *intensity* toward 0; do NOT toggle `visible` on camera turns, which changes Three.js's spotlight permutation/program. Only preset changes alter active count. Each slot has `currentHead`, `desiredHead`, `fade`; real lights are mapped to nearby/view-visible lampheads. On reassignment fade DOWN before moving any light then fade UP; never teleport a bright light from a rear pole to a forward pole.
+- Pick candidates at most once per 250ms, with widened camera-angle view cone, 19-unit fully omnidirectional near bubble (25-unit sticky), and max 62-unit distant range; incumbent-selection bonus reduces thrash. This lights near and ahead of player while leaving distant rear illumination absent, exactly as user asked. No expensive occlusion raycasts. Medium still tracks only the two nearest lamps, Low/Very Low stay glow-only. Retain warm range/intensity and individual rare per-head flicker.
+- Existing Settings label remains FULL — SMART VIEW LIGHTING, with helper text updated to explain the six-light High budget and stable GPU workload.\n- Only modify `src/game.js` streetlight logic; `index.html` cache bumps game.js to v537, approved `src/game.css?v=525` / artwork untouched. Both handoffs updated on TOP. Protected v324 `CURRENT_RECOVERY_CHECKPOINT.md` untouched, grenade-shatter/shotgun/zombie/collision/AI untouched.
+- Run full JS syntax, mocked High 6 / Reduced 2 / Off 0 simulation with rapid camera turns and assert HIGH .visible count ALWAYS =6, no accidental visible toggling; then verify Pages success. No unverified FPS claims.
+- User play URL: https://xboxlivehd88-hue.github.io/city-outbreak/?v=537-turn-fps-fix
+- Test with High setting: walk down street, spin view rapidly, compare performance HUD FPS and stutter with v536; see that bulbs stay visually on and nearby street pavement remains illuminated. If still FPS-limited, can lower High light budget to 4 without touching physics.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v536 CAMERA-AWARE STREETLIGHT CULLING — READ FIRST
 
 **GitHub main is authoritative. User approved v533 explosion, v532 shotgun elbow reload, v531 grenade breakup, v525 menu. v535 established a genuine real spotlight at ALL lamps on HIGH. User now requests performance win: lights in the PLAYER VIEW should remain active, while those BEHIND/outside the view should be hidden until the player looks toward or gets close. Preserve v534 Very Low/Low presets, v535 realistic road lighting, existing rare flicker, gameplay and protected v324 checkpoint.**
