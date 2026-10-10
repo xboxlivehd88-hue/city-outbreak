@@ -47,7 +47,7 @@ function attachSuitBossVisual(z){
  z.suitBossHeadHitbox=headHit;
  // Preserve existing boss physics, hitboxes and attack logic; replace visible body only.
  if(z.rigVisual)z.rigVisual.visible=false;
- console.log("CITY OUTBREAK v560: suit boss horizontal-arm skeleton attached",z.walkerBones.size);
+ console.log("CITY OUTBREAK v562: suit boss anatomical shoulder weights + grounded gait",z.walkerBones.size);
 }
 let zombieRigAsset=null,zombieRigError=null;
 try{
@@ -3866,7 +3866,7 @@ function buildRadiatedGreenGuyTemplate(source){
 
    // v403: rigid anatomical segmentation. Each triangle belongs to exactly one
    // body part, so clothing/body vertices can never stretch between torso and arm.
-   if(bossTPose&&yf>.53&&yf<.77&&ax>h*.135){
+   if(bossTPose&&yf>.61&&yf<.81&&ax>h*.115){
      if(ax>h*.37)return left?bi.lhand:bi.rhand;
      if(ax>h*.275)return left?bi.lla:bi.rla;
      return left?bi.lua:bi.rua;
@@ -4102,10 +4102,10 @@ function buildBasicWalkerTemplate(source,bossTPose=false){
        chest=bone("Chest",0,h*.12,0),
        neck=bone("Neck",0,h*.09,0),
        head=bone("Head",0,h*.08,0),
-       lua=bone("L_UpperArm",-h*(bossTPose?.145:.07),bossTPose?h*.025:-h*.01,0),
+       lua=bone("L_UpperArm",-h*(bossTPose?.145:.07),bossTPose?-h*.035:-h*.01,0),
        lla=bone("L_LowerArm",-h*(bossTPose?.145:.11),bossTPose?0:-h*.15,0),
        lhand=bone("L_Hand",-h*(bossTPose?.12:.10),bossTPose?0:-h*.17,0),
-       rua=bone("R_UpperArm", h*(bossTPose?.145:.07),bossTPose?h*.025:-h*.01,0),
+       rua=bone("R_UpperArm", h*(bossTPose?.145:.07),bossTPose?-h*.035:-h*.01,0),
        rla=bone("R_LowerArm", h*(bossTPose?.145:.11),bossTPose?0:-h*.15,0),
        rhand=bone("R_Hand", h*(bossTPose?.12:.10),bossTPose?0:-h*.17,0),
        lul=bone("L_UpperLeg",-h*.055,-h*.02,0),
@@ -4151,8 +4151,13 @@ function buildBasicWalkerTemplate(source,bossTPose=false){
    const yf=y/h,primary=chooseRigidBone(x,y,z);
    let secondary=primary,w=0;
    const blend=(idx,boundary,width=.035)=>{const bw=jointBlend(yf,boundary,width);if(bw>w){secondary=idx;w=bw}};
-   // T-pose arms segment along horizontal X, not height: avoid stretching jacket sleeves.
-   if(bossTPose&&[bi.lua,bi.rua,bi.lla,bi.rla,bi.lhand,bi.rhand].includes(primary))return [primary,1,0,0];
+   // v562: smooth the jacket's shoulder seam into the chest. A rigid
+   // 100%-arm versus 100%-chest split caused giant triangular shoulder wings.
+   if(bossTPose&&[bi.lua,bi.rua,bi.lla,bi.rla,bi.lhand,bi.rhand].includes(primary)){
+     const u=THREE.MathUtils.clamp((Math.abs(x)/h-.115)/.082,0,1);
+     const armWeight=u*u*(3-2*u);
+     return armWeight>.999?[primary,1,0,0]:[primary,armWeight,bi.chest,1-armWeight];
+   }
    if(primary===bi.lua){blend(bi.lla,.56);blend(bi.chest,.70,.045)}
    else if(primary===bi.rua){blend(bi.rla,.56);blend(bi.chest,.70,.045)}
    else if(primary===bi.lla){blend(bi.lua,.56);blend(bi.lhand,.39)}
@@ -4238,6 +4243,48 @@ function buildBasicWalkerHitboxes(z){
  z.walkerHitboxes=hitboxes;z.hitMeshes=hitboxes;document.documentElement.dataset.basicWalkerHitboxes=String(hitboxes.length);
  return hitboxes.length>0;
 }
+function syncSuitBossWalk(z,dt){
+ const b=z.walkerBones,holder=z.walkerVisual;
+ if(!b?.size||!holder)return;
+ const gx=z.g.position.x,gz=z.g.position.z;
+ const moved=Math.hypot(gx-(z.walkerLastX??gx),gz-(z.walkerLastZ??gz));
+ z.walkerLastX=gx;z.walkerLastZ=gz;
+ const target=moved>.0005?1:0;
+ z.suitWalkBlend=THREE.MathUtils.lerp(z.suitWalkBlend||0,target,Math.min(1,dt*9));
+ const walking=z.suitWalkBlend;
+ // Footstep phase follows actual ground travel; no independent treadmill.
+ z.suitWalkPhase=(z.suitWalkPhase||0)+Math.min(.45,moved*4.9);
+ const t=z.suitWalkPhase,s=Math.sin(t),c=Math.cos(t),a=Math.max(0,(z.attackAnim||0)/.62);
+ const rot=(name,x,y=0,w=0)=>{
+   const bone=b.get(name);if(bone)bone.rotation.set(x,y,w);
+ };
+ holder.position.y=.012*(1-Math.cos(t*2))*.5*walking;
+ holder.rotation.x=-.035*walking-.045*a;
+ holder.rotation.z=s*.012*walking;
+ rot("Hips",-.045*walking,s*.025*walking,s*.018*walking);
+ rot("Spine",-.035*walking,-s*.028*walking,-s*.017*walking);
+ rot("Chest",-.045*walking,-s*.023*walking,-s*.016*walking);
+ rot("Neck",.025*walking);
+ rot("Head",.04*walking,-s*.025*walking);
+ // Explicit shoulder and elbow arcs from the authored horizontal T-pose.
+ // Rotating around X *after* the Z lowering angle creates a natural
+ // front/back arm swing; the old hidden rig's arm angles did not.
+ rot("L_UpperArm",.06-s*.38*walking-a*.26,0,1.38);
+ rot("R_UpperArm",.06+s*.38*walking-a*.26,0,-1.38);
+ rot("L_LowerArm",.08+Math.max(0,s)*.18*walking);
+ rot("R_LowerArm",.08+Math.max(0,-s)*.18*walking);
+ rot("L_Hand",-.06);
+ rot("R_Hand",-.06);
+ // Controlled walk rather than the oversized stiff high-stepping v561 gait.
+ const hipSwing=.54*walking;
+ const lk=Math.max(0,-s)*.67*walking,rk=Math.max(0,s)*.67*walking;
+ rot("L_UpperLeg",s*hipSwing,0,-.012);
+ rot("R_UpperLeg",-s*hipSwing,0,.012);
+ rot("L_LowerLeg",lk);
+ rot("R_LowerLeg",rk);
+ rot("L_Foot",-.40*lk-.1*s*walking);
+ rot("R_Foot",-.40*rk+.1*s*walking);
+}
 function syncBasicWalkerVisual(z,dt=0){
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
  if(z.crawlerUpperVisual===holder&&syncCrawlerUpperVisual(z))return;
@@ -4318,6 +4365,7 @@ function syncBasicWalkerVisual(z,dt=0){
    return;
  }
  if(z.knockdown)return;
+ if(z.suitBossVisual){syncSuitBossWalk(z,dt);return;}
 
  const gx=z.g.position.x,gz=z.g.position.z,lastX=Number.isFinite(z.walkerLastX)?z.walkerLastX:gx,lastZ=Number.isFinite(z.walkerLastZ)?z.walkerLastZ:gz;
  const moved=Math.hypot(gx-lastX,gz-lastZ);z.walkerLastX=gx;z.walkerLastZ=gz;
