@@ -10,18 +10,18 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments} from "./grenade-shatter.js?v=531";
-// v558: auto-rig the static uploaded boss GLB using the existing tested walker skinning system.
-// The source contains no skins or animation clips, so a raw scene clone stays in T-pose.
-const SUIT_BOSS_TEST_WAVE=1;
+// v567: suit boss model is selected only when its name is drawn on a normal
+// boss wave (every 10th wave); preserve the approved v566 rig and collision.
+const SUIT_BOSS_NAME="SUIT GUY";
 let suitBossTemplate=null,suitBossLoadError=null;
 new GLTFLoader().load("assets/suit%20guy%20boss.glb?v=556",gltf=>{
   suitBossTemplate=buildBasicWalkerTemplate(gltf.scene,true);
   if(!suitBossTemplate)throw new Error("Suit guy boss: failed to build automatic skinning rig");
   console.log("CITY OUTBREAK v558: suit boss auto-rigged",suitBossTemplate.userData.sourceHeight);
-  for(const z of zombies)if(z.kind==="boss"&&!z.suitBossVisual)attachSuitBossVisual(z);
+  for(const z of zombies)if(z.kind==="boss"&&z.bossName===SUIT_BOSS_NAME&&!z.suitBossVisual)attachSuitBossVisual(z);
 },undefined,error=>{suitBossLoadError=error;console.error("CITY OUTBREAK: suit boss GLB failed to load",error);});
 function attachSuitBossVisual(z){
- if(!z||z.kind!=="boss"||!suitBossTemplate||z.suitBossVisual||z.dead)return;
+ if(!z||z.kind!=="boss"||z.bossName!==SUIT_BOSS_NAME||!suitBossTemplate||z.suitBossVisual||z.dead)return;
  const holder=new THREE.Group(),model=SkeletonUtils.clone(suitBossTemplate);
  const h=suitBossTemplate.userData.sourceHeight;
  holder.name="SuitBossAutoRigVisual";
@@ -3621,7 +3621,7 @@ function weaponSound(){
  if(weapon==="awm"){noise(.20,.92,1500);tone(54,.16,"square",.28);tone(92,.11,"sine",.12,.02);return}
  if(weapon==="grenadeLauncher"){noise(.14,.72,850);tone(62,.18,"square",.30);tone(118,.08,"sine",.12,.02);return}if(weapon==="shotgun"){noise(.16,.8,1800);tone(58,.22,"square",.34)}else if(weapon==="smg"){noise(.07,.5,2300);tone(105,.09,"square",.18)}else gunS()}
 
-const BOSS_NAME_POOL=["GORE TITAN","THE REND KING","MAWBREAKER","THE ABATTOIR","RIBCAGE","MEATSAINT","BUTCHER PRIME","BLOODHOWL","THE SPLIT-JAW","THE RED GIANT","MARROWLORD","GUTSPIKE","THE CARRION OX","SCARFLESH","THE RUINED HERCULES","GRAVEBULK"];
+const BOSS_NAME_POOL=[SUIT_BOSS_NAME,"GORE TITAN","THE REND KING","MAWBREAKER","THE ABATTOIR","RIBCAGE","MEATSAINT","BUTCHER PRIME","BLOODHOWL","THE SPLIT-JAW","THE RED GIANT","MARROWLORD","GUTSPIKE","THE CARRION OX","SCARFLESH","THE RUINED HERCULES","GRAVEBULK"];
 
 
 
@@ -5547,20 +5547,18 @@ function spawnQueuedZombies(){
 }
 function spawnWave(){
  let d=diff(wave);currentBoss=null;recentZombieSpawnPoints.length=0;zombieSpawnAngleOffset=rnd()*Math.PI*2;
- if(isBossWave(wave)||wave===SUIT_BOSS_TEST_WAVE){
-   const spec=wave===SUIT_BOSS_TEST_WAVE?{...bossWaveSpec(5),name:"SUIT GUY — TEST BOSS"}:bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
+ if(isBossWave(wave)){
+   // v567: use the standard 10-wave boss schedule and existing rotating boss names.
+   const spec=bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   // v557: keep the temporary Wave 1 boss close enough for immediate visibility.
-   const bossSpawn=wave===SUIT_BOSS_TEST_WAVE?findReachableZombieSpawn(12,22,false,null):findReachableZombieSpawn(36,70,false,null);
+   const bossSpawn=findReachableZombieSpawn(36,70,false,null);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
-     // Extremely defensive fallback: keep boss-wave behavior intact even if the
-     // route search cannot find a candidate during this frame. The expanded A*
-     // will still take over immediately after spawn.
-     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=wave===SUIT_BOSS_TEST_WAVE?12+rnd()*10:36+rnd()*34;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
+     // Keep the original reachable fallback for all boss types.
+     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=36+rnd()*34;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
    }
-   if(!ok){const a=rnd()*Math.PI*2,dist=wave===SUIT_BOSS_TEST_WAVE?18:38+rnd()*30;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
-   makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show(wave===SUIT_BOSS_TEST_WAVE?(suitBossLoadError?"BOSS SPAWNED — GLB LOAD FAILED":suitBossTemplate?"SUIT BOSS SPAWNED NEARBY":"SUIT BOSS SPAWNED — MODEL LOADING"):"BOSS INBOUND: "+spec.name);updateBossUI();ui();return
+   if(!ok){const a=rnd()*Math.PI*2,dist=38+rnd()*30;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
+   makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
 }
