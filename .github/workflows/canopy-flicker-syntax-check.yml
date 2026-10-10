@@ -1,0 +1,22 @@
+name: v545 canopy flicker JavaScript syntax check
+on:
+  push:
+    branches: [canopy-inspection-probe]
+    paths: [.github/workflows/canopy-flicker-syntax-check.yml]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Parse latest game.js as an ES module
+        run: |
+          node --version
+          node --input-type=module --check < src/game.js
+          grep -F 'src="./src/game.js?v=545"' index.html
+          grep -F 'const GAS_CANOPY_OFF_LIGHT_DISTANCE=34;' src/game.js
+          grep -F 'const scale=.5*Math.min' src/game.js
+          grep -F 'return t+18000+Math.random()*36000;' src/game.js
+          grep -F 'item.material.color.copy(item.color)' src/game.js
+          grep -F 'document.documentElement.dataset.gasCanopyFlickerEvents' src/game.js
