@@ -1,3 +1,13 @@
+# v568 — PANZER ZOMBIE NEW BOSS WAVE 1 TEST — 2026-10-10
+
+- User uploaded **`assets/panzer_zombie.glb`** in GitHub commit `6dae100c1cf8c94c1009119de35aaf216a041feb` and requested work on the new boss. Its GLB exceeds the connected GitHub file reader's binary content limit, so native animation/skeleton metadata could not be inspected directly; load-time runtime inspection chooses imported clips where available or a procedurally constructed walker auto-rig for static meshes.
+- Panzer boss is intentionally a **temporary Wave 1 solo test**, spawned 12–22 units from player with the same reachable/fallback logic used previously for Suit Guy. HUD name PANZER ZOMBIE and base boss Wave 1 test stats from `bossWaveSpec(5)`.
+- New isolated `attachPanzerBossVisual` clone normalizes GLB to target local height 3.2, rotates Y 180° for initial front-facing test, uses native imported Walk/Run clip if available, otherwise builds procedural skeleton; includes dedicated chest, abdomen, pelvis, leg and head raycast hitboxes. Grenade and grenade-launcher blast/contact uses existing v565 suit body-based range logic for Panzer too. Visual/model/collider alignment **requires user-side test**; no claim animation or orientation approved.
+- Panzer **NOT** added to `BOSS_NAME_POOL` yet. Waves 10, 20, 30 etc continue standard rotation including approved Suit Guy. Suit Guy v566 appearance, headshot/torso/explosion/animation logic unchanged. Other normal zombie waves, crawlers, v324 checkpoint untouched.
+- Loader `./src/game.js?v=568`, update both handoffs. Test Panzer visuals, facing, proportions, movement and hitboxes before making further changes.
+
+---
+
 # v567 — SUIT GUY BACK IN BOSS ROTATION — 2026-10-10
 
 - User confirmed v566 headshot fix works and approves ending the temporary Wave 1 Suit Guy test.
