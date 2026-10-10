@@ -1,0 +1,29 @@
+name: Inspect canopy visible GLB mesh materials
+on:
+  push:
+    branches: [canopy-inspection-probe]
+    paths: [.github/workflows/canopy-visible-material-probe.yml]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print fluorescent material and node arrangement
+        run: |
+          python3 - <<'PY'
+          import struct,json
+          from pathlib import Path
+          data=Path("assets/simple_fluorescent_tube_light.glb").read_bytes()
+          n,t=struct.unpack_from("<II",data,12)
+          root=json.loads(data[20:20+n])
+          print("MATERIAL_COUNT",len(root.get("materials",[])))
+          for i,m in enumerate(root.get("materials",[])):
+           p=m.get("pbrMetallicRoughness",{})
+           print("MAT",i,m.get("name"),"alpha",m.get("alphaMode"),"doubleSided",m.get("doubleSided"),"baseFactor",p.get("baseColorFactor"),"baseTexture",p.get("baseColorTexture"),"emissive",m.get("emissiveFactor"),"emissiveTexture",m.get("emissiveTexture"),"extensions",m.get("extensions"))
+          for i,node in enumerate(root["nodes"]):
+           if "mesh" not in node:continue
+           mesh=root["meshes"][node["mesh"]]
+           mats=[v.get("material") for v in mesh["primitives"]]
+           print("MESH",i,node.get("name"),"mat_indices",mats)
+          print("PROBE_COMPLETE")
+          PY
