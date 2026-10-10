@@ -12,25 +12,27 @@ import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments} from "./grenade-shatter.js?v=531";
 // v556: temporary first-wave boss visual test. Boss combat/hitboxes remain unchanged.
 const SUIT_BOSS_TEST_WAVE=1;
-let suitBossTemplate=null;
+let suitBossTemplate=null,suitBossLoadError=null;
 new GLTFLoader().load("assets/suit%20guy%20boss.glb?v=556",gltf=>{
   suitBossTemplate=gltf.scene;
+  console.log("CITY OUTBREAK v557: suit boss GLB loaded",gltf.scene);
   for(const z of zombies)if(z.kind==="boss"&&!z.suitBossVisual)attachSuitBossVisual(z);
-},undefined,error=>console.error("CITY OUTBREAK: suit boss GLB failed to load",error));
+},undefined,error=>{suitBossLoadError=error;console.error("CITY OUTBREAK: suit boss GLB failed to load",error);if(typeof show==="function")show("SUIT BOSS MODEL FAILED TO LOAD — check console")});
 function attachSuitBossVisual(z){
   if(!z||z.kind!=="boss"||!suitBossTemplate||z.suitBossVisual||z.dead)return;
   const model=SkeletonUtils.clone(suitBossTemplate);
   model.updateMatrixWorld(true);
   const box=new THREE.Box3().setFromObject(model);
   const size=box.getSize(new THREE.Vector3());
-  if(size.y<.001)return;
+  if(!Number.isFinite(size.y)||size.y<.001){console.error("Suit boss empty/invalid model bounds",box);show("SUIT BOSS GLB HAS INVALID BOUNDS");return;}
   const center=box.getCenter(new THREE.Vector3());
   const scale=3.2/size.y;
   model.scale.setScalar(scale);
   model.position.set(-center.x*scale,-box.min.y*scale,-center.z*scale);
-  model.traverse(o=>{if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true;}});
+  model.traverse(o=>{o.visible=true;if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true;o.frustumCulled=false;}});
   z.g.add(model);
   z.suitBossVisual=model;
+  console.log("CITY OUTBREAK v557: suit boss attached",size,scale,model.position);
   // Hide the existing boss appearance, but preserve its gameplay rig/hitboxes.
   if(z.rigVisual)z.rigVisual.visible=false;
   z.g.traverse(o=>{if(o.isMesh&&o!==model&&!model.getObjectById(o.id)&&!o.userData.visualOnly)o.visible=false;});
@@ -5420,16 +5422,17 @@ function spawnWave(){
  if(isBossWave(wave)||wave===SUIT_BOSS_TEST_WAVE){
    const spec=wave===SUIT_BOSS_TEST_WAVE?{...bossWaveSpec(5),name:"SUIT GUY — TEST BOSS"}:bossWaveSpec(wave);waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=findReachableZombieSpawn(36,70,false,null);
+   // v557: keep the temporary Wave 1 boss close enough for immediate visibility.
+   const bossSpawn=wave===SUIT_BOSS_TEST_WAVE?findReachableZombieSpawn(12,22,false,null):findReachableZombieSpawn(36,70,false,null);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
      // Extremely defensive fallback: keep boss-wave behavior intact even if the
      // route search cannot find a candidate during this frame. The expanded A*
      // will still take over immediately after spawn.
-     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=36+rnd()*34;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
+     for(let tries=0;tries<60&&!ok;tries++){const a=rnd()*Math.PI*2,dist=wave===SUIT_BOSS_TEST_WAVE?12+rnd()*10:36+rnd()*34;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)}
    }
-   if(!ok){const a=rnd()*Math.PI*2,dist=38+rnd()*30;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
-   makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show("BOSS INBOUND: "+spec.name);updateBossUI();ui();return
+   if(!ok){const a=rnd()*Math.PI*2,dist=wave===SUIT_BOSS_TEST_WAVE?18:38+rnd()*30;sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z}
+   makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;show(wave===SUIT_BOSS_TEST_WAVE?(suitBossLoadError?"BOSS SPAWNED — GLB LOAD FAILED":suitBossTemplate?"SUIT BOSS SPAWNED NEARBY":"SUIT BOSS SPAWNED — MODEL LOADING"):"BOSS INBOUND: "+spec.name);updateBossUI();ui();return
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
 }
