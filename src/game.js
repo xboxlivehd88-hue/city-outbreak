@@ -16,6 +16,8 @@ const SUIT_BOSS_NAME="SUIT GUY";
 // v568: panzer_zombie.glb — dedicated, isolated Wave 1 boss test.
 // This model is not part of BOSS_NAME_POOL until its behavior is approved.
 const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
+// v569: significantly smaller than the first Panzer test (1.80 vs 3.20).
+const PANZER_VISUAL_HEIGHT=1.80;
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=568",gltf=>{
  panzerBossAsset=gltf;
@@ -50,7 +52,7 @@ function attachPanzerBossVisual(z){
    sourceH=panzerBossFallbackTemplate.userData.sourceHeight;
  }
  if(!Number.isFinite(sourceH)||sourceH<.001){console.error("CITY OUTBREAK: Panzer GLB has invalid height",sourceH);return}
- holder.scale.setScalar(3.2/sourceH);
+ holder.scale.setScalar(PANZER_VISUAL_HEIGHT/sourceH);
  holder.rotation.y=Math.PI;
  holder.add(model);z.g.add(holder);z.panzerBossVisual=holder;
  z.panzerSourceHeight=sourceH;
@@ -74,13 +76,17 @@ function attachPanzerBossVisual(z){
  // A separate conservative test collider set matches the full Panzer stature;
  // none of the old procedural hit meshes are allowed to steal shots.
  if(z.hitMeshes)for(const hit of z.hitMeshes)if(hit)hit.raycast=()=>{};
+ // Keep body/leg/head shot zones at the same fraction of the new visual size.
+ // The original 3.2-high collider profile scales with Panzer's 1.8-high body.
+ const hitRoot=new THREE.Group();hitRoot.name="PanzerBossScaledHitboxes";
+ hitRoot.scale.setScalar(PANZER_VISUAL_HEIGHT/3.2);z.g.add(hitRoot);
  const mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false});
  const hits=[];
  const add=(name,geo,y,part,head=false)=>{
    const hit=new THREE.Mesh(geo,mat);hit.name=name;hit.position.set(0,y,0);
    hit.userData.zombie=z;hit.userData.part=part;if(head)hit.userData.isHead=true;
    hit.castShadow=false;hit.receiveShadow=false;
-   z.g.add(hit);hits.push(hit);z.ownedGeometries.push(geo);return hit;
+   hitRoot.add(hit);hits.push(hit);z.ownedGeometries.push(geo);return hit;
  };
  add("PanzerChestHitbox",new THREE.BoxGeometry(.86,.85,.61),2.15,"torso");
  add("PanzerAbdomenHitbox",new THREE.BoxGeometry(.72,.66,.56),1.46,"torso");
@@ -92,7 +98,7 @@ function attachPanzerBossVisual(z){
  // Procedural Panzer can follow the animated head bone instead of the root.
  if(!native&&z.walkerBones?.get("Head")){
    const bone=z.walkerBones.get("Head");
-   z.g.remove(head);bone.add(head);
+   hitRoot.remove(head);bone.add(head);
    head.position.set(0,sourceH*.05,0);
    const invScale=sourceH/3.2;
    head.scale.multiplyScalar(invScale);
@@ -100,7 +106,7 @@ function attachPanzerBossVisual(z){
  z.ownedMaterials.push(mat);z.hitMeshes=hits;z.panzerBossHitboxes=hits;
  z.suitBossBlastHitboxes=hits; // uses v565 body-based splash + swept projectile collision
  if(z.rigVisual)z.rigVisual.visible=false;
- console.log("CITY OUTBREAK v568: Panzer boss attached",{
+ console.log("CITY OUTBREAK v569: Panzer boss smaller with matching hitboxes",{
    importedAnimation:z.panzerBossAnimation||null,
    proceduralBones:z.walkerBones?.size||0,
    hitboxes:hits.length
