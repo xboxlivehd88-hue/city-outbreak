@@ -15,7 +15,7 @@ import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments} fro
 const SUIT_BOSS_TEST_WAVE=1;
 let suitBossTemplate=null,suitBossLoadError=null;
 new GLTFLoader().load("assets/suit%20guy%20boss.glb?v=556",gltf=>{
-  suitBossTemplate=buildBasicWalkerTemplate(gltf.scene);
+  suitBossTemplate=buildBasicWalkerTemplate(gltf.scene,true);
   if(!suitBossTemplate)throw new Error("Suit guy boss: failed to build automatic skinning rig");
   console.log("CITY OUTBREAK v558: suit boss auto-rigged",suitBossTemplate.userData.sourceHeight);
   for(const z of zombies)if(z.kind==="boss"&&!z.suitBossVisual)attachSuitBossVisual(z);
@@ -47,7 +47,7 @@ function attachSuitBossVisual(z){
  z.suitBossHeadHitbox=headHit;
  // Preserve existing boss physics, hitboxes and attack logic; replace visible body only.
  if(z.rigVisual)z.rigVisual.visible=false;
- console.log("CITY OUTBREAK v558: animated suit boss attached",z.walkerBones.size);
+ console.log("CITY OUTBREAK v560: suit boss horizontal-arm skeleton attached",z.walkerBones.size);
 }
 let zombieRigAsset=null,zombieRigError=null;
 try{
@@ -3866,7 +3866,12 @@ function buildRadiatedGreenGuyTemplate(source){
 
    // v403: rigid anatomical segmentation. Each triangle belongs to exactly one
    // body part, so clothing/body vertices can never stretch between torso and arm.
-   if(yf>.31&&yf<.74){
+   if(bossTPose&&yf>.53&&yf<.77&&ax>h*.135){
+     if(ax>h*.37)return left?bi.lhand:bi.rhand;
+     if(ax>h*.275)return left?bi.lla:bi.rla;
+     return left?bi.lua:bi.rua;
+   }
+   if(!bossTPose&&yf>.31&&yf<.74){
      const armMinFrac=.105+THREE.MathUtils.clamp((.68-yf)/.36,0,1)*.075;
      if(ax>h*armMinFrac){
        if(yf>.56)return left?bi.lua:bi.rua;
@@ -4072,7 +4077,7 @@ const BASIC_WALKER_BONE_KEYS=Object.freeze([
  "L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm",
  "L_UpperLeg","L_LowerLeg","R_UpperLeg","R_LowerLeg","L_Hand","R_Hand","L_Foot","R_Foot"
 ]);
-function buildBasicWalkerTemplate(source){
+function buildBasicWalkerTemplate(source,bossTPose=false){
  if(!source)return null;
  source.updateMatrixWorld(true);
  const invRoot=new THREE.Matrix4().copy(source.matrixWorld).invert(),pieces=[];
@@ -4097,12 +4102,12 @@ function buildBasicWalkerTemplate(source){
        chest=bone("Chest",0,h*.12,0),
        neck=bone("Neck",0,h*.09,0),
        head=bone("Head",0,h*.08,0),
-       lua=bone("L_UpperArm",-h*.07,-h*.01,0),
-       lla=bone("L_LowerArm",-h*.11,-h*.15,0),
-       lhand=bone("L_Hand",-h*.10,-h*.17,0),
-       rua=bone("R_UpperArm", h*.07,-h*.01,0),
-       rla=bone("R_LowerArm", h*.11,-h*.15,0),
-       rhand=bone("R_Hand", h*.10,-h*.17,0),
+       lua=bone("L_UpperArm",-h*(bossTPose?.145:.07),bossTPose?h*.025:-h*.01,0),
+       lla=bone("L_LowerArm",-h*(bossTPose?.145:.11),bossTPose?0:-h*.15,0),
+       lhand=bone("L_Hand",-h*(bossTPose?.12:.10),bossTPose?0:-h*.17,0),
+       rua=bone("R_UpperArm", h*(bossTPose?.145:.07),bossTPose?h*.025:-h*.01,0),
+       rla=bone("R_LowerArm", h*(bossTPose?.145:.11),bossTPose?0:-h*.15,0),
+       rhand=bone("R_Hand", h*(bossTPose?.12:.10),bossTPose?0:-h*.17,0),
        lul=bone("L_UpperLeg",-h*.055,-h*.02,0),
        lll=bone("L_LowerLeg",0,-h*.23,0),
        lfoot=bone("L_Foot",0,-h*.20,h*.015),
@@ -4146,6 +4151,8 @@ function buildBasicWalkerTemplate(source){
    const yf=y/h,primary=chooseRigidBone(x,y,z);
    let secondary=primary,w=0;
    const blend=(idx,boundary,width=.035)=>{const bw=jointBlend(yf,boundary,width);if(bw>w){secondary=idx;w=bw}};
+   // T-pose arms segment along horizontal X, not height: avoid stretching jacket sleeves.
+   if(bossTPose&&[bi.lua,bi.rua,bi.lla,bi.rla,bi.lhand,bi.rhand].includes(primary))return [primary,1,0,0];
    if(primary===bi.lua){blend(bi.lla,.56);blend(bi.chest,.70,.045)}
    else if(primary===bi.rua){blend(bi.rla,.56);blend(bi.chest,.70,.045)}
    else if(primary===bi.lla){blend(bi.lua,.56);blend(bi.lhand,.39)}
@@ -4348,12 +4355,12 @@ function syncBasicWalkerVisual(z,dt=0){
  const supportLua=rigBone(z,"L_UpperArm"),supportRua=rigBone(z,"R_UpperArm"),
        supportLla=rigBone(z,"L_LowerArm"),supportRla=rigBone(z,"R_LowerArm");
  if(lua){
-   const armDown=z.suitBossVisual?1.12:.34;
+   const armDown=z.suitBossVisual?1.24:.34;
    if(supportLua)lua.rotation.set(supportLua.rotation.x,supportLua.rotation.y*.65,armDown+supportLua.rotation.z*.65);
    else lua.rotation.set(armBase-s*armAmp-attack*.42,0,armDown);
  }
  if(rua){
-   const armDown=z.suitBossVisual?-1.12:-.34;
+   const armDown=z.suitBossVisual?-1.24:-.34;
    if(supportRua)rua.rotation.set(supportRua.rotation.x,supportRua.rotation.y*.65,armDown+supportRua.rotation.z*.65);
    else rua.rotation.set(armBase+s*armAmp-attack*.42,0,armDown);
  }
