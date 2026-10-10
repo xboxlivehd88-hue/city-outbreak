@@ -1,3 +1,13 @@
+# v579 — FORCE ACTUAL PANZER FALLBACK RIG FOR AN ISOLATED WAVE 1 WALKING TEST — 2026-10-10
+
+- User emphatically reports v578 looks identical despite repeated hard refreshes. The source analysis found a concrete reason: v578 modified only `buildBasicWalkerTemplate(..., panzerLegRig=true)`, but **that template is used only if native leg selection fails**. If the native GLB passed the v577 audit, every v578 fallback improvement did NOTHING to the visible Panzer. Don't misrepresent unexecuted branch fixes as gameplay changes.
+- v579 explicitly forces Panzer's **existing GLB-based, Panzer-only procedural weighted rig** on the temporary solo Wave 1 test regardless of native clip metadata, guaranteeing the Panzer source meshes are re-skinned using the v578 leg-before-arm classifier and both original-model legs are driven by v575 alternating hip/knee/ankle stepping. This **bypasses imported native animations temporarily**: uploaded armor geometry/materials, boss gameplay AI, stats, hitboxes, orientation, and approved post-animation size calibration are preserved, but any native upper-body clip will not play during the walking isolation test. If this visually fixes the right leg, integrate the rig without losing desired upper-body animation in a subsequent approved change.
+- v579 logs right/left bone names, native source clips, weighted skin info and actual vertex-deformation audit on the forced fallback; tab title `PANZER WALK v579` and Wave 1 banner explicitly `PANZER v579 FORCED BOTH LEG RIG`. This is a DIFFERENT, unconditionally executed path, not another optional fallback edit. Do not claim visually fixed until user tests.
+- **Never change** approved Panzer size `PANZER_VISUAL_HEIGHT=3.20` and v570 precise post-animation size/feet calibration, model materials, armor, facing, Panzer hitboxes/explosions, boss AI/stats/health/attack rules, Suit Guy, other zombies/crawlers (crawler scale 1.53), weapons, map, graphics, and protected recovery v324. Panzer solo Wave 1 and OUT of every-10-wave boss rotation.
+- Loader `./src/game.js?v=579`. User should report whether right leg NOW steps; if not, the exact GLB and rig geometry need direct inspection, not more speculative animation-angle patches.
+
+---
+
 # v578 — PANZER RIGHT THIGH ARMOR CLASSIFIED AS ARMS BEFORE LEGS — 2026-10-10
 
 - User reports Panzer right leg still frozen despite hard refresh and waiting for GitHub. Believe their observed gameplay; past versions were genuinely committed but not visually effective. Do not blame caching.
