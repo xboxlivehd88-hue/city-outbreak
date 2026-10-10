@@ -1,3 +1,13 @@
+# v563 — SUIT BOSS ELBOW SEGMENTATION — 2026-10-10
+
+- User screenshot of v562: walking and facing are very close, but both elbows/sleeves deform into angular folds; do not change approved movement/size/facing.
+- Root cause confirmed in current source: the boss-specific auto-skinning path still used regular walker vertical arm classification in `chooseRigidBone`, so almost all outstretched sleeve vertices became UpperArm and the actual forearm joints had little/no mesh to control.
+- v563 fixes ONLY the suit boss (`bossTPose=true`) using horizontal bone assignment (upper arm, forearm, hand) before generic head/torso classification; blends skin weights smoothly around shoulder (X/h .135-.205), elbow (.252-.318), and wrist (.365-.405). Subtle local Y/Z elbow bends now actually articulate the forearms rather than twisting the sleeve around its length.
+- No changes to suit boss base gait, position, scale, facing, special attacks, boss headshot collider, Wave 1 test, other zombies/normal crawlers, general rig physics, or protected v324.
+- Main loader `./src/game.js?v=563`. Needs user visual approval; GitHub commit does not establish browser-tested appearance.
+
+---
+
 # v562 — SUIT BOSS SKELETON WEIGHTS AND WALK CYCLE REWORK — 2026-10-10
 
 - v561 REJECTED by user screenshot: shoulders deform into wings, stiff/unnatural walk. Model asset is static with no glTF skin or animation tracks (verified source).
