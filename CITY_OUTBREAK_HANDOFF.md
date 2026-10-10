@@ -1,3 +1,19 @@
+# NEW-CHAT HANDOFF — 2026-10-10 — v548 SHOTGUN FASTER RELOAD UPGRADE NOW NOTICEABLE — READ FIRST
+
+**GitHub main is authoritative: `xboxlivehd88-hue/city-outbreak`. User tested the shotgun Faster Reload store purchase and said each upgrade felt like only ~0.05 seconds faster. The current `reload()` shotgun branch confirmed `shellDuration=Math.max(580,820-reloadLevel*45)` (only 45 milliseconds per round, with a hard minimum 580ms). Change only its scaling, without disturbing beloved v532 chamber/bottom-magazine insertion motions.**
+
+## v548 exact adjustment
+- In `src/game.js` shotgun branch of `reload()`, replace original slow linear 45ms decrease with `Math.round(380+440*Math.pow(.53,reloadLevel))` milliseconds per shell. Level 0 **820ms**, level 1 **613ms** (207ms, 25.2% faster per shell), level 2 **504ms**, level 3 **446ms**, level 4 ~**415ms**. Diminishing future gains approach 380ms with NO sudden flat floor. This applies per shell, not merely once to the whole tube.
+- For an **empty 8-round shotgun**, theoretical reload times excluding scheduling/UI overhead at levels 0,1,2,3 become **6.56s**, **4.90s**, **4.03s**, **3.56s**; initial purchase therefore saves about **1.66 seconds** across 8 shells, immediately perceptible. Partial loads scale correspondingly.
+- Preserve original code path: `shotgunReloadShellIndex=a.mag===0?0:1` (only first shell side-chambered when completely empty; all other shells load from bottom), same `shellDuration` sets both `reloadDurationMs` for normalized `reloadPoseProgress` animation and `gameTimeout` for shell insertion + sound, no skipped frames/teleporting shells, same shotgun visual FX/hand/elbow controls. Other guns' reload formulas, global store cost ($300) and upgrading `reloadLevel`, ammo cap, shooting, pause and reset untouched.
+- Debug `document.documentElement.dataset.shotgunReloadShellMs` updates at shotgun reload start, letting next developer verify current actual per-shell duration. No UI clutter or additional rendering objects. v547 sprint/health values unchanged, as are v546 canopy RNG flickers, v543 specific hydrant, v538 performance, v534 graphics, v533 explosions, v531 grenade breakup, zombies, ragdoll, collision and all other gameplay.
+- Modified only `src/game.js`, `index.html` module cache `?v=548`, and prepended handoff to BOTH `CITY_OUTBREAK_HANDOFF.md` and `NEXT_CHAT_HANDOFF.md`. Protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 and `src/game.css` (v525) untouched.
+- Verify patch on GitHub main, `node --input-type=module --check < src/game.js` and successful Pages deployment. User test: start with shotgun (spawn), empty gun and reload without upgrade; buy one Faster Reload in shop ($300), empty gun again and compare entire shell-by-shell sequence. Confirm all shells still visible, first empty chamber load, all later bottom loads, no arm snapping. Do NOT mark visual approval without user.
+- Test link after Pages deploy: https://xboxlivehd88-hue.github.io/city-outbreak/?v=548-shotgun-reload-upgrade
+- Next chat must read newest TOP of handoffs, recovery and `index.html`, `src/game.js`, `src/game.css` from GitHub main before edits.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-10 — v547 MODEST SPRINT + HEALTH REGEN BALANCE — READ FIRST
 
 **Repo `xboxlivehd88-hue/city-outbreak`, branch `main` is authoritative. User requested sprint stamina deplete a bit slower and health regenerate a bit faster. No other gameplay or lighting modifications requested.**

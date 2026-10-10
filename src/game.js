@@ -6118,7 +6118,14 @@ function reload(w=weapon){
    // With any rounds already in the gun, skip the chamber animation and
    // replenish exclusively through the underside magazine loading gate.
    shotgunReloadShellIndex=a.mag===0?0:1;
-   const shellDuration=Math.max(580,820-reloadLevel*45);
+   // v548: The old 45ms/level saving was almost imperceptible across an
+   // 8-shell reload and reached its 580ms floor after only ~6 purchases.
+   // Strong first upgrade and diminishing later gains: 820 -> 613 -> 504
+   // -> 446ms per shell at reload levels 0, 1, 2, 3. Approaches 380ms;
+   // no abrupt plateau. The SAME timing drives each shell's real insertion,
+   // sound, ammo increment and normalized hand/elbow animation below.
+   const shellDuration=Math.round(380+440*Math.pow(.53,reloadLevel));
+   document.documentElement.dataset.shotgunReloadShellMs=String(shellDuration);
    const finishShotgunReload=()=>{
      if(seq!==reloadSequence)return;
      finishReloadMagazineFX();reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";ui()
