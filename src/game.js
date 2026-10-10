@@ -1061,6 +1061,14 @@ const streetLampFlickerStates=[];
 const streetLampNearestScratch=[];
 let streetLampGlowPoints=null;
 let streetLampGlowBrightness=null;
+// v536: cull expensive REAL spotlights (not decorative bulb glows) by camera
+// direction and light reach. Nearby lamps remain lit behind the player.
+const STREET_LAMP_CULL_RECHECK_MS=160;
+const STREET_LAMP_CLOSE_ON=25;
+const STREET_LAMP_CLOSE_OFF=33;
+const streetLampViewForward=new THREE.Vector3();
+let streetLampLastCullingAt=-1e9,streetLampLastFadeAt=-1e9;
+let streetLampLastVisibleCount=-1;
 let streetLampLightLastUpdate=-1e9,streetLampLightingMode="off";
 
 function nextStreetLampFlickerTime(t){
@@ -1166,9 +1174,11 @@ function setupStreetLampLighting(placements){
      1.65
    );
    light.castShadow=false;
-   light.visible=true;
+   light.visible=false;
    light.target=target;
    light.userData.streetLampHeadIndex=i;
+   light.userData.viewTarget=false;
+   light.userData.viewFade=0;
    const head=streetLampLightHeads[i];
    light.position.set(head.x,head.y,head.z);
    target.position.set(head.x,head.groundY+.05,head.z);
@@ -1187,54 +1197,104 @@ function updateStreetLampLighting(t,force=false){
  if(!streetLampLightPool.length)return;
  updateStreetLampFlicker(t);
  const mode=graphicsLightLimit===0?"off":graphicsLightLimit===Infinity?"full":"half";
- // The decorative GLB bulbs continue glowing regardless of real-light budget.
+ const modeChanged=streetLampLightingMode!==mode;
  if(mode==="off"){
+   // Preserve inexpensive emissive lamp bulbs while real lights are invisible.
    for(const light of streetLampLightPool)light.visible=false;
    streetLampLightingMode=mode;
+   if(streetLampLastVisibleCount!==0){
+     streetLampLastVisibleCount=0;
+     document.documentElement.dataset.streetLampVisibleRealLights="0";
+   }
    return;
  }
  if(mode==="full"){
-   // HIGH: every streetlamp points at the pavement beneath ITS OWN head,
-   // instead of relocating just four spotlights around the player's position.
-   if(force||streetLampLightingMode!=="full"){
+   // FULL quality still creates one light per streetlamp, but only lights
+   // intersecting the player's VIEW + a margin contribute at render time.
+   // Other world geometry, enemy simulation and collision are unaffected.
+   if(force||modeChanged){
      for(let i=0;i<streetLampLightPool.length;i++){
-       const h=streetLampLightHeads[i],light=streetLampLightPool[i],target=streetLampLightTargets[i];
-       light.position.set(h.x,h.y,h.z);
-       target.position.set(h.x,h.groundY+.05,h.z);
+       const head=streetLampLightHeads[i],light=streetLampLightPool[i],target=streetLampLightTargets[i];
+       light.position.set(head.x,head.y,head.z);
+       target.position.set(head.x,head.groundY+.05,head.z);
        light.userData.streetLampHeadIndex=i;
      }
    }
- }else if(force||streetLampLightingMode!=="half"||t-streetLampLightLastUpdate>=220){
-   // MEDIUM/Custom REDUCED: only two real spotlights follow nearby lamps.
-   // All other allocated spotlights stay hidden on reduced quality tiers.
+   if(force||modeChanged||t-streetLampLastCullingAt>=STREET_LAMP_CULL_RECHECK_MS){
+     streetLampLastCullingAt=t;
+     cam.getWorldDirection(streetLampViewForward);
+     // A horizontal cone is steadier than the camera's pitch-dependent view.
+     const forwardLength=Math.hypot(streetLampViewForward.x,streetLampViewForward.z);
+     const forwardX=forwardLength>.01?streetLampViewForward.x/forwardLength:-Math.sin(yaw);
+     const forwardZ=forwardLength>.01?streetLampViewForward.z/forwardLength:-Math.cos(yaw);
+     const halfHorizontalFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(cam.fov)*.5)*cam.aspect);
+     for(let i=0;i<streetLampLightPool.length;i++){
+       const head=streetLampLightHeads[i],light=streetLampLightPool[i];
+       const dx=head.x-px,dz=head.z-pz,distSq=dx*dx+dz*dz;
+       const wasInView=light.userData.viewTarget===true;
+       // A nearby light can illuminate the player and visible pavement even
+       // when its pole is behind them. Hysteresis prevents rapid toggles.
+       const nearby=distSq<=Math.pow(wasInView?STREET_LAMP_CLOSE_OFF:STREET_LAMP_CLOSE_ON,2);
+       const d=Math.sqrt(distSq);
+       const forwardDot=d>.001?(dx*forwardX+dz*forwardZ)/d:1;
+       // Allow off-screen light spill, especially when the lamp is closer.
+       // A wider EXIT cone than ENTRY cone avoids popping on slow turns.
+       const spillAngle=Math.atan2(STREET_LAMP_LIGHT_RANGE+5,Math.max(1,d));
+       const margin=THREE.MathUtils.degToRad(wasInView?27:17);
+       const angle=Math.min(Math.PI,halfHorizontalFov+spillAngle+margin);
+       const visibleDirection=forwardDot>=Math.cos(angle);
+       light.userData.viewTarget=(nearby||visibleDirection)&&d<cam.far+STREET_LAMP_LIGHT_RANGE;
+     }
+   }
+ }else if(force||modeChanged||t-streetLampLightLastUpdate>=220){
+   // MEDIUM/Custom REDUCED retains only TWO nearest active real spotlights.
    streetLampLightLastUpdate=t;
    if(streetLampNearestScratch.length!==streetLampLightHeads.length){
      streetLampNearestScratch.length=0;
      for(let i=0;i<streetLampLightHeads.length;i++)streetLampNearestScratch.push({i,d:0});
    }
    for(let i=0;i<streetLampLightHeads.length;i++){
-     const h=streetLampLightHeads[i],pick=streetLampNearestScratch[i];
+     const head=streetLampLightHeads[i],pick=streetLampNearestScratch[i];
      pick.i=i;
-     pick.d=(h.x-px)*(h.x-px)+(h.z-pz)*(h.z-pz);
+     pick.d=(head.x-px)*(head.x-px)+(head.z-pz)*(head.z-pz);
    }
    streetLampNearestScratch.sort((a,b)=>a.d-b.d);
    for(let i=0;i<graphicsLightLimit;i++){
      const light=streetLampLightPool[i],target=streetLampLightTargets[i],pick=streetLampNearestScratch[i];
      if(!pick)continue;
-     const h=streetLampLightHeads[pick.i];
-     light.position.set(h.x,h.y,h.z);
-     target.position.set(h.x,h.groundY+.05,h.z);
+     const head=streetLampLightHeads[pick.i];
+     light.position.set(head.x,head.y,head.z);
+     target.position.set(head.x,head.groundY+.05,head.z);
      light.userData.streetLampHeadIndex=pick.i;
    }
  }
  streetLampLightingMode=mode;
- // Rare, unsynchronized lamp flicker is retained. FULL means every lamp
- // illuminates the road, rather than merely having an emissive bulb.
+ // Fade real light intensity gently as the camera sweeps past a light.
+ // Hidden spotlight nodes are excluded from Three.js's active GPU lights list.
+ const fadeDt=streetLampLastFadeAt<0?.016:Math.min(.06,Math.max(0,(t-streetLampLastFadeAt)/1000));
+ streetLampLastFadeAt=t;
+ const follow=1-Math.exp(-fadeDt*11);
+ let activeLights=0;
  for(let i=0;i<streetLampLightPool.length;i++){
    const light=streetLampLightPool[i],headIndex=light.userData.streetLampHeadIndex;
    const brightness=headIndex>=0&&streetLampGlowBrightness?streetLampGlowBrightness[headIndex]:1;
-   light.intensity=STREET_LAMP_LIGHT_INTENSITY*brightness;
-   light.visible=mode==="full"||i<graphicsLightLimit;
+   if(mode==="full"){
+     const target=light.userData.viewTarget?1:0;
+     const current=light.userData.viewFade||0;
+     const blend=current+(target-current)*follow;
+     light.userData.viewFade=blend;
+     light.visible=blend>.018;
+     light.intensity=STREET_LAMP_LIGHT_INTENSITY*brightness*blend;
+   }else{
+     light.visible=i<graphicsLightLimit;
+     light.intensity=STREET_LAMP_LIGHT_INTENSITY*brightness;
+   }
+   if(light.visible)activeLights++;
+ }
+ // Debug count lets FPS tests confirm that rear lights were actually culled.
+ if(streetLampLastVisibleCount!==activeLights){
+   streetLampLastVisibleCount=activeLights;
+   document.documentElement.dataset.streetLampVisibleRealLights=String(activeLights);
  }
 }
 function addStreetLamps(placements){

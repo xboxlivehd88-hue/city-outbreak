@@ -1,3 +1,18 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v536 CAMERA-AWARE STREETLIGHT CULLING — READ FIRST
+
+**GitHub main is authoritative. User approved v533 explosion, v532 shotgun elbow reload, v531 grenade breakup, v525 menu. v535 established a genuine real spotlight at ALL lamps on HIGH. User now requests performance win: lights in the PLAYER VIEW should remain active, while those BEHIND/outside the view should be hidden until the player looks toward or gets close. Preserve v534 Very Low/Low presets, v535 realistic road lighting, existing rare flicker, gameplay and protected v324 checkpoint.**
+
+## v536 targeted streetlight optimization
+- `src/game.js` v535 FULL/HIGH still creates a warm real shadowless SpotLight for EVERY actual streetlamp head and aims it at its own pavement. Rather than rendering them all per-frame, FULL now checks head positions against the player's XZ camera forward vector, dynamically computed horizontal camera FOV, and an expanded view cone that includes ~22 world units of offscreen light spill. No wall occlusion/raycasting, which would be costly/unreliable. Lights behind/far outside view are `visible=false` after a short fade and thus excluded from active Three.js GPU lighting; lights near the player are always eligible even behind them.
+- Camera-based **culling every 160ms**, not per-frame. Close lamps enter at 25 world units and stay active until 33 units. Enter cone margin 17 degrees plus spill radius; exit margin 27 degrees to prevent flicker. Actual intensity fades in/out over ~0.3s (`1-exp(-dt*11)`) before a light is hidden, rather than visually popping. Light culled if beyond camera far distance + light radius. Preserve individual rare bulb/head flicker and spotlight intensity; fade only affects real spotlight contribution.
+- Off still 0 real spotlights, cheapest decorative glow stays on. Reduced/Medium still only 2 nearest spotlights (unchanged). High/FULL allows all **visible and near** lamps at once, not an arbitrary cap of 4. The city map and zombies are NOT hidden or despawned; no collision/ragdoll/gun changes. `document.documentElement.dataset.streetLampVisibleRealLights` publishes actual active count for tests.
+- Existing Settings menu remains a single five-tab modal. FULL option relabeled `FULL — SMART VIEW LIGHTING`; user help text explains active front/near lighting. No new controls. `index.html` JS cache bust to v536; `src/game.css?v=525` unchanged, menu approved.
+- Both `CITY_OUTBREAK_HANDOFF.md` and `NEXT_CHAT_HANDOFF.md` prepended; protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 unchanged. Low/Very Low presets and recovery untouched. No changes to original streetlamp geometry, shadows or lighting range.
+- Validate JS and mock camera-facing tests: front far visible, back far hidden, close-back lit, slow turn hysteresis and fade, FULL->HALF->OFF->FULL transitions; deployment only after checks. User visual review required; do not claim FPS improvement measured.
+- Test link after Pages success: https://xboxlivehd88-hue.github.io/city-outbreak/?v=536-view-smart-lights. On High, see real light at all lamps ahead; turn 180 degrees and behind far lamps should stop adding GPU lights (bulbs still glow), nearby lamps stay illuminated, no obvious hard pop. Look back and lighting fades in; compare FPS counter and inspect lamp count. Low/Very Low/Medium unchanged.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v535 HIGH ENABLES ALL REAL STREETLIGHTS — READ FIRST
 
 **GitHub main is authoritative. User asked: "i think the lights should be all on for max settings". Latest v534 Low/Very Low presets preserve performance. v533 explosions, v532 shotgun elbow, v531 grenade shatter, and v525 widescreen title/settings are user approved.**
