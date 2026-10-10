@@ -1,0 +1,81 @@
+name: Temporary canopy geometry inspection
+on:
+  push:
+    branches: [canopy-inspection-probe]
+    paths: [.github/workflows/canopy-inspection-probe.yml]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect city and fluorescent fixture GLB scene nodes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct,json,math,re
+          def open_glb(path):
+           b=Path(path).read_bytes()
+           assert b[:4]==b'glTF',path
+           jlen,jtyp=struct.unpack_from('<II',b,12)
+           assert jtyp==0x4e4f534a
+           return json.loads(b[20:20+jlen])
+          def mats(n):
+           if 'matrix' in n:return n['matrix']
+           t=n.get('translation',[0,0,0]);q=n.get('rotation',[0,0,0,1]);sc=n.get('scale',[1,1,1]);x,y,z,w=q
+           m=[(1-2*(y*y+z*z))*sc[0],(2*(x*y+z*w))*sc[0],(2*(x*z-y*w))*sc[0],0,
+              (2*(x*y-z*w))*sc[1],(1-2*(x*x+z*z))*sc[1],(2*(y*z+x*w))*sc[1],0,
+              (2*(x*z+y*w))*sc[2],(2*(y*z-x*w))*sc[2],(1-2*(x*x+y*y))*sc[2],0,t[0],t[1],t[2],1]
+           return m
+          def mul(a,b):return [sum(a[k*4+r]*b[c*4+k] for k in range(4)) for c in range(4) for r in range(4)]
+          I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
+          def box_xform(m,mi,ma):
+           pts=[]
+           for x in [mi[0],ma[0]]:
+            for y in [mi[1],ma[1]]:
+             for z in [mi[2],ma[2]]:
+              pts.append([sum(m[c*4+r]*[x,y,z,1][c] for c in range(4)) for r in range(3)])
+           return [min(p[i] for p in pts) for i in range(3)],[max(p[i] for p in pts) for i in range(3)]
+          def merge(a,b):
+           if a is None:return b
+           if b is None:return a
+           return ([min(a[0][i],b[0][i]) for i in range(3)],[max(a[1][i],b[1][i]) for i in range(3)])
+          for filename in ['assets/simple_fluorescent_tube_light.glb','assets/chicken_gun_fruzer_-_city.glb']:
+           j=open_glb(filename);nodes=j.get('nodes',[]);meshes=j.get('meshes',[]);acc=j.get('accessors',[])
+           print('ASSET',filename,'nodes',len(nodes),'meshes',len(meshes),'scenes',j.get('scenes'))
+           records=[];groupRecords=[]
+           def walk(idx,parent,anc):
+            n=nodes[idx];mx=mul(parent,mats(n));name=n.get('name',''); own=None
+            if 'mesh' in n:
+             mesh=meshes[n['mesh']]
+             for p in mesh['primitives']:
+              a=acc[p['attributes']['POSITION']]
+              if 'min' in a and 'max' in a:own=merge(own,box_xform(mx,a['min'],a['max']))
+            combined=own
+            for c in n.get('children',[]):
+             sub=walk(c,mx,anc+'/'+name)
+             combined=merge(combined,sub)
+            def fmt(b):
+             if b is None:return '?'
+             lo,hi=b;return 'bounds='+','.join(f'{x:.2f}' for x in lo)+'..'+','.join(f'{x:.2f}' for x in hi)+' dims='+','.join(f'{hi[k]-lo[k]:.2f}' for k in range(3))
+            if own is not None:records.append((idx,name,anc,own,fmt(own)))
+            if combined is not None:groupRecords.append((idx,name,anc,combined,fmt(combined)))
+            return combined
+           for sc in j.get('scenes',[]):
+            for root in sc['nodes']:walk(root,I,'')
+           pattern=re.compile(r'gas|station|canop|roof|petrol|fuel|pump|garage|shop|awning|store|cover',re.I)
+           print('MATCHING NAME NODES:')
+           for (idx,name,anc,box,summary) in groupRecords:
+            if pattern.search(name) or pattern.search(anc):print(idx,name[:60],anc[:90],summary)
+           print('LARGE NEAR-FLAT MESHES:')
+           count=0
+           for idx,name,anc,box,summary in sorted(records,key=lambda x:(x[3][1][0]-x[3][0][0])*(x[3][1][2]-x[3][0][2]),reverse=True):
+            lo,hi=box;dx=hi[0]-lo[0];dy=hi[1]-lo[1];dz=hi[2]-lo[2]
+            if dx>=8 and dz>=7 and dy<=5:
+             print(idx,name[:60],anc[:90],summary)
+             count+=1
+            if count>=65:break
+           if 'tube_light' in filename:
+            print('LIGHT NODE LIST')
+            for idx,n in enumerate(nodes):print(idx,n.get('name'),n.get('translation'),n.get('rotation'),n.get('scale'),n.get('mesh'))
+          print('PROBE_COMPLETE')
+          PY
