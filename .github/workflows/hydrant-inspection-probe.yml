@@ -1,0 +1,62 @@
+name: Temporary hydrant and office geometry inspection
+on:
+  push:
+    branches: [hydrant-location-probe]
+    paths: [.github/workflows/hydrant-inspection-probe.yml]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate hydrant instances in actual imported city GLB
+        run: |
+          python3 - <<'PY'
+          import struct,json,re
+          from pathlib import Path
+          p=Path("assets/chicken_gun_fruzer_-_city.glb")
+          b=p.read_bytes();assert b[:4]==b'glTF'
+          ln,typ=struct.unpack_from("<II",b,12);j=json.loads(b[20:20+ln])
+          nodes=j["nodes"];meshes=j["meshes"];accessors=j["accessors"]
+          I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
+          def local(n):
+           if "matrix" in n:return n["matrix"]
+           t=n.get("translation",[0,0,0]);q=n.get("rotation",[0,0,0,1]);s=n.get("scale",[1,1,1]);x,y,z,w=q
+           return [(1-2*(y*y+z*z))*s[0],(2*(x*y+z*w))*s[0],(2*(x*z-y*w))*s[0],0,(2*(x*y-z*w))*s[1],(1-2*(x*x+z*z))*s[1],(2*(y*z+x*w))*s[1],0,(2*(x*z+y*w))*s[2],(2*(y*z-x*w))*s[2],(1-2*(x*x+y*y))*s[2],0,*t,1]
+          def mul(a,b):return [sum(a[k*4+r]*b[c*4+k] for k in range(4)) for c in range(4) for r in range(4)]
+          def boxm(m,lo,hi):
+           pts=[]
+           for x in [lo[0],hi[0]]:
+            for y in [lo[1],hi[1]]:
+             for z in [lo[2],hi[2]]:
+              v=[x,y,z,1];pts.append([sum(m[c*4+r]*v[c] for c in range(4)) for r in range(3)])
+           return [[min(p[k] for p in pts) for k in range(3)],[max(p[k] for p in pts) for k in range(3)]]
+          def merge(a,b):
+           if a is None:return b
+           if b is None:return a
+           return [[min(a[0][k],b[0][k]) for k in range(3)],[max(a[1][k],b[1][k]) for k in range(3)]]
+          rows=[]
+          def walk(idx,parent,anc):
+           n=nodes[idx];world=mul(parent,local(n));name=n.get("name","");own=None
+           if "mesh" in n:
+            for prim in meshes[n["mesh"]]["primitives"]:
+             attr=accessors[prim["attributes"]["POSITION"]]
+             if "min" in attr and "max" in attr:own=merge(own,boxm(world,attr["min"],attr["max"]))
+           combined=own
+           for child in n.get("children",[]):combined=merge(combined,walk(child,world,anc+"/"+name))
+           if combined:
+            cen=[(combined[0][k]+combined[1][k])*.5 for k in range(3)]
+            wp=[21.33575+1.55*cen[0],28.68275+1.55*cen[1],8.25+1.55*cen[2]]
+            rows.append((idx,name,anc,cen,wp,combined,own is not None))
+           return combined
+          for sc in j["scenes"]:
+           for root in sc["nodes"]:walk(root,I,"")
+          print("TOTAL_NODES",len(nodes),"GEO_RECORDS",len(rows))
+          hits=[r for r in rows if re.search("hydrant|hydra|fire|office|police|station|crosswalk",r[1],re.I)]
+          for idx,name,anc,cen,wp,box,own in hits:
+           print("HIT",idx,repr(name),"mesh",own,"at-local",*[round(v,2) for v in cen],"world",*[round(v,2) for v in wp],"minmax",*[round(v,2) for v in box[0]],*[round(v,2) for v in box[1]],"parent",anc[-80:])
+          if not hits:
+           print("NO_MATCHES. ALL NAMES FREQUENCY")
+           from collections import Counter
+           print(Counter(re.sub(r'\\d+','',r[1]) for r in rows).most_common(150))
+          print("HYDRANT_PROBE_COMPLETE")
+          PY
