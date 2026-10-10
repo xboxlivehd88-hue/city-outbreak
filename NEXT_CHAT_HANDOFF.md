@@ -1,3 +1,14 @@
+# v572 — PANZER KNEES ACTUALLY BEND DURING WALK — 2026-10-10
+
+- User tested v571 and reports Panzer still walks **without visible knee joints**; v571 not approved. This fixes Panzer only and still requires browser visual feedback.
+- Code cause: v571 accepted any native clip with moving thigh tracks as a full walk, then returned early before its procedural knee bends. It also failed to recognize common Mixamo lower-leg names `LeftLeg` / `RightLeg`.
+- v572 recognizes Mixamo/other lower-leg and knee names; each moving leg has a distinct, more visible recovery-phase knee bend, plus ankle counterflexion. Native walking clips retain their original hip/upper-body tracks; modest additive knee bends run *after* mixer updates rather than being suppressed by moving thighs. The procedural Panzer fallback also has stronger knee flex.
+- A GLB with animation clips but **no skinned geometry** now uses the existing Panzer auto-skin fallback: animation tracks alone cannot flex static armored meshes. This fallback is Panzer-specific; no generic zombie or Suit Guy animation changes.
+- **Do not alter** approved v570 size, `PANZER_VISUAL_HEIGHT=3.20`, post-animation precise height calibration/grounding, orientation, armor, existing Panzer hitboxes/explosion checks, attacks/stats, Suit Guy, regular zombies, crawler scale 1.53 or v324 recovery. Wave 1 stays forced solo Panzer; he is NOT in the every-10-wave boss rotation until user approves.
+- Loader `./src/game.js?v=572`. Source-level fix, **not yet visually approved**: user should watch alternating knee folds while Panzer walks. If still rigid, request screenshot/video plus browser console's `CITY OUTBREAK v572: panzer boss source loaded` message.
+
+---
+
 # v571 — PANZER ONLY WALKING CYCLE, APPROVED SIZE PRESERVED — 2026-10-10
 
 - User **approved v570 Panzer size** and requested that he actually walk while leaving every other Panzer feature unchanged. Do NOT change his size, armor pose, orientation, hitboxes, attacks, stats or the approved Suit Guy.
