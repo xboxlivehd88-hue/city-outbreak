@@ -18,9 +18,25 @@ const assert=require("assert/strict");
   await page.route(/\/src\/game\.js\?v=581$/,async route=>{
    const resp=await route.fetch();
    const source=await resp.text();
-   // No gameplay patches in v581 audit: test the exact deployed GitHub source.
-   if(!source.includes("const correction=z.panzerBossMixer?Math.sqrt(desiredWorldHeight/measuredHeight):desiredWorldHeight/measuredHeight;"))
-      throw Error("v581 committed native-skinning fix missing");
+   // v582 CANDIDATE: refine after first Panzer scaling using the world-size
+   // bound of the ACTUAL spawned boss. No unrelated gameplay modifications.
+   const oldBlock="holder.scale.multiplyScalar(correction);";
+   if(source.split(oldBlock).length!==2)throw Error("unexpected calibration block");
+   const candidate=`
+holder.scale.multiplyScalar(correction);
+if(z.panzerBossMixer){
+ for(let pass=0;pass<7;pass++){
+   model.updateWorldMatrix(true,true);
+   const refined=new THREE.Box3().setFromObject(model,true);
+   const renderedH=refined.max.y-refined.min.y;
+   if(!Number.isFinite(renderedH)||renderedH<.0001)break;
+   const ratio=desiredWorldHeight/renderedH;
+   if(Math.abs(1-ratio)<.008)break;
+   holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.sqrt(ratio),.2,4));
+ }
+}
+`;
+   const correctedSource=source.replace(oldBlock,candidate);
    const addon=`
 ;globalThis.__panzerOriginalSkinAudit={
  ready:()=>!!panzerBossAsset,
@@ -171,7 +187,7 @@ const assert=require("assert/strict");
 };
 `;
    injected=true;
-   await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
+   await route.fulfill({response:resp,body:correctedSource+addon,contentType:"application/javascript"});
   });
   const response=await page.goto("http://127.0.0.1:4173/?panzer-browser-audit=1",{waitUntil:"domcontentloaded",timeout:60000});
   output.siteStatus=response?.status();
@@ -192,6 +208,9 @@ const assert=require("assert/strict");
   await page.waitForTimeout(800);
   output.actualWaveOne=await page.evaluate(()=>globalThis.__panzerOriginalSkinAudit.liveMetrics());
   assert(output.actualWaveOne.calibrated,"Actual Wave 1 Panzer did not calibrate");
+  const expectedWorld=output.actualWaveOne.sizeTarget*output.actualWaveOne.rootScale[1];
+  assert(Math.abs(output.actualWaveOne.renderMeshSkinnedHeight-expectedWorld)<expectedWorld*.08,
+    "Live Panzer still outsized: "+output.actualWaveOne.renderMeshSkinnedHeight+" vs expected "+expectedWorld);
   output.pass=true;
   output.errors=errors.slice(0,15);output.logs=logs.slice(-20);
  }catch(e){
