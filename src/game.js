@@ -1518,6 +1518,39 @@ function installGasStationCanopyFixtures(map){
  });
 }
 
+// v543: a single misplaced fire hydrant was sitting in the middle of the
+// OFFICE entrance sidewalk. The city GLB inspection identifies Hydrant__2_
+// (node 395, mesh 396) near X=-6.98, Z=41.63 in game world coordinates.
+// Keep the two other distinct hydrants untouched.
+function removeOfficeSidewalkHydrant(map){
+ const targetX=-6.98,targetZ=41.63;
+ const maxErrorSq=.85*.85;
+ const matches=[];
+ map.updateMatrixWorld(true);
+ map.traverse(o=>{
+  if(!o.isMesh)return;
+  if(!/Hydrant/i.test((o.name||"")+" "+(o.parent?.name||"")))return;
+  const center=new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
+  const dx=center.x-targetX,dz=center.z-targetZ;
+  if(dx*dx+dz*dz<maxErrorSq)matches.push(o);
+ });
+ // Safe no-op on future different GLBs: never remove an unverified object.
+ if(matches.length!==1){
+  document.documentElement.dataset.officeSidewalkHydrantRemoved="0";
+  console.warn("OFFICE sidewalk hydrant removal found",matches.length,
+   "matching model meshes; leaving map unchanged");
+  return;
+ }
+ const mesh=matches[0];
+ // Removing the whole hydrant group also removes any future child details.
+ const parent=mesh.parent;
+ if(parent&&parent!==map&&/Hydrant/i.test(parent.name||"")&&parent.parent)
+  parent.parent.remove(parent);
+ else mesh.parent?.remove(mesh);
+ document.documentElement.dataset.officeSidewalkHydrantRemoved="1";
+ console.log("CITY OUTBREAK: removed OFFICE sidewalk hydrant at X=-6.98 Z=41.63");
+}
+
 new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  const map=gltf.scene;
  map.name="ChickenGunCityMap";
@@ -1536,6 +1569,10 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
    }
  });
  scene.add(map);map.updateMatrixWorld(true);newCityRoot=map;
+ // v543: remove ONLY the red hydrant blocking the sidewalk by the OFFICE
+ // entrance (confirmed actual GLB source node 395 Hydrant__2_, world -6.98,41.63).
+ // Do it BEFORE collision/spawn/nav traversal so it leaves no invisible wall.
+ removeOfficeSidewalkHydrant(map);
  applyWetCityMaterials(map);
  installGasStationCanopyFixtures(map);
  applyCityTextureQuality(); // saved preset may be active before async GLB load.

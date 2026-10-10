@@ -1,3 +1,17 @@
+# NEW-CHAT HANDOFF — 2026-10-09 — v543 REMOVE ONE MISPLACED OFFICE SIDEWALK HYDRANT — READ FIRST
+
+**GitHub `main` on `xboxlivehd88-hue/city-outbreak` is authoritative. User provided 3 screenshots of a red hydrant standing awkwardly in the middle of the sidewalk near the OFFICE entry and explicitly clarified that the object the crosshair is pointing at should be removed. THIS is the specific red fire hydrant, not the OFFICE entrance structure. All prior approved gameplay/lighting retained; visual verification still needed.**
+
+## v543 focused removal
+- Inspected actual binary city GLB using temporary GitHub Actions probe on separate unmerged `hydrant-location-probe` branch. It reports EXACTLY THREE distinct hydrants in `assets/chicken_gun_fruzer_-_city.glb`: `Hydrant__2_` source node 395, mesh 396 centered local (-18.27,-18.08,21.54), world (~-6.98,0.66,41.63); `Hydrant__1_` source node 397, mesh 398 at world (~6.08,0.66,-34.57); `Hydrant` source node 425, mesh 426 at world (~-5.07,0.66,29.72). Nearby `Office_01__1_` is centered around world (-13.55,6.29,47.25). The targeted object is the first hydrant by this OFFICE structure, **not all hydrants**.
+- `src/game.js` adds `removeOfficeSidewalkHydrant(map)` when city GLB loads. Finds only hydrant-named mesh(es) with measured WORLD position within 0.85 units of (-6.98,41.63). On **exactly 1 match**, detaches its own hydrant group (or mesh fallback) so the red hydrant and its actual geometry disappear, preserving the other two. Never deletes an object solely because of a name match or guessed screen position. If names/geometry change, safe no-op with warning instead of deleting random world geometry.
+- Important: called immediately after `scene.add(map); map.updateMatrixWorld(true)` and BEFORE wet materials, city spawns/nav, `scanExactCityLampAnchors`, `buildNewCityCollision`. Therefore removed hydrant cannot leave a phantom collider or affect walkability. Diagnostic: `document.documentElement.dataset.officeSidewalkHydrantRemoved` should be `1`.
+- Only `src/game.js`, `index.html` loader bumped to v543, and both top-of-file handoffs updated. `CURRENT_RECOVERY_CHECKPOINT.md` v324 remains untouched. `src/game.css`, city GLB asset, all 3 canopy fixtures, v542 distance fade, v538 fixed streetlights, Low/Very Low presets, weapon effects, zombies, ragdoll, waves unchanged.
+- Verify before declaring success: inspect GitHub main commit, source assertion one target within 0.85 units, two other coordinates safely apart, syntax/deployment checks. VISUAL confirmation from user required. Test link after Pages completes: https://xboxlivehd88-hue.github.io/city-outbreak/?v=543-office-sidewalk-hydrant-removal . Walk back to OFFICE entrance pictured in screenshot and confirm red sidewalk-center hydrant absent, but neighboring doorway, building, sidewalk and other hydrants unaffected.
+- On next chat read newest TOP of `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, `src/game.js`, `src/game.css` from main first. Separate probe branch is not part of main.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-09 — v542 DISTANCE-ACTIVATED GAS STATION CANOPY LIGHTS — READ FIRST
 
 **GitHub `main`, repo `xboxlivehd88-hue/city-outbreak`, is authoritative. User likes the 3 smaller gas station lights but reported they remain on no matter how far the player gets. This is a targeted distance-based lighting change only. Visual confirmation PENDING.**
