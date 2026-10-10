@@ -1,4 +1,4 @@
-name: v546 canopy flicker JavaScript syntax check
+name: v547 sprint and healing syntax check
 on:
   push:
     branches: [canopy-inspection-probe]
@@ -10,15 +10,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Parse latest game.js as an ES module
+      - name: Validate current main JS and balance settings
         run: |
-          node --version
           node --input-type=module --check < src/game.js
-          grep -F 'src="./src/game.js?v=546"' index.html
-          grep -F 'const GAS_CANOPY_OFF_LIGHT_DISTANCE=34;' src/game.js
-          grep -F 'const scale=.5*Math.min' src/game.js
-          grep -F 'return t+18000+Math.random()*36000;' src/game.js
-          grep -F 'item.material.color.copy(item.color)' src/game.js
-          grep -F 'gasCanopyFirstApproachArmed&&running&&distance<=6' src/game.js
-          grep -F 'next:Infinity' src/game.js
-          grep -F 'document.documentElement.dataset.gasCanopyFlickerEvents' src/game.js
+          grep -F 'src="./src/game.js?v=547"' index.html
+          grep -F 'const PLAYER_HEALTH_REGEN_DELAY=5,PLAYER_HEALTH_REGEN_RATE=12.5;' src/game.js
+          grep -F 'const PLAYER_SPRINT_DRAIN_RATE=26.67;' src/game.js
+          grep -F 'sprintEnergy-PLAYER_SPRINT_DRAIN_RATE*dt' src/game.js
+          grep -F 'sprintEnergy+14*dt' src/game.js
+          grep -F 'sprintLocked&&sprintEnergy>=100' src/game.js
+          grep -F 'health+PLAYER_HEALTH_REGEN_RATE*dt' src/game.js
+          grep -F 'function updateGasCanopyFlicker(t)' src/game.js
