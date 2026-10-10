@@ -1,0 +1,2390 @@
+{
+  "file": "assets/panzer_zombie.glb",
+  "bytes": 8704788,
+  "version": 2,
+  "extensionsUsed": [
+    "KHR_materials_clearcoat"
+  ],
+  "nodeCount": 79,
+  "meshCount": 7,
+  "skinCount": 1,
+  "animationCount": 1,
+  "nodesWithLegNames": [
+    {
+      "node": 10,
+      "name": "j knee le_03",
+      "parent": 9,
+      "mesh": null,
+      "skin": null,
+      "translation": [
+        -5.551115123125783e-17,
+        0.3902924954891205,
+        -1.4901161193847656e-08
+      ],
+      "rotation": [
+        0.2297060787677765,
+        -0.08694938570261002,
+        0.13300949335098267,
+        0.960199773311615
+      ],
+      "scale": null
+    },
+    {
+      "node": 11,
+      "name": "j ankle le_04",
+      "parent": 10,
+      "mesh": null,
+      "skin": null,
+      "translation": [
+        0.004067540168762207,
+        0.33820855617523193,
+        0.004230931401252747
+      ],
+      "rotation": [
+        0.4072454273700714,
+        -0.45039674639701843,
+        0.6843245029449463,
+        -0.4037249982357025
+      ],
+      "scale": null
+    },
+    {
+      "node": 13,
+      "name": "j knee attach le_06",
+      "parent": 10,
+      "mesh": null,
+      "skin": null,
+      "translation": [
+        0.05692532658576965,
+        -0.007836788892745972,
+        -0.12582647800445557
+      ],
+      "rotation": [
+        0.9184351563453674,
+        0.18606682121753693,
+        -0.2762324810028076,
+        -0.21342821419239044
+      ],
+      "scale": null
+    },
+    {
+      "node": 14,
+      "name": "tag leg booster le fx_07",
+      "parent": 10,
+      "mesh": null,
+      "skin": null,
+      "translation": [
+        -0.060993045568466187,
+        0.2866388261318207,
+        0.12159548699855804
+      ],
+      "rotation": [
+        0.4657609760761261,
+        -0.10737195611000061,
+        0.16533544659614563,
+        0.8626715540885925
+      ],
+      "scale": null
+    },
+    {
+      "node": 16,
+      "name": "j knee ri_09",
+      "parent": 15,
+      "mesh": null,
+      "skin": null,
+      "translation": [
+        5.551115123125783e-17,
+        0.3902948498725891,
+        -7.450580596923828e-09
+      ],
+      "rotation": [
+        0.2064128816127777,
+        0.10900518298149109,
+        -0.16678467392921448,
+        0.9579638242721558
+      ],
+      "scale": null
+    },
+    {
+      "node": 17,
+      "name": "j ankle ri_010",
+      "parent": 16,
+      "mesh": null,
+      "skin": null,
+      "translation": [
+        -0.003457784652709961,
+        0.338202565908432,
+        0.004767179489135742
+      ],
+      "rotation": [
+        -0.19403524696826935,
+        -0.5086606740951538,
+        0.7722904682159424,
+        0.3273867070674896
+      ],
+      "scale": null
+    },
+    {
+      "node": 19,
+      "name": "j knee attach ri_012",
+      "parent": 16,
+      "mesh": null,
+      "skin": null,
+      "translation": [
+        -0.0729936957359314,
+        -0.007816433906555176,
+        -0.11733263731002808
+      ],
+      "rotation": [
+        0.8997758626937866,
+        -0.22364452481269836,
+        0.3318827152252197,
+        -0.17389830946922302
+      ],
+      "scale": null
+    },
+    {
+      "node": 20,
+      "name": "tag leg booster ri fx_013",
+      "parent": 16,
+      "mesh": null,
+      "skin": null,
+      "translation": [
+        0.07645152509212494,
+        0.2866193354129791,
+        0.11256542801856995
+      ],
+      "rotation": [
+        0.4474412798881531,
+        0.13637807965278625,
+        -0.2101404368877411,
+        0.858509361743927
+      ],
+      "scale": null
+    }
+  ],
+  "skins": [
+    {
+      "id": 0,
+      "name": null,
+      "jointCount": 52,
+      "joints": [
+        {
+          "node": 6,
+          "name": "_rootJoint",
+          "parent": 5,
+          "mesh": null,
+          "skin": null,
+          "translation": null,
+          "rotation": null,
+          "scale": null
+        },
+        {
+          "node": 7,
+          "name": "tag origin_00",
+          "parent": 6,
+          "mesh": null,
+          "skin": null,
+          "translation": null,
+          "rotation": [
+            -3.1058811941485663e-22,
+            7.105427357601002e-15,
+            1.0,
+            -4.371139183945161e-08
+          ],
+          "scale": null
+        },
+        {
+          "node": 8,
+          "name": "j mainroot_01",
+          "parent": 7,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.027196239680051804,
+            -0.02017020992934704,
+            0.9912020564079285
+          ],
+          "rotation": [
+            -5.370155520267872e-08,
+            -0.6220794320106506,
+            0.782916247844696,
+            -0.0077042668126523495
+          ],
+          "scale": null
+        },
+        {
+          "node": 9,
+          "name": "j hip le_02",
+          "parent": 8,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.17343822121620178,
+            0.12163221836090088,
+            -0.029476091265678406
+          ],
+          "rotation": [
+            -0.1447693407535553,
+            0.10636461526155472,
+            -0.13207191228866577,
+            0.9748258590698242
+          ],
+          "scale": null
+        },
+        {
+          "node": 10,
+          "name": "j knee le_03",
+          "parent": 9,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -5.551115123125783e-17,
+            0.3902924954891205,
+            -1.4901161193847656e-08
+          ],
+          "rotation": [
+            0.2297060787677765,
+            -0.08694938570261002,
+            0.13300949335098267,
+            0.960199773311615
+          ],
+          "scale": null
+        },
+        {
+          "node": 11,
+          "name": "j ankle le_04",
+          "parent": 10,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.004067540168762207,
+            0.33820855617523193,
+            0.004230931401252747
+          ],
+          "rotation": [
+            0.4072454273700714,
+            -0.45039674639701843,
+            0.6843245029449463,
+            -0.4037249982357025
+          ],
+          "scale": null
+        },
+        {
+          "node": 12,
+          "name": "j ball le_05",
+          "parent": 11,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            3.725290298461914e-08,
+            0.19361798465251923,
+            -1.1920928955078125e-07
+          ],
+          "rotation": [
+            5.215406062575312e-08,
+            5.21540641784668e-07,
+            3.7252629869755083e-09,
+            1.0
+          ],
+          "scale": null
+        },
+        {
+          "node": 13,
+          "name": "j knee attach le_06",
+          "parent": 10,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.05692532658576965,
+            -0.007836788892745972,
+            -0.12582647800445557
+          ],
+          "rotation": [
+            0.9184351563453674,
+            0.18606682121753693,
+            -0.2762324810028076,
+            -0.21342821419239044
+          ],
+          "scale": null
+        },
+        {
+          "node": 14,
+          "name": "tag leg booster le fx_07",
+          "parent": 10,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.060993045568466187,
+            0.2866388261318207,
+            0.12159548699855804
+          ],
+          "rotation": [
+            0.4657609760761261,
+            -0.10737195611000061,
+            0.16533544659614563,
+            0.8626715540885925
+          ],
+          "scale": null
+        },
+        {
+          "node": 15,
+          "name": "j hip ri_08",
+          "parent": 8,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.1758873164653778,
+            0.121631920337677,
+            -0.0036535263061523438
+          ],
+          "rotation": [
+            -0.12140408158302307,
+            -0.1211128905415535,
+            0.15392978489398956,
+            0.9730870127677917
+          ],
+          "scale": null
+        },
+        {
+          "node": 16,
+          "name": "j knee ri_09",
+          "parent": 15,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            5.551115123125783e-17,
+            0.3902948498725891,
+            -7.450580596923828e-09
+          ],
+          "rotation": [
+            0.2064128816127777,
+            0.10900518298149109,
+            -0.16678467392921448,
+            0.9579638242721558
+          ],
+          "scale": null
+        },
+        {
+          "node": 17,
+          "name": "j ankle ri_010",
+          "parent": 16,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.003457784652709961,
+            0.338202565908432,
+            0.004767179489135742
+          ],
+          "rotation": [
+            -0.19403524696826935,
+            -0.5086606740951538,
+            0.7722904682159424,
+            0.3273867070674896
+          ],
+          "scale": null
+        },
+        {
+          "node": 18,
+          "name": "j ball ri_011",
+          "parent": 17,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            7.450580596923828e-09,
+            0.19361567497253418,
+            -2.9802322387695312e-08
+          ],
+          "rotation": [
+            1.4901161193847656e-08,
+            2.2351741790771484e-07,
+            1.1175867342672063e-08,
+            1.0
+          ],
+          "scale": null
+        },
+        {
+          "node": 19,
+          "name": "j knee attach ri_012",
+          "parent": 16,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.0729936957359314,
+            -0.007816433906555176,
+            -0.11733263731002808
+          ],
+          "rotation": [
+            0.8997758626937866,
+            -0.22364452481269836,
+            0.3318827152252197,
+            -0.17389830946922302
+          ],
+          "scale": null
+        },
+        {
+          "node": 20,
+          "name": "tag leg booster ri fx_013",
+          "parent": 16,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.07645152509212494,
+            0.2866193354129791,
+            0.11256542801856995
+          ],
+          "rotation": [
+            0.4474412798881531,
+            0.13637807965278625,
+            -0.2101404368877411,
+            0.858509361743927
+          ],
+          "scale": null
+        },
+        {
+          "node": 21,
+          "name": "j root attach back_014",
+          "parent": 8,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.018058955669403076,
+            -0.010395169258117676,
+            0.24431359767913818
+          ],
+          "rotation": [
+            0.7515305280685425,
+            0.019240248948335648,
+            -0.03352230042219162,
+            0.6585650444030762
+          ],
+          "scale": null
+        },
+        {
+          "node": 22,
+          "name": "j root attach front_015",
+          "parent": 8,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.012782096862792969,
+            -0.02300184965133667,
+            -0.17292754352092743
+          ],
+          "rotation": [
+            0.35766226053237915,
+            -0.5643351078033447,
+            0.705813467502594,
+            -0.2354377657175064
+          ],
+          "scale": null
+        },
+        {
+          "node": 23,
+          "name": "j root attach le_016",
+          "parent": 8,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.2874433398246765,
+            -0.014066159725189209,
+            0.011740237474441528
+          ],
+          "rotation": [
+            0.5114049315452576,
+            0.43088120222091675,
+            -0.5486180186271667,
+            0.5018213391304016
+          ],
+          "scale": null
+        },
+        {
+          "node": 24,
+          "name": "j root attach ri_017",
+          "parent": 8,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.28312140703201294,
+            -0.013724982738494873,
+            0.053632885217666626
+          ],
+          "rotation": [
+            0.5586482882499695,
+            -0.4025818109512329,
+            0.49974972009658813,
+            0.5254428386688232
+          ],
+          "scale": null
+        },
+        {
+          "node": 25,
+          "name": "j spinelower_018",
+          "parent": 8,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.0024490654468536377,
+            -0.1766992211341858,
+            0.03312963247299194
+          ],
+          "rotation": [
+            0.9504567980766296,
+            0.11344432085752487,
+            -0.1545463353395462,
+            -0.24469928443431854
+          ],
+          "scale": null
+        },
+        {
+          "node": 26,
+          "name": "j spineupper_019",
+          "parent": 25,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.0202883780002594,
+            0.05894160270690918,
+            -0.030312299728393555
+          ],
+          "rotation": [
+            -0.24728801846504211,
+            0.14190657436847687,
+            0.11694888770580292,
+            0.9513328075408936
+          ],
+          "scale": null
+        },
+        {
+          "node": 27,
+          "name": "j spine4_020",
+          "parent": 26,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -3.725290298461914e-09,
+            0.06931591033935547,
+            -2.9802322387695312e-08
+          ],
+          "rotation": [
+            -0.2174806296825409,
+            -0.012791887857019901,
+            -0.007443406619131565,
+            0.9759524464607239
+          ],
+          "scale": null
+        },
+        {
+          "node": 28,
+          "name": "j clavicle le_021",
+          "parent": 27,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.03021654114127159,
+            0.09357380867004395,
+            0.05330893397331238
+          ],
+          "rotation": [
+            -0.20755496621131897,
+            -0.5239408016204834,
+            -0.6454263925552368,
+            0.5155887007713318
+          ],
+          "scale": null
+        },
+        {
+          "node": 29,
+          "name": "j shoulder le_022",
+          "parent": 28,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -2.9802322387695312e-08,
+            0.40044763684272766,
+            -1.1920928955078125e-07
+          ],
+          "rotation": [
+            0.48188191652297974,
+            0.7241718173027039,
+            -0.22191476821899414,
+            -0.44058942794799805
+          ],
+          "scale": null
+        },
+        {
+          "node": 30,
+          "name": "j elbow le_023",
+          "parent": 29,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -2.220446049250313e-16,
+            0.31679344177246094,
+            -5.551115123125783e-17
+          ],
+          "rotation": [
+            -0.0457543209195137,
+            -0.3650763928890228,
+            0.20222772657871246,
+            0.9075955748558044
+          ],
+          "scale": null
+        },
+        {
+          "node": 31,
+          "name": "j wrist le_024",
+          "parent": 30,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -2.9802322387695312e-08,
+            0.5133399963378906,
+            2.384185791015625e-07
+          ],
+          "rotation": [
+            0.9978688955307007,
+            -0.0028959542978554964,
+            -0.06438057124614716,
+            -0.010220044292509556
+          ],
+          "scale": [
+            1.000054955482483,
+            1.0,
+            1.0004370212554932
+          ]
+        },
+        {
+          "node": 32,
+          "name": "tag claw_025",
+          "parent": 31,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.0012836456298828125,
+            -0.017640531063079834,
+            0.005959033966064453
+          ],
+          "rotation": [
+            -0.032532352954149246,
+            -0.005675024818629026,
+            -0.008263269439339638,
+            0.9994204044342041
+          ],
+          "scale": null
+        },
+        {
+          "node": 33,
+          "name": "tag claw left pivot_026",
+          "parent": 32,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.1690380573272705,
+            0.14083707332611084,
+            -0.0002835988998413086
+          ],
+          "rotation": [
+            0.9806678295135498,
+            0.12054996192455292,
+            0.15099361538887024,
+            -0.030974626541137695
+          ],
+          "scale": [
+            1.0000020265579224,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "node": 34,
+          "name": "tag claw left_027",
+          "parent": 33,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -2.220446049250313e-16,
+            0.1845897138118744,
+            5.960464477539063e-08
+          ],
+          "rotation": [
+            -2.9801078937907732e-08,
+            8.369237912120298e-05,
+            -1.4898668077023558e-08,
+            1.0
+          ],
+          "scale": null
+        },
+        {
+          "node": 35,
+          "name": "tag claw right pivot_028",
+          "parent": 32,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.16903820633888245,
+            0.13664722442626953,
+            0.00028336048126220703
+          ],
+          "rotation": [
+            0.9528269171714783,
+            -0.10365137457847595,
+            -0.28199487924575806,
+            -0.04308363050222397
+          ],
+          "scale": [
+            1.0000029802322388,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "node": 36,
+          "name": "tag claw right_029",
+          "parent": 35,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            5.960464477539063e-08,
+            0.184591144323349,
+            0.0
+          ],
+          "rotation": [
+            -2.9821865865642394e-08,
+            -0.0001639053225517273,
+            -1.1921417808480328e-07,
+            1.0
+          ],
+          "scale": null
+        },
+        {
+          "node": 37,
+          "name": "tag grappling source fx_030",
+          "parent": 31,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.0012836456298828125,
+            0.28697192668914795,
+            -0.005958676338195801
+          ],
+          "rotation": [
+            -0.019562676548957825,
+            -0.0029586241580545902,
+            -0.004153801128268242,
+            0.9997956156730652
+          ],
+          "scale": null
+        },
+        {
+          "node": 38,
+          "name": "j clavicle ri_031",
+          "parent": 27,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.03246014937758446,
+            0.09360373020172119,
+            0.05192875862121582
+          ],
+          "rotation": [
+            -0.21652661263942719,
+            0.5080083608627319,
+            0.6421526670455933,
+            0.5316802263259888
+          ],
+          "scale": null
+        },
+        {
+          "node": 39,
+          "name": "j shoulder ri_032",
+          "parent": 38,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -5.551115123125783e-17,
+            0.4004392623901367,
+            -1.1920928955078125e-07
+          ],
+          "rotation": [
+            -0.513904869556427,
+            0.6790589094161987,
+            -0.16895097494125366,
+            0.49622204899787903
+          ],
+          "scale": null
+        },
+        {
+          "node": 40,
+          "name": "j elbow ri_033",
+          "parent": 39,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            2.220446049250313e-16,
+            0.2851710915565491,
+            -2.9802322387695312e-08
+          ],
+          "rotation": [
+            -9.685755486543712e-08,
+            -6.705522537231445e-08,
+            2.9802315282267955e-08,
+            1.0
+          ],
+          "scale": null
+        },
+        {
+          "node": 41,
+          "name": "j shoulderarmor ri_034",
+          "parent": 38,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -5.551115123125783e-17,
+            0.4004392623901367,
+            -1.1920928955078125e-07
+          ],
+          "rotation": [
+            1.4901162970204496e-08,
+            -4.470348358154297e-08,
+            -1.4901160305669237e-08,
+            1.0
+          ],
+          "scale": null
+        },
+        {
+          "node": 42,
+          "name": "j neck_035",
+          "parent": 27,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.0028828270733356476,
+            0.2851477861404419,
+            0.1364859640598297
+          ],
+          "rotation": [
+            0.2976728081703186,
+            0.019274016842246056,
+            0.012390128336846828,
+            0.9543929696083069
+          ],
+          "scale": null
+        },
+        {
+          "node": 43,
+          "name": "j head_036",
+          "parent": 42,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            6.938893903907228e-18,
+            0.07124519348144531,
+            1.1102230246251565e-16
+          ],
+          "rotation": [
+            0.3347744345664978,
+            0.06638208776712418,
+            0.04404137656092644,
+            0.9389248490333557
+          ],
+          "scale": null
+        },
+        {
+          "node": 44,
+          "name": "j brow le_037",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.05952155590057373,
+            0.1757500171661377,
+            -0.03853034973144531
+          ],
+          "rotation": [
+            -0.418748140335083,
+            -0.5176606178283691,
+            -0.16617222130298615,
+            0.727368175983429
+          ],
+          "scale": null
+        },
+        {
+          "node": 45,
+          "name": "j brow ri_038",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.03931783139705658,
+            0.17778360843658447,
+            -0.057567715644836426
+          ],
+          "rotation": [
+            -0.43380871415138245,
+            0.3913804292678833,
+            0.0649455264210701,
+            0.8089582324028015
+          ],
+          "scale": null
+        },
+        {
+          "node": 46,
+          "name": "j cheek le_039",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.059478163719177246,
+            0.13370907306671143,
+            0.0011534690856933594
+          ],
+          "rotation": [
+            0.6004616022109985,
+            0.7188525199890137,
+            0.23228958249092102,
+            -0.2621801495552063
+          ],
+          "scale": null
+        },
+        {
+          "node": 47,
+          "name": "j cheek ri_040",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.05523186922073364,
+            0.131555438041687,
+            -0.023702263832092285
+          ],
+          "rotation": [
+            0.6486104726791382,
+            -0.6331548094749451,
+            -0.10936672985553741,
+            -0.4079931378364563
+          ],
+          "scale": null
+        },
+        {
+          "node": 48,
+          "name": "j cheekpuff le_041",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.044200748205184937,
+            0.09404528141021729,
+            0.02753615379333496
+          ],
+          "rotation": [
+            0.8422451019287109,
+            0.47643154859542847,
+            0.18988539278507233,
+            0.16607140004634857
+          ],
+          "scale": null
+        },
+        {
+          "node": 49,
+          "name": "j cheekpuff ri_042",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.051394060254096985,
+            0.09466177225112915,
+            0.007874608039855957
+          ],
+          "rotation": [
+            0.8591793775558472,
+            -0.5064272880554199,
+            -0.05994774028658867,
+            0.04181536287069321
+          ],
+          "scale": null
+        },
+        {
+          "node": 50,
+          "name": "j jaw_043",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.002651721239089966,
+            0.034351885318756104,
+            -0.012840628623962402
+          ],
+          "rotation": [
+            0.9939001798629761,
+            0.008783884346485138,
+            0.08262936770915985,
+            -0.07251112163066864
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            0.9999920129776001
+          ]
+        },
+        {
+          "node": 51,
+          "name": "j levator le_044",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.016440272331237793,
+            0.15010583400726318,
+            0.0137861967086792
+          ],
+          "rotation": [
+            0.21289949119091034,
+            0.928674578666687,
+            0.25457194447517395,
+            -0.16562151908874512
+          ],
+          "scale": null
+        },
+        {
+          "node": 52,
+          "name": "j levator ri_045",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.02094632387161255,
+            0.15019047260284424,
+            0.006005048751831055
+          ],
+          "rotation": [
+            -0.2662278413772583,
+            0.877911388874054,
+            0.20284771919250488,
+            0.342413991689682
+          ],
+          "scale": null
+        },
+        {
+          "node": 53,
+          "name": "j mouth le_046",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.024779438972473145,
+            0.10843563079833984,
+            0.04353976249694824
+          ],
+          "rotation": [
+            0.78477543592453,
+            0.39587491750717163,
+            0.1646484136581421,
+            0.44755053520202637
+          ],
+          "scale": null
+        },
+        {
+          "node": 54,
+          "name": "j mouth ri_047",
+          "parent": 43,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.0401814728975296,
+            0.10665583610534668,
+            0.03274333477020264
+          ],
+          "rotation": [
+            0.8063679933547974,
+            -0.48172369599342346,
+            -0.0579046905040741,
+            0.3381715714931488
+          ],
+          "scale": null
+        },
+        {
+          "node": 55,
+          "name": "tag back exhaust fx_048",
+          "parent": 27,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.005126394331455231,
+            0.7711732387542725,
+            -0.24172362685203552
+          ],
+          "rotation": [
+            -0.2394615113735199,
+            -0.009672596119344234,
+            -0.00269212294369936,
+            0.9708540439605713
+          ],
+          "scale": null
+        },
+        {
+          "node": 56,
+          "name": "tag powersupply_049",
+          "parent": 25,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            0.17195634543895721,
+            0.19945019483566284,
+            0.09841972589492798
+          ],
+          "rotation": [
+            0.870701253414154,
+            0.4277834892272949,
+            0.0034014605917036533,
+            0.24262948334217072
+          ],
+          "scale": null
+        },
+        {
+          "node": 57,
+          "name": "j helmet_050",
+          "parent": 25,
+          "mesh": null,
+          "skin": null,
+          "translation": [
+            -0.15166795253753662,
+            0.6982629895210266,
+            -0.06810754537582397
+          ],
+          "rotation": [
+            -0.1342420130968094,
+            0.2814585864543915,
+            0.15499939024448395,
+            0.9374088644981384
+          ],
+          "scale": null
+        }
+      ]
+    }
+  ],
+  "meshes": [
+    {
+      "id": 0,
+      "name": "38_mesh5.002_0.1_16_16_40_mesh0.002_0.1_16_16_0",
+      "primitives": [
+        {
+          "material": 0,
+          "mode": 4,
+          "vertexCount": 52,
+          "attributes": {
+            "JOINTS_0": 32,
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TEXCOORD_0": 2,
+            "WEIGHTS_0": 33
+          },
+          "extensions": []
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "40_mesh0.002_0.1_16_16_40_mesh0.002_0.1_16_16_0",
+      "primitives": [
+        {
+          "material": 0,
+          "mode": 4,
+          "vertexCount": 865,
+          "attributes": {
+            "JOINTS_0": 34,
+            "NORMAL": 5,
+            "POSITION": 4,
+            "TEXCOORD_0": 6,
+            "WEIGHTS_0": 35
+          },
+          "extensions": []
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "40_mesh1.002_0.1_16_16_40_mesh1.002_0.1_16_16_0",
+      "primitives": [
+        {
+          "material": 1,
+          "mode": 4,
+          "vertexCount": 6351,
+          "attributes": {
+            "JOINTS_0": 36,
+            "NORMAL": 9,
+            "POSITION": 8,
+            "TANGENT": 10,
+            "TEXCOORD_0": 11,
+            "WEIGHTS_0": 37
+          },
+          "extensions": []
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "40_mesh2.002_0.1_16_16_40_mesh2.002_0.1_16_16_0",
+      "primitives": [
+        {
+          "material": 2,
+          "mode": 4,
+          "vertexCount": 8966,
+          "attributes": {
+            "JOINTS_0": 38,
+            "NORMAL": 14,
+            "POSITION": 13,
+            "TANGENT": 15,
+            "TEXCOORD_0": 16,
+            "WEIGHTS_0": 39
+          },
+          "extensions": []
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "40_mesh3.002_0.1_16_16_40_mesh3.002_0.1_16_16_0",
+      "primitives": [
+        {
+          "material": 3,
+          "mode": 4,
+          "vertexCount": 529,
+          "attributes": {
+            "JOINTS_0": 40,
+            "NORMAL": 19,
+            "POSITION": 18,
+            "TANGENT": 20,
+            "TEXCOORD_0": 21,
+            "WEIGHTS_0": 41
+          },
+          "extensions": []
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "40_mesh4.002_0.1_16_16_40_mesh4.002_0.1_16_16_0",
+      "primitives": [
+        {
+          "material": 4,
+          "mode": 4,
+          "vertexCount": 268,
+          "attributes": {
+            "JOINTS_0": 42,
+            "NORMAL": 24,
+            "POSITION": 23,
+            "TEXCOORD_0": 25,
+            "WEIGHTS_0": 43
+          },
+          "extensions": []
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "41_mesh6.002_0.1_16_16_41_mesh6.002_0.1_16_16_0",
+      "primitives": [
+        {
+          "material": 5,
+          "mode": 4,
+          "vertexCount": 20,
+          "attributes": {
+            "JOINTS_0": 44,
+            "NORMAL": 28,
+            "POSITION": 27,
+            "TEXCOORD_0": 29,
+            "WEIGHTS_0": 45
+          },
+          "extensions": []
+        }
+      ]
+    }
+  ],
+  "skinnedNodes": [
+    {
+      "node": 59,
+      "name": "Object_59",
+      "parent": 5,
+      "mesh": 0,
+      "skin": 0,
+      "translation": null,
+      "rotation": null,
+      "scale": null
+    },
+    {
+      "node": 61,
+      "name": "Object_61",
+      "parent": 5,
+      "mesh": 1,
+      "skin": 0,
+      "translation": null,
+      "rotation": null,
+      "scale": null
+    },
+    {
+      "node": 63,
+      "name": "Object_63",
+      "parent": 5,
+      "mesh": 2,
+      "skin": 0,
+      "translation": null,
+      "rotation": null,
+      "scale": null
+    },
+    {
+      "node": 65,
+      "name": "Object_65",
+      "parent": 5,
+      "mesh": 3,
+      "skin": 0,
+      "translation": null,
+      "rotation": null,
+      "scale": null
+    },
+    {
+      "node": 67,
+      "name": "Object_67",
+      "parent": 5,
+      "mesh": 4,
+      "skin": 0,
+      "translation": null,
+      "rotation": null,
+      "scale": null
+    },
+    {
+      "node": 69,
+      "name": "Object_69",
+      "parent": 5,
+      "mesh": 5,
+      "skin": 0,
+      "translation": null,
+      "rotation": null,
+      "scale": null
+    },
+    {
+      "node": 71,
+      "name": "Object_71",
+      "parent": 5,
+      "mesh": 6,
+      "skin": 0,
+      "translation": null,
+      "rotation": null,
+      "scale": null
+    }
+  ],
+  "animations": [
+    {
+      "name": "panzer zombie",
+      "channels": 47,
+      "targetNodes": [
+        {
+          "node": 12,
+          "name": "j ball le_05",
+          "path": "rotation"
+        },
+        {
+          "node": 11,
+          "name": "j ankle le_04",
+          "path": "rotation"
+        },
+        {
+          "node": 13,
+          "name": "j knee attach le_06",
+          "path": "rotation"
+        },
+        {
+          "node": 14,
+          "name": "tag leg booster le fx_07",
+          "path": "rotation"
+        },
+        {
+          "node": 10,
+          "name": "j knee le_03",
+          "path": "translation"
+        },
+        {
+          "node": 10,
+          "name": "j knee le_03",
+          "path": "rotation"
+        },
+        {
+          "node": 9,
+          "name": "j hip le_02",
+          "path": "rotation"
+        },
+        {
+          "node": 34,
+          "name": "tag claw left_027",
+          "path": "translation"
+        },
+        {
+          "node": 34,
+          "name": "tag claw left_027",
+          "path": "rotation"
+        },
+        {
+          "node": 33,
+          "name": "tag claw left pivot_026",
+          "path": "rotation"
+        },
+        {
+          "node": 36,
+          "name": "tag claw right_029",
+          "path": "translation"
+        },
+        {
+          "node": 36,
+          "name": "tag claw right_029",
+          "path": "rotation"
+        },
+        {
+          "node": 35,
+          "name": "tag claw right pivot_028",
+          "path": "rotation"
+        },
+        {
+          "node": 32,
+          "name": "tag claw_025",
+          "path": "rotation"
+        },
+        {
+          "node": 37,
+          "name": "tag grappling source fx_030",
+          "path": "rotation"
+        },
+        {
+          "node": 31,
+          "name": "j wrist le_024",
+          "path": "rotation"
+        },
+        {
+          "node": 30,
+          "name": "j elbow le_023",
+          "path": "translation"
+        },
+        {
+          "node": 30,
+          "name": "j elbow le_023",
+          "path": "rotation"
+        },
+        {
+          "node": 29,
+          "name": "j shoulder le_022",
+          "path": "rotation"
+        },
+        {
+          "node": 28,
+          "name": "j clavicle le_021",
+          "path": "rotation"
+        },
+        {
+          "node": 40,
+          "name": "j elbow ri_033",
+          "path": "translation"
+        },
+        {
+          "node": 40,
+          "name": "j elbow ri_033",
+          "path": "rotation"
+        },
+        {
+          "node": 39,
+          "name": "j shoulder ri_032",
+          "path": "translation"
+        },
+        {
+          "node": 39,
+          "name": "j shoulder ri_032",
+          "path": "rotation"
+        },
+        {
+          "node": 41,
+          "name": "j shoulderarmor ri_034",
+          "path": "translation"
+        },
+        {
+          "node": 41,
+          "name": "j shoulderarmor ri_034",
+          "path": "rotation"
+        },
+        {
+          "node": 38,
+          "name": "j clavicle ri_031",
+          "path": "rotation"
+        },
+        {
+          "node": 44,
+          "name": "j brow le_037",
+          "path": "rotation"
+        },
+        {
+          "node": 45,
+          "name": "j brow ri_038",
+          "path": "rotation"
+        },
+        {
+          "node": 46,
+          "name": "j cheek le_039",
+          "path": "rotation"
+        },
+        {
+          "node": 47,
+          "name": "j cheek ri_040",
+          "path": "rotation"
+        },
+        {
+          "node": 48,
+          "name": "j cheekpuff le_041",
+          "path": "rotation"
+        },
+        {
+          "node": 49,
+          "name": "j cheekpuff ri_042",
+          "path": "rotation"
+        },
+        {
+          "node": 50,
+          "name": "j jaw_043",
+          "path": "rotation"
+        },
+        {
+          "node": 51,
+          "name": "j levator le_044",
+          "path": "rotation"
+        },
+        {
+          "node": 52,
+          "name": "j levator ri_045",
+          "path": "rotation"
+        },
+        {
+          "node": 53,
+          "name": "j mouth le_046",
+          "path": "rotation"
+        },
+        {
+          "node": 54,
+          "name": "j mouth ri_047",
+          "path": "rotation"
+        },
+        {
+          "node": 43,
+          "name": "j head_036",
+          "path": "translation"
+        },
+        {
+          "node": 43,
+          "name": "j head_036",
+          "path": "rotation"
+        },
+        {
+          "node": 42,
+          "name": "j neck_035",
+          "path": "rotation"
+        },
+        {
+          "node": 55,
+          "name": "tag back exhaust fx_048",
+          "path": "rotation"
+        },
+        {
+          "node": 27,
+          "name": "j spine4_020",
+          "path": "rotation"
+        },
+        {
+          "node": 26,
+          "name": "j spineupper_019",
+          "path": "rotation"
+        },
+        {
+          "node": 56,
+          "name": "tag powersupply_049",
+          "path": "rotation"
+        },
+        {
+          "node": 57,
+          "name": "j helmet_050",
+          "path": "rotation"
+        },
+        {
+          "node": 25,
+          "name": "j spinelower_018",
+          "path": "rotation"
+        }
+      ]
+    }
+  ],
+  "jointMeshWeights": [
+    {
+      "node": 59,
+      "mesh": "38_mesh5.002_0.1_16_16_40_mesh0.002_0.1_16_16_0",
+      "primitive": 0,
+      "vertices": 52,
+      "bounds": {
+        "x": [
+          -0.022666899487376213,
+          0.09237583726644516
+        ],
+        "y": [
+          1.7630850076675415,
+          1.8084709644317627
+        ],
+        "z": [
+          0.2014979124069214,
+          0.23702511191368103
+        ]
+      },
+      "skin": 0,
+      "jointCounts": [
+        [
+          "j head_036",
+          52
+        ]
+      ],
+      "negativeX": [
+        [
+          "j head_036",
+          26
+        ]
+      ],
+      "positiveX": [
+        [
+          "j head_036",
+          26
+        ]
+      ]
+    },
+    {
+      "node": 61,
+      "mesh": "40_mesh0.002_0.1_16_16_40_mesh0.002_0.1_16_16_0",
+      "primitive": 0,
+      "vertices": 865,
+      "bounds": {
+        "x": [
+          -0.07086580246686935,
+          0.146397203207016
+        ],
+        "y": [
+          1.5740180015563965,
+          1.932049036026001
+        ],
+        "z": [
+          0.011926042847335339,
+          0.2703183889389038
+        ]
+      },
+      "skin": 0,
+      "jointCounts": [
+        [
+          "j head_036",
+          725
+        ],
+        [
+          "j jaw_043",
+          157
+        ],
+        [
+          "j spine4_020",
+          58
+        ],
+        [
+          "j neck_035",
+          57
+        ],
+        [
+          "j levator le_044",
+          20
+        ],
+        [
+          "j brow le_037",
+          19
+        ],
+        [
+          "j levator ri_045",
+          18
+        ],
+        [
+          "j brow ri_038",
+          18
+        ],
+        [
+          "j cheek le_039",
+          17
+        ],
+        [
+          "j cheekpuff ri_042",
+          15
+        ],
+        [
+          "j cheek ri_040",
+          15
+        ],
+        [
+          "j cheekpuff le_041",
+          11
+        ],
+        [
+          "j mouth le_046",
+          2
+        ],
+        [
+          "j mouth ri_047",
+          2
+        ]
+      ],
+      "negativeX": [
+        [
+          "j head_036",
+          380
+        ],
+        [
+          "j jaw_043",
+          89
+        ],
+        [
+          "j spine4_020",
+          28
+        ],
+        [
+          "j neck_035",
+          25
+        ],
+        [
+          "j levator ri_045",
+          18
+        ],
+        [
+          "j brow ri_038",
+          18
+        ],
+        [
+          "j cheekpuff ri_042",
+          15
+        ],
+        [
+          "j cheek ri_040",
+          15
+        ],
+        [
+          "j mouth ri_047",
+          2
+        ],
+        [
+          "j mouth le_046",
+          1
+        ],
+        [
+          "j levator le_044",
+          1
+        ]
+      ],
+      "positiveX": [
+        [
+          "j head_036",
+          345
+        ],
+        [
+          "j jaw_043",
+          68
+        ],
+        [
+          "j neck_035",
+          32
+        ],
+        [
+          "j spine4_020",
+          30
+        ],
+        [
+          "j levator le_044",
+          19
+        ],
+        [
+          "j brow le_037",
+          19
+        ],
+        [
+          "j cheek le_039",
+          17
+        ],
+        [
+          "j cheekpuff le_041",
+          11
+        ],
+        [
+          "j mouth le_046",
+          1
+        ]
+      ]
+    },
+    {
+      "node": 63,
+      "mesh": "40_mesh1.002_0.1_16_16_40_mesh1.002_0.1_16_16_0",
+      "primitive": 0,
+      "vertices": 6351,
+      "bounds": {
+        "x": [
+          -0.7628930807113647,
+          0.7430363893508911
+        ],
+        "y": [
+          0.3202839195728302,
+          2.173492908477783
+        ],
+        "z": [
+          -0.5164024233818054,
+          0.793465793132782
+        ]
+      },
+      "skin": 0,
+      "jointCounts": [
+        [
+          "j spinelower_018",
+          2980
+        ],
+        [
+          "j helmet_050",
+          1520
+        ],
+        [
+          "j shoulderarmor ri_034",
+          348
+        ],
+        [
+          "tag grappling source fx_030",
+          272
+        ],
+        [
+          "j elbow ri_033",
+          144
+        ],
+        [
+          "j shoulder ri_032",
+          134
+        ],
+        [
+          "j shoulder le_022",
+          134
+        ],
+        [
+          "tag powersupply_049",
+          118
+        ],
+        [
+          "j root attach front_015",
+          110
+        ],
+        [
+          "j elbow le_023",
+          108
+        ],
+        [
+          "j knee attach le_06",
+          108
+        ],
+        [
+          "j knee attach ri_012",
+          108
+        ],
+        [
+          "j root attach ri_017",
+          55
+        ],
+        [
+          "j root attach back_014",
+          54
+        ],
+        [
+          "j root attach le_016",
+          54
+        ],
+        [
+          "tag claw right pivot_028",
+          52
+        ],
+        [
+          "tag claw left pivot_026",
+          52
+        ],
+        [
+          "tag back exhaust fx_048",
+          28
+        ]
+      ],
+      "negativeX": [
+        [
+          "j spinelower_018",
+          1402
+        ],
+        [
+          "j helmet_050",
+          585
+        ],
+        [
+          "j shoulderarmor ri_034",
+          174
+        ],
+        [
+          "j elbow ri_033",
+          144
+        ],
+        [
+          "j shoulder ri_032",
+          134
+        ],
+        [
+          "j knee attach ri_012",
+          108
+        ],
+        [
+          "j root attach ri_017",
+          54
+        ],
+        [
+          "j root attach front_015",
+          32
+        ],
+        [
+          "tag back exhaust fx_048",
+          14
+        ]
+      ],
+      "positiveX": [
+        [
+          "j spinelower_018",
+          1578
+        ],
+        [
+          "j helmet_050",
+          935
+        ],
+        [
+          "tag grappling source fx_030",
+          272
+        ],
+        [
+          "j shoulderarmor ri_034",
+          174
+        ],
+        [
+          "j shoulder le_022",
+          134
+        ],
+        [
+          "tag powersupply_049",
+          118
+        ],
+        [
+          "j elbow le_023",
+          108
+        ],
+        [
+          "j knee attach le_06",
+          108
+        ],
+        [
+          "j root attach front_015",
+          78
+        ],
+        [
+          "j root attach back_014",
+          54
+        ],
+        [
+          "j root attach le_016",
+          54
+        ],
+        [
+          "tag claw right pivot_028",
+          52
+        ],
+        [
+          "tag claw left pivot_026",
+          52
+        ],
+        [
+          "tag back exhaust fx_048",
+          14
+        ],
+        [
+          "j root attach ri_017",
+          1
+        ]
+      ]
+    },
+    {
+      "node": 65,
+      "mesh": "40_mesh2.002_0.1_16_16_40_mesh2.002_0.1_16_16_0",
+      "primitive": 0,
+      "vertices": 8966,
+      "bounds": {
+        "x": [
+          -0.827180802822113,
+          0.7819843292236328
+        ],
+        "y": [
+          -0.013057302683591843,
+          2.0794899463653564
+        ],
+        "z": [
+          -0.632193922996521,
+          0.9034642577171326
+        ]
+      },
+      "skin": 0,
+      "jointCounts": [
+        [
+          "j spinelower_018",
+          2643
+        ],
+        [
+          "j elbow ri_033",
+          1278
+        ],
+        [
+          "j knee le_03",
+          771
+        ],
+        [
+          "j knee ri_09",
+          771
+        ],
+        [
+          "j elbow le_023",
+          638
+        ],
+        [
+          "j hip ri_08",
+          591
+        ],
+        [
+          "j hip le_02",
+          589
+        ],
+        [
+          "tag grappling source fx_030",
+          299
+        ],
+        [
+          "j helmet_050",
+          270
+        ],
+        [
+          "j mainroot_01",
+          256
+        ],
+        [
+          "j root attach back_014",
+          196
+        ],
+        [
+          "j ankle ri_010",
+          186
+        ],
+        [
+          "j ankle le_04",
+          186
+        ],
+        [
+          "j shoulder ri_032",
+          169
+        ],
+        [
+          "j shoulder le_022",
+          169
+        ],
+        [
+          "j ball ri_011",
+          118
+        ],
+        [
+          "j ball le_05",
+          118
+        ],
+        [
+          "tag claw right_029",
+          108
+        ],
+        [
+          "tag claw left_027",
+          108
+        ],
+        [
+          "tag claw left pivot_026",
+          84
+        ],
+        [
+          "tag claw right pivot_028",
+          84
+        ],
+        [
+          "j root attach front_015",
+          82
+        ],
+        [
+          "j root attach le_016",
+          59
+        ],
+        [
+          "j root attach ri_017",
+          58
+        ],
+        [
+          "j knee attach le_06",
+          57
+        ],
+        [
+          "j knee attach ri_012",
+          57
+        ]
+      ],
+      "negativeX": [
+        [
+          "j elbow ri_033",
+          1278
+        ],
+        [
+          "j spinelower_018",
+          1085
+        ],
+        [
+          "j knee ri_09",
+          771
+        ],
+        [
+          "j hip ri_08",
+          587
+        ],
+        [
+          "j ankle ri_010",
+          186
+        ],
+        [
+          "j shoulder ri_032",
+          169
+        ],
+        [
+          "j ball ri_011",
+          118
+        ],
+        [
+          "j mainroot_01",
+          117
+        ],
+        [
+          "j root attach ri_017",
+          58
+        ],
+        [
+          "j knee attach ri_012",
+          57
+        ],
+        [
+          "j root attach back_014",
+          40
+        ],
+        [
+          "j root attach front_015",
+          36
+        ]
+      ],
+      "positiveX": [
+        [
+          "j spinelower_018",
+          1558
+        ],
+        [
+          "j knee le_03",
+          771
+        ],
+        [
+          "j elbow le_023",
+          638
+        ],
+        [
+          "j hip le_02",
+          589
+        ],
+        [
+          "tag grappling source fx_030",
+          299
+        ],
+        [
+          "j helmet_050",
+          270
+        ],
+        [
+          "j ankle le_04",
+          186
+        ],
+        [
+          "j shoulder le_022",
+          169
+        ],
+        [
+          "j root attach back_014",
+          156
+        ],
+        [
+          "j mainroot_01",
+          139
+        ],
+        [
+          "j ball le_05",
+          118
+        ],
+        [
+          "tag claw right_029",
+          108
+        ],
+        [
+          "tag claw left_027",
+          108
+        ],
+        [
+          "tag claw left pivot_026",
+          84
+        ],
+        [
+          "tag claw right pivot_028",
+          84
+        ],
+        [
+          "j root attach le_016",
+          59
+        ],
+        [
+          "j knee attach le_06",
+          57
+        ],
+        [
+          "j root attach front_015",
+          46
+        ],
+        [
+          "j hip ri_08",
+          4
+        ]
+      ]
+    },
+    {
+      "node": 67,
+      "mesh": "40_mesh3.002_0.1_16_16_40_mesh3.002_0.1_16_16_0",
+      "primitive": 0,
+      "vertices": 529,
+      "bounds": {
+        "x": [
+          -0.17097340524196625,
+          0.23693659901618958
+        ],
+        "y": [
+          1.562988042831421,
+          1.9966830015182495
+        ],
+        "z": [
+          -0.07660199701786041,
+          0.30993565917015076
+        ]
+      },
+      "skin": 0,
+      "jointCounts": [
+        [
+          "j spinelower_018",
+          529
+        ]
+      ],
+      "negativeX": [
+        [
+          "j spinelower_018",
+          301
+        ]
+      ],
+      "positiveX": [
+        [
+          "j spinelower_018",
+          228
+        ]
+      ]
+    },
+    {
+      "node": 69,
+      "mesh": "40_mesh4.002_0.1_16_16_40_mesh4.002_0.1_16_16_0",
+      "primitive": 0,
+      "vertices": 268,
+      "bounds": {
+        "x": [
+          -0.17173850536346436,
+          0.2511843144893646
+        ],
+        "y": [
+          1.4799000024795532,
+          1.7079529762268066
+        ],
+        "z": [
+          -0.04901193082332611,
+          0.20376315712928772
+        ]
+      },
+      "skin": 0,
+      "jointCounts": [
+        [
+          "j spinelower_018",
+          268
+        ]
+      ],
+      "negativeX": [
+        [
+          "j spinelower_018",
+          142
+        ]
+      ],
+      "positiveX": [
+        [
+          "j spinelower_018",
+          126
+        ]
+      ]
+    },
+    {
+      "node": 71,
+      "mesh": "41_mesh6.002_0.1_16_16_41_mesh6.002_0.1_16_16_0",
+      "primitive": 0,
+      "vertices": 20,
+      "bounds": {
+        "x": [
+          -0.0975191593170166,
+          0.13646499812602997
+        ],
+        "y": [
+          1.6564971208572388,
+          1.8169331550598145
+        ],
+        "z": [
+          0.4293281137943268,
+          0.47388291358947754
+        ]
+      },
+      "skin": 0,
+      "jointCounts": [
+        [
+          "j helmet_050",
+          20
+        ]
+      ],
+      "negativeX": [
+        [
+          "j helmet_050",
+          12
+        ]
+      ],
+      "positiveX": [
+        [
+          "j helmet_050",
+          8
+        ]
+      ]
+    }
+  ]
+}
