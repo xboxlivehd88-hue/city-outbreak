@@ -2057,10 +2057,9 @@ new GLTFLoader().load("assets/m240b_machine_gun.glb",gltf=>{
 // v550: user-uploaded naturally spawning crawler, with ORIGINAL animated skeleton.
 // This is separate from leg-loss conversion (makeZombie(...,"crawler")).
 const NATURAL_CRAWLER_GLB_URL="assets/zombie_number_3_-_animated.glb?v=550";
-// v552: GLB was ~0.86 scale relative to the hidden native crawler, appearing
-// miniature at player viewing distance. About 2.3x larger than v551, with the
-// SAME model rig/animations and one-time ground alignment recalculated below.
-const NATURAL_CRAWLER_SCALE=2.0;
+// v554: 10% smaller natural-spawn crawler relative to v552/v553 scale 2.0.
+// Leave v553 face, ground calibration and death ragdoll pose changes intact.
+const NATURAL_CRAWLER_SCALE=1.8;
 let naturalCrawlerAsset=null;
 function crawlerBoneLabel(node){
  // Three's imported Mixamo names end in a numbered serial (_51, _52).

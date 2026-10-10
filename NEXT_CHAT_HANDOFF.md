@@ -1,3 +1,16 @@
+# NEW-CHAT HANDOFF — 2026-10-10 — v554 NATURAL-SPAWN CRAWLER 10% SMALLER — READ FIRST
+
+**GitHub `main` is source of truth: `xboxlivehd88-hue/city-outbreak`. User says the newly uploaded naturally spawning crawlers are a little too big; requested exactly 10% smaller for visual test. v553 face/ground/death pose fixes are already in main and MUST remain intact. This release ONLY changes native GLB visual size; visual approval remains pending.**
+
+- `src/game.js`: `NATURAL_CRAWLER_SCALE` changed **2.0 to 1.8**, an exact 10% reduction from v553. This value controls the holder of the animated uploaded GLB exclusively for **naturally spawned** crawlers. `naturalCrawlerSpawn=kind==="crawler"&&forcedKind!=="crawler"`; leg-damage conversions using `makeZombie(x,zp,oldIndex,"crawler")` stay entirely untouched.
+- Preserve v553 **head/face visibility adjustments**, body material alpha depth ordering, dynamic face/limb ground clearance and instant foot calibration, and death handoff that freezes `naturalCrawlerMixer.timeScale=0` instead of resetting bones to T-pose. Original three Mixamo animation clips and PBD ragdoll unchanged. The geometry-height calculation automatically re-centers according to new 1.8 scale.
+- `index.html` game loader advanced to **`src/game.js?v=554`** to invalidate cache. Edited only source, index, and latest TOP section of each of the two project handoffs. Asset binary `assets/zombie_number_3_-_animated.glb`, CC-BY credit, CSS, `CURRENT_RECOVERY_CHECKPOINT.md` v324, streetlights, shotgun, wave AI and other gameplay preserved.
+- v553 immediate rollback version is main commit `b82b9b2eca3d63d7bbfdb0ab1499ea009351e3e3`. If user wants a different size, adjust only the `NATURAL_CRAWLER_SCALE` constant, never revert the v553 face/ground/death fixes without approval.
+- Validate current HEAD, source invariants, `node --input-type=module --check < src/game.js`, Pages deployment SUCCESS, then user gameplay visual test. New link: https://xboxlivehd88-hue.github.io/city-outbreak/?v=554-native-crawler-10-percent-smaller . Wave 3+: inspect naturally spawning crawlers next to walkers, their face and head above surface, death without T-pose; converted leg-loss crawlers unchanged.
+- New chat first read newest TOP sections of both `CITY_OUTBREAK_HANDOFF.md`, `NEXT_CHAT_HANDOFF.md`, `CURRENT_RECOVERY_CHECKPOINT.md`, `index.html`, `src/game.js`, `src/game.css` from GitHub main.
+
+---
+
 # NEW-CHAT HANDOFF — 2026-10-10 — v553 NATIVE CRAWLER FACE, GROUNDING AND DEATH T-POSE — READ FIRST
 
 **GitHub `main` authoritative: `xboxlivehd88-hue/city-outbreak`. User tested v552 at WAVE 5 with screenshot: naturally spawned new GLB crawlers' FACE looks absent (head into sidewalk), parts of body SUNK into ground, and on death suddenly HOP UP in a T-POSE. The uploaded skinned GLB has to remain, including its 2.0 display scale; converted leg-loss crawlers, other zombies and existing ragdoll solver must stay intact. Do not mark visually approved until user tests.**
