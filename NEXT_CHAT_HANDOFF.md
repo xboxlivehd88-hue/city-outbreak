@@ -1,3 +1,14 @@
+# v582 — SHRINK PANZER TO APPROVED SUIT GUY SIZE WITHOUT DISTURBING REAL LEG WALK — 2026-10-10
+
+- User verified v581 BOTH LEGS walking, but reported Panzer **enormous** and requested scaling down again. Preserve that working v580-v581 ORIGINAL GLB six-leg-bone gait. Do NOT return to procedural auto-rig or edit walking joints.
+- REAL playable Wave 1 test of v581 (using `scripts/panzer-browser-audit.cjs`) measured **actual Panzer skinned mesh height ~23.99 world units and width ~18.63**, while `z.g` boss root scaled ~1.719. The intended Suit Guy-sized Panzer target is `PANZER_VISUAL_HEIGHT * rootWorldScale`, ~5.50 units. The earlier detached model measured ~3.17 but did not include boss root scale; this is why that test falsely indicated success for size. Proven issue, not cache.
+- v582 adds Panzer-only `finalizePanzerSpawnSize` AFTER the existing leg animation and initial size calibration. It samples genuine animated `SkinnedMesh.getVertexPosition` vertices in world space, takes current root scale into account, and applies iterative square-root reduction until the actual torso-to-feet skin is approximately target. Runs only on native Panzer at frames 1,8,24 after initial calibration, to accommodate later pose changes; **shrink only**, and re-ground his feet. Suit Guy, natural crawlers, other zombies and systems unaffected.
+- Approved `PANZER_VISUAL_HEIGHT=3.20` target constant unchanged; expected game-world visible height is ~5.5 due boss root scale. Do not change actual GLB, hitboxes, attacks, or armor. This is Panzer visual ONLY.
+- Solo Panzer Wave 1 stays. Panzer OUT of every-10-wave boss rotation pending user size and walking approval. Maintain v324 protected recovery. Loader `./src/game.js?v=582`, asset `panzer_zombie.glb?v=582`, visible browser tab and spawn text v582.
+- **Testing:** source syntax validated; still need committed v582 Chromium actual Wave 1 world-size test and successful Pages deployment before declaring verified. Browser appearance not yet user-approved.
+
+---
+
 # v581 — REAL PANZER SKINNING SCALE FIX CONFIRMED IN CHROMIUM — 2026-10-10
 
 - User pointed out v580 was unfinished, so a genuine GitHub Actions Chromium test was built and executed against the uploaded 8.7 MB GLB and actual `src/game.js`, not fake bone rotations. See `PANZER_BROWSER_AUDIT.json` and `scripts/panzer-browser-audit.cjs`.
