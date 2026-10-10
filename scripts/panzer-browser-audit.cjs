@@ -24,6 +24,40 @@ const assert=require("assert/strict");
    const addon=`
 ;globalThis.__panzerOriginalSkinAudit={
  ready:()=>!!panzerBossAsset,
+ liveReady:()=>zombies.some(z=>z.bossName===PANZER_BOSS_NAME&&z.panzerBossVisual),
+ liveMetrics:()=>{
+  const z=zombies.find(z=>z.bossName===PANZER_BOSS_NAME&&z.panzerBossVisual);
+  if(!z)throw Error("Wave 1 Panzer not ready");
+  // Actual on-screen Wave 1 boss after its walking animation and calibration.
+  const worldBounds=new THREE.Box3().setFromObject(z.panzerBossModel,true);
+  const rootScale=new THREE.Vector3(),rootPosition=new THREE.Vector3();
+  z.g.getWorldScale(rootScale);z.g.getWorldPosition(rootPosition);
+  const holderScale=new THREE.Vector3(),position=new THREE.Vector3();
+  z.panzerBossVisual.getWorldScale(holderScale);
+  z.panzerBossVisual.getWorldPosition(position);
+  const b=new THREE.Box3(),tmp=new THREE.Vector3();b.makeEmpty();
+  let sampled=0;
+  z.panzerBossModel.traverse(mesh=>{
+   if(!mesh.isSkinnedMesh)return;
+   const attr=mesh.geometry.getAttribute("position");
+   for(let i=0;i<attr.count;i+=Math.max(1,Math.floor(attr.count/2000))){
+    mesh.getVertexPosition(i,tmp);mesh.localToWorld(tmp);b.expandByPoint(tmp);sampled++;
+   }
+  });
+  return {
+   wave,boss:z.bossName,isDead:z.dead,calibrated:z.panzerSizeCalibrated,
+   calibrationFrames:z.panzerSizeCalibrationFrames,
+   rootScale:rootScale.toArray(),holderLocalScale:z.panzerBossVisual.scale.toArray(),
+   holderWorldScale:holderScale.toArray(),worldHeightBox:worldBounds.max.y-worldBounds.min.y,
+   renderMeshSkinnedHeight:b.max.y-b.min.y,renderBounds:{min:b.min.toArray(),max:b.max.toArray()},
+   sampled,rootPosition:rootPosition.toArray(),holderPosition:position.toArray(),
+   camera:cam.position.toArray(),sizeTarget:PANZER_VISUAL_HEIGHT,
+   originalNative:!!z.panzerBossMixer,phase:z.panzerWalkPhase,
+   visible:z.panzerBossVisual.visible,
+   relativePlayerDistance:Math.hypot(z.g.position.x-px,z.g.position.z-pz)
+  };
+ },
+
  run:()=>{
   if(!panzerBossAsset)throw Error("Panzer GLB not loaded");
   const z={kind:"boss",bossName:PANZER_BOSS_NAME,dead:false,g:new THREE.Group(),
@@ -153,6 +187,11 @@ const assert=require("assert/strict");
   assert(ratio>.30&&ratio<3.3,"Right/left thigh movement ratio incorrect: "+ratio);
   assert(result.postCalibration.height>2.7&&result.postCalibration.height<3.7,
     "Rendered Panzer skin not approximately approved 3.2-unit height: "+result.postCalibration.height);
+  await page.locator("#start").click();
+  await page.waitForFunction(()=>globalThis.__panzerOriginalSkinAudit?.liveReady(),{},{timeout:70000});
+  await page.waitForTimeout(800);
+  output.actualWaveOne=await page.evaluate(()=>globalThis.__panzerOriginalSkinAudit.liveMetrics());
+  assert(output.actualWaveOne.calibrated,"Actual Wave 1 Panzer did not calibrate");
   output.pass=true;
   output.errors=errors.slice(0,15);output.logs=logs.slice(-20);
  }catch(e){
