@@ -102,6 +102,11 @@ jobs:
            ylevels=Counter(round(v[1],2) for v in verts)
            print('GAS_STATION_PRIMITIVE',len(verts),'material',p.get('material'))
            print('GAS_TOP_Y_LEVELS',ylevels.most_common(26))
+          print('GAS_ROOF_TOPLEVELS',sorted(ylevels.items(),reverse=True)[:55])
+          for yi,count in sorted(ylevels.items(),reverse=True):
+           if yi<-15.8:break
+           group=[v for v in verts if abs(v[1]-yi)<.009]
+           print('CANOPY_HEIGHT',yi,'count',count,'X',round(min(v[0] for v in group),2),round(max(v[0] for v in group),2),'Z',round(min(v[2] for v in group),2),round(max(v[2] for v in group),2))
            for yi,count in ylevels.most_common(22):
             if yi<-17.0:continue
             group=[v for v in verts if abs(v[1]-yi)<.009]
