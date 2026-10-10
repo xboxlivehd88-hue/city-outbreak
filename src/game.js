@@ -4284,26 +4284,33 @@ function syncSuitBossWalk(z,dt){
  rot("Chest",-.045*walking,-s*.023*walking,-s*.016*walking);
  rot("Neck",.025*walking);
  rot("Head",.04*walking,-s*.025*walking);
- // Explicit shoulder and elbow arcs from the authored horizontal T-pose.
- // Rotating around X *after* the Z lowering angle creates a natural
- // front/back arm swing; the old hidden rig's arm angles did not.
- rot("L_UpperArm",.06-s*.38*walking-a*.26,0,1.38);
- rot("R_UpperArm",.06+s*.38*walking-a*.26,0,-1.38);
+ // v564: forward-reaching zombie arms. The source mesh is authored with
+ // horizontal T-pose arms. Turn each shoulder toward local +Z (the character's
+ // forward direction before its existing 180-degree holder correction), then
+ // lower slightly so the hands reach toward the player's chest rather than
+ // flaring sideways. Keep the v563 shoulder/elbow skin weights untouched.
+ const reachPulse=.045*Math.sin(t*1.5);
+ rot("L_UpperArm",.03-s*.10*walking-a*.16,1.06+reachPulse,.57);
+ rot("R_UpperArm",.03+s*.10*walking-a*.16,-1.06-reachPulse,-.57);
  // Elbows bend in the plane of the actual arm bones (local Y/Z).
  // Rotating only around local X twists the sleeve without bending it.
  rot("L_LowerArm",0,-.12-.06*Math.max(0,s)*walking,.15+.06*Math.max(0,s)*walking);
  rot("R_LowerArm",0,.12+.06*Math.max(0,-s)*walking,-.15-.06*Math.max(0,-s)*walking);
  rot("L_Hand",-.06);
  rot("R_Hand",-.06);
- // Controlled walk rather than the oversized stiff high-stepping v561 gait.
- const hipSwing=.54*walking;
- const lk=Math.max(0,-s)*.67*walking,rk=Math.max(0,s)*.67*walking;
- rot("L_UpperLeg",s*hipSwing,0,-.012);
- rot("R_UpperLeg",-s*hipSwing,0,.012);
+ // v564: flex each knee during its forward-swing recovery, with a soft
+ // baseline bend while walking. The old knee peak fell on the *trailing*
+ // leg and made the advancing leg look straight and stiff.
+ const hipSwing=.60*walking;
+ const leftLift=Math.max(0,s),rightLift=Math.max(0,-s);
+ const lk=(.12+.86*leftLift*leftLift+.12*rightLift)*walking;
+ const rk=(.12+.86*rightLift*rightLift+.12*leftLift)*walking;
+ rot("L_UpperLeg",s*hipSwing-.055*walking,0,-.012);
+ rot("R_UpperLeg",-s*hipSwing-.055*walking,0,.012);
  rot("L_LowerLeg",lk);
  rot("R_LowerLeg",rk);
- rot("L_Foot",-.40*lk-.1*s*walking);
- rot("R_Foot",-.40*rk+.1*s*walking);
+ rot("L_Foot",-.58*lk-.08*s*walking);
+ rot("R_Foot",-.58*rk+.08*s*walking);
 }
 function syncBasicWalkerVisual(z,dt=0){
  const holder=z?.walkerVisual,bones=z?.walkerBones;if(!holder||!bones?.size)return;
