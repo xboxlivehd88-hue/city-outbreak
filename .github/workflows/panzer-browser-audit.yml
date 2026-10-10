@@ -1,0 +1,48 @@
+name: Panzer original-skeleton browser audit
+on:
+  push:
+    paths:
+      - '.github/workflows/panzer-browser-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Audit skinned Panzer vertices in live Three.js browser
+        run: |
+          python3 -m http.server 4173 > /tmp/panzer-http.log 2>&1 &
+          sleep 2
+          node scripts/panzer-browser-audit.cjs || true
+          cat /tmp/panzer-http.log | tail -40
+      - name: Publish actual browser displacement measurements
+        if: always()
+        run: |
+          git config user.name "city-outbreak-audit[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -f PANZER_BROWSER_AUDIT.json ]; then
+            git add PANZER_BROWSER_AUDIT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "diagnostics: measured Panzer right leg movement in Chromium"
+              git pull --rebase origin main
+              git push origin HEAD:main
+            fi
+          fi
+      - name: Require both real visible legs to move
+        run: |
+          python3 - <<'PY'
+          import json
+          a=json.load(open('PANZER_BROWSER_AUDIT.json'))
+          assert a['pass'],a.get('failure','Panzer legs did not visibly deform')
+          print('BROWSER VERIFIED:',a['displacement'])
+          PY
