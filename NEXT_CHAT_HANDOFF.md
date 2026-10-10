@@ -1,3 +1,13 @@
+# v569 — PANZER BOSS SCALE REDUCED SUBSTANTIALLY — 2026-10-10
+
+- User reported v568 Wave 1 Panzer Zombie was **super huge** and requested a large size reduction.
+- Panzer's normalized model height inside its existing zombie root reduced from **3.20 to 1.80** (43.75% smaller, 56.25% previous height); isolated `PANZER_VISUAL_HEIGHT=1.80` constant. This is a visual size test, still subject to user approval; inherited boss root scale stays untouched.
+- Also parented Panzer-only torso, abdomen, pelvis, both legs and static head hitbox under new `PanzerBossScaledHitboxes` with proportional `1.80/3.20` scale to keep gun and launcher collision aligned. Procedural head hitbox remains attached to its head bone and automatically follows reduced animated model scale. Explosion body-space tests still use these same meshes.
+- No changes to Panzer walking/native clips, facing/rotation, combat stats or Wave 1 test spawn. Approved Suit Guy and all existing boss rotation, normal zombies, natural crawlers, map/performance and protected v324 recovery untouched.
+- Loader `./src/game.js?v=569`. **User must evaluate Panzer size in browser** before further changes; source commit alone is not visual verification.
+
+---
+
 # v568 — PANZER ZOMBIE NEW BOSS WAVE 1 TEST — 2026-10-10
 
 - User uploaded **`assets/panzer_zombie.glb`** in GitHub commit `6dae100c1cf8c94c1009119de35aaf216a041feb` and requested work on the new boss. Its GLB exceeds the connected GitHub file reader's binary content limit, so native animation/skeleton metadata could not be inspected directly; load-time runtime inspection chooses imported clips where available or a procedurally constructed walker auto-rig for static meshes.
