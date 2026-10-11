@@ -1,3 +1,14 @@
+# v598 — PARASITE IN EVERY-10-WAVE BOSS ROTATION — 2026-10-11
+
+- USER APPROVED v597 Parasite and requested: **"we can put the parasite in the boss rotation now and remove him from wave 1"**.
+- Removed temporary Wave 1 boss test. Wave 1 now follows the **normal 10-zombie** spawning rule. Only waves 10, 20, 30, ... trigger a boss fight.
+- Added `PARASITE MONSTER` to `BOSS_NAME_POOL` alongside approved `SUIT GUY` and `PANZER ZOMBIE`. Boss selection still uses the EXISTING shuffled/no-repeat bag: all **19 distinct** names are used before the pool refills.
+- The exact approved v597 Parasite original mesh, authentic texture maps, retargeted recorded Run + Attack animations, fixed visual holder scale `1.419867`, and four provisional hitboxes remain **unchanged**. No Suit Guy/Panzer visual/combat changes.
+- Bumped loader, Parasite asset cache URL, page version title and build marker to **v598**. Updated the existing Chromium smoke to check **no boss and 10 normal zombies on Wave 1**, then select Parasite **via actual no-repeat Wave 10 rotation**, verify original animations/materials/hitboxes, and confirm bag refill.
+- Protected v324 recovery checkpoint and source files **unchanged**. Any historical notes claiming a Wave 1 Parasite test or that it is outside rotation are superseded by this entry.
+
+---
+
 # v597 USER PLAYTEST APPROVED — 2026-10-11
 
 - User tested the new genuine recorded Mixamo Run/Attack retarget in-game and said: **"thats grea and works well too"**. Treat the v597 Parasite movement, original restored colors, and reduced v596 scale as **working/approved**. DO NOT redo manual gait, move arms/knees, alter original textures, resize, or change another boss without a new explicit request. Previous "user signoff still required" within older v597 notes is now superseded.

@@ -16,10 +16,11 @@ const SUIT_BOSS_NAME="SUIT GUY";
 // v585: visually approved v584 Panzer joins the regular every-10-wave boss
 // roster. Preserve the exact v584 original GLB animation, scale, and combat.
 const PANZER_BOSS_NAME="PANZER ZOMBIE";
-// v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
-const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
+// v598: Parasite approved for the every-10-wave no-repeat boss rotation.
+// Its v597 model, recorded gait, original textures, scale and hitboxes are unchanged.
+const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null,parasiteBossOriginalTextures=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=597",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=598",gltf=>{
  // The native Sketchfab GLB contains FOUR embedded PNGs but references them
  // through old KHR_materials_pbrSpecularGlossiness. Our GLTFLoader leaves
  // these source diffuse images unassigned on imported StandardMaterials.
@@ -49,8 +50,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v597";
-document.documentElement.dataset.cityOutbreakBuild="597";
+document.title="CITY OUTBREAK — v598";
+document.documentElement.dataset.cityOutbreakBuild="598";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -4386,9 +4387,9 @@ function weaponSound(){
  if(weapon==="grenadeLauncher"){noise(.14,.72,850);tone(62,.18,"square",.30);tone(118,.08,"sine",.12,.02);return}if(weapon==="shotgun"){noise(.16,.8,1800);tone(58,.22,"square",.34)}else if(weapon==="smg"){noise(.07,.5,2300);tone(105,.09,"square",.18)}else gunS()}
 
 // Boss selections occur only on waves 10, 20, 30, ... . Each selected name
-// is used once before the shuffle bag refills. Panzer's exact v584 visual
-// attaches automatically when that name is drawn; Suit Guy remains included.
-const BOSS_NAME_POOL=[SUIT_BOSS_NAME,PANZER_BOSS_NAME,"GORE TITAN","THE REND KING","MAWBREAKER","THE ABATTOIR","RIBCAGE","MEATSAINT","BUTCHER PRIME","BLOODHOWL","THE SPLIT-JAW","THE RED GIANT","MARROWLORD","GUTSPIKE","THE CARRION OX","SCARFLESH","THE RUINED HERCULES","GRAVEBULK"];
+// is used once before the shuffle bag refills. The approved Suit Guy, Panzer
+// and Parasite each use their own original visuals when selected.
+const BOSS_NAME_POOL=[SUIT_BOSS_NAME,PANZER_BOSS_NAME,PARASITE_BOSS_NAME,"GORE TITAN","THE REND KING","MAWBREAKER","THE ABATTOIR","RIBCAGE","MEATSAINT","BUTCHER PRIME","BLOODHOWL","THE SPLIT-JAW","THE RED GIANT","MARROWLORD","GUTSPIKE","THE CARRION OX","SCARFLESH","THE RUINED HERCULES","GRAVEBULK"];
 
 
 
@@ -6343,10 +6344,10 @@ function spawnQueuedZombies(){
 }
 function spawnWave(){
  let d=diff(wave);currentBoss=null;recentZombieSpawnPoints.length=0;zombieSpawnAngleOffset=rnd()*Math.PI*2;
- if(isBossWave(wave)||wave===PARASITE_BOSS_TEST_WAVE){
-   // v585: End the isolated Panzer Wave 1 test. Every tenth wave draws ONE
-   // boss from the existing no-repeat roster, now including Panzer.
-   const spec=wave===PARASITE_BOSS_TEST_WAVE?{...bossWaveSpec(wave),name:PARASITE_BOSS_NAME}:bossWaveSpec(wave);
+ if(isBossWave(wave)){
+   // v598: Parasite's temporary Wave 1 test is over. All bosses (including
+   // Parasite) spawn only on the every-tenth-wave no-repeat selection.
+   const spec=bossWaveSpec(wave);
    waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
    const bossSpawn=findReachableZombieSpawn(36,70,false,null);

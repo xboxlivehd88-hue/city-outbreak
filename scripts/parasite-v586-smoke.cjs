@@ -1,16 +1,28 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"597",pass:false};let browser;
+ const report={version:"598",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=597$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=598$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
  ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&newCityCollisionReady,
+ waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length}),
+ selectViaRealBossRotation:()=>{
+  // Force the final available name in the existing no-repeat bag, NOT the
+  // spawn code or hardwired name: exercise the actual Wave 10 selection.
+  for(const z of zombies)releaseZombieVisual(z);
+  zombies=[];currentBoss=null;bossWaveName="";wave=10;
+  usedBossNames=BOSS_NAME_POOL.filter(n=>n!==PARASITE_BOSS_NAME);
+  spawnWave();
+  return {selected:bossWaveName,used:[...usedBossNames],poolSize:BOSS_NAME_POOL.length,
+   unique:new Set(BOSS_NAME_POOL).size};
+ },
+ verifyRefill:()=>{const next=nextBossName();return {next,bag:[...usedBossNames]}},
  probe:()=>{
   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
   if(!z?.parasiteBossVisual)return null;
@@ -245,10 +257,13 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=597-asset-test",{waitUntil:"domcontentloaded",timeout:60000});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=598-rotation-test",{waitUntil:"domcontentloaded",timeout:60000});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click();
+  await page.waitForFunction(()=>globalThis.__parasiteSmoke?.waveOne()?.spawned===10,null,{timeout:30000});
+  report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
+  report.rotation=await page.evaluate(()=>globalThis.__parasiteSmoke.selectViaRealBossRotation());
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().attached,null,{timeout:30000});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().nativeRun&&
    globalThis.__parasiteSmoke?.state().nativeAttack,null,{timeout:30000});
@@ -262,7 +277,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V597_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V598_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -274,8 +289,16 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // The multi-scale diagnostic proved square-law behavior in v587; check the final live size here.
   assert.equal(report.http,200);
   assert.equal(report.assetHttp,200);
-  assert.equal(report.state.build,"597");
-  assert.equal(report.state.wave,1);
+  assert.equal(report.state.build,"598");
+  assert.equal(report.waveOne.wave,1);
+  assert.equal(report.waveOne.target,10);
+  assert.equal(report.waveOne.spawned,10);
+  assert.equal(report.waveOne.bosses,0,"Wave 1 must contain only normal zombies");
+  assert.equal(report.rotation.poolSize,19);
+  assert.equal(report.rotation.unique,19,"Boss rotation contains duplicate names");
+  assert.equal(report.rotation.selected,"PARASITE MONSTER","Parasite not drawn through real no-repeat rotation");
+  assert.equal(report.rotation.used.length,19,"No-repeat bag did not include every boss");
+  assert.equal(report.state.wave,10);
   assert.equal(report.state.boss,"PARASITE MONSTER");
   assert.equal(report.state.model,"ParasiteBossOriginalGLB");
   assert.equal(report.state.waveTarget,1);
@@ -322,7 +345,9 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    "Approved 10%-smaller Parasite holder scale changed");
   assert(report.state.actualLiveHeight>3.6&&report.state.actualLiveHeight<5.5,
    "Recorded movement made boss geometry implausibly sized: "+report.state.actualLiveHeight);
-  assert.equal(report.state.poolIncludesParasite,false);
+  assert.equal(report.state.poolIncludesParasite,true);
+  report.refill=await page.evaluate(()=>globalThis.__parasiteSmoke.verifyRefill());
+  assert.equal(report.refill.bag.length,1,"Boss selection did not refill after all 19 names");
   assert.equal(report.state.poolIncludesPanzer,true);
   assert.equal(report.state.poolIncludesSuit,true);
   assert.equal(errors.length,0,"Browser JS exceptions: "+errors.join("; "));
@@ -334,7 +359,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V597_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V598_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
