@@ -1,3 +1,12 @@
+# v595 — ORIGINAL PARASITE TEXTURE RESTORATION (NOT GUESSWORK) — 2026-10-11
+
+- The user asked to recheck original model for colors after accepting v594 general direction. IMPORTANT CORRECTION to v594 notes: the GLB was NOT missing image textures! GitHub Actions RAW 4,826,320-byte GLB audit (run `38119077458`) found four embedded full-size PNGs. Its `KHR_materials_pbrSpecularGlossiness` extension assigns **original diffuse texture #0** to `parasitezombie_Material1`, **original diffuse texture #3** to `parasitezombie_Material`, original normal texture #2 to both, specular/gloss #1. Current Three.js GLTFLoader did not map the old extension, leaving materials plain white even though artwork was embedded.
+- v595 explicitly loads those ORIGINAL GLB PNG textures by `gltf.parser.getDependency("texture",0/3/2)` before attaching the test boss, sets both diffuse textures to sRGB, applies native normal map and matte roughness (derived from source glossiness 0.105737). Uses source mesh UVs and BOTH original skinned meshes; disables procedural v594 painted colors when authentic textures load. Retains previous procedural colors only as a fallback if original texture load fails. No new external images or fake/guessed coloring.
+- **Do NOT touch** original model geometry, v594 approved bilateral walking/reaching arms, v593 scale `1.57763`, temporary Wave1 solo boss, hitboxes, boss pool and v324 protected recovery. Parasite is still NOT in regular rotation. Loader/GLB cache v595.
+- Browser smoke now must assert both skinned meshes have original diffuse+normal textures loaded, valid dimensions/UV and sRGB colorspace, as well as both real thigh/shin mesh motion, correct approximate size and zero JavaScript errors. User visual approval of exact colors still required.
+
+---
+
 # v594 — PARASITE T-POSE & WHITE MATERIAL FIX — 2026-10-11
 
 - User video `2026-10-11 01-22-30.mp4` shows a grey-white T-pose boss with the correct approved v593 size. Real Chromium GLB audit `38114708612` inspected native model: 70-bone Mixamo skeleton and 35 binding-valid keys, but the sole `mixamo.com` clip has **duration ZERO** and each track has **ONE** keyframe. It contains only a static exported pose, NOT usable walk animation. Both materials are `MeshStandardMaterial`, white, with **no texture maps**.

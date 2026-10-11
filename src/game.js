@@ -18,19 +18,39 @@ const SUIT_BOSS_NAME="SUIT GUY";
 const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
-let parasiteBossAsset=null,parasiteBossLoadError=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=594",gltf=>{
- parasiteBossAsset=gltf;
- console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
- for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
+let parasiteBossAsset=null,parasiteBossLoadError=null,parasiteBossOriginalTextures=null;
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=595",gltf=>{
+ // The native Sketchfab GLB contains FOUR embedded PNGs but references them
+ // through old KHR_materials_pbrSpecularGlossiness. Our GLTFLoader leaves
+ // these source diffuse images unassigned on imported StandardMaterials.
+ Promise.all([
+  gltf.parser.getDependency("texture",0), // Material1 original diffuse
+  gltf.parser.getDependency("texture",3), // Material original diffuse
+  gltf.parser.getDependency("texture",2)  // both materials' original normal
+ ]).then(([skin,details,normal])=>{
+  if(!skin||!details||!normal)throw Error("Original GLB texture missing");
+  skin.colorSpace=THREE.SRGBColorSpace;details.colorSpace=THREE.SRGBColorSpace;
+  normal.colorSpace=THREE.NoColorSpace;
+  for(const t of [skin,details,normal])t.needsUpdate=true;
+  parasiteBossOriginalTextures={skin,details,normal};
+  console.log("CITY OUTBREAK v595: original Parasite color/normal textures recovered",{
+   skin:skin.image?.width,details:details.image?.width,normal:normal.image?.width
+  });
+ }).catch(error=>{
+  parasiteBossLoadError=error;
+  console.error("CITY OUTBREAK v595: original texture recovery failed; using existing fallback",error);
+ }).finally(()=>{
+  parasiteBossAsset=gltf;
+  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
+ });
 },undefined,error=>{parasiteBossLoadError=error;console.error("CITY OUTBREAK Parasite GLB failed",error)});
 
 // v570: match Suit Guy's 3.2-unit boss visual height using the actual
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v594";
-document.documentElement.dataset.cityOutbreakBuild="594";
+document.title="CITY OUTBREAK — v595";
+document.documentElement.dataset.cityOutbreakBuild="595";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -437,7 +457,7 @@ function attachPanzerBossVisual(z){
  * No modifications to approved Panzer/Suit rigs, scaling, combat or rotation. */
 // v594: actual source clip is duration-zero, 35 SINGLE-key tracks. Rig is
 // real (70 Mixamo bones), but exported animation is NOT a walking sequence.
-// Drive its actual skinned bones. Colors are absent in both original materials.
+// Drive its original skinned bones; v595 recovers the previously hidden PNG textures.
 function paintParasiteSkin(z,model){
  const palette=[0x767e60,0x738d76,0x575b47,0x463b38,0x825452].map(h=>new THREE.Color(h));
  let count=0;
@@ -470,6 +490,31 @@ function paintParasiteSkin(z,model){
  });
  return count;
 }
+// Restore the exact color and normal artwork present INSIDE the user's GLB.
+// Source KHR specular/gloss material uses diffuseTexture indices 0 and 3.
+function restoreParasiteOriginalMaterials(z,model){
+ if(!parasiteBossOriginalTextures){paintParasiteSkin(z,model);return false}
+ const {skin,details,normal}=parasiteBossOriginalTextures;
+ let count=0;
+ model.traverse(mesh=>{
+  if(!mesh.isSkinnedMesh)return;
+  const restore=old=>{
+   if(!old)return old;
+   const mat=old.clone();
+   mat.map=old.name==="parasitezombie_Material1"?skin:details;
+   mat.normalMap=normal;
+   // Keep original glossinessFactor 0.105737 roughly as matte roughness.
+   // The source specularGlossiness image is NOT a metallic roughness map.
+   mat.color.set(0xffffff);mat.vertexColors=false;
+   mat.roughness=.894263;mat.metalness=0;mat.needsUpdate=true;
+   z.ownedMaterials.push(mat);count++;
+   return mat;
+  };
+  mesh.material=Array.isArray(mesh.material)?mesh.material.map(restore):restore(mesh.material);
+ });
+ console.log("CITY OUTBREAK v595: original artwork attached to",count,"materials");
+ return count>0;
+}
 function bindParasiteBones(z,model){
  const all=new Map();
  model.traverse(o=>{if(o.isBone)all.set(o.name.replace(/_[0-9]+$/,""),o)});
@@ -499,7 +544,7 @@ function attachParasiteBossVisual(z){
  holder.add(model);z.g.add(holder);
  z.parasiteBossVisual=holder;z.parasiteBossModel=model;z.parasiteBossSourceHeight=h;
  model.traverse(o=>{if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true}});
- paintParasiteSkin(z,model);bindParasiteBones(z,model);
+ restoreParasiteOriginalMaterials(z,model);bindParasiteBones(z,model);
  if(z.hitMeshes)for(const hit of z.hitMeshes)if(hit)hit.raycast=()=>{};
  const mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthTest:false,depthWrite:false,colorWrite:false}),hits=[];
  const add=(name,geo,y,part,head=false)=>{
