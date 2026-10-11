@@ -66,7 +66,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert(report.run.duration>.3&&report.run.duration<3);
   assert(report.run.rate>=.5&&report.run.rate<=1.85,
     "Funny hyperfast Hazmat running cycle remains: "+report.run.rate);
-  assert(report.run.angles.filter(a=>a>.1).length>=3,
+  assert(report.run.angles[1]>.25&&report.run.angles[3]>.25&&
+    report.run.angles[0]>.04&&report.run.angles[2]>.04,
     "Native both legs not moving correctly: "+JSON.stringify(report.run.angles));
 
   assert(life.afterTwo.headHitbox&&life.afterTwo.bodyHitbox);
