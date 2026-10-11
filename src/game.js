@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=589",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=590",gltf=>{
  parasiteBossAsset=gltf;
  console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
@@ -29,8 +29,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v589";
-document.documentElement.dataset.cityOutbreakBuild="589";
+document.title="CITY OUTBREAK — v590";
+document.documentElement.dataset.cityOutbreakBuild="590";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -445,7 +445,10 @@ function attachParasiteBossVisual(z){
  model.name="ParasiteBossOriginalGLB";
  model.position.x-=center.x;model.position.y-=source.min.y;model.position.z-=center.z;
  const holder=new THREE.Group();holder.name="ParasiteBossVisual";
- holder.scale.setScalar(PARASITE_BOSS_VISUAL_HEIGHT/height);holder.rotation.y=Math.PI;
+ // v590: browser sweep measured true original Mixamo skin response:
+ // scale 2.899 => 1.493 world tall; 6.764 => 8.128; scale is quadratic.
+ // Use measured stable initial size, not detached GLB rest-bounds scaling.
+ holder.scale.setScalar(5.2);holder.rotation.y=Math.PI;
  holder.add(model);z.g.add(holder);
  z.parasiteBossVisual=holder;z.parasiteBossModel=model;z.parasiteBossSourceHeight=height;
  model.traverse(o=>{if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true}});
@@ -484,47 +487,42 @@ function syncParasiteBossVisual(z,dt){
  if(z.parasiteBossMixer)z.parasiteBossMixer.update(dt);
  if(z.parasiteSizeCalibrated)return;
  const frame=++z.parasiteSizeFrames;
- if(frame<3)return;
- const model=z.parasiteBossModel,holder=z.parasiteBossVisual;
+ if(frame<6)return;
+ const holder=z.parasiteBossVisual,model=z.parasiteBossModel;
+ model.updateWorldMatrix(true,true);
+ const bounds=new THREE.Box3().setFromObject(model,true);
+ const height=bounds.max.y-bounds.min.y;
+ if(!Number.isFinite(height)||height<.001)return;
+ z.parasiteMeasuredHeight=height;
  const rootScale=new THREE.Vector3();z.g.getWorldScale(rootScale);
  const target=PARASITE_BOSS_VISUAL_HEIGHT*Math.abs(rootScale.y);
- if(!Number.isFinite(target)||target<=0)return;
- // v589: sample the actual rendered skeleton on SEPARATE animation frames.
- // The imported Mixamo glTF skin does not fully apply holder scale changes
- // until the next frame; same-frame measurements misreported a 5.4-unit body
- // that became 54+ world units on the following frame.
- model.updateWorldMatrix(true,true);
- model.traverse(mesh=>{if(mesh.isSkinnedMesh)mesh.skeleton.update()});
- const bounds=new THREE.Box3().setFromObject(model,true);
- const measured=bounds.max.y-bounds.min.y;
- if(!Number.isFinite(measured)||measured<.001)return;
- z.parasiteMeasuredHeight=measured;
- const error=Math.abs(measured-target)/target;
- if(error<.055){
-  z.parasiteSizeStableFrames=(z.parasiteSizeStableFrames||0)+1;
-  // No calibration can finish on the frame that changed the holder scale.
-  if(z.parasiteSizeStableFrames>=5){
-   const rootPosition=new THREE.Vector3();z.g.getWorldPosition(rootPosition);
-   const deltaY=(rootPosition.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
-   if(Number.isFinite(deltaY))holder.position.y+=THREE.MathUtils.clamp(deltaY,-8,8);
-   z.parasiteSizeCalibrated=true;
-   console.log("CITY OUTBREAK v589: Parasite confirmed over 5 animation frames",{
-    frames:frame,height:measured,target,holderScale:holder.scale.x
-   });
-  }
+ // v590: Native glTF skin transforms settle on the following animation frame.
+ // The original v587 browser probe supplied a reliable 5.2 initial scale.
+ // Record several consecutive frames of source movement with NO scale writes.
+ if(frame<=11){
+  (z.parasiteHeightSamples||(z.parasiteHeightSamples=[])).push(height);
   return;
  }
- z.parasiteSizeStableFrames=0;
- if(frame<=45){
-  // Measured in Chromium: visible skin extent is quadratic in holder scale.
-  // Apply exactly one correction, then WAIT until another animation frame.
-  const factor=THREE.MathUtils.clamp(Math.sqrt(target/measured),.25,2.5);
-  holder.scale.multiplyScalar(factor);
- }else if(frame===46){
-  console.warn("CITY OUTBREAK: Parasite visual size did not settle within 45 frames",{
-   measured,target,holderScale:holder.scale.x
-  });
+ if(frame===12){
+  const values=(z.parasiteHeightSamples||[]).filter(Number.isFinite).sort((a,b)=>a-b);
+  const median=values.length?values[Math.floor(values.length/2)]:height;
+  if(median>.001&&Number.isFinite(target)){
+   // ONE delayed square-root correction based on the real Mixamo pose.
+   const factor=THREE.MathUtils.clamp(Math.sqrt(target/median),.72,1.28);
+   holder.scale.multiplyScalar(factor);
+  }
+  z.parasiteSizeAdjustmentFrame=frame;
+  return;
  }
+ // Do not measure on the adjustment frame: wait for render+skin update.
+ if(frame<20)return;
+ const rootPos=new THREE.Vector3();z.g.getWorldPosition(rootPos);
+ const foot=(rootPos.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
+ if(Number.isFinite(foot))holder.position.y+=THREE.MathUtils.clamp(foot,-8,8);
+ z.parasiteSizeCalibrated=true;
+ console.log("CITY OUTBREAK v590: original Parasite fixed-scale test",{
+  height,target,holderScale:holder.scale.x,frames:frame
+ });
 }
 
 let suitBossTemplate=null,suitBossLoadError=null;

@@ -1,3 +1,12 @@
+# v590 — PARASITE EMPIRICAL GLB SCALE + SINGLE DELAYED CORRECTION — 2026-10-11
+
+- v589 browser test `38113295324` failed to settle repeated per-frame native Mixamo skin calibration (20 s timeout), despite the uploaded source GLB loading correctly and original animation running. This source's skin has quadratic scale response and glTF inverse bind matrix latency; repeated scale changes are unstable.
+- v590 uses fixed starting holder scale `5.2` grounded in ACTUAL Chromium v587 sweep showing holder 2.899 -> height1.493, holder6.764 -> height8.128, holder19.325 ->height66.353. It then collects six animation-frame bounds samples **without scaling**, applies ONE delayed square-root correction on frame 12 using median pose, and finishes on frame20 after pose propagation. No repeated per-frame scaling; restores FPS and stops giant feedback.
+- Browser smoke asserts imported mesh, Wave1 one boss, Mixamo animation, provisional hitboxes, and live size within 16% of Suit Guy-sized target (~5.4 world units); report captures initial samples and debug state on failure.
+- Parasite is ONLY temporary Wave1 test and remains OUT of 18-name ten-wave rotation. Panzer/Suit Guy and all approved mechanics/assets untouched. Loader and Parasite URL v590. Await deployment and user visual signoff. Protected recovery v324 unchanged.
+
+---
+
 # v589 — PARASITE CROSS-FRAME REAL-SKIN CALIBRATION — 2026-10-11
 
 - v588 browser run `38113178225` proved a critical delayed-native-skin behavior: calibration logged target `5.416858` world units but **next rendered frame** measured huge `54.166956` units. Previous same-frame measurement loop was invalid, even after calling skeleton.update.
