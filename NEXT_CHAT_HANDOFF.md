@@ -1,3 +1,12 @@
+# v600 — FIX NATIVE HAZMAT SCALE USING TRUE ANIMATED GEOMETRY — 2026-10-11
+
+- v599 actual Chromium run `38173255148` proved **10 Wave 1 Acidic zombies** use the real imported textured `assets/zombie_hazmat.glb` (both original skinned meshes, 53 bones, 4 genuine clips, original red mist, no JS errors). Both legs animate (tracked 0.60/0.12/0.49/0.41 radians); however the visual was **enormous** because the first-frame skinned `Box3` incorrectly measured `0.015137` before skin matrices resolved, producing a 126.84x holder scale and ~220-unit model.
+- **v600 fix:** static Hazmat holder scale **1.10**, calibrated from Chromium's true rendered animated height ~1.73 at scale 1, expected to land at about ~1.9 normal zombie world units. Do not derive scale from first-frame bind-pose bounds. Preserve genuine native animations, head/suit textures, original Mixamo skin, Acidic stats/red mist, old hitboxes, weapons, and approved Suit/Panzer/Parasite boss rotation.
+- Temporary **Wave 1 = 10 Acidic/Hazmat** visual test remains. Later waves maintain original type distributions. Adjusted Hazmat and Parasite browser smoke tests to the v600 loader; user still needs to review appearance/facing.
+- GitHub loader `./src/game.js?v=600`, new Hazmat module and GLB `?v=600`. Protected checkpoint v324 **untouched**.
+
+---
+
 # v599 — ORIGINAL HAZMAT GLB REPLACES ACIDIC ZOMBIES (TEMP WAVE 1 TEST) — 2026-10-11
 
 - User uploaded `assets/zombie_hazmat.glb` (9,218,180 bytes) and asked to replace **ONLY the red-mist Acidic zombies**, keeping other infected, walkers and every-10-wave boss rotation intact.
