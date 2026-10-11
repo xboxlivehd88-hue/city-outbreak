@@ -80,6 +80,11 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    z.parasiteBossModel.updateWorldMatrix(true,true);
    z.parasiteBossModel.traverse(m=>{if(m.isSkinnedMesh)m.skeleton.update()});
    const out={};
+   out.__bonePose={};
+   for(const [name,joint] of z.parasiteNativeBones){
+    const p=new THREE.Vector3();joint.getWorldPosition(p);
+    out.__bonePose[name]={quaternion:joint.quaternion.toArray(),position:p.toArray()};
+   }
    for(const key of keys){
     out[key]=samples[key].map(({mesh,index})=>{
      const p=new THREE.Vector3();
@@ -90,6 +95,19 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    return out;
   };
   const before=pose(.10),after=pose(2.35);
+  const boneAngles={},boneWorldDistances={};
+  for(const key of keys){
+   const A=before.__bonePose[key],B=after.__bonePose[key];
+   const q1=new THREE.Quaternion(...A.quaternion),q2=new THREE.Quaternion(...B.quaternion);
+   boneAngles[key]=q1.angleTo(q2);
+  }
+  const dist=(a,b)=>Math.hypot(...before.__bonePose[a].position.map((v,i)=>v-before.__bonePose[b].position[i]));
+  for(const [key,from,to] of [
+    ["LeftUpper","LeftUpLeg","LeftLeg"],["LeftLower","LeftLeg","LeftFoot"],
+    ["RightUpper","RightUpLeg","RightLeg"],["RightLower","RightLeg","RightFoot"],
+    ["SpineHeight","Hips","Head"]]){
+    boneWorldDistances[key]=dist(from,to);
+  }
   const displacement={};
   for(const key of keys){
    const d=before[key].map((p,i)=>Math.hypot(...p.map((v,j)=>v-after[key][i][j])));
@@ -107,7 +125,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
     hasColorAttribute:!!c,colorSamples:values.length,
     distinct:new Set(values.map(v=>v.map(x=>Math.round(x*20)).join("_"))).size});
   });
-  return {displacement,materials};
+  return {displacement,materials,boneAngles,boneWorldDistances};
  },
  inspect:()=>{
   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
