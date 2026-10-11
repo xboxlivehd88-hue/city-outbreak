@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=593",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=594",gltf=>{
  parasiteBossAsset=gltf;
  console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
@@ -29,8 +29,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v593";
-document.documentElement.dataset.cityOutbreakBuild="593";
+document.title="CITY OUTBREAK — v594";
+document.documentElement.dataset.cityOutbreakBuild="594";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -435,74 +435,151 @@ function attachPanzerBossVisual(z){
 
 /* v586: original parasite GLB displayed during isolated Wave 1 testing.
  * No modifications to approved Panzer/Suit rigs, scaling, combat or rotation. */
+// v594: actual source clip is duration-zero, 35 SINGLE-key tracks. Rig is
+// real (70 Mixamo bones), but exported animation is NOT a walking sequence.
+// Drive its actual skinned bones. Colors are absent in both original materials.
+function paintParasiteSkin(z,model){
+ const palette=[0x767e60,0x738d76,0x575b47,0x463b38,0x825452].map(h=>new THREE.Color(h));
+ let count=0;
+ model.traverse(mesh=>{
+  if(!mesh.isSkinnedMesh||!mesh.geometry)return;
+  const geo=mesh.geometry.clone(),attr=geo.getAttribute("position");
+  if(!attr)return;
+  geo.computeBoundingBox();const b=geo.boundingBox;
+  const dx=Math.max(.01,b.max.x-b.min.x),dy=Math.max(.01,b.max.y-b.min.y),dz=Math.max(.01,b.max.z-b.min.z);
+  const vals=new Float32Array(attr.count*3),color=new THREE.Color();
+  for(let i=0;i<attr.count;i++){
+   const x=attr.getX(i),y=attr.getY(i),depth=attr.getZ(i);
+   const h=(y-b.min.y)/dy,nx=x/dx,ny=y/dy,nz=depth/dz;
+   const grain=Math.sin(nx*23+ny*36)*Math.sin(nz*21-ny*26);
+   const stain=Math.sin(nx*13+ny*16)*Math.cos(nz*11-ny*9);
+   color.copy(h>.81?palette[1]:h>.48?palette[0]:h>.15?palette[2]:palette[3]);
+   if(stain>.65&&h>.28&&h<.89)color.lerp(palette[4],.5);
+   color.multiplyScalar(.83+.19*(grain*.5+.5));
+   vals[3*i]=color.r;vals[3*i+1]=color.g;vals[3*i+2]=color.b;
+  }
+  geo.setAttribute("color",new THREE.Float32BufferAttribute(vals,3));
+  mesh.geometry=geo;z.ownedGeometries.push(geo);
+  const tint=m=>{
+   const newMat=m.clone();newMat.color.set(0xffffff);
+   newMat.vertexColors=true;newMat.roughness=.91;newMat.metalness=0;
+   newMat.needsUpdate=true;z.ownedMaterials.push(newMat);return newMat;
+  };
+  mesh.material=Array.isArray(mesh.material)?mesh.material.map(tint):tint(mesh.material);
+  count++;
+ });
+ return count;
+}
+function bindParasiteBones(z,model){
+ const all=new Map();
+ model.traverse(o=>{if(o.isBone)all.set(o.name.replace(/_[0-9]+$/,""),o)});
+ const want=["Hips","Spine","Spine2","Head","LeftArm","LeftForeArm","RightArm","RightForeArm",
+  "LeftUpLeg","LeftLeg","LeftFoot","RightUpLeg","RightLeg","RightFoot"];
+ const joints=new Map(),rest=new Map();
+ for(const key of want){
+  const bone=all.get("mixamorig"+key);
+  if(bone){joints.set(key,bone);rest.set(key,bone.quaternion.clone())}
+ }
+ z.parasiteNativeBones=joints;z.parasiteNativeRest=rest;
+ z.parasiteWalkLastX=z.g.position.x;z.parasiteWalkLastZ=z.g.position.z;
+ z.parasiteWalkPhase=0;z.parasiteWalkBlend=0;
+ console.log("CITY OUTBREAK v594: real Parasite joints",Array.from(joints.keys()));
+}
 function attachParasiteBossVisual(z){
  if(!z||z.dead||z.kind!=="boss"||z.bossName!==PARASITE_BOSS_NAME||z.parasiteBossVisual||!parasiteBossAsset)return;
- const model=SkeletonUtils.clone(parasiteBossAsset.scene);
- const source=new THREE.Box3().setFromObject(model,true);
- const height=source.max.y-source.min.y;
- if(!Number.isFinite(height)||height<.001){console.error("Parasite GLB has invalid visual height",height);return}
- const center=source.getCenter(new THREE.Vector3());
+ const model=SkeletonUtils.clone(parasiteBossAsset.scene),box=new THREE.Box3().setFromObject(model,true);
+ const h=box.max.y-box.min.y;
+ if(!Number.isFinite(h)||h<.001)return;
+ const center=box.getCenter(new THREE.Vector3());
  model.name="ParasiteBossOriginalGLB";
- model.position.x-=center.x;model.position.y-=source.min.y;model.position.z-=center.z;
+ model.position.x-=center.x;model.position.y-=box.min.y;model.position.z-=center.z;
  const holder=new THREE.Group();holder.name="ParasiteBossVisual";
- // v593: two separate ACTUAL Wave 1 Chromium runs demonstrate steady
- // LINEAR on-screen scaling at fixed holder size, not quadratic:
- // v591 holder 5.2 -> height 17.854384; v592 2.8635 -> height 9.831929.
- // This v593 target is 3.20 boss-local units * live boss root scale,
- // ~5.416858 world units. 2.8635 * (5.416858 / 9.831929) = 1.57763.
- // Keep source Mixamo skin and animation; NEVER resize holder every frame.
+ // Exact v593 browser-verified static scale. Never alter the root live scale.
  holder.scale.setScalar(1.57763);holder.rotation.y=Math.PI;
  holder.add(model);z.g.add(holder);
- z.parasiteBossVisual=holder;z.parasiteBossModel=model;z.parasiteBossSourceHeight=height;
+ z.parasiteBossVisual=holder;z.parasiteBossModel=model;z.parasiteBossSourceHeight=h;
  model.traverse(o=>{if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true}});
- if(z.hitMeshes)for(const h of z.hitMeshes)if(h)h.raycast=()=>{};
- // Provisional boss-sized explicit hitboxes: correct the anatomical alignment
- // once this NEW character is inspected, without disturbing existing bosses.
+ paintParasiteSkin(z,model);bindParasiteBones(z,model);
+ if(z.hitMeshes)for(const hit of z.hitMeshes)if(hit)hit.raycast=()=>{};
  const mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthTest:false,depthWrite:false,colorWrite:false}),hits=[];
- const add=(name,geometry,y,part,isHead=false)=>{
-  const m=new THREE.Mesh(geometry,mat);
-  m.name=name;m.position.y=y;m.userData.zombie=z;m.userData.part=part;
-  if(isHead)m.userData.isHead=true;
-  m.castShadow=false;m.receiveShadow=false;z.g.add(m);hits.push(m);
-  z.ownedGeometries.push(geometry);
+ const add=(name,geo,y,part,head=false)=>{
+  const v=new THREE.Mesh(geo,mat);v.name=name;v.position.y=y;
+  v.userData.zombie=z;v.userData.part=part;if(head)v.userData.isHead=true;
+  v.castShadow=false;v.receiveShadow=false;z.g.add(v);
+  hits.push(v);z.ownedGeometries.push(geo);
  };
- add("ParasiteBossChestHitbox",new THREE.BoxGeometry(1.12,1.08,.90),2.02,"torso");
- add("ParasiteBossAbdomenHitbox",new THREE.BoxGeometry(1.06,.75,.90),1.31,"torso");
+ add("ParasiteBossChestHitbox",new THREE.BoxGeometry(1.12,1.08,.9),2.02,"torso");
+ add("ParasiteBossAbdomenHitbox",new THREE.BoxGeometry(1.06,.75,.9),1.31,"torso");
  add("ParasiteBossLowerHitbox",new THREE.BoxGeometry(.88,.84,.79),.58,"torso");
  add("ParasiteBossHeadHitbox",new THREE.SphereGeometry(.29,12,10),2.91,"head",true);
  z.ownedMaterials.push(mat);z.hitMeshes=hits;z.parasiteBossHitboxes=hits;
  z.suitBossBlastHitboxes=hits;
  if(z.rigVisual)z.rigVisual.visible=false;
- const clips=parasiteBossAsset.animations||[];
- const clip=clips.find(c=>/walk|run|crawl|locomotion|move|stride/i.test(c.name))||clips[0];
+ // Only use embedded clips with more than one keyframe. The uploaded
+ // 'mixamo.com' clip contains a static T pose (duration 0, 1 key).
+ const clip=parasiteBossAsset.animations?.find(c=>c.duration>.1&&c.tracks.some(t=>t.times.length>1));
  if(clip){
   z.parasiteBossMixer=new THREE.AnimationMixer(model);
-  z.parasiteBossMixer.clipAction(clip).reset().setLoop(THREE.LoopRepeat,Infinity).play();
+  z.parasiteBossMixer.clipAction(clip).reset().play();
   z.parasiteBossClip=clip.name;
  }
  z.parasiteSizeFrames=0;z.parasiteSizeCalibrated=false;
- console.log("CITY OUTBREAK v586: Parasite original boss attached",{
-  sourceHeight:height,clip:z.parasiteBossClip||null,hitboxes:hits.length
- });
 }
-// v593: Leave imported Mixamo skin scale static. v591 and v592 live Chromium
-// measurements establish linear size response at a fixed holder scale.
-// Temporarily play the source animation and use a stable scale for visual testing.
 function syncParasiteBossVisual(z,dt){
  if(!z?.parasiteBossVisual||z.dead)return;
  if(z.parasiteBossMixer)z.parasiteBossMixer.update(dt);
- if(z.parasiteSizeCalibrated)return;
- if(++z.parasiteSizeFrames<3)return;
- const model=z.parasiteBossModel;
- model.updateWorldMatrix(true,true);
- const bounds=new THREE.Box3().setFromObject(model,true);
- z.parasiteMeasuredHeight=bounds.max.y-bounds.min.y;
- z.parasiteSizeCalibrated=true;
- console.log("CITY OUTBREAK v591: stable Parasite visual test scale",{
-  holderScale:z.parasiteBossVisual.scale.x,
-  height:z.parasiteMeasuredHeight,
-  clip:z.parasiteBossClip||null
- });
+ const bones=z.parasiteNativeBones,rest=z.parasiteNativeRest;
+ if(bones?.size){
+  // Unpowered original bone pose is the baseline; no accumulating twists.
+  for(const [key,bone] of bones)bone.quaternion.copy(rest.get(key));
+  const x=z.g.position.x,zz=z.g.position.z;
+  const travel=Math.hypot(x-(z.parasiteWalkLastX??x),zz-(z.parasiteWalkLastZ??zz));
+  z.parasiteWalkLastX=x;z.parasiteWalkLastZ=zz;
+  z.parasiteWalkBlend=THREE.MathUtils.lerp(z.parasiteWalkBlend,travel>.0001?1:0,Math.min(1,dt*9));
+  z.parasiteWalkPhase+=Math.min(.48,travel*4.65);
+  const t=z.parasiteWalkPhase,s=Math.sin(t),c=Math.cos(t),w=z.parasiteWalkBlend;
+  z.parasiteBossVisual.updateWorldMatrix(true,true);
+  const lateral=new THREE.Vector3(1,0,0).transformDirection(z.parasiteBossVisual.matrixWorld);
+  const rotate=(name,axis,angle)=>{
+   const bone=bones.get(name);if(!bone||!bone.parent)return;
+   const p=new THREE.Quaternion();bone.parent.getWorldQuaternion(p);
+   const local=axis.clone().applyQuaternion(p.invert()).normalize();
+   bone.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(local,angle));
+  };
+  const ll=Math.max(0,s),rl=Math.max(0,-s);
+  rotate("LeftUpLeg",lateral,(.53*s-.05)*w);
+  rotate("RightUpLeg",lateral,(-.53*s-.05)*w);
+  rotate("LeftLeg",lateral,-(.12+.83*ll*ll)*w);
+  rotate("RightLeg",lateral,-(.12+.83*rl*rl)*w);
+  rotate("LeftFoot",lateral,.55*(.12+.83*ll*ll)*w);
+  rotate("RightFoot",lateral,.55*(.12+.83*rl*rl)*w);
+  rotate("Hips",new THREE.Vector3(0,1,0),.03*s*w);
+  rotate("Spine",new THREE.Vector3(0,1,0),-.025*s*w);
+  rotate("Head",new THREE.Vector3(0,1,0),.024*s*w);
+  // Bring the real T-positioned arms forward toward the player.
+  const toward=new THREE.Vector3(px-x,0,pz-zz);
+  if(toward.lengthSq()<.0001)toward.set(0,0,1);
+  toward.normalize();
+  for(const [side,arm,elbow] of [[-1,"LeftArm","LeftForeArm"],[1,"RightArm","RightForeArm"]]){
+   const a=bones.get(arm),b=bones.get(elbow);
+   if(!a||!b||!a.parent)continue;
+   z.parasiteBossVisual.updateWorldMatrix(true,true);
+   const from=new THREE.Vector3(),to=new THREE.Vector3();
+   a.getWorldPosition(from);b.getWorldPosition(to);
+   const source=to.sub(from).normalize();
+   const desired=toward.clone().addScaledVector(lateral,side*.16)
+    .add(new THREE.Vector3(0,-.25+.055*s*w,0)).normalize();
+   const delta=new THREE.Quaternion().setFromUnitVectors(source,desired);
+   const q=new THREE.Quaternion();a.parent.getWorldQuaternion(q);
+   a.quaternion.premultiply(q.clone().invert().multiply(delta).multiply(q));
+   rotate(elbow,lateral,side*(.17+.1*c*w));
+  }
+ }
+ if(!z.parasiteSizeCalibrated&&++z.parasiteSizeFrames>=3){
+  const box=new THREE.Box3().setFromObject(z.parasiteBossModel,true);
+  z.parasiteMeasuredHeight=box.max.y-box.min.y;
+  z.parasiteSizeCalibrated=true;
+ }
 }
 
 let suitBossTemplate=null,suitBossLoadError=null;

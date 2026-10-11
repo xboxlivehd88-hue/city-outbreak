@@ -1,4 +1,4 @@
-name: v593 Parasite Wave 1 smoke
+name: v594 Parasite Wave 1 smoke
 on:
   push:
     paths:
@@ -29,5 +29,5 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: parasite-v593-audit
-          path: PARASITE_V593_AUDIT.json
+          name: parasite-v594-audit
+          path: PARASITE_V594_AUDIT.json

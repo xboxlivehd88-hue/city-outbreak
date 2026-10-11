@@ -1,3 +1,12 @@
+# v594 — PARASITE T-POSE & WHITE MATERIAL FIX — 2026-10-11
+
+- User video `2026-10-11 01-22-30.mp4` shows a grey-white T-pose boss with the correct approved v593 size. Real Chromium GLB audit `38114708612` inspected native model: 70-bone Mixamo skeleton and 35 binding-valid keys, but the sole `mixamo.com` clip has **duration ZERO** and each track has **ONE** keyframe. It contains only a static exported pose, NOT usable walk animation. Both materials are `MeshStandardMaterial`, white, with **no texture maps**.
+- v594 uses the original cloned, weighted Mixamo meshes, drives real left/right hips, knees, feet and arms with a distance-based stride (not an overlay/fake procedural model), poses upper arms reaching the player from the original T pose, and gives surfaces natural muted green/brown/blood-mottled vertex colors since source maps are absent. Doesn't repeatedly resize. Verified v593 scale `1.57763` retained.
+- Chromium smoke must verify original GLB still loads, actual original bone chains present, colored materials, real both-leg motion (further validate), head/chest/explosion provisional collision and Wave1 test-only. Do not assert appearance/gait user-approved until actually reviewed. Parasite still not in 18-name normal boss rotation; Panzer, Suit Guy and protected v324 unchanged.
+- Loader/GLB cache now v594; handoffs updated. Check browser CI and Pages.
+
+---
+
 # v593 — PARASITE FIXED SIZE CORRECTION FROM TWO LIVE BROWSER MEASUREMENTS — 2026-10-11
 
 - User confirmed in v591 that the Parasite boss appeared too large and asked whether to fix the existing model or replace it. Keep original GLB and its original Mixamo animation, which loaded with no runtime errors. **Do not change to a different model.**

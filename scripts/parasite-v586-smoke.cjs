@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"593",pass:false};let browser;
+ const report={version:"594",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=593$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=594$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -99,7 +99,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=593-asset-test",{waitUntil:"domcontentloaded",timeout:60000});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=594-asset-test",{waitUntil:"domcontentloaded",timeout:60000});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click();
@@ -108,6 +108,10 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   await page.waitForTimeout(550);
   report.state=await page.evaluate(()=>globalThis.__parasiteSmoke.state());
   report.inspectionAtStart=await page.evaluate(()=>globalThis.__parasiteSmoke.inspect());
+  report.nativeNames=await page.evaluate(()=>{
+   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
+   return [...(z?.parasiteNativeBones?.keys()||[])];
+  });
   await page.waitForTimeout(1100);
   report.inspectionAtLater=await page.evaluate(()=>globalThis.__parasiteSmoke.inspect());
   report.inspectionAtLater.bones=report.inspectionAtLater.bones.slice(0,30);
@@ -116,13 +120,18 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // The multi-scale diagnostic proved square-law behavior in v587; check the final live size here.
   assert.equal(report.http,200);
   assert.equal(report.assetHttp,200);
-  assert.equal(report.state.build,"593");
+  assert.equal(report.state.build,"594");
   assert.equal(report.state.wave,1);
   assert.equal(report.state.boss,"PARASITE MONSTER");
   assert.equal(report.state.model,"ParasiteBossOriginalGLB");
   assert.equal(report.state.waveTarget,1);
   assert.equal(report.state.waveSpawned,1);
   assert.equal(report.state.hitboxes,4);
+  const native=report.nativeNames||[];
+  assert(["LeftArm","RightArm","LeftUpLeg","RightUpLeg","LeftLeg","RightLeg"].every(k=>native.includes(k)),
+   "Original imported Mixamo limbs unavailable: "+native.join(","));
+  assert(report.inspectionAtStart.materials.some(m=>m.name.includes("parasitezombie")),
+   "Imported original mesh materials missing");
   assert.equal(report.state.calibrated,true);
   assert(Number.isFinite(report.state.size));
   // Diagnostic only: test model's final size/facing must be approved by user.
@@ -142,7 +151,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V593_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V594_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
