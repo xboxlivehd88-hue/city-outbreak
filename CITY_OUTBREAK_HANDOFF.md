@@ -1,3 +1,11 @@
+# v597 USER PLAYTEST APPROVED — 2026-10-11
+
+- User tested the new genuine recorded Mixamo Run/Attack retarget in-game and said: **"thats grea and works well too"**. Treat the v597 Parasite movement, original restored colors, and reduced v596 scale as **working/approved**. DO NOT redo manual gait, move arms/knees, alter original textures, resize, or change another boss without a new explicit request. Previous "user signoff still required" within older v597 notes is now superseded.
+- **NEXT STEP:** ask user what to develop next or follow their instruction. Parasite remains on Wave 1 solo test and outside the regular every-10-wave boss rotation until user explicitly asks to integrate it.
+- Baseline: loader `./src/game.js?v=597`, original Parasite GLB `?v=597`, source `naturalCrawlerAsset` Run/Attack retarget, holder scale `1.419867`, two embedded original diffuse+normal textures, four temporary hitboxes. Protected recovery v324 unchanged.
+
+---
+
 # v597 — PARASITE ACTUAL RECORDED MIXAMO ZOMBIE WALK + ATTACK RETARGET — 2026-10-11
 
 - USER REQUEST: "so fix it" after v596 still had bad stiff legs and arms. **Root cause:** Parasite's own original 70-bone Mixamo GLB contains only a ZERO-duration pose (35 tracks with ONE keyframe), not a walk. Previous v594-v596 manually imposed bone sine waves/IK, which were visibly unnatural.
