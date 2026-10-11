@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=586",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=587",gltf=>{
  parasiteBossAsset=gltf;
  console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
@@ -29,8 +29,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v586";
-document.documentElement.dataset.cityOutbreakBuild="586";
+document.title="CITY OUTBREAK — v587";
+document.documentElement.dataset.cityOutbreakBuild="587";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -489,7 +489,11 @@ function syncParasiteBossVisual(z,dt){
  const target=PARASITE_BOSS_VISUAL_HEIGHT*Math.abs(rootScale.y);
  if(!Number.isFinite(target)||target<=0)return;
  const bounds=new THREE.Box3();let before=0,after=0;
- for(let i=0;i<4;i++){
+ // v587: actual Chromium Wave 1 v586 measured 8.128 world units,
+ // significantly above the approved suit-size target (~5.50).
+ // The imported Mixamo skin needs more than the previous four bounded
+ // corrections to converge. Repeat only on the one-time spawn sizing pass.
+ for(let i=0;i<12;i++){
   model.updateWorldMatrix(true,true);bounds.setFromObject(model,true);
   after=bounds.max.y-bounds.min.y;
   if(!i)before=after;
@@ -501,7 +505,7 @@ function syncParasiteBossVisual(z,dt){
  const foot=(rootPos.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
  if(Number.isFinite(foot))holder.position.y+=THREE.MathUtils.clamp(foot,-8,8);
  z.parasiteSizeCalibrated=true;z.parasiteMeasuredHeight=after;
- console.log("CITY OUTBREAK v586: Parasite test height",{
+ console.log("CITY OUTBREAK v587: Parasite test height",{
   before,after,target,clip:z.parasiteBossClip||null
  });
 }

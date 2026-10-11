@@ -1,3 +1,11 @@
+# v587 — PARASITE MONSTER REAL BROWSER SIZE CORRECTION — 2026-10-11
+
+- User's new original GLB was connected as a temporary Wave 1 test in v586. GitHub Actions Chromium run `38112824122` PASSED: HTTP 200, original GLB attachment, one live Wave 1 PARASITE MONSTER, 4 preliminary hitboxes, no JS errors; model has one `mixamo.com` animation and a working AnimationMixer. Approved Panzer and Suit Guy remain in boss rotation; Parasite is NOT yet in rotation.
+- The actual browser measured visible Parasite at **8.128 world units**, too tall relative to Suit Guy-sized target **3.20 * boss root scale (~1.719) = 5.50 world units**. v587 extends Parasite-only ONE-TIME bounded animated size calibration from 4 to 12 iterations to converge, without altering original mesh, animation or any existing bosses.
+- Updated loader/asset cache to v587 and automated Chromium validation now asserts actual live boss is within 9% of 3.20*boss-root-scale. Wait for browser verification and Pages deploy; appearance and animation still need user gameplay approval before adding Parasite to normal 10-wave rotation. No other gameplay changes. Protected v324 untouched.
+
+---
+
 # v586 — NEW PARASITE MONSTER ISOLATED WAVE 1 BOSS TEST — 2026-10-11
 
 - User uploaded `assets/parasite_des_zombie_monster_game_model_free.glb` to main. v586 loads original glTF GLB, clones its actual mesh/skin and uses its embedded walk-like animation if one exists. No forced skeleton changes in this initial inspection build. Provisional name: PARASITE MONSTER.
