@@ -50,7 +50,11 @@ export function createHazmatZombieController(){
   function enableRun(z){
     const clip=source?.clips?.get("HazmatRetargetedRun");
     if(!clip||!z?.hazmatMixer||z.dead)return false;
-    if(z.hazmatActions.HazmatRetargetedRun)return true;
+    if(z.hazmatActions.HazmatRetargetedRun){
+      z.hazmatNativeRun=true;
+      if(!Number.isFinite(z.hazmatRunPlayback))z.hazmatRunPlayback=1;
+      return true;
+    }
     const action=z.hazmatMixer.clipAction(clip);
     action.setLoop(THREE.LoopRepeat,Infinity);
     z.hazmatActions.HazmatRetargetedRun=action;
@@ -178,7 +182,7 @@ export function createHazmatZombieController(){
     const mixer=new THREE.AnimationMixer(model),actions={};
     for(const [name,clip] of source.clips){
       const a=mixer.clipAction(clip);
-      a.setLoop(name==="Zombie_Idle"||name==="Zombie_Walk_Root"?THREE.LoopRepeat:THREE.LoopOnce,Infinity);
+      a.setLoop(name==="Zombie_Idle"||name==="Zombie_Walk_Root"||name==="HazmatRetargetedRun"?THREE.LoopRepeat:THREE.LoopOnce,Infinity);
       if(name==="Zombie_Skill"||name==="Zombie_EnemySpotted")a.clampWhenFinished=true;
       actions[name]=a;
     }
