@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=587",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=588",gltf=>{
  parasiteBossAsset=gltf;
  console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
@@ -29,8 +29,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v587";
-document.documentElement.dataset.cityOutbreakBuild="587";
+document.title="CITY OUTBREAK — v588";
+document.documentElement.dataset.cityOutbreakBuild="588";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -489,24 +489,31 @@ function syncParasiteBossVisual(z,dt){
  const target=PARASITE_BOSS_VISUAL_HEIGHT*Math.abs(rootScale.y);
  if(!Number.isFinite(target)||target<=0)return;
  const bounds=new THREE.Box3();let before=0,after=0;
- // v587: actual Chromium Wave 1 v586 measured 8.128 world units,
- // significantly above the approved suit-size target (~5.50).
- // The imported Mixamo skin needs more than the previous four bounded
- // corrections to converge. Repeat only on the one-time spawn sizing pass.
- for(let i=0;i<12;i++){
-  model.updateWorldMatrix(true,true);bounds.setFromObject(model,true);
-  after=bounds.max.y-bounds.min.y;
-  if(!i)before=after;
-  if(!Number.isFinite(after)||after<.001||Math.abs(after-target)/target<.06)break;
-  holder.scale.multiplyScalar(THREE.MathUtils.clamp(target/after,.35,2));
+ const measure=()=>{
+  // v588: native glTF skin uses a transformed inverse bind pose. Force
+  // skeleton matrices current BEFORE reading real skinned vertex bounds.
+  model.updateWorldMatrix(true,true);
+  model.traverse(mesh=>{if(mesh.isSkinnedMesh)mesh.skeleton.update()});
+  bounds.setFromObject(model,true);
+  return bounds.max.y-bounds.min.y;
+ };
+ // Chromium diagnostics at factors 0.05..2.0 proved rendered model height
+ // follows holder.scale^2. Earlier linear correction ran against stale
+ // skeleton matrices and produced a live 66-unit giant despite recording 8.1.
+ // Use the native skin's square-root correction and remeasure at each step.
+ for(let i=0;i<6;i++){
+  after=measure();if(!i)before=after;
+  if(!Number.isFinite(after)||after<.001)break;
+  if(Math.abs(after-target)/target<.045)break;
+  const correction=Math.sqrt(target/after);
+  holder.scale.multiplyScalar(THREE.MathUtils.clamp(correction,.15,3.75));
  }
- model.updateWorldMatrix(true,true);bounds.setFromObject(model,true);
- after=bounds.max.y-bounds.min.y;
+ after=measure();
  const foot=(rootPos.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
  if(Number.isFinite(foot))holder.position.y+=THREE.MathUtils.clamp(foot,-8,8);
  z.parasiteSizeCalibrated=true;z.parasiteMeasuredHeight=after;
- console.log("CITY OUTBREAK v587: Parasite test height",{
-  before,after,target,clip:z.parasiteBossClip||null
+ console.log("CITY OUTBREAK v588: original parasite true skinned size",{
+  before,after,target,holderScale:holder.scale.x,clip:z.parasiteBossClip||null
  });
 }
 

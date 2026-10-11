@@ -1,3 +1,11 @@
+# v588 — PARASITE TRUE SKELETON SCALE FIX — 2026-10-11
+
+- Detailed GitHub Actions Chromium probe `38113069459` established the new imported Parasite GLB has 2 SkinnedMeshes (`Object_7` and `Object_8`) and visible world-space height grows quadratically with holder scale. Actual measured pairs: holder 2.899 -> 1.493 units; 6.764 -> 8.128; 19.325 -> 66.353. Previous v587 linear iterative resize failed (claimed 8.128 but live model at that final holder size was enormous).
+- v588 ONLY changes Parasite's one-time size calibration to recalculate fresh skeleton matrices and scale by `sqrt(target/measured)` each pass; always remeasure actual animated skinned geometry, targeting `PARASITE_BOSS_VISUAL_HEIGHT * bossRootScale = ~5.42 world units`. Original GLB and Mixamo animation remain intact. New Chromium browser smoke asserts BOTH final measured height and live visible Box3 height within 9% of target.
+- Still temporary Wave 1 Parasite test only; NOT in ordinary Wave 10/20/30 boss rotation. Panzer & Suit Guy approved visuals/behaviors untouched; no other systems modified. Loader/GLB query `v588`, handoffs updated. Await Chromium and Pages verification and USER visual signoff. Protected v324 recovery UNCHANGED.
+
+---
+
 # v587 — PARASITE MONSTER REAL BROWSER SIZE CORRECTION — 2026-10-11
 
 - User's new original GLB was connected as a temporary Wave 1 test in v586. GitHub Actions Chromium run `38112824122` PASSED: HTTP 200, original GLB attachment, one live Wave 1 PARASITE MONSTER, 4 preliminary hitboxes, no JS errors; model has one `mixamo.com` animation and a working AnimationMixer. Approved Panzer and Suit Guy remain in boss rotation; Parasite is NOT yet in rotation.
