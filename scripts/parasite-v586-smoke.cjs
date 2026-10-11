@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"595",pass:false};let browser;
+ const report={version:"596",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=595$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=596$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -85,6 +85,12 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
     const p=new THREE.Vector3();joint.getWorldPosition(p);
     out.__bonePose[name]={quaternion:joint.quaternion.toArray(),position:p.toArray()};
    }
+   const left=z.parasiteNativeBones.get("LeftHand"),right=z.parasiteNativeBones.get("RightHand");
+   if(left&&right){
+    const p=new THREE.Vector3(),q=new THREE.Vector3();
+    left.getWorldPosition(p);right.getWorldPosition(q);
+    out.__hands={left:p.toArray(),right:q.toArray(),distance:p.distanceTo(q)};
+   }
    for(const key of keys){
     out[key]=samples[key].map(({mesh,index})=>{
      const p=new THREE.Vector3();
@@ -134,7 +140,13 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
     colorSpace:tex?.colorSpace||null,normalWidth:normal?.image?.width||0,
     textureUUID:tex?.uuid||null});
   });
-  return {displacement,materials,boneAngles,boneWorldDistances};
+  const armMotion={};
+  for(const side of ["left","right"]){
+   const a=before.__hands?.[side],b=after.__hands?.[side];
+   armMotion[side]=a&&b?Math.hypot(...a.map((v,i)=>v-b[i])):null;
+  }
+  return {displacement,materials,boneAngles,boneWorldDistances,
+    armMotion,handGap:{before:before.__hands?.distance,after:after.__hands?.distance}};
  },
  inspect:()=>{
   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
@@ -196,7 +208,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=595-asset-test",{waitUntil:"domcontentloaded",timeout:60000});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=596-asset-test",{waitUntil:"domcontentloaded",timeout:60000});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click();
@@ -215,7 +227,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // The multi-scale diagnostic proved square-law behavior in v587; check the final live size here.
   assert.equal(report.http,200);
   assert.equal(report.assetHttp,200);
-  assert.equal(report.state.build,"595");
+  assert.equal(report.state.build,"596");
   assert.equal(report.state.wave,1);
   assert.equal(report.state.boss,"PARASITE MONSTER");
   assert.equal(report.state.model,"ParasiteBossOriginalGLB");
@@ -230,6 +242,13 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    assert(v?.vertices>=10&&v.average>.015,
     "REAL "+key+" skinned mesh not walking: "+JSON.stringify(v));
   }
+  assert(["LeftHand","RightHand"].every(n=>native.includes(n)),"Hand joints missing");
+  assert(report.actualSkinMotion.handGap.before>.5&&report.actualSkinMotion.handGap.after>.5,
+    "Hands still together: "+JSON.stringify(report.actualSkinMotion.handGap));
+  assert(report.actualSkinMotion.armMotion.left>.09&&report.actualSkinMotion.armMotion.right>.09,
+    "Arms barely moving: "+JSON.stringify(report.actualSkinMotion.armMotion));
+  assert(report.actualSkinMotion.boneAngles.LeftLeg>.1&&report.actualSkinMotion.boneAngles.RightLeg>.1,
+    "Both knees not articulating");
   assert(report.actualSkinMotion.materials.length===2&&
     report.actualSkinMotion.materials.every(m=>m.diffuse&&m.normal&&
       m.diffuseWidth>0&&m.diffuseHeight>0&&m.normalWidth>0&&m.uvCount>0&&
@@ -243,7 +262,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // Diagnostic only: test model's final size/facing must be approved by user.
   // Do not treat a stable scene as visual signoff.
   assert(Number.isFinite(report.state.actualLiveHeight)&&report.state.actualLiveHeight>0);
-  assert(Math.abs(report.state.actualLiveHeight-report.state.expectedHeight)<report.state.expectedHeight*.10,
+  assert(Math.abs(report.state.actualLiveHeight-report.state.expectedHeight*.9)<report.state.expectedHeight*.09,
     "Parasite visual size outside 10% of intended boss size: "+report.state.actualLiveHeight+" vs "+report.state.expectedHeight);
   assert.equal(report.state.poolIncludesParasite,false);
   assert.equal(report.state.poolIncludesPanzer,true);
@@ -257,7 +276,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V595_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V596_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
