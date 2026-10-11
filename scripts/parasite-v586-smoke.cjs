@@ -57,11 +57,19 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
     if(!joint)continue;
     const boneIndex=mesh.skeleton.bones.indexOf(joint);
     if(boneIndex<0)continue;
-    const arr=samples[key];
-    for(let i=0;i<ix.count&&arr.length<55;i++){
+    // Sample along the ENTIRE weighted thigh/shin. The old first-55
+    // selection was clustered at the joint, falsely hiding leg displacement.
+    const found=[];
+    for(let i=0;i<ix.count;i++){
      for(let j=0;j<4;j++)if(ix.getComponent(i,j)===boneIndex&&wt.getComponent(i,j)>.48){
-      arr.push({mesh,index:i});break;
+      found.push(i);break;
      }
+    }
+    const arr=samples[key];
+    const room=Math.max(0,60-arr.length);
+    for(let t=0;t<Math.min(room,found.length);t++){
+     const idx=found[Math.floor(t*(found.length-1)/Math.max(1,Math.min(room,found.length)-1))];
+     arr.push({mesh,index:idx});
     }
    }
   });
