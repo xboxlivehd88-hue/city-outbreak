@@ -56,7 +56,7 @@ const assert=require("assert/strict");
   const response=await page.goto("http://127.0.0.1:4173/?verify=v585",{waitUntil:"domcontentloaded",timeout:60000});
   report.http=response?.status();
   await page.waitForFunction(()=>globalThis.__bossRotation585?.ready(),null,{timeout:110000});
-  await page.locator("#start").click();
+  await page.evaluate(()=>document.querySelector("#start").click());
   await page.waitForTimeout(750);
   const wave1=await page.evaluate(()=>globalThis.__bossRotation585.wave1());
   report.wave1=wave1;
