@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
-import {createHazmatZombieController} from "./hazmat-zombie.js?v=602";
+import {createHazmatZombieController} from "./hazmat-zombie.js?v=603";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -51,8 +51,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v602";
-document.documentElement.dataset.cityOutbreakBuild="602";
+document.title="CITY OUTBREAK — v603";
+document.documentElement.dataset.cityOutbreakBuild="603";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -861,6 +861,7 @@ new GLTFLoader().load("assets/green%20guy.glb?v=395",gltf=>{
 // v599: Hazmat has its own FOUR genuine animations; replace only acidic looks.
 const hazmatZombie=createHazmatZombieController();
 hazmatZombie.load(()=>{
+  hazmatZombie.setRunSource(naturalCrawlerAsset);
   for(const z of zombies)if(z.kind==="acidic"&&!z.dead)hazmatZombie.attach(z);
 });
 
@@ -2951,6 +2952,10 @@ new GLTFLoader().load(NATURAL_CRAWLER_GLB_URL,gltf=>{
   }
  });
  naturalCrawlerAsset={scene:gltf.scene,clips};
+ // The already-used recorded Mixamo Run supplies Hazmat natural running,
+ // regardless of whether the Hazmat asset finished loading first or second.
+ if(hazmatZombie.setRunSource(naturalCrawlerAsset))
+  for(const z of zombies)if(z.hazmatVisual&&!z.dead)hazmatZombie.enableRun(z);
  // Existing GLB's genuine Run + Attack clips also animate the rigged
  // Parasite; supports either asynchronous asset-load order.
  for(const z of zombies)if(z.bossName===PARASITE_BOSS_NAME&&z.parasiteBossVisual&&!z.parasiteBossMixer)
