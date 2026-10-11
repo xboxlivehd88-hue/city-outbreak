@@ -1,3 +1,14 @@
+# v585 — PANZER APPROVED; RETURN TO NORMAL 10-WAVE BOSS ROTATION — 2026-10-11
+
+- **USER APPROVED v584**: says Panzer now looks great, including original GLB armor, suit-guy-matched size and BOTH walking legs. Explicitly requested removal from temporary Wave 1 test and inclusion in normal every-10-round boss rotation, then wants to move on to next feature.
+- v585 removes the `PANZER_BOSS_TEST_WAVE=1` constant and every `panzerTest` branch. **Wave 1 is normal zombies again**, and nonboss rounds follow original wave difficulty, zombie count, spawn, upgrade and weapon logic.
+- Bosses spawn **only on rounds 10, 20, 30, 40 ...** according to unchanged `isBossWave(w)=w>0&&w%10===0`. Add `PANZER_BOSS_NAME` to `BOSS_NAME_POOL` alongside approved `SUIT_BOSS_NAME` and all 16 other names. Existing `nextBossName` picks randomly without repeating names until the pool is exhausted; Panzer is selected when drawn, NOT guaranteed each 10-wave increment. Existing `makeZombie` boss branch automatically calls `attachPanzerBossVisual` for that name, and preserves ordinary boss difficulty scaling/specials, payout, hitboxes, HUD.
+- **Protected visually approved Panzer baseline v584 MUST remain identical:** `PANZER_VISUAL_HEIGHT=3.20`, Panzer original GLB asset `assets/panzer_zombie.glb?v=584`, real right/left thigh/knee/ankle bone cycle, native scaling factor `.229`, skin-weight mapping, animations, position, collision/hitboxes, attack/damage, FX and physics. Do NOT alter on next feature.
+- Suit Guy approved boss behavior unchanged. Original boss pool options unchanged except Panzer addition. Other zombies, natural crawler model scale 1.53, all guns, graphics, UI, city/lighting, performance and protected recovery v324 unchanged.
+- Loader `./src/game.js?v=585`; browser title `CITY OUTBREAK — v585` and dataset `cityOutbreakBuild="585"`. Update BOTH handoff files for all future tasks. Source-level syntax/pool validation completed; browser and deployment checks should be performed before declaring fully verified.
+
+---
+
 # v584 — PANZER SMALLER AGAIN, BASED ON REAL WAVE 1 BROWSER HEIGHT — 2026-10-10
 
 - User explicitly says v581 is walking correctly but is **huge**, wants size back down; preserve working six-bone glTF bilateral Panzer leg walk. We measured actual Wave 1 v581 Panzer height ~23.99 world units. Suit Guy-matched target under boss root 1.719 is ~5.50 world units.
