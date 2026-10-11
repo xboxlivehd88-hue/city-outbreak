@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {createHazmatZombieController} from "./hazmat-zombie.js?v=599";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -50,8 +51,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v598";
-document.documentElement.dataset.cityOutbreakBuild="598";
+document.title="CITY OUTBREAK — v599";
+document.documentElement.dataset.cityOutbreakBuild="599";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -856,6 +857,12 @@ new GLTFLoader().load("assets/green%20guy.glb?v=395",gltf=>{
  });
  for(const z of zombies){if(z.kind==="radiated"&&!z.radiatedGreenVisual)attachRadiatedGreenGuy(z,z.g)}
 },undefined,e=>{radiatedGreenGuyError=e;console.error("CITY OUTBREAK: green guy radiated model failed to load",e)});
+
+// v599: Hazmat has its own FOUR genuine animations; replace only acidic looks.
+const hazmatZombie=createHazmatZombieController();
+hazmatZombie.load(()=>{
+  for(const z of zombies)if(z.kind==="acidic"&&!z.dead)hazmatZombie.attach(z);
+});
 
 // v399: user-supplied replacement for the common/basic Shambler walkers.
 // The GLB is static, so CITY OUTBREAK builds a measured runtime rig while
@@ -5473,6 +5480,7 @@ function releaseZombieVisual(z){
  if(z.radiatedGreenMixer){try{z.radiatedGreenMixer.stopAllAction()}catch(_){}}
  if(z.naturalCrawlerMixer){try{z.naturalCrawlerMixer.stopAllAction()}catch(_){}}
  if(z.parasiteBossMixer){try{z.parasiteBossMixer.stopAllAction()}catch(_){}}
+ hazmatZombie.release(z);
  if(z.mixer){try{z.mixer.stopAllAction()}catch(_){}}
  z.naturalCrawlerMixer=null;z.naturalCrawlerActions=null;z.naturalCrawlerAction=null;
  z.parasiteBossMixer=null;z.parasiteBossVisual=null;z.parasiteBossModel=null;
@@ -5488,7 +5496,8 @@ function releaseZombieVisual(z){
 // straight to 42% on wave 2. Each new threat gets a wave to become readable before
 // the full mixed roster settles back near the old late-wave intensity.
 function rolledZombieKind(w,roll){
- if(w<2)return "shambler";
+ // v599 TEMP VISUAL TEST: Wave 1 is only Acidic Hazmat zombies.
+ if(w===1)return "acidic";
  if(w===2)return roll<.18?"sprinter":"shambler";
  if(w===3){
    if(roll<.08)return "crawler";
@@ -6050,6 +6059,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  });
  zz.hitMeshes=hitMeshes;
  if(kind==="radiated")buildRadiatedGreenHitboxes(zz);
+ if(kind==="acidic")hazmatZombie.attach(zz);
  if(kind==="shambler")buildBasicWalkerHitboxes(zz);
  if(naturalCrawlerSpawn)attachNaturalCrawlerVisual(zz);
  zombies.push(zz);if(kind==="boss"){currentBoss=zz;attachSuitBossVisual(zz);attachPanzerBossVisual(zz);attachParasiteBossVisual(zz)}
@@ -8218,7 +8228,7 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
  // settlement explicitly marks rag.active=false. Never stop just because a
  // scripted fall timer or root-ground flag says the corpse is "done."
  if(z.ragdoll?.active!==false)updateRagdoll(z,dt);
- syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);
  // Do not clean up ANY corpse while it is still in active ragdoll motion.
  if(z.corpseAge>10&&z.ragdoll?.active===false&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
 }
@@ -8259,7 +8269,7 @@ for(let z of active){
    z.groan-=dt;z.step-=dt;
    updateKnockdown(z,dt);
    updateNaturalCrawlerVisual(z,dt);
-   syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
+   syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);
    continue;
  }
 
@@ -8526,7 +8536,7 @@ resolveZombiePlayerContact(z,ox,oz);
    }
  }
  updateNaturalCrawlerVisual(z,dt);
- syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 const perfGuard=createPerformanceGuard({
  renderer:ren,

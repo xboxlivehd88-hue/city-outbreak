@@ -1,3 +1,13 @@
+# v599 — ORIGINAL HAZMAT GLB REPLACES ACIDIC ZOMBIES (TEMP WAVE 1 TEST) — 2026-10-11
+
+- User uploaded `assets/zombie_hazmat.glb` (9,218,180 bytes) and asked to replace **ONLY the red-mist Acidic zombies**, keeping other infected, walkers and every-10-wave boss rotation intact.
+- GitHub Actions GLB audit `38172638017` confirmed original two skinned meshes, 53-bone Mixamo skeleton, original HazMatSuit/ZombieHead materials with original textures, native `Zombie_Walk_Root` (2.625s), `Zombie_Idle` (5.54s), `Zombie_Skill` (3.54s), `Zombie_EnemySpotted` (5.42s) clips. NO procedural/T-pose rig or replacement textures.
+- Added small self-contained `src/hazmat-zombie.js`, using `SkeletonUtils.clone`, native THREE.AnimationMixer, real walk/idle/skill, existing player-motion AI, fixed original GLB height to 1.92 local units, root-motion X/Z removed only for walking, old hidden hitboxes/physics preserved, existing Acidic red contamination mist still visible. Loading order handled even if GLB arrives after enemies spawn.
+- TEMPORARY TEST: Wave 1 spawns **10 Acidic/Hazmat** zombies for appearance/walk review, instead of 10 Shamblers. Waves 2 onward and waves 10/20/30 boss rotation unchanged. User must approve size/facing/animations before restoring normal Wave 1.
+- Loader is `./src/game.js?v=599`, native asset `?v=599`. Protected recovery checkpoint **v324 unchanged**. Await browser QA and user visual feedback.
+
+---
+
 # v598 — PARASITE IN EVERY-10-WAVE BOSS ROTATION — 2026-10-11
 
 - USER APPROVED v597 Parasite and requested: **"we can put the parasite in the boss rotation now and remove him from wave 1"**.
