@@ -289,7 +289,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // The multi-scale diagnostic proved square-law behavior in v587; check the final live size here.
   assert.equal(report.http,200);
   assert.equal(report.assetHttp,200);
-  assert.equal(report.state.build,"600";
+  assert.equal(report.state.build,"600");
   assert.equal(report.waveOne.wave,1);
   assert.equal(report.waveOne.target,10);
   assert.equal(report.waveOne.spawned,10);

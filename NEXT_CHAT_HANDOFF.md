@@ -1,3 +1,12 @@
+# v600 HAZMAT CHROMIUM PLAYTEST PASSED — 2026-10-11
+
+- **GitHub Actions browser run 38173511195 PASSED on v600:** real original `assets/zombie_hazmat.glb` HTTP 200, 10 Wave 1 Acidic enemies, all 10 authentic GLBs attached, original TWO textured SkinnedMeshes, 53 bones, true bilateral joint motion (0.60/0.12/0.49/0.41 rad), four recorded clips, red mist present, old rig hidden, existing head/body hitboxes shootable, 19-name boss rotation intact, zero browser JS exceptions. **Rendered actual world height 1.9075864** at static Hazmat holder scale 1.10.
+- Pages deployment run **38173511217 SUCCESS**. Loader v600 playable URL: `https://xboxlivehd88-hue.github.io/city-outbreak/?v=600-hazmat-native-scale`.
+- V600 Parasite regression workflow initially failed due to a **syntax typo in the TEST SCRIPT** (`assert.equal(...,"600";` missing right parenthesis), not from the game. Fixed script and updated workflow identity/artifact names to v600; await renewed browser verification. Original approved Parasite/Panzer/Suit boss code untouched.
+- **Await user visual approval** of Hazmat appearance, gait, orientation and grounding before reverting temporary Wave 1 Acidic-only test. Protected recovery v324 unchanged.
+
+---
+
 # v600 — FIX NATIVE HAZMAT SCALE USING TRUE ANIMATED GEOMETRY — 2026-10-11
 
 - v599 actual Chromium run `38173255148` proved **10 Wave 1 Acidic zombies** use the real imported textured `assets/zombie_hazmat.glb` (both original skinned meshes, 53 bones, 4 genuine clips, original red mist, no JS errors). Both legs animate (tracked 0.60/0.12/0.49/0.41 radians); however the visual was **enormous** because the first-frame skinned `Box3` incorrectly measured `0.015137` before skin matrices resolved, producing a 126.84x holder scale and ~220-unit model.
