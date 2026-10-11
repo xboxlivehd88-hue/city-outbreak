@@ -39,6 +39,47 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   holder.scale.setScalar(original);model.updateWorldMatrix(true,true);
   return records;
  },
+ inspect:()=>{
+  const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
+  if(!z)return null;
+  const clip=parasiteBossAsset.animations[0];
+  const model=z.parasiteBossModel;
+  const materials=[],nodes=[],bones=[],skinned=[],meshes=[];
+  model.traverse(o=>{
+   if(o.isBone)bones.push({name:o.name,quaternion:o.quaternion.toArray(),position:o.position.toArray()});
+   if(o.isMesh){
+    meshes.push({name:o.name,skinned:o.isSkinnedMesh,visible:o.visible});
+    for(const m of Array.isArray(o.material)?o.material:[o.material]){
+     if(!m)continue;
+     materials.push({name:m.name,color:m.color?.getHexString(),type:m.type,
+      map:!!m.map,emissive:m.emissive?.getHexString(),roughness:m.roughness,
+      texture:{width:m.map?.image?.width,height:m.map?.image?.height},
+      mapColorSpace:m.map?.colorSpace});
+    }
+    if(o.isSkinnedMesh)skinned.push({name:o.name,boneCount:o.skeleton.bones.length,bones:o.skeleton.bones.slice(0,25).map(b=>b.name)});
+   }
+   if(o.name)nodes.push(o.name);
+  });
+  const action=z.parasiteBossMixer?._actions?.[0];
+  const tracks=clip.tracks.slice(0,25).map(t=>({name:t.name,type:t.ValueTypeName,keyframes:t.times.length,first:Array.from(t.values).slice(0,4)}));
+  let bound=0;const unbound=[];
+  for(const t of clip.tracks){
+   const target=t.name.split(".")[0];
+   if(THREE.PropertyBinding.findNode(model,target))bound++;
+   else if(unbound.length<28)unbound.push(target);
+  }
+  return {
+   clips:parasiteBossAsset.animations.map(c=>({name:c.name,duration:c.duration,tracks:c.tracks.length})),
+   totalTracks:clip.tracks.length,bound,unbound,tracks,
+   modelChildren:model.children.map(o=>o.name),nodes:nodes.slice(0,65),bones:bones.slice(0,48),
+   skinned,meshes,materials,
+   mixer:{time:z.parasiteBossMixer?.time,actionTime:action?.time,
+    actionWeight:action?.getEffectiveWeight(),actionEnabled:action?.enabled,
+    actionPaused:action?.paused,
+    boundProperties:action?._propertyBindings?.length,
+    bindingExample:action?._propertyBindings?.slice(0,5).map(p=>({name:p?.binding?.path,node:p?.binding?.node?.name}))}
+  };
+ },
  state:()=>{
   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
   return {wave,boss:z?.bossName||null,model:z?.parasiteBossModel?.name,
@@ -66,6 +107,12 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().calibrated,null,{timeout:20000});
   await page.waitForTimeout(550);
   report.state=await page.evaluate(()=>globalThis.__parasiteSmoke.state());
+  report.inspectionAtStart=await page.evaluate(()=>globalThis.__parasiteSmoke.inspect());
+  await page.waitForTimeout(1100);
+  report.inspectionAtLater=await page.evaluate(()=>globalThis.__parasiteSmoke.inspect());
+  report.inspectionAtLater.bones=report.inspectionAtLater.bones.slice(0,30);
+  report.inspectionAtLater.materials=report.inspectionAtLater.materials.slice(0,10);
+
   // The multi-scale diagnostic proved square-law behavior in v587; check the final live size here.
   assert.equal(report.http,200);
   assert.equal(report.assetHttp,200);
