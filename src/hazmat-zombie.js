@@ -4,7 +4,7 @@ import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 export function createHazmatZombieController(){
-  let source=null,loadingError=null,attached=0;
+  let source=null,loadingError=null,attached=0,attachDebug=null;
   const url="assets/zombie_hazmat.glb?v=599";
   const clipsRequired=["Zombie_Idle","Zombie_Walk_Root","Zombie_Skill"];
   function load(onReady){
@@ -45,7 +45,7 @@ export function createHazmatZombieController(){
       o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;
       o.userData.visualOnly=true;o.raycast=()=>{};
     });
-    if(skinned<2)return false;
+    if(skinned<2){attachDebug={failure:"Original skin not found",skinned};console.warn("HAZMAT ATTACH ISSUE",attachDebug);return false;}
     const mixer=new THREE.AnimationMixer(model),actions={};
     for(const [name,clip] of source.clips){
       const a=mixer.clipAction(clip);
@@ -57,7 +57,9 @@ export function createHazmatZombieController(){
     idle.reset().play();mixer.update(.025);model.updateWorldMatrix(true,true);
     const bounds=new THREE.Box3().setFromObject(model,true);
     const height=bounds.max.y-bounds.min.y;
-    if(!Number.isFinite(height)||height<.1||height>1000){mixer.stopAllAction();return false}
+    attachDebug={skinned,height,min:bounds.min.toArray(),max:bounds.max.toArray()};
+    console.log("HAZMAT ORIGINAL BOUNDS",attachDebug);
+    if(!Number.isFinite(height)||height<.000001){mixer.stopAllAction();return false}
     // Import-sized (not guessed) standing figure, same ~1.92m scale as walkers.
     const holder=new THREE.Group();holder.name="HazmatZombieVisual";
     holder.scale.setScalar(1.92/height);
@@ -104,5 +106,5 @@ export function createHazmatZombieController(){
     }
   }
   return {load,attach,sync,release,
-    status:()=>({loaded:!!source,error:String(loadingError||""),clips:[...(source?.clips.keys()||[])]})};
+    status:()=>({loaded:!!source,error:String(loadingError||""),clips:[...(source?.clips.keys()||[])],attached,attachDebug})};
 }
