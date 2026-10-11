@@ -1,3 +1,13 @@
+# v602 — HAZMAT STRIDE + FORWARD CRAWLER LEAN — 2026-10-11
+
+- USER TEST after v601: Hazmat still GLIDES a little while walking and, after both legs are shot off, Hazmat crawler LEANS BACK.
+- Inspected original user Hazmat GLB directly: `Zombie_Walk_Root` root HIP translation spans 67.8022 source units / 2.625s, within a parent that is 0.01 scale. **True clip stride ~0.678 model units**, prior v601 assumed 1.12 game units per loop and capped native walking at 5.6x. v602 derives `walkStride` directly from GLB root track and hip parent world scale on load, scales it with native holder and NPC scale, and increases timeScale cap to 12.5x for faster movement. All original skinned geometry/materials/knees/ankles unchanged.
+- **Backward crawler fixed** by changing Hazmat-only crawler holder Euler order from `XYZ` to `YXZ`. The existing +0.70rad X bend is now applied before the 180° yaw so it leans toward game pursuit direction **-Z**, not away. Same original Hazmat model, red mist, lowered crawler height, HP, severed limbs, hitboxes and physics.
+- Updated `src/hazmat-zombie.js`, loader title/build marker `./src/game.js?v=602`, asset cache `?v=602`, QA scripts/workflows, both handoffs. Temporary Wave 1 still 10 Hazmat Acidic for visual review; normal Wave 2+ enemy selection and every-10-round 19-boss rotation unchanged. **Protected recovery checkpoint v324 unchanged**.
+- v602 Chromium QA verifies original stride derivation, >5.6x walk cadence at simulated 2m/s, forward tilt, no generic limb/crawler, live ragdoll, grenade blast and boss selection. Verify tests and Pages deployment before declaring complete.
+
+---
+
 # v601 VERIFIED HAZMAT LIFECYCLE PASS — 2026-10-11
 
 - **Chromium Action run 38174837816 SUCCESS** on v601. Real 9.2MB imported Hazmat asset HTTP 200; all **10 Wave 1** Acidic zombies use original two diffuse-textured skinned meshes with **53 bones**, recorded walk and attack/idle; no JS errors; body height ~**1.98**.
