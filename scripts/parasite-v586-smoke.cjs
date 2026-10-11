@@ -94,7 +94,10 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    }
    return out;
   };
-  const before=pose(.10),after=pose(2.35);
+  // v594: the simulator advances phase by 0.075*4.65=.34875 per sample.
+  // Old .10 and 2.35 became .449 and 2.699: BOTH have sin ~=.434!
+  // They accidentally sampled the same leg pose, not opposing stride steps.
+  const before=pose(.10),after=pose(.10+Math.PI);
   const boneAngles={},boneWorldDistances={};
   for(const key of keys){
    const A=before.__bonePose[key],B=after.__bonePose[key];
