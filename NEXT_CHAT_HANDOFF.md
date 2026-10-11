@@ -1,3 +1,12 @@
+# v600 FINAL VERIFICATION COMPLETE — 2026-10-11
+
+- **Hazmat Acidic Wave 1 Chromium PASS:** GitHub Actions run **38173511195**, 10/10 original GLB actors attached, 53 bones, two skinned textured meshes, original recorded animations (both legs move), red mist and hitboxes intact, actual world height **1.9075864** with native holder scale **1.10**, zero JS errors.
+- **Previously approved Parasite + no-repeat boss rotation regression PASS:** GitHub Actions run **38173723704** after repairing test-only script syntax; the Parasite model, authentic material, retargeted Run/Attack motion, 4 hitboxes and 19-name pool remain functional. Suit/Panzer source unchanged.
+- **GitHub Pages deploy PASS:** run **38173723710**. Playable: `https://xboxlivehd88-hue.github.io/city-outbreak/?v=600-hazmat-native-scale`; loader `./src/game.js?v=600`.
+- The only temporary test override is **10 Acidic/Hazmat zombies on Wave 1**, so the user can approve size, facing, animations and effects before normal Wave 1 is restored. Normal waves 2+ and every-10-wave boss rotation unchanged. **Protected recovery v324 untouched**.
+
+---
+
 # v600 HAZMAT CHROMIUM PLAYTEST PASSED — 2026-10-11
 
 - **GitHub Actions browser run 38173511195 PASSED on v600:** real original `assets/zombie_hazmat.glb` HTTP 200, 10 Wave 1 Acidic enemies, all 10 authentic GLBs attached, original TWO textured SkinnedMeshes, 53 bones, true bilateral joint motion (0.60/0.12/0.49/0.41 rad), four recorded clips, red mist present, old rig hidden, existing head/body hitboxes shootable, 19-name boss rotation intact, zero browser JS exceptions. **Rendered actual world height 1.9075864** at static Hazmat holder scale 1.10.
