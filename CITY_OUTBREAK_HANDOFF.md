@@ -1,3 +1,14 @@
+# v601 — USER HAZMAT VIDEO AND FOUR TARGETED REGRESSIONS — 2026-10-11
+
+- User uploaded 39s gameplay video `2026-10-11 16-51-22.mp4` showing **gliding movement**, **frozen upright corpses**, **old generic detachable limbs**, **flashing into a generic crawler after two legs**, plus reports grenade freeze (not yet confirmed whether GPU/CPU).
+- ROOT CAUSES: 2.625s genuine walking GLB clip played too slowly for real navigation speed; ragdoll/knockdown animated only hidden support rig not native Hazmat skeleton; legacy detach path forced generic previous leg into view; leg-loss crawler path replaced actor with default procedural model.
+- v601 now maps native Hazmat Mixamo bones into EXISTING Hairibar PBD rig for dead/knocked-down physics, speeds genuine walk clip by distance traveled, routes native limb losses through in-place bone hiding without launching fake old limbs, and keeps the ORIGINAL Hazmat and its red mist throughout the two-leg crawler transition with adjusted head/torso shot hitboxes. No changes to normal zombie/boss visuals, protected v324, weapon mechanics, or globally approved explosion effects.
+- Hazmat GPU shadow casts disabled to reduce load; grenade damage/visuals untouched, and `document.documentElement.dataset.lastGrenadeLogicMs` now records **CPU grenade logic only** for diagnosis. User's real hardware slowdown not yet attributed.
+- Chromium v601 lifecycle tests exercise actual `killZ`, `updateRagdoll`, both `detachLeg` calls, object/model identity preservation, head/body hitboxes, and `explodeGrenade`, plus original texture/walk tests. Await results and real player review. Temporary Wave 1 still 10 only Hazmat/Acidic; boss every 10 and no-repeat unchanged.
+- Loader / native module cache now **v601**, protected recovery **v324 unchanged**.
+
+---
+
 # v600 FINAL VERIFICATION COMPLETE — 2026-10-11
 
 - **Hazmat Acidic Wave 1 Chromium PASS:** GitHub Actions run **38173511195**, 10/10 original GLB actors attached, 53 bones, two skinned textured meshes, original recorded animations (both legs move), red mist and hitboxes intact, actual world height **1.9075864** with native holder scale **1.10**, zero JS errors.
