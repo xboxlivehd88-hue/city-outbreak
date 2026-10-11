@@ -13,16 +13,15 @@ import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments} fro
 // v567: suit boss model is selected only when its name is drawn on a normal
 // boss wave (every 10th wave); preserve the approved v566 rig and collision.
 const SUIT_BOSS_NAME="SUIT GUY";
-// v568: panzer_zombie.glb — dedicated, isolated Wave 1 boss test.
-// This model is not part of BOSS_NAME_POOL until its behavior is approved.
-const PANZER_BOSS_NAME="PANZER ZOMBIE",PANZER_BOSS_TEST_WAVE=1;
+// v585: visually approved v584 Panzer joins the regular every-10-wave boss
+// roster. Preserve the exact v584 original GLB animation, scale, and combat.
+const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v570: match Suit Guy's 3.2-unit boss visual height using the actual
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
-// Visible deployment fingerprint, temporary during Wave 1 Panzer testing.
-// If the browser tab doesn't show v574, it isn't executing this build.
-document.title="CITY OUTBREAK — PANZER SIZE v584";
-document.documentElement.dataset.panzerTestBuild="584";
+// Visible source fingerprint, without the temporary Panzer-only test mode.
+document.title="CITY OUTBREAK — v585";
+document.documentElement.dataset.cityOutbreakBuild="585";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -4138,7 +4137,10 @@ function weaponSound(){
  if(weapon==="awm"){noise(.20,.92,1500);tone(54,.16,"square",.28);tone(92,.11,"sine",.12,.02);return}
  if(weapon==="grenadeLauncher"){noise(.14,.72,850);tone(62,.18,"square",.30);tone(118,.08,"sine",.12,.02);return}if(weapon==="shotgun"){noise(.16,.8,1800);tone(58,.22,"square",.34)}else if(weapon==="smg"){noise(.07,.5,2300);tone(105,.09,"square",.18)}else gunS()}
 
-const BOSS_NAME_POOL=[SUIT_BOSS_NAME,"GORE TITAN","THE REND KING","MAWBREAKER","THE ABATTOIR","RIBCAGE","MEATSAINT","BUTCHER PRIME","BLOODHOWL","THE SPLIT-JAW","THE RED GIANT","MARROWLORD","GUTSPIKE","THE CARRION OX","SCARFLESH","THE RUINED HERCULES","GRAVEBULK"];
+// Boss selections occur only on waves 10, 20, 30, ... . Each selected name
+// is used once before the shuffle bag refills. Panzer's exact v584 visual
+// attaches automatically when that name is drawn; Suit Guy remains included.
+const BOSS_NAME_POOL=[SUIT_BOSS_NAME,PANZER_BOSS_NAME,"GORE TITAN","THE REND KING","MAWBREAKER","THE ABATTOIR","RIBCAGE","MEATSAINT","BUTCHER PRIME","BLOODHOWL","THE SPLIT-JAW","THE RED GIANT","MARROWLORD","GUTSPIKE","THE CARRION OX","SCARFLESH","THE RUINED HERCULES","GRAVEBULK"];
 
 
 
@@ -6090,28 +6092,27 @@ function spawnQueuedZombies(){
 }
 function spawnWave(){
  let d=diff(wave);currentBoss=null;recentZombieSpawnPoints.length=0;zombieSpawnAngleOffset=rnd()*Math.PI*2;
- if(isBossWave(wave)||wave===PANZER_BOSS_TEST_WAVE){
-   // v568: Wave 1 is ONLY a Panzer testing wave; every 10th wave still uses
-   // the established Suit Guy + original randomized boss-name rotation.
-   const panzerTest=wave===PANZER_BOSS_TEST_WAVE;
-   const spec=panzerTest?{...bossWaveSpec(5),name:PANZER_BOSS_NAME}:bossWaveSpec(wave);
+ if(isBossWave(wave)){
+   // v585: End the isolated Panzer Wave 1 test. Every tenth wave draws ONE
+   // boss from the existing no-repeat roster, now including Panzer.
+   const spec=bossWaveSpec(wave);
    waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
-   const bossSpawn=panzerTest?findReachableZombieSpawn(12,22,false,null):findReachableZombieSpawn(36,70,false,null);
+   const bossSpawn=findReachableZombieSpawn(36,70,false,null);
    if(bossSpawn){sx=bossSpawn.x;sz=bossSpawn.z;ok=true}
    if(!ok){
      for(let tries=0;tries<60&&!ok;tries++){
-       const a=rnd()*Math.PI*2,dist=panzerTest?12+rnd()*10:36+rnd()*34;
+       const a=rnd()*Math.PI*2,dist=36+rnd()*34;
        sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;ok=validZombieSpawn(sx,sz)
      }
    }
    if(!ok){
-     const a=rnd()*Math.PI*2,dist=panzerTest?18:38+rnd()*30;
+     const a=rnd()*Math.PI*2,dist=38+rnd()*30;
      sx=px+Math.sin(a)*dist;sz=pz+Math.cos(a)*dist;
      const safe=pushOutsideBuilding(sx,sz,.85);sx=safe.x;sz=safe.z;
    }
    makeZombie(sx,sz,0,"boss",spec);waveSpawned=1;
-   show(panzerTest?(panzerBossLoadError?"PANZER BOSS — GLB LOAD FAILED":panzerBossAsset?"PANZER v584 SUIT-SIZED WALK TEST": "PANZER v584 — MODEL LOADING"):"BOSS INBOUND: "+spec.name);
+   show("BOSS INBOUND: "+spec.name);
    updateBossUI();ui();return;
  }
  waveTarget=d.count;waveSpawned=0;spawnQueuedZombies();ui()
