@@ -31,4 +31,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hazmat-v602-audit
-          path: HAZMAT_V601_AUDIT.json
+          path: HAZMAT_V602_AUDIT.json
