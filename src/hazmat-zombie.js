@@ -5,7 +5,7 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 export function createHazmatZombieController(){
   let source=null,loadingError=null,attached=0,attachDebug=null;
-  const url="assets/zombie_hazmat.glb?v=601";
+  const url="assets/zombie_hazmat.glb?v=602";
   const clipsRequired=["Zombie_Idle","Zombie_Walk_Root","Zombie_Skill"];
   function load(onReady){
     new GLTFLoader().load(url,gltf=>{
@@ -25,10 +25,29 @@ export function createHazmatZombieController(){
         for(let i=0;i<t.values.length;i+=3){t.values[i]=x;t.values[i+2]=z}
       }
       clips.set("Zombie_Walk_Root",walk);
-      source={scene:gltf.scene,clips};
+      // Original source root travels 67.802 units over its 2.625s
+      // walk cycle, under a 0.01-scale GLB parent = ~0.678 local units.
+      // Derive real stride from the uploaded model, not a guessed 1.12m.
+      const hipTrack=gltf.animations.find(a=>a.name==="Zombie_Walk_Root")
+        ?.tracks.find(t=>t.name.endsWith(".position")&&/hips/i.test(t.name));
+      let walkStride=0;
+      if(hipTrack?.values?.length>=6){
+        const name=hipTrack.name.slice(0,-".position".length);
+        let hip=null;
+        gltf.scene.traverse(o=>{if(o.isBone&&o.name===name)hip=o});
+        if(hip?.parent){
+          hip.parent.updateWorldMatrix(true,false);
+          const scale=new THREE.Vector3();hip.parent.getWorldScale(scale);
+          const v=hipTrack.values,n=v.length;
+          walkStride=Math.hypot((v[n-3]-v[0])*scale.x,
+            (v[n-1]-v[2])*scale.z);
+        }
+      }
+      if(!(walkStride>.25&&walkStride<1.5))walkStride=.678;
+      source={scene:gltf.scene,clips,walkStride};
       document.documentElement.dataset.hazmatAsset="loaded";
       document.documentElement.dataset.hazmatClips=[...clips.keys()].join(",");
-      console.log("CITY OUTBREAK v600: original native Hazmat GLB loaded", [...clips.keys()]);
+      console.log("CITY OUTBREAK v602: original Hazmat gait measured", {walkStride,clips:[...clips.keys()]});
       onReady?.();
     },undefined,e=>{
       loadingError=e;document.documentElement.dataset.hazmatAsset="failed";
@@ -69,6 +88,9 @@ export function createHazmatZombieController(){
    z.kind="crawler";z.nightmareType="crawler";z.hazmatCrawler=true;
    z.speed*=.82;z.legDamage=0;
    z.hazmatCrawlY=-.52;
+   // THREE XYZ unintentionally tips this yawed model BACK. Apply pitch
+   // before 180-degree heading so the upper body inclines FORWARD (-Z).
+   z.hazmatVisual.rotation.order="YXZ";
    if(z.hitMeshes)for(const h of z.hitMeshes)h.raycast=()=>{};
    const mat=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false});
    const hits=[];
@@ -127,6 +149,7 @@ export function createHazmatZombieController(){
     z.hazmatVisual=holder;z.hazmatModel=model;z.hazmatMixer=mixer;
     z.hazmatActions=actions;z.hazmatAction=idle;z.hazmatActionName="Zombie_Idle";
     z.hazmatSourceHeight=height;z.hazmatBones=bones;
+    z.hazmatStrideDistance=source.walkStride*holder.scale.x*z.g.scale.x;
     z.hazmatLastX=z.g.position.x;z.hazmatLastZ=z.g.position.z;
     // Hide old rig and legacy clothes. Retain original hidden gameplay collider,
     // old ragdoll physics, and ONLY the existing red contamination mist.
@@ -153,11 +176,12 @@ export function createHazmatZombieController(){
       next.reset().fadeIn(.14).play();
       z.hazmatAction=next;z.hazmatActionName=desired;
     }
-    // 2.625s native walk was only played at 1x while the zombie ran multiple
-    // meters: drive the REAL recorded stride cadence with ground displacement.
-    z.hazmatActions.Zombie_Walk_Root.timeScale=
-     THREE.MathUtils.clamp(speed*source.clips.get("Zombie_Walk_Root").duration/
-       (z.hazmatCrawler?.86:1.12),.6,5.6);
+    // v602: true imported gait distance, adjusted for THIS zombie's
+    // actual body scale. v601's 1.12m cycle and 5.6x max skated.
+    const stride=z.hazmatStrideDistance||.78;
+    z.hazmatActions.Zombie_Walk_Root.timeScale=THREE.MathUtils.clamp(
+      speed*source.clips.get("Zombie_Walk_Root").duration/
+        (z.hazmatCrawler?stride*.88:stride),.6,12.5);
     z.hazmatActions.Zombie_Skill.timeScale=source.clips.get("Zombie_Skill").duration/.60;
     z.hazmatMixer.update(Math.max(0,dt));
     // The real native clip contains scale tracks: reapply amputations
@@ -177,5 +201,5 @@ export function createHazmatZombieController(){
     }
   }
   return {load,attach,sync,release,freeze,crawl,suppressDetached,
-    status:()=>({loaded:!!source,error:String(loadingError||""),clips:[...(source?.clips.keys()||[])],attached,attachDebug})};
+    status:()=>({loaded:!!source,error:String(loadingError||""),clips:[...(source?.clips.keys()||[])],attached,attachDebug,walkStride:source?.walkStride})};
 }
