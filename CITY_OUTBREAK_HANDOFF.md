@@ -1,3 +1,13 @@
+# v601 VERIFIED HAZMAT LIFECYCLE PASS — 2026-10-11
+
+- **Chromium Action run 38174837816 SUCCESS** on v601. Real 9.2MB imported Hazmat asset HTTP 200; all **10 Wave 1** Acidic zombies use original two diffuse-textured skinned meshes with **53 bones**, recorded walk and attack/idle; no JS errors; body height ~**1.98**.
+- Native death PBD verified: `z.ragdoll.bodyPbd.holder===z.hazmatVisual`, ORIGINAL Hazmat suit **moves 0.86 world units** over 24 simulation frames after death instead of freezing upright. One severed leg: genuine Mixamo leg bone hidden, **ZERO** fake old-zombie limb objects ejected (ordinary blood particles remain). Both legs: same zombie root and **same original Hazmat model** converted to Hazmat crawler, both leg bones hidden, new hidden head and torso shot hitboxes present, no generic crawler transition.
+- Real grenade explosion test completed in **~37 ms of main-thread explosion logic** in CI (diagnostic `dataset.lastGrenadeLogicMs` = 37.2 ms); this alone **does not prove** low-end GPU frame rendering or user's device has no freeze. Hazmat GLB skinned shadow passes were disabled to reduce GPU work, while approved blast artwork remains intact. Request further user in-game feedback.
+- Independent **Parasite/19-boss no-repeat regression PASS** from run **38174739143**. GitHub Pages for latest v601 source committed up through test changes deployed successfully in run **38174837384**.
+- Current loader **`./src/game.js?v=601`**. Test URL `https://xboxlivehd88-hue.github.io/city-outbreak/?v=601-hazmat-physics-fix`. Temporary Wave 1 still Acidic/Hazmat only, await user visual approval; other enemy kinds and bosses remain unchanged. Protected recovery **v324 unchanged**.
+
+---
+
 # v601 — USER HAZMAT VIDEO AND FOUR TARGETED REGRESSIONS — 2026-10-11
 
 - User uploaded 39s gameplay video `2026-10-11 16-51-22.mp4` showing **gliding movement**, **frozen upright corpses**, **old generic detachable limbs**, **flashing into a generic crawler after two legs**, plus reports grenade freeze (not yet confirmed whether GPU/CPU).
