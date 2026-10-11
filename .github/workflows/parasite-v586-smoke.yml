@@ -1,0 +1,33 @@
+name: v586 Parasite Wave 1 smoke
+on:
+  push:
+    paths:
+      - 'src/game.js'
+      - '.github/workflows/parasite-v586-smoke.yml'
+      - 'scripts/parasite-v586-smoke.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  parasite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Live model and Wave 1 browser smoke
+        run: |
+          python3 -m http.server 4173 >/tmp/parasite-server.log 2>&1 &
+          sleep 2
+          node scripts/parasite-v586-smoke.cjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parasite-v586-audit
+          path: PARASITE_V586_AUDIT.json

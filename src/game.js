@@ -16,12 +16,21 @@ const SUIT_BOSS_NAME="SUIT GUY";
 // v585: visually approved v584 Panzer joins the regular every-10-wave boss
 // roster. Preserve the exact v584 original GLB animation, scale, and combat.
 const PANZER_BOSS_NAME="PANZER ZOMBIE";
+// v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
+const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
+let parasiteBossAsset=null,parasiteBossLoadError=null;
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=586",gltf=>{
+ parasiteBossAsset=gltf;
+ console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
+ for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
+},undefined,error=>{parasiteBossLoadError=error;console.error("CITY OUTBREAK Parasite GLB failed",error)});
+
 // v570: match Suit Guy's 3.2-unit boss visual height using the actual
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v585";
-document.documentElement.dataset.cityOutbreakBuild="585";
+document.title="CITY OUTBREAK — v586";
+document.documentElement.dataset.cityOutbreakBuild="586";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -420,6 +429,80 @@ function attachPanzerBossVisual(z){
    importedAnimation:z.panzerBossAnimation||null,
    proceduralBones:z.walkerBones?.size||0,
    hitboxes:hits.length
+ });
+}
+
+
+/* v586: original parasite GLB displayed during isolated Wave 1 testing.
+ * No modifications to approved Panzer/Suit rigs, scaling, combat or rotation. */
+function attachParasiteBossVisual(z){
+ if(!z||z.dead||z.kind!=="boss"||z.bossName!==PARASITE_BOSS_NAME||z.parasiteBossVisual||!parasiteBossAsset)return;
+ const model=SkeletonUtils.clone(parasiteBossAsset.scene);
+ const source=new THREE.Box3().setFromObject(model,true);
+ const height=source.max.y-source.min.y;
+ if(!Number.isFinite(height)||height<.001){console.error("Parasite GLB has invalid visual height",height);return}
+ const center=source.getCenter(new THREE.Vector3());
+ model.name="ParasiteBossOriginalGLB";
+ model.position.x-=center.x;model.position.y-=source.min.y;model.position.z-=center.z;
+ const holder=new THREE.Group();holder.name="ParasiteBossVisual";
+ holder.scale.setScalar(PARASITE_BOSS_VISUAL_HEIGHT/height);holder.rotation.y=Math.PI;
+ holder.add(model);z.g.add(holder);
+ z.parasiteBossVisual=holder;z.parasiteBossModel=model;z.parasiteBossSourceHeight=height;
+ model.traverse(o=>{if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true}});
+ if(z.hitMeshes)for(const h of z.hitMeshes)if(h)h.raycast=()=>{};
+ // Provisional boss-sized explicit hitboxes: correct the anatomical alignment
+ // once this NEW character is inspected, without disturbing existing bosses.
+ const mat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthTest:false,depthWrite:false,colorWrite:false}),hits=[];
+ const add=(name,geometry,y,part,isHead=false)=>{
+  const m=new THREE.Mesh(geometry,mat);
+  m.name=name;m.position.y=y;m.userData.zombie=z;m.userData.part=part;
+  if(isHead)m.userData.isHead=true;
+  m.castShadow=false;m.receiveShadow=false;z.g.add(m);hits.push(m);
+  z.ownedGeometries.push(geometry);
+ };
+ add("ParasiteBossChestHitbox",new THREE.BoxGeometry(1.12,1.08,.90),2.02,"torso");
+ add("ParasiteBossAbdomenHitbox",new THREE.BoxGeometry(1.06,.75,.90),1.31,"torso");
+ add("ParasiteBossLowerHitbox",new THREE.BoxGeometry(.88,.84,.79),.58,"torso");
+ add("ParasiteBossHeadHitbox",new THREE.SphereGeometry(.29,12,10),2.91,"head",true);
+ z.ownedMaterials.push(mat);z.hitMeshes=hits;z.parasiteBossHitboxes=hits;
+ z.suitBossBlastHitboxes=hits;
+ if(z.rigVisual)z.rigVisual.visible=false;
+ const clips=parasiteBossAsset.animations||[];
+ const clip=clips.find(c=>/walk|run|crawl|locomotion|move|stride/i.test(c.name))||clips[0];
+ if(clip){
+  z.parasiteBossMixer=new THREE.AnimationMixer(model);
+  z.parasiteBossMixer.clipAction(clip).reset().setLoop(THREE.LoopRepeat,Infinity).play();
+  z.parasiteBossClip=clip.name;
+ }
+ z.parasiteSizeFrames=0;z.parasiteSizeCalibrated=false;
+ console.log("CITY OUTBREAK v586: Parasite original boss attached",{
+  sourceHeight:height,clip:z.parasiteBossClip||null,hitboxes:hits.length
+ });
+}
+function syncParasiteBossVisual(z,dt){
+ if(!z?.parasiteBossVisual||z.dead)return;
+ if(z.parasiteBossMixer)z.parasiteBossMixer.update(dt);
+ if(z.parasiteSizeCalibrated||++z.parasiteSizeFrames<3)return;
+ const holder=z.parasiteBossVisual,model=z.parasiteBossModel;
+ const rootScale=new THREE.Vector3(),rootPos=new THREE.Vector3();
+ z.g.getWorldScale(rootScale);z.g.getWorldPosition(rootPos);
+ const target=PARASITE_BOSS_VISUAL_HEIGHT*Math.abs(rootScale.y);
+ if(!Number.isFinite(target)||target<=0)return;
+ const bounds=new THREE.Box3();let before=0,after=0;
+ for(let i=0;i<4;i++){
+  model.updateWorldMatrix(true,true);bounds.setFromObject(model,true);
+  after=bounds.max.y-bounds.min.y;
+  if(!i)before=after;
+  if(!Number.isFinite(after)||after<.001||Math.abs(after-target)/target<.06)break;
+  holder.scale.multiplyScalar(THREE.MathUtils.clamp(target/after,.35,2));
+ }
+ model.updateWorldMatrix(true,true);bounds.setFromObject(model,true);
+ after=bounds.max.y-bounds.min.y;
+ const foot=(rootPos.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
+ if(Number.isFinite(foot))holder.position.y+=THREE.MathUtils.clamp(foot,-8,8);
+ z.parasiteSizeCalibrated=true;z.parasiteMeasuredHeight=after;
+ console.log("CITY OUTBREAK v586: Parasite test height",{
+  before,after,target,clip:z.parasiteBossClip||null
  });
 }
 
@@ -4867,6 +4950,7 @@ function syncSuitBossWalk(z,dt){
  rot("R_Foot",-.58*rk+.08*s*walking);
 }
 function syncBasicWalkerVisual(z,dt=0){
+ if(z?.parasiteBossVisual){syncParasiteBossVisual(z,dt);return;}
  // An imported Panzer animation owns its original skeleton. Never overwrite it
  // with the procedural Shambler bone rotations.
  if(z?.panzerBossMixer){
@@ -5222,8 +5306,10 @@ function releaseZombieVisual(z){
  // the removed mixer/root can then be garbage-collected safely.
  if(z.radiatedGreenMixer){try{z.radiatedGreenMixer.stopAllAction()}catch(_){}}
  if(z.naturalCrawlerMixer){try{z.naturalCrawlerMixer.stopAllAction()}catch(_){}}
+ if(z.parasiteBossMixer){try{z.parasiteBossMixer.stopAllAction()}catch(_){}}
  if(z.mixer){try{z.mixer.stopAllAction()}catch(_){}}
  z.naturalCrawlerMixer=null;z.naturalCrawlerActions=null;z.naturalCrawlerAction=null;
+ z.parasiteBossMixer=null;z.parasiteBossVisual=null;z.parasiteBossModel=null;
  z.naturalCrawlerVisual=null;z.naturalCrawlerBones=null;
  z.radiatedGreenMixer=null;z.mixer=null;z.rigActions=null;z.rigBase=null;z.rigTransient=null;
  if(z.rigMaterials){for(const m of z.rigMaterials){try{m.dispose()}catch(_){}}z.rigMaterials.length=0}
@@ -5800,7 +5886,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(kind==="radiated")buildRadiatedGreenHitboxes(zz);
  if(kind==="shambler")buildBasicWalkerHitboxes(zz);
  if(naturalCrawlerSpawn)attachNaturalCrawlerVisual(zz);
- zombies.push(zz);if(kind==="boss"){currentBoss=zz;attachSuitBossVisual(zz);attachPanzerBossVisual(zz)}
+ zombies.push(zz);if(kind==="boss"){currentBoss=zz;attachSuitBossVisual(zz);attachPanzerBossVisual(zz);attachParasiteBossVisual(zz)}
 }
 
 function medkit(x,z){let g=new THREE.Group();box(1,.38,.72,M(0xe7e4da),0,.35,0,g);box(.18,.05,.5,M(0xa52c2c),0,.56,0,g);box(.5,.05,.18,M(0xa52c2c),0,.56,0,g);g.position.set(x,0,z);scene.add(g);kits.push({g,used:false})}medkit(-10,8);medkit(16,56);medkit(-17,91);
@@ -6092,10 +6178,10 @@ function spawnQueuedZombies(){
 }
 function spawnWave(){
  let d=diff(wave);currentBoss=null;recentZombieSpawnPoints.length=0;zombieSpawnAngleOffset=rnd()*Math.PI*2;
- if(isBossWave(wave)){
+ if(isBossWave(wave)||wave===PARASITE_BOSS_TEST_WAVE){
    // v585: End the isolated Panzer Wave 1 test. Every tenth wave draws ONE
    // boss from the existing no-repeat roster, now including Panzer.
-   const spec=bossWaveSpec(wave);
+   const spec=wave===PARASITE_BOSS_TEST_WAVE?{...bossWaveSpec(wave),name:PARASITE_BOSS_NAME}:bossWaveSpec(wave);
    waveTarget=1;waveSpawned=0;
    let sx=px,sz=pz,ok=false;
    const bossSpawn=findReachableZombieSpawn(36,70,false,null);
@@ -6814,6 +6900,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  // the same pre-fall setup. Stop animation only after leaving the current bone
  // transforms exactly where the last live frame put them.
  if(z.mixer)z.mixer.stopAllAction();
+ if(z.parasiteBossMixer)z.parasiteBossMixer.timeScale=0;
  // v553: stopAllAction() UNBINDS and restores the Mixamo T-pose instantly,
  // causing the visible crawler to spring upright at death. Freeze the last
  // animated pose in place (keep actions bound), then release it into PBD.

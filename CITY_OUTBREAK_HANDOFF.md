@@ -1,3 +1,12 @@
+# v586 — NEW PARASITE MONSTER ISOLATED WAVE 1 BOSS TEST — 2026-10-11
+
+- User uploaded `assets/parasite_des_zombie_monster_game_model_free.glb` to main. v586 loads original glTF GLB, clones its actual mesh/skin and uses its embedded walk-like animation if one exists. No forced skeleton changes in this initial inspection build. Provisional name: PARASITE MONSTER.
+- Wave 1 temporarily spawns ONE Parasite boss so the user can inspect size, facing and walking. Provisional body/head hitboxes are present and shared with launcher/explosion collision; final anatomical targeting requires user verification. Source scene centered/scaled to 3.20 local height, with bounded single-pass recalibration after mixer updates; in-world feet grounded.
+- **Not in normal boss rotation.** The 18-name no-repeat roster for Wave 10/20/30 still includes the APPROVED Suit Guy and Panzer and has NOT gained Parasite. Source of approved Panzer walking/size or Suit Guy remains untouched. Existing weapons, map, zombies, ragdolls, explosions, graphics and protected checkpoint v324 untouched.
+- Loader is `./src/game.js?v=586`, asset queried with `?v=586`, title/data v586. Must confirm browser execution and model appearance; a source commit alone does not establish that this new boss looks or walks right. Once approved remove temporary Wave 1 test and add it to rotation.
+
+---
+
 # v585 VERIFICATION — APPROVED PANZER IN NORMAL BOSS ROTATION — 2026-10-11
 
 - User approved v584 Panzer size and both-leg walking, and instructed return to normal boss rotation. v585 committed, `index.html` loader `./src/game.js?v=585`. Model GLB remains `assets/panzer_zombie.glb?v=584` deliberately (unchanged approved asset). Approved Panzer `PANZER_VISUAL_HEIGHT=3.20`, .229 native live boss size reduction, leg bone animation, hitboxes and attacks **unchanged**.
