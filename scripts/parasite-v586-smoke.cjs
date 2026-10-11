@@ -39,6 +39,68 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   holder.scale.setScalar(original);model.updateWorldMatrix(true,true);
   return records;
  },
+ native:()=>{
+  const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
+  return [...(z?.parasiteNativeBones?.keys()||[])];
+ },
+ skinMotion:()=>{
+  const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
+  if(!z||!z.parasiteNativeBones)return {error:"missing test actor"};
+  const keys=["LeftUpLeg","LeftLeg","RightUpLeg","RightLeg"];
+  const samples=Object.fromEntries(keys.map(k=>[k,[]]));
+  z.parasiteBossModel.traverse(mesh=>{
+   if(!mesh.isSkinnedMesh)return;
+   const ix=mesh.geometry.getAttribute("skinIndex"),wt=mesh.geometry.getAttribute("skinWeight");
+   if(!ix||!wt)return;
+   for(const key of keys){
+    const joint=z.parasiteNativeBones.get(key);
+    if(!joint)continue;
+    const boneIndex=mesh.skeleton.bones.indexOf(joint);
+    if(boneIndex<0)continue;
+    const arr=samples[key];
+    for(let i=0;i<ix.count&&arr.length<55;i++){
+     for(let j=0;j<4;j++)if(ix.getComponent(i,j)===boneIndex&&wt.getComponent(i,j)>.48){
+      arr.push({mesh,index:i});break;
+     }
+    }
+   }
+  });
+  const pose=(phase)=>{
+   z.parasiteWalkPhase=phase;z.parasiteWalkBlend=1;
+   z.parasiteWalkLastX=z.g.position.x-.075;
+   syncParasiteBossVisual(z,.016);
+   z.parasiteBossModel.updateWorldMatrix(true,true);
+   z.parasiteBossModel.traverse(m=>{if(m.isSkinnedMesh)m.skeleton.update()});
+   const out={};
+   for(const key of keys){
+    out[key]=samples[key].map(({mesh,index})=>{
+     const p=new THREE.Vector3();
+     mesh.getVertexPosition(index,p);mesh.localToWorld(p);
+     return p.toArray();
+    });
+   }
+   return out;
+  };
+  const before=pose(.10),after=pose(2.35);
+  const displacement={};
+  for(const key of keys){
+   const d=before[key].map((p,i)=>Math.hypot(...p.map((v,j)=>v-after[key][i][j])));
+   displacement[key]={vertices:d.length,average:d.reduce((a,b)=>a+b,0)/Math.max(1,d.length),
+    max:Math.max(0,...d)};
+  }
+  const materials=[];
+  z.parasiteBossModel.traverse(m=>{
+   if(!m.isSkinnedMesh)return;
+   const c=m.geometry.getAttribute("color");
+   const values=[];
+   if(c)for(let i=0;i<c.count;i+=Math.max(1,Math.floor(c.count/80)))
+    values.push([c.getX(i),c.getY(i),c.getZ(i)]);
+   materials.push({name:m.name,usesVertexColors:m.material.vertexColors,
+    hasColorAttribute:!!c,colorSamples:values.length,
+    distinct:new Set(values.map(v=>v.map(x=>Math.round(x*20)).join("_"))).size});
+  });
+  return {displacement,materials};
+ },
  inspect:()=>{
   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
   if(!z)return null;
@@ -108,10 +170,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   await page.waitForTimeout(550);
   report.state=await page.evaluate(()=>globalThis.__parasiteSmoke.state());
   report.inspectionAtStart=await page.evaluate(()=>globalThis.__parasiteSmoke.inspect());
-  report.nativeNames=await page.evaluate(()=>{
-   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
-   return [...(z?.parasiteNativeBones?.keys()||[])];
-  });
+  report.nativeNames=await page.evaluate(()=>globalThis.__parasiteSmoke.native());
+  report.actualSkinMotion=await page.evaluate(()=>globalThis.__parasiteSmoke.skinMotion());
   await page.waitForTimeout(1100);
   report.inspectionAtLater=await page.evaluate(()=>globalThis.__parasiteSmoke.inspect());
   report.inspectionAtLater.bones=report.inspectionAtLater.bones.slice(0,30);
@@ -130,6 +190,13 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const native=report.nativeNames||[];
   assert(["LeftArm","RightArm","LeftUpLeg","RightUpLeg","LeftLeg","RightLeg"].every(k=>native.includes(k)),
    "Original imported Mixamo limbs unavailable: "+native.join(","));
+  for(const key of ["LeftUpLeg","LeftLeg","RightUpLeg","RightLeg"]){
+   const v=report.actualSkinMotion?.displacement[key];
+   assert(v?.vertices>=10&&v.average>.015,
+    "REAL "+key+" skinned mesh not walking: "+JSON.stringify(v));
+  }
+  assert(report.actualSkinMotion.materials.every(m=>m.usesVertexColors&&m.hasColorAttribute&&m.distinct>5),
+    "Imported meshes are still white: "+JSON.stringify(report.actualSkinMotion.materials));
   assert(report.inspectionAtStart.materials.some(m=>m.name.includes("parasitezombie")),
    "Imported original mesh materials missing");
   assert.equal(report.state.calibrated,true);
