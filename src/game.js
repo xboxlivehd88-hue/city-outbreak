@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null,parasiteBossOriginalTextures=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=595",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=596",gltf=>{
  // The native Sketchfab GLB contains FOUR embedded PNGs but references them
  // through old KHR_materials_pbrSpecularGlossiness. Our GLTFLoader leaves
  // these source diffuse images unassigned on imported StandardMaterials.
@@ -49,8 +49,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v595";
-document.documentElement.dataset.cityOutbreakBuild="595";
+document.title="CITY OUTBREAK — v596";
+document.documentElement.dataset.cityOutbreakBuild="596";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -519,7 +519,7 @@ function bindParasiteBones(z,model){
  const all=new Map();
  model.traverse(o=>{if(o.isBone)all.set(o.name.replace(/_[0-9]+$/,""),o)});
  const want=["Hips","Spine","Spine2","Head","LeftArm","LeftForeArm","RightArm","RightForeArm",
-  "LeftUpLeg","LeftLeg","LeftFoot","RightUpLeg","RightLeg","RightFoot"];
+  "LeftUpLeg","LeftLeg","LeftFoot","RightUpLeg","RightLeg","RightFoot","LeftShoulder","RightShoulder","LeftHand","RightHand"];
  const joints=new Map(),rest=new Map();
  for(const key of want){
   const bone=all.get("mixamorig"+key);
@@ -540,7 +540,7 @@ function attachParasiteBossVisual(z){
  model.position.x-=center.x;model.position.y-=box.min.y;model.position.z-=center.z;
  const holder=new THREE.Group();holder.name="ParasiteBossVisual";
  // Exact v593 browser-verified static scale. Never alter the root live scale.
- holder.scale.setScalar(1.57763);holder.rotation.y=Math.PI;
+ holder.scale.setScalar(1.419867);holder.rotation.y=Math.PI;
  holder.add(model);z.g.add(holder);
  z.parasiteBossVisual=holder;z.parasiteBossModel=model;z.parasiteBossSourceHeight=h;
  model.traverse(o=>{if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true}});
@@ -550,6 +550,7 @@ function attachParasiteBossVisual(z){
  const add=(name,geo,y,part,head=false)=>{
   const v=new THREE.Mesh(geo,mat);v.name=name;v.position.y=y;
   v.userData.zombie=z;v.userData.part=part;if(head)v.userData.isHead=true;
+  v.position.y*=.9;v.scale.setScalar(.9);
   v.castShadow=false;v.receiveShadow=false;z.g.add(v);
   hits.push(v);z.ownedGeometries.push(geo);
  };
@@ -591,13 +592,13 @@ function syncParasiteBossVisual(z,dt){
    const local=axis.clone().applyQuaternion(p.invert()).normalize();
    bone.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(local,angle));
   };
-  const ll=Math.max(0,s),rl=Math.max(0,-s);
-  rotate("LeftUpLeg",lateral,(.53*s-.05)*w);
-  rotate("RightUpLeg",lateral,(-.53*s-.05)*w);
-  rotate("LeftLeg",lateral,-(.12+.83*ll*ll)*w);
-  rotate("RightLeg",lateral,-(.12+.83*rl*rl)*w);
-  rotate("LeftFoot",lateral,.55*(.12+.83*ll*ll)*w);
-  rotate("RightFoot",lateral,.55*(.12+.83*rl*rl)*w);
+  const ll=Math.max(0,Math.sin(t+.38)),rl=Math.max(0,Math.sin(t+Math.PI+.38));
+  rotate("LeftUpLeg",lateral,(.60*s-.09)*w);
+  rotate("RightUpLeg",lateral,(-.60*s-.09)*w);
+  rotate("LeftLeg",lateral,-(.30+1.12*ll)*w);
+  rotate("RightLeg",lateral,-(.30+1.12*rl)*w);
+  rotate("LeftFoot",lateral,(.15+.52*(.30+1.12*ll)) * w);
+  rotate("RightFoot",lateral,(.15+.52*(.30+1.12*rl)) * w);
   rotate("Hips",new THREE.Vector3(0,1,0),.03*s*w);
   rotate("Spine",new THREE.Vector3(0,1,0),-.025*s*w);
   rotate("Head",new THREE.Vector3(0,1,0),.024*s*w);
@@ -605,6 +606,8 @@ function syncParasiteBossVisual(z,dt){
   const toward=new THREE.Vector3(px-x,0,pz-zz);
   if(toward.lengthSq()<.0001)toward.set(0,0,1);
   toward.normalize();
+  rotate("LeftShoulder",new THREE.Vector3(0,1,0),.055+.055*s*w);
+  rotate("RightShoulder",new THREE.Vector3(0,1,0),-.055+.055*s*w);
   for(const [side,arm,elbow] of [[-1,"LeftArm","LeftForeArm"],[1,"RightArm","RightForeArm"]]){
    const a=bones.get(arm),b=bones.get(elbow);
    if(!a||!b||!a.parent)continue;
@@ -612,12 +615,12 @@ function syncParasiteBossVisual(z,dt){
    const from=new THREE.Vector3(),to=new THREE.Vector3();
    a.getWorldPosition(from);b.getWorldPosition(to);
    const source=to.sub(from).normalize();
-   const desired=toward.clone().addScaledVector(lateral,side*.16)
-    .add(new THREE.Vector3(0,-.25+.055*s*w,0)).normalize();
+   const desired=toward.clone().addScaledVector(lateral,side*(.53+.10*c*w))
+    .add(new THREE.Vector3(0,-.18+side*.20*s*w,0)).normalize();
    const delta=new THREE.Quaternion().setFromUnitVectors(source,desired);
    const q=new THREE.Quaternion();a.parent.getWorldQuaternion(q);
    a.quaternion.premultiply(q.clone().invert().multiply(delta).multiply(q));
-   rotate(elbow,lateral,side*(.17+.1*c*w));
+   rotate(elbow,lateral,side*(.31+.19*(1-side*s*w)));
   }
  }
  if(!z.parasiteSizeCalibrated&&++z.parasiteSizeFrames>=3){
