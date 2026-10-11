@@ -53,6 +53,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
     const walker=zombies.find(z=>z.kind==="acidic"&&!z.dead&&z.hazmatVisual);
     if(!crawler||!walker)throw new Error("Missing original Hazmat crawler/walker");
     const v=new THREE.Vector3(0,1,0).applyQuaternion(crawler.hazmatVisual.quaternion);
+    // Isolate standing walk cadence from any grenade knockdown state.
+    walker.knockdown=null;
     walker.attackAnim=0;
     walker.hazmatLastX=walker.g.position.x;
     walker.hazmatLastZ=walker.g.position.z;
