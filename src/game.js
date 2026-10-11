@@ -615,7 +615,7 @@ function syncParasiteBossVisual(z,dt){
    const from=new THREE.Vector3(),to=new THREE.Vector3();
    a.getWorldPosition(from);b.getWorldPosition(to);
    const source=to.sub(from).normalize();
-   const desired=toward.clone().addScaledVector(lateral,side*(.53+.10*c*w))
+   const desired=toward.clone().addScaledVector(lateral,side*(.82+.08*c*w))
     .add(new THREE.Vector3(0,-.18+side*.20*s*w,0)).normalize();
    const delta=new THREE.Quaternion().setFromUnitVectors(source,desired);
    const q=new THREE.Quaternion();a.parent.getWorldQuaternion(q);
