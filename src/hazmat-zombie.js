@@ -5,7 +5,7 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 export function createHazmatZombieController(){
   let source=null,loadingError=null,attached=0,attachDebug=null;
-  const url="assets/zombie_hazmat.glb?v=599";
+  const url="assets/zombie_hazmat.glb?v=600";
   const clipsRequired=["Zombie_Idle","Zombie_Walk_Root","Zombie_Skill"];
   function load(onReady){
     new GLTFLoader().load(url,gltf=>{
@@ -28,7 +28,7 @@ export function createHazmatZombieController(){
       source={scene:gltf.scene,clips};
       document.documentElement.dataset.hazmatAsset="loaded";
       document.documentElement.dataset.hazmatClips=[...clips.keys()].join(",");
-      console.log("CITY OUTBREAK v599: original native Hazmat GLB loaded", [...clips.keys()]);
+      console.log("CITY OUTBREAK v600: original native Hazmat GLB loaded", [...clips.keys()]);
       onReady?.();
     },undefined,e=>{
       loadingError=e;document.documentElement.dataset.hazmatAsset="failed";
@@ -62,7 +62,10 @@ export function createHazmatZombieController(){
     if(!Number.isFinite(height)||height<.000001){mixer.stopAllAction();return false}
     // Import-sized (not guessed) standing figure, same ~1.92m scale as walkers.
     const holder=new THREE.Group();holder.name="HazmatZombieVisual";
-    holder.scale.setScalar(1.92/height);
+    // v600: GLTFLoader's first-frame Mixamo bind matrix reports 0.015m
+    // but the real animated mesh measures 1.73m at holder scale 1.
+    // Never magnify by 126x based on that stale startup bound.
+    holder.scale.setScalar(1.10);
     holder.rotation.y=Math.PI;
     model.position.set(-(bounds.min.x+bounds.max.x)/2,-bounds.min.y,
       -(bounds.min.z+bounds.max.z)/2);
@@ -77,7 +80,7 @@ export function createHazmatZombieController(){
     else z.g.traverse(o=>{if(o.isMesh&&o!==z.hazardMist&&!o.userData.visualOnly)o.visible=false});
     if(z.hazardMist)z.hazardMist.visible=true;
     document.documentElement.dataset.hazmatAttached=String(++attached);
-    console.log("CITY OUTBREAK v599: native Hazmat visual attached",
+    console.log("CITY OUTBREAK v600: native Hazmat visual attached",
       {originalHeight:height,scale:holder.scale.x,skinned});
     return true;
   }
