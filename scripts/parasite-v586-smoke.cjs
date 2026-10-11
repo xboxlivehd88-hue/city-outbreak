@@ -39,6 +39,41 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   holder.scale.setScalar(original);model.updateWorldMatrix(true,true);
   return records;
  },
+ preview:()=>{
+  // Isolated front three-quarter visual QA of the ACTUAL 70-bone GLB.
+  // Show full skin after two different imported Run/Attack poses.
+  const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
+  if(!z?.parasiteWalkAction||!z?.parasiteArmAction)return [];
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0x29332f);
+  const copy=SkeletonUtils.clone(z.parasiteBossModel);
+  const root=new THREE.Group();root.rotation.y=z.parasiteBossVisual.rotation.y;
+  root.scale.set(z.g.scale.x*z.parasiteBossVisual.scale.x,
+   z.g.scale.y*z.parasiteBossVisual.scale.y,
+   z.g.scale.z*z.parasiteBossVisual.scale.z);
+  root.add(copy);scene.add(root);
+  scene.add(new THREE.HemisphereLight(0xdfe8f2,0x55543e,2.7));
+  const key=new THREE.DirectionalLight(0xffffff,2.7);key.position.set(5,10,8);scene.add(key);
+  const fill=new THREE.DirectionalLight(0xc4d0ff,1.1);fill.position.set(-4,5,-6);scene.add(fill);
+  const mixer=new THREE.AnimationMixer(copy);
+  const w=mixer.clipAction(z.parasiteWalkAction.getClip()),a=mixer.clipAction(z.parasiteArmAction.getClip());
+  w.setLoop(THREE.LoopRepeat,Infinity).play();a.setLoop(THREE.LoopRepeat,Infinity).play();
+  const rd=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true,alpha:false});
+  rd.setSize(240,290);rd.setPixelRatio(1);rd.outputColorSpace=THREE.SRGBColorSpace;
+  const camera=new THREE.PerspectiveCamera(42,240/290,.1,100);
+  const result=[];
+  for(const t of [.12,.50,1.27]){
+   mixer.setTime(t);
+   root.updateMatrixWorld(true);
+   const box=new THREE.Box3().setFromObject(root,true);
+   const size=box.getSize(new THREE.Vector3()),c=box.getCenter(new THREE.Vector3());
+   const dy=Math.max(3.2,size.y);
+   camera.position.set(c.x+dy*.17,c.y+dy*.05,c.z+dy*1.88);
+   camera.lookAt(c);
+   rd.render(scene,camera);
+   result.push({time:t,image:rd.domElement.toDataURL("image/jpeg",.7)});
+  }
+  rd.dispose();return result;
+ },
  native:()=>{
   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
   return [...(z?.parasiteNativeBones?.keys()||[])];
@@ -223,6 +258,14 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   report.inspectionAtStart=await page.evaluate(()=>globalThis.__parasiteSmoke.inspect());
   report.nativeNames=await page.evaluate(()=>globalThis.__parasiteSmoke.native());
   report.actualSkinMotion=await page.evaluate(()=>globalThis.__parasiteSmoke.skinMotion());
+  try{
+   const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
+   report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
+   for(let i=0;i<frames.length;i++){
+    console.log("PARASITE_V597_VISUAL_FRAME_"+i+"="+frames[i].image);
+   }
+  }catch(e){report.previewError=String(e)}
+
   await page.waitForTimeout(1100);
   report.inspectionAtLater=await page.evaluate(()=>globalThis.__parasiteSmoke.inspect());
   report.inspectionAtLater.bones=report.inspectionAtLater.bones.slice(0,30);
