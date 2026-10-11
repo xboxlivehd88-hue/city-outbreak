@@ -1,9 +1,57 @@
 {
   "test": "v585 boss rotation integration",
   "version": "585",
-  "pass": false,
-  "time": "2026-10-11T04:35:16.795Z",
+  "pass": true,
+  "time": "2026-10-11T04:37:04.584Z",
   "http": 200,
-  "failure": "locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#start')\n    - locator resolved to <button id=\"start\">START OUTBREAK</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action\n    - click action done\n    - waiting for scheduled navigations to finish\n\n    at /home/runner/work/city-outbreak/city-outbreak/scripts/boss-rotation-validation.cjs:59:32",
-  "completedAt": "2026-10-11T04:36:02.501Z"
+  "wave1": {
+    "wave": 1,
+    "boss": null,
+    "target": 10,
+    "spawned": 10,
+    "candidateNames": [
+      "SUIT GUY",
+      "PANZER ZOMBIE",
+      "GORE TITAN",
+      "THE REND KING",
+      "MAWBREAKER",
+      "THE ABATTOIR",
+      "RIBCAGE",
+      "MEATSAINT",
+      "BUTCHER PRIME",
+      "BLOODHOWL",
+      "THE SPLIT-JAW",
+      "THE RED GIANT",
+      "MARROWLORD",
+      "GUTSPIKE",
+      "THE CARRION OX",
+      "SCARFLESH",
+      "THE RUINED HERCULES",
+      "GRAVEBULK"
+    ],
+    "panzerModelReady": true,
+    "panzerSize": 3.2,
+    "visiblePanzerTest": false
+  },
+  "bossPool": {
+    "size": 18,
+    "unique": true,
+    "panzerPresent": true
+  },
+  "bossWave": {
+    "wave": 10,
+    "selected": "PANZER ZOMBIE",
+    "target": 1,
+    "spawned": 1,
+    "panzerVisible": true,
+    "usingOriginalModel": true,
+    "visualHeightGoal": 3.2,
+    "liveModelScaleFactor": 396.8409494890548,
+    "bossHud": true,
+    "poolHasSuitGuy": true,
+    "poolHasPanzer": true,
+    "poolUnique": true
+  },
+  "errors": [],
+  "completedAt": "2026-10-11T04:37:44.933Z"
 }
