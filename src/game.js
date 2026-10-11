@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
-import {createHazmatZombieController} from "./hazmat-zombie.js?v=600";
+import {createHazmatZombieController} from "./hazmat-zombie.js?v=601";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -51,8 +51,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v600";
-document.documentElement.dataset.cityOutbreakBuild="600";
+document.title="CITY OUTBREAK — v601";
+document.documentElement.dataset.cityOutbreakBuild="601";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -6485,6 +6485,9 @@ const bodyPbdTmpA=new THREE.Vector3(),bodyPbdTmpB=new THREE.Vector3(),bodyPbdTmp
 const bodyPbdParentQ=new THREE.Quaternion(),bodyPbdInvQ=new THREE.Quaternion(),bodyPbdDeltaQ=new THREE.Quaternion();
 
 function bodyPbdRig(z){
+ // Native weighted Hazmat bones receive unpowered corpse and knockdown physics.
+ if(z?.hazmatVisual&&z.hazmatBones?.size>=16)
+  return{holder:z.hazmatVisual,bones:z.hazmatBones,kind:"hazmat"};
  // The new naturally spawned GLB owns its real bones during ragdoll; the
  // converted legless crawler still uses the approved legacy PBD skeleton.
  if(z?.naturalCrawlerBones?.size&&z.naturalCrawlerVisual)
@@ -6710,6 +6713,8 @@ function updateBodyPbd(z,rag,dt){
  return true;
 }
 function hideRigLimb(z,name){
+ const hazmatBone=z.hazmatBones?.get(name);
+ if(hazmatBone){hazmatBone.scale.setScalar(.00001);hazmatBone.updateMatrixWorld(true)}
  const b=rigBone(z,name);
  if(b){b.scale.set(.001,.001,.001);b.updateMatrixWorld(true)}
  const gb=z.radiatedGreenBones?.get(name);
@@ -6741,8 +6746,8 @@ function launchDetachedLimb(z,limb,side,leg=false){
 function detachArm(z,side){
  const key=side==="left"?"leftArmDetached":"rightArmDetached";
  if(z[key])return;
- if(z.radiatedGreenVisual||z.walkerVisual){
-   const customBones=z.radiatedGreenBones||z.walkerBones;
+ if(z.hazmatVisual||z.radiatedGreenVisual||z.walkerVisual){
+   const customBones=z.hazmatBones||z.radiatedGreenBones||z.walkerBones;
    const bone=customBones?.get(side==="left"?"L_UpperArm":"R_UpperArm");
    const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.35:.35,1.35,0));
    z[key]=true;hideRigLimb(z,side==="left"?"L_UpperArm":"R_UpperArm");
@@ -6937,6 +6942,8 @@ function applyCrawlerIdentity(crawler,id){
 }
 function convertLeglessToCrawler(z){
  if(!z||z.dead||z.kind==="boss"||z.kind==="crawler"||z.hp<=0||!z.leftLegDetached||!z.rightLegDetached)return;
+ // Hazmat keeps the ORIGINAL GLB visual, not a generic crawler flash/swap.
+ if(z.hazmatVisual){if(hazmatZombie.crawl(z))show("CRIPPLED — HAZMAT CRAWLER");return}
 
  // v431: do NOT fold a standing skinned zombie into a crawler. The game already
  // has a dedicated native crawler body/animation/hitbox setup that was authored
@@ -6971,8 +6978,8 @@ function convertLeglessToCrawler(z){
 function detachLeg(z,side){
  const key=side==="left"?"leftLegDetached":"rightLegDetached";
  if(z[key])return;
- if(z.radiatedGreenVisual||z.walkerVisual){
-   const customBones=z.radiatedGreenBones||z.walkerBones;
+ if(z.hazmatVisual||z.radiatedGreenVisual||z.walkerVisual){
+   const customBones=z.hazmatBones||z.radiatedGreenBones||z.walkerBones;
    const bone=customBones?.get(side==="left"?"L_UpperLeg":"R_UpperLeg");
    const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.15:.15,.72,0));
    z[key]=true;hideRigLimb(z,side==="left"?"L_UpperLeg":"R_UpperLeg");
@@ -7077,6 +7084,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  // transforms exactly where the last live frame put them.
  if(z.mixer)z.mixer.stopAllAction();
  if(z.parasiteBossMixer)z.parasiteBossMixer.timeScale=0;
+ if(z.hazmatVisual)hazmatZombie.freeze(z);
  // v553: stopAllAction() UNBINDS and restores the Mixamo T-pose instantly,
  // causing the visible crawler to spring upright at death. Freeze the last
  // animated pose in place (keep actions bound), then release it into PBD.
@@ -7635,6 +7643,7 @@ function addKnockdownBlastImpulse(z,k,origin,strength){
 }
 function beginKnockdown(z,origin,strength=1){
  if(!z||z.dead||z.kind==="boss")return;
+ if(z.hazmatVisual)hazmatZombie.freeze(z);
  if(z.knockdown?.bodyPbd){addKnockdownBlastImpulse(z,z.knockdown,origin,strength);return}
 
  if(z.mixer)z.mixer.stopAllAction();
@@ -7768,6 +7777,7 @@ function radiatedSpinTopTarget(z){
  return best;
 }
 function explodeGrenade(g){
+ const grenadeStart=performance.now();
  noise(.42,.95,900);tone(48,.45,"sine",.42);
  // The spinning grenade's actual textured faces rip outward from its center.
  // Keep gameplay damage tied to the original bottom-pivot position p.
@@ -7785,6 +7795,9 @@ function explodeGrenade(g){
      else blastReact(z,p,.55+force*.95)
    }
  }
+ // Lightweight timing diagnostic: CPU grenade logic, not total GPU render time.
+ document.documentElement.dataset.lastGrenadeLogicMs=
+  String(Math.round((performance.now()-grenadeStart)*10)/10);
 }
 
 function detonateNuke(){
