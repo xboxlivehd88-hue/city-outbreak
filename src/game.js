@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null,parasiteBossOriginalTextures=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=596",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=597",gltf=>{
  // The native Sketchfab GLB contains FOUR embedded PNGs but references them
  // through old KHR_materials_pbrSpecularGlossiness. Our GLTFLoader leaves
  // these source diffuse images unassigned on imported StandardMaterials.
@@ -49,8 +49,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v596";
-document.documentElement.dataset.cityOutbreakBuild="596";
+document.title="CITY OUTBREAK — v597";
+document.documentElement.dataset.cityOutbreakBuild="597";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -515,20 +515,97 @@ function restoreParasiteOriginalMaterials(z,model){
  console.log("CITY OUTBREAK v595: original artwork attached to",count,"materials");
  return count>0;
 }
+// v597: use a REAL recorded Mixamo full-body Run and Attack from the
+// game's already loaded animated crawler GLB. The Parasite's own clip has
+// duration ZERO, so none of the v594-v596 sine/IK poses was a true walk.
+// Both assets use matching Mixamo bone labels but different export suffixes.
+// Retarget quaternion DELTAS from each SOURCE bone's bind quaternion into
+// the ORIGINAL Parasite bone's own bind coordinate frame. DO NOT copy source
+// bone scale or hip world translations (our boss moves with physics already).
+function parasiteMixamoLabel(name){
+ return String(name||"").replace(/\.quaternion$/,"").replace(/_\d+$/,"")
+  .replace(/^mixamorig:?/i,"").toLowerCase();
+}
 function bindParasiteBones(z,model){
  const all=new Map();
- model.traverse(o=>{if(o.isBone)all.set(o.name.replace(/_[0-9]+$/,""),o)});
- const want=["Hips","Spine","Spine2","Head","LeftArm","LeftForeArm","RightArm","RightForeArm",
-  "LeftUpLeg","LeftLeg","LeftFoot","RightUpLeg","RightLeg","RightFoot","LeftShoulder","RightShoulder","LeftHand","RightHand"];
+ model.traverse(o=>{if(o.isBone)all.set(parasiteMixamoLabel(o.name),o)});
+ const want=["Hips","Spine","Spine1","Spine2","Neck","Head",
+  "LeftShoulder","LeftArm","LeftForeArm","LeftHand",
+  "RightShoulder","RightArm","RightForeArm","RightHand",
+  "LeftUpLeg","LeftLeg","LeftFoot","RightUpLeg","RightLeg","RightFoot"];
  const joints=new Map(),rest=new Map();
  for(const key of want){
-  const bone=all.get("mixamorig"+key);
+  const bone=all.get(key.toLowerCase());
   if(bone){joints.set(key,bone);rest.set(key,bone.quaternion.clone())}
  }
  z.parasiteNativeBones=joints;z.parasiteNativeRest=rest;
  z.parasiteWalkLastX=z.g.position.x;z.parasiteWalkLastZ=z.g.position.z;
- z.parasiteWalkPhase=0;z.parasiteWalkBlend=0;
- console.log("CITY OUTBREAK v594: real Parasite joints",Array.from(joints.keys()));
+ z.parasiteWalkBlend=0;
+}
+// Full recorded animation retargeted onto the Parasite ORIGINAL 70-bone skin.
+// The animated crawler 'Run' has 25 genuine time samples per moving track,
+// and its 'Attack' contains up to 77 for a natural reaching upper body.
+// Only clean quaternion channels are transferred; no procedural joint swings.
+function retargetParasiteMixamoClip(model,sourceScene,sourceClip,part){
+ const sourceBones=new Map(),targetBones=new Map();
+ sourceScene.traverse(o=>{if(o.isBone)sourceBones.set(parasiteMixamoLabel(o.name),o)});
+ model.traverse(o=>{if(o.isBone)targetBones.set(parasiteMixamoLabel(o.name),o)});
+ const tracks=[],sourceQuaternion=new THREE.Quaternion(),relative=new THREE.Quaternion();
+ const isArm=name=>/^(left|right)(shoulder|arm|forearm|hand|handthumb|handindex|handmiddle|handring|handpinky)/.test(name);
+ for(const srcTrack of sourceClip.tracks){
+  if(!srcTrack.name.endsWith(".quaternion")||srcTrack.times.length<2)continue;
+  const label=parasiteMixamoLabel(srcTrack.name);
+  if(part==="arms"&&!isArm(label))continue;
+  if(part==="body"&&isArm(label))continue;
+  const sourceBone=sourceBones.get(label),targetBone=targetBones.get(label);
+  if(!sourceBone||!targetBone)continue;
+  const sourceRestInverse=sourceBone.quaternion.clone().invert();
+  const targetRest=targetBone.quaternion.clone();
+  const transformed=new Float32Array(srcTrack.values.length);
+  for(let k=0;k<srcTrack.times.length;k++){
+   const j=k*4;
+   sourceQuaternion.fromArray(srcTrack.values,j).normalize();
+   // targetRest * (sourceRest^-1 * animatedSourceQuaternion)
+   relative.copy(sourceRestInverse).multiply(sourceQuaternion);
+   relative.premultiply(targetRest).normalize();
+   relative.toArray(transformed,j);
+  }
+  const track=new THREE.QuaternionKeyframeTrack(
+   targetBone.name+".quaternion",srcTrack.times,transformed);
+  tracks.push(track);
+ }
+ if(tracks.length<8){
+  console.error("CITY OUTBREAK v597: missing Mixamo retarget channels",{
+   part,clip:sourceClip.name,tracks:tracks.length
+  });
+  return null;
+ }
+ return new THREE.AnimationClip("ParasiteNative_"+part+"_"+sourceClip.name,sourceClip.duration,tracks);
+}
+function enableParasiteRecordedMotion(z){
+ if(!z?.parasiteBossModel||z.dead||z.parasiteBossMixer||!naturalCrawlerAsset)return false;
+ const source=naturalCrawlerAsset;
+ const run=source.clips.get("Run"),attack=source.clips.get("Attack");
+ if(!run||!attack||run.duration<.3||attack.duration<.3)return false;
+ const step=retargetParasiteMixamoClip(z.parasiteBossModel,source.scene,run,"body");
+ const reach=retargetParasiteMixamoClip(z.parasiteBossModel,source.scene,attack,"arms");
+ if(!step||!reach)return false;
+ const mixer=new THREE.AnimationMixer(z.parasiteBossModel);
+ const walk=mixer.clipAction(step),arms=mixer.clipAction(reach);
+ walk.setLoop(THREE.LoopRepeat,Infinity).reset().setEffectiveWeight(1).play();
+ arms.setLoop(THREE.LoopRepeat,Infinity).reset().setEffectiveWeight(1).play();
+ // Slow 'Run' into a heavy biped zombie WALK, while retaining its original
+ // knee/ankle contacts and opposite stance/swing sequence.
+ walk.timeScale=.62;arms.timeScale=.83;
+ z.parasiteBossMixer=mixer;z.parasiteWalkAction=walk;z.parasiteArmAction=arms;
+ z.parasiteBossClip=step.name+" + "+reach.name;
+ z.parasiteRetargetStats={run:run.name,runSourceFrames:run.tracks.find(t=>t.times.length>20)?.times.length||0,
+  arms:attack.name,walkTracks:step.tracks.length,armTracks:reach.tracks.length,
+  walkDuration:step.duration,armDuration:reach.duration};
+ // Apply the first true walking pose immediately, not the T-pose.
+ mixer.update(.13);
+ console.log("CITY OUTBREAK v597: RECORDED biped zombie run+attack retargeted to Parasite skin",z.parasiteRetargetStats);
+ return true;
 }
 function attachParasiteBossVisual(z){
  if(!z||z.dead||z.kind!=="boss"||z.bossName!==PARASITE_BOSS_NAME||z.parasiteBossVisual||!parasiteBossAsset)return;
@@ -561,67 +638,28 @@ function attachParasiteBossVisual(z){
  z.ownedMaterials.push(mat);z.hitMeshes=hits;z.parasiteBossHitboxes=hits;
  z.suitBossBlastHitboxes=hits;
  if(z.rigVisual)z.rigVisual.visible=false;
- // Only use embedded clips with more than one keyframe. The uploaded
- // 'mixamo.com' clip contains a static T pose (duration 0, 1 key).
- const clip=parasiteBossAsset.animations?.find(c=>c.duration>.1&&c.tracks.some(t=>t.times.length>1));
- if(clip){
-  z.parasiteBossMixer=new THREE.AnimationMixer(model);
-  z.parasiteBossMixer.clipAction(clip).reset().play();
-  z.parasiteBossClip=clip.name;
- }
+ // The uploaded Parasite clip is ONE static keyframe; instead play real
+ // Run and Attack motion already present in the existing zombie GLB.
+ // If that GLB is still loading, its completion callback attaches the cycle.
+ enableParasiteRecordedMotion(z);
  z.parasiteSizeFrames=0;z.parasiteSizeCalibrated=false;
 }
 function syncParasiteBossVisual(z,dt){
  if(!z?.parasiteBossVisual||z.dead)return;
- if(z.parasiteBossMixer)z.parasiteBossMixer.update(dt);
- const bones=z.parasiteNativeBones,rest=z.parasiteNativeRest;
- if(bones?.size){
-  // Unpowered original bone pose is the baseline; no accumulating twists.
-  for(const [key,bone] of bones)bone.quaternion.copy(rest.get(key));
+ if(!z.parasiteBossMixer)enableParasiteRecordedMotion(z);
+ if(z.parasiteBossMixer){
   const x=z.g.position.x,zz=z.g.position.z;
-  const travel=Math.hypot(x-(z.parasiteWalkLastX??x),zz-(z.parasiteWalkLastZ??zz));
+  const move=Math.hypot(x-(z.parasiteWalkLastX??x),zz-(z.parasiteWalkLastZ??zz));
   z.parasiteWalkLastX=x;z.parasiteWalkLastZ=zz;
-  z.parasiteWalkBlend=THREE.MathUtils.lerp(z.parasiteWalkBlend,travel>.0001?1:0,Math.min(1,dt*9));
-  z.parasiteWalkPhase+=Math.min(.48,travel*4.65);
-  const t=z.parasiteWalkPhase,s=Math.sin(t),c=Math.cos(t),w=z.parasiteWalkBlend;
-  z.parasiteBossVisual.updateWorldMatrix(true,true);
-  const lateral=new THREE.Vector3(1,0,0).transformDirection(z.parasiteBossVisual.matrixWorld);
-  const rotate=(name,axis,angle)=>{
-   const bone=bones.get(name);if(!bone||!bone.parent)return;
-   const p=new THREE.Quaternion();bone.parent.getWorldQuaternion(p);
-   const local=axis.clone().applyQuaternion(p.invert()).normalize();
-   bone.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(local,angle));
-  };
-  const ll=Math.max(0,Math.sin(t+.38)),rl=Math.max(0,Math.sin(t+Math.PI+.38));
-  rotate("LeftUpLeg",lateral,(.60*s-.09)*w);
-  rotate("RightUpLeg",lateral,(-.60*s-.09)*w);
-  rotate("LeftLeg",lateral,-(.30+1.12*ll)*w);
-  rotate("RightLeg",lateral,-(.30+1.12*rl)*w);
-  rotate("LeftFoot",lateral,(.15+.52*(.30+1.12*ll)) * w);
-  rotate("RightFoot",lateral,(.15+.52*(.30+1.12*rl)) * w);
-  rotate("Hips",new THREE.Vector3(0,1,0),.03*s*w);
-  rotate("Spine",new THREE.Vector3(0,1,0),-.025*s*w);
-  rotate("Head",new THREE.Vector3(0,1,0),.024*s*w);
-  // Bring the real T-positioned arms forward toward the player.
-  const toward=new THREE.Vector3(px-x,0,pz-zz);
-  if(toward.lengthSq()<.0001)toward.set(0,0,1);
-  toward.normalize();
-  rotate("LeftShoulder",new THREE.Vector3(0,1,0),.055+.055*s*w);
-  rotate("RightShoulder",new THREE.Vector3(0,1,0),-.055+.055*s*w);
-  for(const [side,arm,elbow] of [[-1,"LeftArm","LeftForeArm"],[1,"RightArm","RightForeArm"]]){
-   const a=bones.get(arm),b=bones.get(elbow);
-   if(!a||!b||!a.parent)continue;
-   z.parasiteBossVisual.updateWorldMatrix(true,true);
-   const from=new THREE.Vector3(),to=new THREE.Vector3();
-   a.getWorldPosition(from);b.getWorldPosition(to);
-   const source=to.sub(from).normalize();
-   const desired=toward.clone().addScaledVector(lateral,side*(.82+.08*c*w))
-    .add(new THREE.Vector3(0,-.18+side*.20*s*w,0)).normalize();
-   const delta=new THREE.Quaternion().setFromUnitVectors(source,desired);
-   const q=new THREE.Quaternion();a.parent.getWorldQuaternion(q);
-   a.quaternion.premultiply(q.clone().invert().multiply(delta).multiply(q));
-   rotate(elbow,lateral,side*(.31+.19*(1-side*s*w)));
-  }
+  // No manual IK or old sinusoidal knee poses. Mixer owns all joints.
+  // Walk speed reacts smoothly to actual movement; don't speed up legs
+  // while blocked. Keep a slow breathing/attack movement even when stopped.
+  const speed=move/Math.max(.008,dt);
+  const goal=THREE.MathUtils.clamp(speed/1.8,.28,1.10);
+  z.parasiteWalkBlend=THREE.MathUtils.lerp(z.parasiteWalkBlend||goal,goal,Math.min(1,dt*5));
+  if(z.parasiteWalkAction)z.parasiteWalkAction.timeScale=.65*z.parasiteWalkBlend;
+  if(z.parasiteArmAction)z.parasiteArmAction.timeScale=.72+.09*z.parasiteWalkBlend;
+  z.parasiteBossMixer.update(dt);
  }
  if(!z.parasiteSizeCalibrated&&++z.parasiteSizeFrames>=3){
   const box=new THREE.Box3().setFromObject(z.parasiteBossModel,true);
@@ -629,7 +667,6 @@ function syncParasiteBossVisual(z,dt){
   z.parasiteSizeCalibrated=true;
  }
 }
-
 let suitBossTemplate=null,suitBossLoadError=null;
 new GLTFLoader().load("assets/suit%20guy%20boss.glb?v=556",gltf=>{
   suitBossTemplate=buildBasicWalkerTemplate(gltf.scene,true);
@@ -2906,6 +2943,10 @@ new GLTFLoader().load(NATURAL_CRAWLER_GLB_URL,gltf=>{
   }
  });
  naturalCrawlerAsset={scene:gltf.scene,clips};
+ // Existing GLB's genuine Run + Attack clips also animate the rigged
+ // Parasite; supports either asynchronous asset-load order.
+ for(const z of zombies)if(z.bossName===PARASITE_BOSS_NAME&&z.parasiteBossVisual&&!z.parasiteBossMixer)
+  enableParasiteRecordedMotion(z);
  document.documentElement.dataset.naturalCrawlerAsset="loaded";
  document.documentElement.dataset.naturalCrawlerAnimations=[...clips.keys()].join(",");
  // Model loading may finish after wave 3 has already created crawlers.
