@@ -1,3 +1,13 @@
+# v603 VERIFIED ORIGINAL HAZMAT RUN FIX — 2026-10-11
+
+- **Chromium Hazmat browser test PASSED**: GitHub Actions run **38177470418** on code commit `8f112af802bdaf4a301e586b3ed32473ebe06071`. Real recorded `Run` clip from natural crawler transferred via bind-space quaternion deltas to original 53-bone Hazmat: **52 original-bone animated tracks**, **0.833333s** recorded cycle, **0.92888x** playback at a test move of 2m/s (vs cartoon-like 6–12x in v602 video). Both knees and thighs move: left upper 0.0685rad/lower 0.3584rad, right upper 0.0929rad/lower 0.3895rad. Original 2 textured skinned meshes still present, all **10 Hazmat Acidic actors** attached on temporary Wave 1, zero JS errors.
+- Other browser assertions also passed: original skinned death PBD physically drops Hazmat; one severed leg hides actual GLB joint without old generic limb; two severed legs retain SAME original Hazmat model & forward crawler posture; hitboxes, red aura, grenade blast (~30ms CPU logic test), 19-boss pool unchanged.
+- **Parasite/19-name boss rotation regression PASSED**: run **38177270076**. **GitHub Pages deployment PASSED**: run **38177379973** (and subsequently **38177470269** for latest QA-only commit). Neither approved boss source nor protected recovery checkpoint changed.
+- Run loop initialization bug was fixed: `HazmatRetargetedRun` must be `THREE.LoopRepeat`, and `enableRun` must set `z.hazmatNativeRun=true` even if `attach()` had already initialized its action. This is in current v603.
+- CURRENT playable URL: `https://xboxlivehd88-hue.github.io/city-outbreak/?v=603-hazmat-natural-run`. Loader `./src/game.js?v=603`. Temporary Wave 1 is Hazmat-only until USER personally signs off on running look. Do not reintroduce 6–12x original walk rate or change cosmetics. Protected recovery **v324 untouched**.
+
+---
+
 # v603 — HAZMAT CARTOONISH RUN FIX, USER VIDEO — 2026-10-11
 
 - User reported "they look really funny when running" and provided gameplay `2026-10-11 17-31-57.mp4` (11.38s, 2560x1440 @60). Video inspection shows legs cycling unnaturally quickly like a scrambling cartoon, caused by v602 playing the uploaded GLB's **2.625-second walking clip 6.67x at 2 m/s** and up to 12.5x.
