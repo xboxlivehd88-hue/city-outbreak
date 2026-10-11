@@ -1,3 +1,12 @@
+# v602 — VERIFIED HAZMAT STRIDE & CRAWLER FORWARD LEAN — 2026-10-11
+
+- **v602 Hazmat Chromium QA PASS**, GitHub Actions run **38176109247**; original glTF walk stride measured **0.67802157** (real hip root motion), test individual stride **0.78683083** after model/root scales, native walking playback **6.6723x at 2m/s**, previous cap was 5.6x. 10/10 wave-1 native Hazmats, original two texture-mapped skinned meshes and 53 bones, preserved red mist and hitboxes, zero JS errors.
+- In SAME live browser test, legless Hazmat original model preserved, new crawler rotation order `YXZ`, positive forward upper body projection **0.6442** instead of backward, no generic crawler, zero generic limbs ejected, native death PBD holder moves ~0.85 world units, grenade logic ~84ms in CI (real user's device FPS not measured).
+- **Original Parasite + 19-boss rotation regression PASS**, run **38175967913**. **Pages deployment PASS**, run **38176109492**.
+- Playable: `https://xboxlivehd88-hue.github.io/city-outbreak/?v=602-hazmat-stride-crawler`. Latest loader `./src/game.js?v=602`. User is testing look/feel; do NOT restore regular Wave 1 unless requested. No boss, gun, map, settings, FX changes; protected v324 recovery untouched.
+
+---
+
 # v602 — HAZMAT STRIDE + FORWARD CRAWLER LEAN — 2026-10-11
 
 - USER TEST after v601: Hazmat still GLIDES a little while walking and, after both legs are shot off, Hazmat crawler LEANS BACK.
