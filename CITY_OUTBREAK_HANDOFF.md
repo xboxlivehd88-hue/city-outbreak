@@ -1,3 +1,9 @@
+# v596 — PARASITE 10% SMALLER; FLEXING KNEES; MOVING ARMS — 2026-10-11
+
+User video `2026-10-11 06-22-23(1).mp4`: approved v595 original GLB colors, requested exactly 10% smaller and stronger knee and arm motion. Changed only Parasite: scale 1.57763 → 1.419867, temporary hitbox positions/sizes multiplied .9; original imported textures untouched. Stronger left/right native thigh/knee/foot stride; arms widened from lateral .16 to .53 and oscillate with shoulders and elbows. Original hand joints included for test measurements. v596 script and GLB query deployed in loader. Still solo Wave 1 test, not in 10-wave boss rotation. Other bosses and protected v324 recovery unchanged. Verify v596 browser/Pages tests, then user visual approval.
+
+---
+
 # v595 — ORIGINAL PARASITE TEXTURE RESTORATION (NOT GUESSWORK) — 2026-10-11
 
 - The user asked to recheck original model for colors after accepting v594 general direction. IMPORTANT CORRECTION to v594 notes: the GLB was NOT missing image textures! GitHub Actions RAW 4,826,320-byte GLB audit (run `38119077458`) found four embedded full-size PNGs. Its `KHR_materials_pbrSpecularGlossiness` extension assigns **original diffuse texture #0** to `parasitezombie_Material1`, **original diffuse texture #3** to `parasitezombie_Material`, original normal texture #2 to both, specular/gloss #1. Current Three.js GLTFLoader did not map the old extension, leaving materials plain white even though artwork was embedded.
