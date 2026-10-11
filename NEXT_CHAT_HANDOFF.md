@@ -1,3 +1,13 @@
+# v593 — PARASITE FIXED SIZE CORRECTION FROM TWO LIVE BROWSER MEASUREMENTS — 2026-10-11
+
+- User confirmed in v591 that the Parasite boss appeared too large and asked whether to fix the existing model or replace it. Keep original GLB and its original Mixamo animation, which loaded with no runtime errors. **Do not change to a different model.**
+- Real Chromium Wave 1 tests: v591 fixed scale 5.2 -> rendered height 17.854384 units, and v592 fixed scale 2.8635 -> rendered height 9.831929 units, against root-scaled target 5.416858 units. The ratio is **LINEAR** for fully rendered frames! Older exploratory reports suggesting quadratic scaling were confounded by same-frame skeleton matrix lag; DO NOT repeat their square-root corrections or dynamic live resizing.
+- v593 changes ONLY imported Parasite's static holder.scale from 2.8635 to `1.57763` = 2.8635*(5.416858/9.831929). Preserves original skin/animation, temp Wave 1 solo test, provisional boss hitboxes, existing combat and all other approved systems.
+- Chromium script now requires measured **actual live Box3 visual height** within 10% of expected root-scaled 3.20 units, as well as the original GLB, mixer, Wave 1 solo boss, hitboxes, original no-repeat pool with Panzer/Suit, no Javascript errors. Only claim size fixed IF this test PASSES. The user's gameplay approval still required for facing/walking/hitbox placement.
+- Version/GLB cache `v593`. Do NOT add new Parasite to boss rotation until user approves. Panzer and Suit Guy and v324 protected recovery are unchanged.
+
+---
+
 # v592 — PARASITE GLB TEST SIZE ADJUSTED USING ACTUAL LIVE WAVE 1 — 2026-10-11
 
 - v591 browser/Pages BOTH passed on original GLB, temporary one-boss Wave 1, Mixamo clip mixer, 4 preliminary hitboxes, no JS errors; however real body height was **17.854384** world units at static holder scale **5.2**, versus actual boss-root matched target **5.416858**. Browser success was integration-only; visible size was NOT approved or considered fixed.

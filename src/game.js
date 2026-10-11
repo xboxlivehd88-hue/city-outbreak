@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=592",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=593",gltf=>{
  parasiteBossAsset=gltf;
  console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
@@ -29,8 +29,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v592";
-document.documentElement.dataset.cityOutbreakBuild="592";
+document.title="CITY OUTBREAK — v593";
+document.documentElement.dataset.cityOutbreakBuild="593";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -445,11 +445,13 @@ function attachParasiteBossVisual(z){
  model.name="ParasiteBossOriginalGLB";
  model.position.x-=center.x;model.position.y-=source.min.y;model.position.z-=center.z;
  const holder=new THREE.Group();holder.name="ParasiteBossVisual";
- // v592: ACTUAL spawned Wave1 GLB in Chrome v591 measured 17.854 world
- // units at fixed holder=5.2 versus target 5.4169. Original Mixamo skinned
- // vertices scale approximately quadratically, so direct fixed correction
- // 5.2 * sqrt(5.4169 / 17.8544) = 2.8635. No oscillating resize loop.
- holder.scale.setScalar(2.8635);holder.rotation.y=Math.PI;
+ // v593: two separate ACTUAL Wave 1 Chromium runs demonstrate steady
+ // LINEAR on-screen scaling at fixed holder size, not quadratic:
+ // v591 holder 5.2 -> height 17.854384; v592 2.8635 -> height 9.831929.
+ // This v593 target is 3.20 boss-local units * live boss root scale,
+ // ~5.416858 world units. 2.8635 * (5.416858 / 9.831929) = 1.57763.
+ // Keep source Mixamo skin and animation; NEVER resize holder every frame.
+ holder.scale.setScalar(1.57763);holder.rotation.y=Math.PI;
  holder.add(model);z.g.add(holder);
  z.parasiteBossVisual=holder;z.parasiteBossModel=model;z.parasiteBossSourceHeight=height;
  model.traverse(o=>{if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true}});
@@ -483,8 +485,8 @@ function attachParasiteBossVisual(z){
   sourceHeight:height,clip:z.parasiteBossClip||null,hitboxes:hits.length
  });
 }
-// v591: DO NOT repeatedly resize this unusual native Mixamo glTF skin.
-// The empirical 5.2 holder scale was measured from the actual browser mesh.
+// v593: Leave imported Mixamo skin scale static. v591 and v592 live Chromium
+// measurements establish linear size response at a fixed holder scale.
 // Temporarily play the source animation and use a stable scale for visual testing.
 function syncParasiteBossVisual(z,dt){
  if(!z?.parasiteBossVisual||z.dead)return;
