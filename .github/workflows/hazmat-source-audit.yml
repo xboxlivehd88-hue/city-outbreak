@@ -1,0 +1,45 @@
+name: Hazmat GLB source audit
+on:
+  push:
+    paths:
+      - '.github/workflows/hazmat-source-audit.yml'
+      - 'assets/zombie_hazmat.glb'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect original uploaded Hazmat GLB data
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const b=fs.readFileSync('assets/zombie_hazmat.glb');
+          if(b.toString('ascii',0,4)!=='glTF')throw Error('Not a GLB');
+          const json=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)).toString('utf8'));
+          const acc=json.accessors||[],nodes=json.nodes||[],meshes=json.meshes||[],skins=json.skins||[];
+          const prim=meshes.flatMap((m,i)=>(m.primitives||[]).map(p=>({
+            mesh:i,name:m.name,mode:p.mode,material:p.material,
+            positions:acc[p.attributes?.POSITION]?.count,
+            min:acc[p.attributes?.POSITION]?.min,max:acc[p.attributes?.POSITION]?.max,
+            joints:!!p.attributes?.JOINTS_0,weights:!!p.attributes?.WEIGHTS_0
+          })));
+          console.log('HAZMAT_AUDIT='+JSON.stringify({
+            bytes:b.length,scene:json.scene,scenes:json.scenes,
+            nodes:nodes.length,meshCount:meshes.length,skinCount:skins.length,
+            rootNodes:(json.scenes||[]).map(s=>s.nodes?.map(i=>({id:i,name:nodes[i]?.name,translation:nodes[i]?.translation,rotation:nodes[i]?.rotation,scale:nodes[i]?.scale}))),
+            nodeSamples:nodes.map((n,i)=>({id:i,name:n.name,mesh:n.mesh,skin:n.skin,translation:n.translation,rotation:n.rotation,scale:n.scale})).slice(0,90),
+            skins:skins.map(s=>({name:s.name,joints:s.joints.length,skeleton:s.skeleton,jointNames:s.joints.slice(0,70).map(i=>nodes[i]?.name)})),
+            animations:(json.animations||[]).map(a=>({
+              name:a.name,channels:a.channels?.length,
+              duration:Math.max(0,...a.samplers.map(s=>acc[s.input]?.max?.[0]||0)),
+              sampleChannels:a.channels?.slice(0,14).map(c=>({target:nodes[c.target.node]?.name,path:c.target.path}))
+            })),
+            materials:(json.materials||[]).map(m=>({name:m.name,base:m.pbrMetallicRoughness?.baseColorFactor,
+              baseMap:m.pbrMetallicRoughness?.baseColorTexture?.index,extensions:Object.keys(m.extensions||{})})),
+            images:(json.images||[]).map(i=>({name:i.name,mime:i.mimeType,bufferView:i.bufferView})),
+            primitiveSamples:prim.slice(0,25)
+          }));
+          NODE
