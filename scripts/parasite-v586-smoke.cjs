@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"591",pass:false};let browser;
+ const report={version:"592",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=591$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=592$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -58,7 +58,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=591-asset-test",{waitUntil:"domcontentloaded",timeout:60000});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=592-asset-test",{waitUntil:"domcontentloaded",timeout:60000});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click();
@@ -69,7 +69,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // The multi-scale diagnostic proved square-law behavior in v587; check the final live size here.
   assert.equal(report.http,200);
   assert.equal(report.assetHttp,200);
-  assert.equal(report.state.build,"591");
+  assert.equal(report.state.build,"592");
   assert.equal(report.state.wave,1);
   assert.equal(report.state.boss,"PARASITE MONSTER");
   assert.equal(report.state.model,"ParasiteBossOriginalGLB");
@@ -81,7 +81,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // Diagnostic only: test model's final size/facing must be approved by user.
   // Do not treat a stable scene as visual signoff.
   assert(Number.isFinite(report.state.actualLiveHeight)&&report.state.actualLiveHeight>0);
-  assert(report.state.actualLiveHeight<25,"Unexpected enormous visual: "+report.state.actualLiveHeight);
+  assert(Math.abs(report.state.actualLiveHeight-report.state.expectedHeight)<report.state.expectedHeight*.20,
+    "Parasite visual size outside 20% of intended boss size: "+report.state.actualLiveHeight+" vs "+report.state.expectedHeight);
   assert.equal(report.state.poolIncludesParasite,false);
   assert.equal(report.state.poolIncludesPanzer,true);
   assert.equal(report.state.poolIncludesSuit,true);
@@ -94,7 +95,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V591_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V592_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }

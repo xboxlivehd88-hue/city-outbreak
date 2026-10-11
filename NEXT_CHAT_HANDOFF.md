@@ -1,3 +1,12 @@
+# v592 — PARASITE GLB TEST SIZE ADJUSTED USING ACTUAL LIVE WAVE 1 — 2026-10-11
+
+- v591 browser/Pages BOTH passed on original GLB, temporary one-boss Wave 1, Mixamo clip mixer, 4 preliminary hitboxes, no JS errors; however real body height was **17.854384** world units at static holder scale **5.2**, versus actual boss-root matched target **5.416858**. Browser success was integration-only; visible size was NOT approved or considered fixed.
+- v592 changes only imported Parasite's fixed holder scale `5.2 → 2.8635` using evidence-based square-root correction `5.2*sqrt(5.416858/17.854384)`. Maintains the no-loop, stable original GLB animation. Browser now STRICTLY checks actual rendered live height within 20% of boss target and fails if outside. No other boss/weapon/graphics/map code modified.
+- Parasite is STILL exclusively a Wave 1 test for user visual feedback, NOT in Wave10/20/30 boss rotation. Panzer's fully approved bilateral walk and scale, Suit Guy, all normal boss selection, and protected v324 recovery untouched.
+- Loader and Parasite GLB query bumped to v592. Verify browser actual live size and Pages deploy before giving a playable link. Model facing, motion, head/body targeting not yet visually user-approved.
+
+---
+
 # v591 — STABLE NEW PARASITE BOSS WAVE 1 VISUAL TEST — 2026-10-11
 
 - v590 browser `38113453461` could not complete its overly ambitious continuous/delayed size-calibration test in time; native imported Mixamo skin scaling remains unusual and automated same-frame size snapshots are unreliable.

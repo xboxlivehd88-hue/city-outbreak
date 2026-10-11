@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=591",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=592",gltf=>{
  parasiteBossAsset=gltf;
  console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
@@ -29,8 +29,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v591";
-document.documentElement.dataset.cityOutbreakBuild="591";
+document.title="CITY OUTBREAK — v592";
+document.documentElement.dataset.cityOutbreakBuild="592";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -445,10 +445,11 @@ function attachParasiteBossVisual(z){
  model.name="ParasiteBossOriginalGLB";
  model.position.x-=center.x;model.position.y-=source.min.y;model.position.z-=center.z;
  const holder=new THREE.Group();holder.name="ParasiteBossVisual";
- // v590: browser sweep measured true original Mixamo skin response:
- // scale 2.899 => 1.493 world tall; 6.764 => 8.128; scale is quadratic.
- // Use measured stable initial size, not detached GLB rest-bounds scaling.
- holder.scale.setScalar(5.2);holder.rotation.y=Math.PI;
+ // v592: ACTUAL spawned Wave1 GLB in Chrome v591 measured 17.854 world
+ // units at fixed holder=5.2 versus target 5.4169. Original Mixamo skinned
+ // vertices scale approximately quadratically, so direct fixed correction
+ // 5.2 * sqrt(5.4169 / 17.8544) = 2.8635. No oscillating resize loop.
+ holder.scale.setScalar(2.8635);holder.rotation.y=Math.PI;
  holder.add(model);z.g.add(holder);
  z.parasiteBossVisual=holder;z.parasiteBossModel=model;z.parasiteBossSourceHeight=height;
  model.traverse(o=>{if(o.isMesh){o.userData.visualOnly=true;o.raycast=()=>{};o.castShadow=true}});
