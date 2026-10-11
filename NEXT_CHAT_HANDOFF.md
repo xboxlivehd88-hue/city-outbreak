@@ -1,3 +1,13 @@
+# v603 — HAZMAT CARTOONISH RUN FIX, USER VIDEO — 2026-10-11
+
+- User reported "they look really funny when running" and provided gameplay `2026-10-11 17-31-57.mp4` (11.38s, 2560x1440 @60). Video inspection shows legs cycling unnaturally quickly like a scrambling cartoon, caused by v602 playing the uploaded GLB's **2.625-second walking clip 6.67x at 2 m/s** and up to 12.5x.
+- **v603 replaces ONLY the Hazmat's running/locomotion clip** with the exact existing real multiframe Mixamo `Run` from already loaded `assets/zombie_number_3_-_animated.glb`, the same gait source approved for Parasite. Bind-space quaternion delta retargets recorded **left/right knees, thighs, arms and full real skeleton** onto the ORIGINAL 53-bone Hazmat skin using 16+ source tracks. Do NOT re-skin/move/delete original helmet/suit/face textures, scale, gameplay colliders or damage.
+- Play retargeted `HazmatRetargetedRun` while standing and pursuing, smoothly change pace according to speed but clamp to **0.55–1.8x** rather than previous 6–12x. Continue original uploaded `Zombie_Idle` and `Zombie_Skill` for idle/attack, and use original bounded `Zombie_Walk_Root` for legless crawler. Robust asset loading with `setRunSource` after either Hazmat or natural crawler loads and `enableRun` on already-live Hazmats.
+- Preserves prior v601+ fall/ragdoll, no generic detached limbs, intact original Hazmat as a forward-leaning crawler, red mist, grenades/explosion effects, boss rotation, weapons, settings/performance. Temporary Wave 1 still 10 Acidic/Hazmats for user testing. Protected recovery **v324 untouched**.
+- Loader `./src/game.js?v=603`, native GLB/module cache `?v=603`, smoke scripts and both handoffs updated. v603 Chromium browser QA now requires actual recorded Run source, 16+ animated joint tracks, BOTH real knees articulating, 0.5–1.85x cadence, selected Run action, and previous original model/lifecycle/crawler/FX assertions plus independent Parasite no-repeat boss regression. Await CI/Pages and user's final visual evaluation.
+
+---
+
 # v602 — VERIFIED HAZMAT STRIDE & CRAWLER FORWARD LEAN — 2026-10-11
 
 - **v602 Hazmat Chromium QA PASS**, GitHub Actions run **38176109247**; original glTF walk stride measured **0.67802157** (real hip root motion), test individual stride **0.78683083** after model/root scales, native walking playback **6.6723x at 2m/s**, previous cap was 5.6x. 10/10 wave-1 native Hazmats, original two texture-mapped skinned meshes and 53 bones, preserved red mist and hitboxes, zero JS errors.
