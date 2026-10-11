@@ -1,3 +1,12 @@
+# v591 — STABLE NEW PARASITE BOSS WAVE 1 VISUAL TEST — 2026-10-11
+
+- v590 browser `38113453461` could not complete its overly ambitious continuous/delayed size-calibration test in time; native imported Mixamo skin scaling remains unusual and automated same-frame size snapshots are unreliable.
+- For FIRST USER PLAYABLE REVIEW, v591 now keeps the **direct Chromium-measured holder scale 5.2** at all times (no per-frame changes), plays the **ORIGINAL uploaded GLB's embedded Mixamo animation**, and retains four provisional body/head hitboxes. This should yield a stable-sized live boss rather than huge elastic feedback. One body-bound measurement for diagnostics only, not a scaling correction. The user must check visible size, facing, foot placement, leg gait, animations and collision.
+- Smoke test now confirms asset HTTP 200, Wave 1 temporary solo Parasite, imported visual, animation mixer, hitboxes, pool protection and no JavaScript errors; size metrics are informational for the first visual signoff rather than claimed exact.
+- Parasite still ONLY Wave1 test, NOT in normal every-10-waves rotation. Suit Guy and Panzer approved models/physics untouched. No unrelated changes. Loader `v591`, new asset `?v=591`. Protected v324 untouched. Await Pages/browser test and user visual feedback.
+
+---
+
 # v590 — PARASITE EMPIRICAL GLB SCALE + SINGLE DELAYED CORRECTION — 2026-10-11
 
 - v589 browser test `38113295324` failed to settle repeated per-frame native Mixamo skin calibration (20 s timeout), despite the uploaded source GLB loading correctly and original animation running. This source's skin has quadratic scale response and glTF inverse bind matrix latency; repeated scale changes are unstable.

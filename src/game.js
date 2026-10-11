@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=590",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=591",gltf=>{
  parasiteBossAsset=gltf;
  console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
@@ -29,8 +29,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v590";
-document.documentElement.dataset.cityOutbreakBuild="590";
+document.title="CITY OUTBREAK — v591";
+document.documentElement.dataset.cityOutbreakBuild="591";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -482,46 +482,23 @@ function attachParasiteBossVisual(z){
   sourceHeight:height,clip:z.parasiteBossClip||null,hitboxes:hits.length
  });
 }
+// v591: DO NOT repeatedly resize this unusual native Mixamo glTF skin.
+// The empirical 5.2 holder scale was measured from the actual browser mesh.
+// Temporarily play the source animation and use a stable scale for visual testing.
 function syncParasiteBossVisual(z,dt){
  if(!z?.parasiteBossVisual||z.dead)return;
  if(z.parasiteBossMixer)z.parasiteBossMixer.update(dt);
  if(z.parasiteSizeCalibrated)return;
- const frame=++z.parasiteSizeFrames;
- if(frame<6)return;
- const holder=z.parasiteBossVisual,model=z.parasiteBossModel;
+ if(++z.parasiteSizeFrames<3)return;
+ const model=z.parasiteBossModel;
  model.updateWorldMatrix(true,true);
  const bounds=new THREE.Box3().setFromObject(model,true);
- const height=bounds.max.y-bounds.min.y;
- if(!Number.isFinite(height)||height<.001)return;
- z.parasiteMeasuredHeight=height;
- const rootScale=new THREE.Vector3();z.g.getWorldScale(rootScale);
- const target=PARASITE_BOSS_VISUAL_HEIGHT*Math.abs(rootScale.y);
- // v590: Native glTF skin transforms settle on the following animation frame.
- // The original v587 browser probe supplied a reliable 5.2 initial scale.
- // Record several consecutive frames of source movement with NO scale writes.
- if(frame<=11){
-  (z.parasiteHeightSamples||(z.parasiteHeightSamples=[])).push(height);
-  return;
- }
- if(frame===12){
-  const values=(z.parasiteHeightSamples||[]).filter(Number.isFinite).sort((a,b)=>a-b);
-  const median=values.length?values[Math.floor(values.length/2)]:height;
-  if(median>.001&&Number.isFinite(target)){
-   // ONE delayed square-root correction based on the real Mixamo pose.
-   const factor=THREE.MathUtils.clamp(Math.sqrt(target/median),.72,1.28);
-   holder.scale.multiplyScalar(factor);
-  }
-  z.parasiteSizeAdjustmentFrame=frame;
-  return;
- }
- // Do not measure on the adjustment frame: wait for render+skin update.
- if(frame<20)return;
- const rootPos=new THREE.Vector3();z.g.getWorldPosition(rootPos);
- const foot=(rootPos.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
- if(Number.isFinite(foot))holder.position.y+=THREE.MathUtils.clamp(foot,-8,8);
+ z.parasiteMeasuredHeight=bounds.max.y-bounds.min.y;
  z.parasiteSizeCalibrated=true;
- console.log("CITY OUTBREAK v590: original Parasite fixed-scale test",{
-  height,target,holderScale:holder.scale.x,frames:frame
+ console.log("CITY OUTBREAK v591: stable Parasite visual test scale",{
+  holderScale:z.parasiteBossVisual.scale.x,
+  height:z.parasiteMeasuredHeight,
+  clip:z.parasiteBossClip||null
  });
 }
 
