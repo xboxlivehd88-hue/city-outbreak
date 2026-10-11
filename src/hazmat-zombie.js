@@ -20,6 +20,7 @@ export function createHazmatZombieController(){
     other.scene.traverse(o=>{if(o.isBone)from.set(norm(o.name),o)});
     source.scene.traverse(o=>{if(o.isBone)to.set(norm(o.name),o)});
     const tracks=[],labels=new Set(),q=new THREE.Quaternion(),delta=new THREE.Quaternion();
+    const pitchAxis=new THREE.Vector3(1,0,0),pitch=new THREE.Quaternion();
     // Keep all v603 LEG and hip keyframes unchanged. Hazmat's own native
     // idle animation supplies a natural baseline for shoulders, elbows and
     // hands; the borrowed crawler Run's exaggerated arm gestures contribute
@@ -48,7 +49,20 @@ export function createHazmatZombieController(){
         const k=4*i;
         q.fromArray(track.values,k).normalize();
         delta.copy(inv).multiply(q).premultiply(rest).normalize();
-        if(arm)delta.slerpQuaternions(base,delta,swing(name));
+        if(arm){
+          delta.slerpQuaternions(base,delta,swing(name));
+          // The borrowed crawler Run's arm tracks are nearly static. Add
+          // a restrained, phase-locked opposite-arm swing to the authentic
+          // native idle shoulder/elbow pose; do not change RUN LEG tracks.
+          if(/^(left|right)(shoulder|arm|forearm)$/.test(name)){
+            const amount=/forearm/.test(name)?.085:
+              /shoulder/.test(name)?.045:.23;
+            const phase=2*Math.PI*track.times[i]/Math.max(.1,src.duration)+
+              (name.startsWith("left")?0:Math.PI);
+            pitch.setFromAxisAngle(pitchAxis,amount*Math.sin(phase));
+            delta.multiply(pitch).normalize();
+          }
+        }
         delta.toArray(values,k);
       }
       tracks.push(new THREE.QuaternionKeyframeTrack(b.name+".quaternion",track.times,values));
@@ -62,7 +76,7 @@ export function createHazmatZombieController(){
     const clip=new THREE.AnimationClip("HazmatRetargetedRun",src.duration,tracks);
     source.clips.set(clip.name,clip);
     document.documentElement.dataset.hazmatRun="retargeted-recorded";
-    console.log("CITY OUTBREAK v604: original Hazmat arm pose and unchanged recorded running legs",
+    console.log("CITY OUTBREAK v605: soft phase-locked native Hazmat arms and unchanged running legs",
       {duration:clip.duration,tracks:tracks.length,armPoseTracks,
        frames:src.tracks.find(t=>t.times.length>20)?.times.length||0});
     return true;
@@ -81,7 +95,7 @@ export function createHazmatZombieController(){
     z.hazmatNativeRun=true;z.hazmatRunPlayback=1;
     return true;
   }
-  const url="assets/zombie_hazmat.glb?v=604";
+  const url="assets/zombie_hazmat.glb?v=605";
   const clipsRequired=["Zombie_Idle","Zombie_Walk_Root","Zombie_Skill"];
   function load(onReady){
     new GLTFLoader().load(url,gltf=>{
