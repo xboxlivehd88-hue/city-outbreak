@@ -1,3 +1,12 @@
+# v585 VERIFICATION — APPROVED PANZER IN NORMAL BOSS ROTATION — 2026-10-11
+
+- User approved v584 Panzer size and both-leg walking, and instructed return to normal boss rotation. v585 committed, `index.html` loader `./src/game.js?v=585`. Model GLB remains `assets/panzer_zombie.glb?v=584` deliberately (unchanged approved asset). Approved Panzer `PANZER_VISUAL_HEIGHT=3.20`, .229 native live boss size reduction, leg bone animation, hitboxes and attacks **unchanged**.
+- **GitHub Actions actual Chromium integration test PASSED** run `38112117829`. See `BOSS_ROTATION_V585_AUDIT.json`: Wave 1 normal **10 zombies** with **no boss**; Wave 10 forced-selected **PANZER ZOMBIE** spawns **one boss** using original imported GLB model/mixer and boss HUD; `BOSS_NAME_POOL` contains 18 unique names including SUIT GUY and PANZER ZOMBIE, and `nextBossName` selects the entire shuffled roster without repeating names. The test forced the Panzer selection solely as a test case; actual game selects randomly.
+- No runtime JavaScript exceptions. GitHub Pages deployed v585 successfully. Return to normal waves and every-10-round boss selection without a Wave 1 Panzer test. Panzer not guaranteed every boss round, but eligible whenever round%10==0.
+- **Do not regress approved v584 appearance/size/locomotion.** Both handoffs updated; v324 recovery checkpoint untouched. User wants to proceed to the NEXT feature now; await their new task.
+
+---
+
 # v585 — PANZER APPROVED; RETURN TO NORMAL 10-WAVE BOSS ROTATION — 2026-10-11
 
 - **USER APPROVED v584**: says Panzer now looks great, including original GLB armor, suit-guy-matched size and BOTH walking legs. Explicitly requested removal from temporary Wave 1 test and inclusion in normal every-10-round boss rotation, then wants to move on to next feature.
