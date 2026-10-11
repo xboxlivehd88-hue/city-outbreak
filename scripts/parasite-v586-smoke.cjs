@@ -1,16 +1,16 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"596",pass:false};let browser;
+ const report={version:"597",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=596$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=597$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
- ready:()=>!!parasiteBossAsset&&newCityCollisionReady,
+ ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&newCityCollisionReady,
  probe:()=>{
   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
   if(!z?.parasiteBossVisual)return null;
@@ -74,9 +74,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    }
   });
   const pose=(phase)=>{
-   z.parasiteWalkPhase=phase;z.parasiteWalkBlend=1;
-   z.parasiteWalkLastX=z.g.position.x-.075;
-   syncParasiteBossVisual(z,.016);
+   z.parasiteBossMixer.setTime(phase);
    z.parasiteBossModel.updateWorldMatrix(true,true);
    z.parasiteBossModel.traverse(m=>{if(m.isSkinnedMesh)m.skeleton.update()});
    const out={};
@@ -100,10 +98,12 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    }
    return out;
   };
-  // v594: the simulator advances phase by 0.075*4.65=.34875 per sample.
-  // Old .10 and 2.35 became .449 and 2.699: BOTH have sin ~=.434!
-  // They accidentally sampled the same leg pose, not opposing stride steps.
-  const before=pose(.10),after=pose(.10+Math.PI);
+  // v597: sample the actual recorded, retargeted keyframe animations,
+  // not hand-coded joint swings. Set action speeds to 1 for deterministic
+  // time lookup, then compare opposite gait plus attack reaching frames.
+  z.parasiteWalkAction.timeScale=1;
+  z.parasiteArmAction.timeScale=1;
+  const before=pose(.20),after=pose(1.45);
   const boneAngles={},boneWorldDistances={};
   for(const key of keys){
    const A=before.__bonePose[key],B=after.__bonePose[key];
@@ -200,6 +200,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    expectedHeight:z?.g?.scale.y*PARASITE_BOSS_VISUAL_HEIGHT||null,
    actualLiveHeight:z?.parasiteBossModel?new THREE.Box3().setFromObject(z.parasiteBossModel,true).getSize(new THREE.Vector3()).y:null,
    holderScale:z?.parasiteBossVisual?.scale.y||null,
+   recorded:z?.parasiteRetargetStats||null,
+   nativeRun:!!z?.parasiteWalkAction,nativeAttack:!!z?.parasiteArmAction,
    poolIncludesParasite:BOSS_NAME_POOL.includes(PARASITE_BOSS_NAME),
    poolIncludesPanzer:BOSS_NAME_POOL.includes(PANZER_BOSS_NAME),
    poolIncludesSuit:BOSS_NAME_POOL.includes(SUIT_BOSS_NAME),
@@ -208,11 +210,13 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=596-asset-test",{waitUntil:"domcontentloaded",timeout:60000});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=597-asset-test",{waitUntil:"domcontentloaded",timeout:60000});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().attached,null,{timeout:30000});
+  await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().nativeRun&&
+   globalThis.__parasiteSmoke?.state().nativeAttack,null,{timeout:30000});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().calibrated,null,{timeout:20000});
   await page.waitForTimeout(550);
   report.state=await page.evaluate(()=>globalThis.__parasiteSmoke.state());
@@ -227,13 +231,20 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // The multi-scale diagnostic proved square-law behavior in v587; check the final live size here.
   assert.equal(report.http,200);
   assert.equal(report.assetHttp,200);
-  assert.equal(report.state.build,"596");
+  assert.equal(report.state.build,"597");
   assert.equal(report.state.wave,1);
   assert.equal(report.state.boss,"PARASITE MONSTER");
   assert.equal(report.state.model,"ParasiteBossOriginalGLB");
   assert.equal(report.state.waveTarget,1);
   assert.equal(report.state.waveSpawned,1);
   assert.equal(report.state.hitboxes,4);
+  assert.equal(report.state.nativeRun,true,"Not running recorded Mixamo Run");
+  assert.equal(report.state.nativeAttack,true,"Not running recorded Mixamo Attack");
+  assert.equal(report.state.recorded?.run,"Run");
+  assert.equal(report.state.recorded?.arms,"Attack");
+  assert(report.state.recorded?.runSourceFrames>=20,"Source Run must be genuinely multiframe");
+  assert(report.state.recorded?.walkTracks>=8&&report.state.recorded?.armTracks>=6,
+   "Imported retarget not bound to Parasite native skeleton: "+JSON.stringify(report.state.recorded));
   const native=report.nativeNames||[];
   assert(["LeftArm","RightArm","LeftUpLeg","RightUpLeg","LeftLeg","RightLeg"].every(k=>native.includes(k)),
    "Original imported Mixamo limbs unavailable: "+native.join(","));
@@ -262,8 +273,12 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // Diagnostic only: test model's final size/facing must be approved by user.
   // Do not treat a stable scene as visual signoff.
   assert(Number.isFinite(report.state.actualLiveHeight)&&report.state.actualLiveHeight>0);
-  assert(Math.abs(report.state.actualLiveHeight-report.state.expectedHeight*.9)<report.state.expectedHeight*.09,
-    "Parasite visual size outside 10% of intended boss size: "+report.state.actualLiveHeight+" vs "+report.state.expectedHeight);
+  // The original model has a fixed 0.9*1.57763 holder transform, even when
+  // the ACTUAL recorded walk is bent, crouched or airborne in a keyframe.
+  assert(Math.abs(report.state.holderScale-1.419867)<.00001,
+   "Approved 10%-smaller Parasite holder scale changed");
+  assert(report.state.actualLiveHeight>3.6&&report.state.actualLiveHeight<5.5,
+   "Recorded movement made boss geometry implausibly sized: "+report.state.actualLiveHeight);
   assert.equal(report.state.poolIncludesParasite,false);
   assert.equal(report.state.poolIncludesPanzer,true);
   assert.equal(report.state.poolIncludesSuit,true);
@@ -276,7 +291,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V596_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V597_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
