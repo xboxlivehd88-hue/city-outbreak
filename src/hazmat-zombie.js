@@ -8,8 +8,8 @@ export function createHazmatZombieController(){
   // v603: avoid the v602 6-12x hyper-fast walking loop. Borrow the REAL
   // multi-frame Mixamo Run already used successfully by the Parasite,
   // retargeting its bone rotations into the original 53-joint Hazmat suit.
-  function norm(n){return String(n||"").replace(/\\.quaternion$/,"")
-    .replace(/_\\d+$/,"").replace(/^mixamorig:?/i,"").toLowerCase()}
+  function norm(n){return String(n||"").replace(/\.quaternion$/,"")
+    .replace(/_\d+$/,"").replace(/^mixamorig:?/i,"").toLowerCase()}
   function setRunSource(other){
     if(!other?.clips?.has("Run"))return false;
     runSource=other;
