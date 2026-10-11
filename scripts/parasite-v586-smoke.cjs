@@ -11,6 +11,34 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const addon=`
 ;globalThis.__parasiteSmoke={
  ready:()=>!!parasiteBossAsset&&newCityCollisionReady,
+ probe:()=>{
+  const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
+  if(!z?.parasiteBossVisual)return null;
+  const holder=z.parasiteBossVisual,model=z.parasiteBossModel;
+  const original=holder.scale.x,records=[];
+  for(const factor of [.05,.15,.35,.65,1,1.5,2]){
+   holder.scale.setScalar(original*factor);
+   model.updateWorldMatrix(true,true);
+   const b=new THREE.Box3().setFromObject(model,true);
+   const entries=[];model.traverse(mesh=>{
+    if(!mesh.isMesh)return;
+    const box=new THREE.Box3().setFromObject(mesh,true);
+    const p=new THREE.Vector3(),real=new THREE.Box3().makeEmpty();
+    const pos=mesh.geometry?.getAttribute("position");
+    let n=0;
+    if(pos)for(let i=0;i<pos.count;i+=Math.max(1,Math.floor(pos.count/500))){
+     if(mesh.isSkinnedMesh)mesh.getVertexPosition(i,p);else p.fromBufferAttribute(pos,i);
+     mesh.localToWorld(p);real.expandByPoint(p);n++;
+    }
+    entries.push({name:mesh.name,skinned:!!mesh.isSkinnedMesh,samples:n,
+     boxHeight:box.max.y-box.min.y,vertexHeight:real.max.y-real.min.y});
+   });
+   records.push({factor,holderScale:holder.scale.x,boxHeight:b.max.y-b.min.y,
+    boxes:entries.sort((a,b)=>b.boxHeight-a.boxHeight).slice(0,15)});
+  }
+  holder.scale.setScalar(original);model.updateWorldMatrix(true,true);
+  return records;
+ },
  state:()=>{
   const z=zombies.find(a=>a.bossName===PARASITE_BOSS_NAME&&!a.dead);
   return {wave,boss:z?.bossName||null,model:z?.parasiteBossModel?.name,
@@ -34,6 +62,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().attached,null,{timeout:30000});
   await page.waitForTimeout(750);
   report.state=await page.evaluate(()=>globalThis.__parasiteSmoke.state());
+  report.scaleProbe=await page.evaluate(()=>globalThis.__parasiteSmoke.probe());
   assert.equal(report.http,200);
   assert.equal(report.assetHttp,200);
   assert.equal(report.state.build,"587");
