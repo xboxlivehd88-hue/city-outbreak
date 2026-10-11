@@ -19,7 +19,7 @@ const PANZER_BOSS_NAME="PANZER ZOMBIE";
 // v586: separate Parasite boss Wave 1 TEST, not approved for rotation.
 const PARASITE_BOSS_NAME="PARASITE MONSTER",PARASITE_BOSS_TEST_WAVE=1,PARASITE_BOSS_VISUAL_HEIGHT=3.20;
 let parasiteBossAsset=null,parasiteBossLoadError=null;
-new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=588",gltf=>{
+new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=589",gltf=>{
  parasiteBossAsset=gltf;
  console.log("CITY OUTBREAK v586: Parasite GLB loaded",gltf.animations?.map(a=>a.name)||[]);
  for(const z of zombies)if(z.kind==="boss"&&z.bossName===PARASITE_BOSS_NAME&&!z.parasiteBossVisual)attachParasiteBossVisual(z);
@@ -29,8 +29,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v588";
-document.documentElement.dataset.cityOutbreakBuild="588";
+document.title="CITY OUTBREAK — v589";
+document.documentElement.dataset.cityOutbreakBuild="589";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -482,39 +482,49 @@ function attachParasiteBossVisual(z){
 function syncParasiteBossVisual(z,dt){
  if(!z?.parasiteBossVisual||z.dead)return;
  if(z.parasiteBossMixer)z.parasiteBossMixer.update(dt);
- if(z.parasiteSizeCalibrated||++z.parasiteSizeFrames<3)return;
- const holder=z.parasiteBossVisual,model=z.parasiteBossModel;
- const rootScale=new THREE.Vector3(),rootPos=new THREE.Vector3();
- z.g.getWorldScale(rootScale);z.g.getWorldPosition(rootPos);
+ if(z.parasiteSizeCalibrated)return;
+ const frame=++z.parasiteSizeFrames;
+ if(frame<3)return;
+ const model=z.parasiteBossModel,holder=z.parasiteBossVisual;
+ const rootScale=new THREE.Vector3();z.g.getWorldScale(rootScale);
  const target=PARASITE_BOSS_VISUAL_HEIGHT*Math.abs(rootScale.y);
  if(!Number.isFinite(target)||target<=0)return;
- const bounds=new THREE.Box3();let before=0,after=0;
- const measure=()=>{
-  // v588: native glTF skin uses a transformed inverse bind pose. Force
-  // skeleton matrices current BEFORE reading real skinned vertex bounds.
-  model.updateWorldMatrix(true,true);
-  model.traverse(mesh=>{if(mesh.isSkinnedMesh)mesh.skeleton.update()});
-  bounds.setFromObject(model,true);
-  return bounds.max.y-bounds.min.y;
- };
- // Chromium diagnostics at factors 0.05..2.0 proved rendered model height
- // follows holder.scale^2. Earlier linear correction ran against stale
- // skeleton matrices and produced a live 66-unit giant despite recording 8.1.
- // Use the native skin's square-root correction and remeasure at each step.
- for(let i=0;i<6;i++){
-  after=measure();if(!i)before=after;
-  if(!Number.isFinite(after)||after<.001)break;
-  if(Math.abs(after-target)/target<.045)break;
-  const correction=Math.sqrt(target/after);
-  holder.scale.multiplyScalar(THREE.MathUtils.clamp(correction,.15,3.75));
+ // v589: sample the actual rendered skeleton on SEPARATE animation frames.
+ // The imported Mixamo glTF skin does not fully apply holder scale changes
+ // until the next frame; same-frame measurements misreported a 5.4-unit body
+ // that became 54+ world units on the following frame.
+ model.updateWorldMatrix(true,true);
+ model.traverse(mesh=>{if(mesh.isSkinnedMesh)mesh.skeleton.update()});
+ const bounds=new THREE.Box3().setFromObject(model,true);
+ const measured=bounds.max.y-bounds.min.y;
+ if(!Number.isFinite(measured)||measured<.001)return;
+ z.parasiteMeasuredHeight=measured;
+ const error=Math.abs(measured-target)/target;
+ if(error<.055){
+  z.parasiteSizeStableFrames=(z.parasiteSizeStableFrames||0)+1;
+  // No calibration can finish on the frame that changed the holder scale.
+  if(z.parasiteSizeStableFrames>=5){
+   const rootPosition=new THREE.Vector3();z.g.getWorldPosition(rootPosition);
+   const deltaY=(rootPosition.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
+   if(Number.isFinite(deltaY))holder.position.y+=THREE.MathUtils.clamp(deltaY,-8,8);
+   z.parasiteSizeCalibrated=true;
+   console.log("CITY OUTBREAK v589: Parasite confirmed over 5 animation frames",{
+    frames:frame,height:measured,target,holderScale:holder.scale.x
+   });
+  }
+  return;
  }
- after=measure();
- const foot=(rootPos.y-bounds.min.y)/Math.max(.001,Math.abs(rootScale.y));
- if(Number.isFinite(foot))holder.position.y+=THREE.MathUtils.clamp(foot,-8,8);
- z.parasiteSizeCalibrated=true;z.parasiteMeasuredHeight=after;
- console.log("CITY OUTBREAK v588: original parasite true skinned size",{
-  before,after,target,holderScale:holder.scale.x,clip:z.parasiteBossClip||null
- });
+ z.parasiteSizeStableFrames=0;
+ if(frame<=45){
+  // Measured in Chromium: visible skin extent is quadratic in holder scale.
+  // Apply exactly one correction, then WAIT until another animation frame.
+  const factor=THREE.MathUtils.clamp(Math.sqrt(target/measured),.25,2.5);
+  holder.scale.multiplyScalar(factor);
+ }else if(frame===46){
+  console.warn("CITY OUTBREAK: Parasite visual size did not settle within 45 frames",{
+   measured,target,holderScale:holder.scale.x
+  });
+ }
 }
 
 let suitBossTemplate=null,suitBossLoadError=null;

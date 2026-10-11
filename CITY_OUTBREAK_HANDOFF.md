@@ -1,3 +1,11 @@
+# v589 — PARASITE CROSS-FRAME REAL-SKIN CALIBRATION — 2026-10-11
+
+- v588 browser run `38113178225` proved a critical delayed-native-skin behavior: calibration logged target `5.416858` world units but **next rendered frame** measured huge `54.166956` units. Previous same-frame measurement loop was invalid, even after calling skeleton.update.
+- v589 now measures actual original Mixamo skin size across consecutive animation frames, applies a square-root size correction no more than ONCE per frame, and requires **five consecutive good-height frames** before locking sizing. This avoids accepting stale same-frame skinned bounds as success. Maximum 45 calibration frames; logs warning if never stabilized. Original Parasite GLB, its Mixamo animation, existing special attacks and dedicated test hitboxes preserved.
+- Automated Chromium smoke waits for stable calibration and asserts BOTH actual current live Box3 height and recorded height within 9% of target (3.20 * boss root scale). Report adds frame/stability count. Wave 1 test only; Parasite NOT in rotation; Panzer and Suit Guy approved code still untouched. Loader/Parasite asset cache `v589`. Await verification and user appearance approval. v324 protected recovery unchanged.
+
+---
+
 # v588 — PARASITE TRUE SKELETON SCALE FIX — 2026-10-11
 
 - Detailed GitHub Actions Chromium probe `38113069459` established the new imported Parasite GLB has 2 SkinnedMeshes (`Object_7` and `Object_8`) and visible world-space height grows quadratically with holder scale. Actual measured pairs: holder 2.899 -> 1.493 units; 6.764 -> 8.128; 19.325 -> 66.353. Previous v587 linear iterative resize failed (claimed 8.128 but live model at that final holder size was enormous).
