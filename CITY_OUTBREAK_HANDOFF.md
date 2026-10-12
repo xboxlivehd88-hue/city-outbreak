@@ -1,3 +1,13 @@
+# v613 — CALIBRATE COP SPRINTER SKINNED MESH AT ITS ACTUAL LIVE SIZE — 2026-10-12
+
+- v612 REAL Chromium tests: both user's original GLBs loaded and BOTH attach with original textures, full 66-joint skins, 17 named runtime anatomical bones and recorded running animation (Cop `Animation` 58 tracks; Maniac `mixamo.com` 72 tracks). Original Cop's native left/right hips/knees rotated naturally (left 0.55/0.35rad, right 0.69/0.23rad). Maniac keeps approved native run and 1.73 world-unit height.
+- **Confirmed bug:** Cop appeared only **0.055415 world units tall**, despite intact original rendering and animation. This differs from Hazmat's historical GLB and proves a fixed 1.0 holder scale cannot work for Cop.
+- v613 fixes ONLY the Cop's stale first-frame bound case with a one-time *live skinned-vertex* size calibration. Measure the actual world mesh height at current scale, double holder scale, measure again to learn whether this source responds linearly or quadratically, solve for ~1.88 units times zombie root scale, remeasure/one residual correction, then lift feet to pavement and center X/Z. Never regenerate meshes, recolor GLB materials, fabricate limb animation or alter gameplay hitbox/damage. Maniac source path/scale/gait is unchanged.
+- v613 browser QA version aligns all 3 scripts/workflows and verifies BOTH originals have approximately human world height, ground contact, source textures, bilateral knee motion, 11 head/body/limb hitboxes, native death PBD, same original model on legless crawler. Preserve Hazmat/Green Guy approved visuals and every-10-wave boss roster, weapons, graphics and protected v324.
+- Current loader `./src/game.js?v=613`, playable `https://xboxlivehd88-hue.github.io/city-outbreak/?v=613-two-sprinters-calibrated`. First wave remains 10-Hazmat temporary test; Sprinters mix from Wave 2+ with 50/50 alternating Cop and Maniac. Await CI/Pages confirmation.
+
+---
+
 # v612 QA-only workflow path correction — 2026-10-12
 
 - v612 GitHub Pages/gameplay source deployed. Sprinter test failed BEFORE loading game because version replacement changed the CI command and trigger path to `scripts/sprinter-v612-smoke.cjs`, while the established test file remains named `scripts/sprinter-v611-smoke.cjs`. Corrected ONLY the workflow's invocation, path trigger and own workflow filename reference to match actual repository paths. Gameplay and loader remain v612 without modifications. Rerun the real Chromium test for both Sprinters.

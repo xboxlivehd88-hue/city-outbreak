@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=612",
- "assets/zombie_running_on_metel_maniac.glb?v=612"
+ "assets/animated_zombie_cop_running_loop.glb?v=613",
+ "assets/zombie_running_on_metel_maniac.glb?v=613"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -134,6 +134,48 @@ export function createSprinterZombieController(){
    o.visible=false;o.castShadow=false;o.receiveShadow=false;o.raycast=()=>{};
   }});
   z.g.add(holder);
+  if(staleCopBounds){
+   // v613: measure the COP's actually SKINNED geometry in the live scene.
+   // Some glTF imports scale with the holder linearly, others quadratically.
+   // A two-sample calibration discovers the real scale response safely.
+   const scanBox=new THREE.Box3(),rootScale=new THREE.Vector3(),rootPos=new THREE.Vector3();
+   const measure=()=>{
+    holder.updateWorldMatrix(true,true);
+    scanBox.setFromObject(holder,true);
+    return scanBox.max.y-scanBox.min.y;
+   };
+   const h0=measure(),startScale=holder.scale.x;
+   holder.scale.setScalar(startScale*2);
+   const h1=measure();
+   const ratio=h1/Math.max(h0,1e-6);
+   const rawExponent=Math.log(ratio)/Math.log(2);
+   const exponent=Number.isFinite(rawExponent)?
+     THREE.MathUtils.clamp(rawExponent,.7,2.6):1;
+   z.g.getWorldScale(rootScale);
+   const goal=1.88*Math.max(.01,Math.abs(rootScale.y));
+   if(h0>.005&&Number.isFinite(goal)){
+    const factor=THREE.MathUtils.clamp(Math.pow(goal/h0,1/exponent),.15,150);
+    holder.scale.setScalar(startScale*factor);
+    const h2=measure();
+    if(h2>.001){
+     const correction=THREE.MathUtils.clamp(Math.pow(goal/h2,1/exponent),.15,8);
+     holder.scale.multiplyScalar(correction);
+    }
+   }else holder.scale.setScalar(startScale);
+   z.sprinterActualHeight=measure();
+   z.sprinterScaleExponent=exponent;
+   z.sprinterInitialHeight=h0;
+   // The entire ORIGINAL skinned model is lifted and centered as a unit.
+   // No change to source joint positions or to old gameplay/world collision.
+   scanBox.getCenter(tempWorld);
+   z.g.getWorldPosition(rootPos);
+   holder.position.x+=(rootPos.x-tempWorld.x)/Math.max(.01,Math.abs(rootScale.x));
+   holder.position.z+=(rootPos.z-tempWorld.z)/Math.max(.01,Math.abs(rootScale.z));
+   holder.position.y+=(rootPos.y+.025-scanBox.min.y)/Math.max(.01,Math.abs(rootScale.y));
+   console.log("CITY OUTBREAK v613: calibrated original Cop Sprinter skinned geometry",{
+    initial:h0,pilot:h1,exponent,final:z.sprinterActualHeight,holderScale:holder.scale.x
+   });
+  }
   z.sprinterVisual=holder;z.sprinterModel=model;z.sprinterBones=bones;
   z.sprinterMixer=mixer;z.sprinterRunAction=action;
   z.sprinterModelIndex=variant;z.sprinterSourceHeight=size.y;
