@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=617",
- "assets/zombie_running_on_metel_maniac.glb?v=617"
+ "assets/animated_zombie_cop_running_loop.glb?v=618",
+ "assets/zombie_running_on_metel_maniac.glb?v=618"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -182,8 +182,13 @@ export function createSprinterZombieController(){
    mixer.setTime(.09);
    z.sprinterCopCycleHeight=bounds.max.y-bounds.min.y;
    z.sprinterScaleExponent=exponent;z.sprinterInitialHeight=h0;
+   // v618: full LIVE browser gait was ~16–18 units despite the spawn
+   // calibration reading ~1.9. Apply the independent corrective factor
+   // to the actual skinned visual only; all gameplay scales stay unchanged.
+   // Refit from measured live gait in subsequent tested increments.
+   holder.scale.multiplyScalar(.115);
    z.sprinterSizeChecks=0;
-   if(!prior)asset.calibration={scale:holder.scale.x,exponent};
+   if(!prior)asset.calibration={scale:holder.scale.x/.115,exponent};
   }
   z.sprinterVisual=holder;z.sprinterModel=model;z.sprinterBones=bones;
   z.sprinterMixer=mixer;z.sprinterRunAction=action;
