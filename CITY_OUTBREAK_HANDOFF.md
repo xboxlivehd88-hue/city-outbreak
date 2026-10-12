@@ -1,3 +1,10 @@
+# v614 QA-only test syntax repairs — 2026-10-12
+
+- First v614 Pages deployment succeeded, but both new Sprinter and forced-Hazmat CI scripts hit test-script JS syntax errors before browser execution. Sprinter injected array missed closing quote on variant-selection line; Hazmat diagnostic injected code had raw double quotes within JS double-quoted string. Both repaired. Checked source syntax with JS compiler before new CI run. No gameplay/loader changes; `sprinterOnlyTest=true` still isolates Wave 1 and future waves to ONLY Cop/Maniac Sprinters while model visual bugs are reviewed.
+- Real full-run-cycle Cop size verification remains pending until rerun. Do not claim verified until Sprinter real browser audit passes.
+
+---
+
 # v614 — FIX COP MASSIVE DURING RUN, SPRINTER-ONLY GAMEPLAY TEST — 2026-10-12
 
 - **USER REPORT**: "the cops are freaking massive and the sprinters should be the only things im fighting to get the bugs worked out" after v613 Cop/Maniac integration. User rejects previous conclusion that v613's 2.049-unit SPAWN-POSE measurement proves Cop stays properly sized during its run.

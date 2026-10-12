@@ -16,7 +16,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "  const units=zombies.filter(z=>z.kind==='sprinter'&&!z.dead&&z.sprinterVisual);",
    "  const counts=[0,0];for(const z of units)counts[z.sprinterModelIndex]++;",
    "  globalThis.__sprinterWaveAudit={wave,waveTarget,waveSpawned,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],count:units.length,counts,testOnly:sprinterOnlyTest};",
-   "  return [units.find(z=>z.sprinterModelIndex===0),units.find(z=>z.sprinterModelIndex===1)].filter(Boolean).map(z=>{
+   "  return [units.find(z=>z.sprinterModelIndex===0),units.find(z=>z.sprinterModelIndex===1)].filter(Boolean).map(z=>{",
    "   const box=new THREE.Box3().setFromObject(z.sprinterVisual,true),size=new THREE.Vector3();box.getSize(size);",
    "   const meshes=[];z.sprinterModel.traverse(o=>{if(o.isSkinnedMesh){",
    "    const mats=Array.isArray(o.material)?o.material:[o.material];",
