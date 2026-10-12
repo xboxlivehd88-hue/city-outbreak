@@ -7281,7 +7281,7 @@ function aimInfectedCrawlerArm(z,bones,side,phase){
  // outward. v643 chose an UP/REAR bend and made both arms look reversed.
  const along=(upperLength*upperLength-lowerLength*lowerLength+distance*distance)/(2*distance);
  const bendRadius=Math.sqrt(Math.max(0,upperLength*upperLength-along*along));
- infectedCrawlBend.set(side*.23,-1,-.16).applyQuaternion(infectedCrawlWorldQ);
+ infectedCrawlBend.set(side*.48,-.33,-.14).applyQuaternion(infectedCrawlWorldQ);
  infectedCrawlBend.addScaledVector(infectedCrawlAxis,-infectedCrawlBend.dot(infectedCrawlAxis)).normalize();
  infectedCrawlElbowTarget.copy(infectedCrawlShoulder).addScaledVector(infectedCrawlAxis,along)
   .addScaledVector(infectedCrawlBend,bendRadius);
