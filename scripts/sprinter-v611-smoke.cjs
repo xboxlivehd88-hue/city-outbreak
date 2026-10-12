@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:622,passed:false},errors=[];let browser,page;
+ const report={build:623,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=622$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=623$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -91,7 +91,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=622-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=623-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -140,9 +140,9 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert(report.lifecycle.crawlerHitboxes>2);
   for(const [type,m] of [["Cop",report.lifecycle.copCrawl],["Maniac",report.lifecycle.maniacCrawl]]){
    assert(m&&m.frozen&&m.boneCount>=16,type+" crawler original skinned skeleton/mixer missing");
-   assert(Number.isFinite(m.height)&&m.height>0.2&&m.height<1.7,
+   assert(Number.isFinite(m.height)&&m.height>0.65&&m.height<1.50,
      type+" crawler balled up or standing upright: "+JSON.stringify(m));
-   assert(m.feet>-.20&&m.feet<.22,
+   assert(m.feet>-.12&&m.feet<.15,
      type+" crawler floating or underground: "+JSON.stringify(m));
    assert(m.handsApart>.35&&m.handsSeparationX>.24&&m.leftAhead>-.10&&m.rightAhead>-.10,
      type+" crawler arms crossed into body: "+JSON.stringify(m));
@@ -159,8 +159,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V622_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V622_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V623_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V623_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();

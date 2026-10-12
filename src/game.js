@@ -52,8 +52,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v622";
-document.documentElement.dataset.cityOutbreakBuild="622";
+document.title="CITY OUTBREAK — v623";
+document.documentElement.dataset.cityOutbreakBuild="623";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -6917,12 +6917,37 @@ function syncSprinterCrawlerUpper(z,holder,bones,pose,phase,attack){
  holder.updateWorldMatrix(true,true);
 
  if(!pose.sprinterGrounded){
-  // Fit the one-time pose by the real textured SKIN and by its supporting
-  // hands. Keep the head ABOVE its hands and ground under the body rather
-  // than yanking the entire body down by an old -.46 standing offset.
-  sprinterCrawlBox.setFromObject(holder,true);
-  if(!sprinterCrawlBox.isEmpty()&&Number.isFinite(sprinterCrawlBox.min.y)){
-   z.g.updateWorldMatrix(true,false);
+  // CRAWLERS ONLY. The original Cop/Maniac run sizes stay unchanged.
+  // The two exported skins respond differently to Three.js root scales:
+  // measure actual animated SKIN, shrink the preserved torso to a low crawl,
+  // then measure how translating this holder really moves its world vertices.
+  const scan=()=>{
+   holder.updateWorldMatrix(true,true);
+   sprinterCrawlBox.setFromObject(holder,true);
+   return sprinterCrawlBox.clone();
+  };
+  let bounds=scan(),height=bounds.max.y-bounds.min.y;
+  if(!bounds.isEmpty()&&Number.isFinite(height)&&height>.05){
+   // v622 preserved the true forward torso but left its original standing-
+   // sized visual 1.75–1.83m tall. A crawler needs a LOWER silhouette.
+   // Infer the skin's live holder-scale exponent to avoid the old giant/tiny
+   // Cop bugs; fit once per leg-loss conversion, not per-frame.
+   const trial=.82,initialScale=holder.scale.x;
+   holder.scale.multiplyScalar(trial);
+   const probe=scan(),probeH=probe.max.y-probe.min.y;
+   holder.scale.setScalar(initialScale);
+   let exponent=Math.log(probeH/height)/Math.log(trial);
+   exponent=Number.isFinite(exponent)?THREE.MathUtils.clamp(exponent,.65,2.6):1;
+   const targetHeight=1.14;
+   for(let k=0;k<3;k++){
+    bounds=scan();height=bounds.max.y-bounds.min.y;
+    if(!Number.isFinite(height)||height<.02)break;
+    if(Math.abs(height-targetHeight)<.035)break;
+    holder.scale.multiplyScalar(THREE.MathUtils.clamp(
+      Math.pow(targetHeight/height,1/exponent),.35,2.3));
+   }
+   // Put the hips on the crawler path center; all body dimensions follow
+   // the original skeleton, so no bones are stretched or re-skinned.
    const hips=bones.get("Hips");
    if(hips){
     hips.getWorldPosition(sprinterCrawlTmpA);
@@ -6930,16 +6955,28 @@ function syncSprinterCrawlerUpper(z,holder,bones,pose,phase,attack){
     holder.position.x-=sprinterCrawlTmpA.x;
     holder.position.z-=sprinterCrawlTmpA.z;
    }
-   holder.updateWorldMatrix(true,true);
-   sprinterCrawlBox.setFromObject(holder,true);
-   z.g.getWorldScale(sprinterRootScale);
-   holder.position.y+=(z.g.position.y+.035-sprinterCrawlBox.min.y)/
-      Math.max(.01,Math.abs(sprinterRootScale.y));
-   // Lift only when the model genuinely clips below the road. Don't re-ground
-   // each frame; that is what made v621 crawlers bob and contort as they chased.
+   z.g.updateWorldMatrix(true,false);
+   const floor=z.g.position.y+.035;
+   for(let k=0;k<4;k++){
+    bounds=scan();
+    const error=floor-bounds.min.y;
+    if(!Number.isFinite(error)||Math.abs(error)<.018)break;
+    // A 0.10-unit probe discovers the actual skinned mesh's vertical
+    // translation response. Hardcoded rootScale was wrong in v622.
+    const startY=holder.position.y,baseline=bounds.min.y;
+    holder.position.y=startY+.10;
+    const moved=scan().min.y;
+    holder.position.y=startY;
+    const slope=(moved-baseline)/.10;
+    const reliable=Math.abs(slope)>.15&&Math.abs(slope)<8;
+    const gain=reliable?slope:Math.max(.3,z.g.scale.y);
+    holder.position.y+=THREE.MathUtils.clamp(error/gain,-2.0,2.0);
+   }
+   bounds=scan();
+   pose.sprinterCrawlHeight=bounds.max.y-bounds.min.y;
+   pose.sprinterGroundError=bounds.min.y-floor;
    pose.sprinterCrawlerPos=holder.position.clone();
    pose.sprinterGrounded=true;
-   holder.updateWorldMatrix(true,true);
   }
  }
 }
