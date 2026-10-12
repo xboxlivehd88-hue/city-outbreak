@@ -7268,12 +7268,31 @@ function attachInfectedGLB(z){
   const bone=lookup.get(name);if(bone){bones.set(key,bone);rest.set(key,bone.quaternion.clone())}
  }
  if(bones.size<15){
-  console.error("CITY OUTBREAK: Infected GLB's 34-joint anatomy couldn't be mapped",bones.size);
+  document.documentElement.dataset.infectedGlbAttachError="bones-"+bones.size;
+  console.error("CITY OUTBREAK: Infected GLB's 34-joint anatomy couldn't be mapped",bones.size,[...lookup.keys()]);
   return false;
  }
  model.updateWorldMatrix(true,true);
- const bounds=new THREE.Box3().setFromObject(model,true),height=bounds.max.y-bounds.min.y;
- if(!Number.isFinite(height)||height<.3||height>800)return false;
+ const bounds=new THREE.Box3().setFromObject(model,true);
+ let height=bounds.max.y-bounds.min.y;
+ // GLTFLoader can report a tiny stale skinned mesh Box3 before its first
+ // animation update (the Cop GLB had this same .015m import quirk).
+ // The uploaded Infected source POSITION accessor is 1.784m tall.
+ if(!Number.isFinite(height)||height<.3||height>80){
+  const mesh=model.getObjectByName("Object_7")||model.getObjectByProperty("isSkinnedMesh",true);
+  const geo=mesh?.geometry;
+  if(geo){geo.computeBoundingBox();const local=geo.boundingBox;const raw=local?.max.y-local?.min.y;
+   if(Number.isFinite(raw)&&raw>.2&&raw<20){
+    height=raw;bounds.min.y=local.min.y;bounds.max.y=local.max.y;
+    bounds.min.x=local.min.x;bounds.max.x=local.max.x;
+    bounds.min.z=local.min.z;bounds.max.z=local.max.z;
+   }
+  }
+ }
+ if(!Number.isFinite(height)||height<.3||height>80){
+  document.documentElement.dataset.infectedGlbAttachError="badBounds-"+height;
+  return false;
+ }
  const holder=new THREE.Group();holder.name="OriginalInfectedZombieGLB_v645";
  holder.rotation.y=Math.PI;holder.scale.setScalar(THREE.MathUtils.clamp(1.80/height,.004,10));
  model.position.y-=bounds.min.y;
@@ -7310,6 +7329,7 @@ function attachInfectedGLB(z){
   poseOriginalInfectedCrawler(z);
  }
  makeOriginalInfectedCrawlerTargets(z,bones);
+ document.documentElement.dataset.infectedGlbAttachError="";
  document.documentElement.dataset.infectedGlbAttached=
   String(Number(document.documentElement.dataset.infectedGlbAttached||0)+1);
  return true;
