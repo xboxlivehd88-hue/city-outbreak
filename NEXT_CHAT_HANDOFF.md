@@ -1,3 +1,9 @@
+# v612 QA-only workflow path correction — 2026-10-12
+
+- v612 GitHub Pages/gameplay source deployed. Sprinter test failed BEFORE loading game because version replacement changed the CI command and trigger path to `scripts/sprinter-v612-smoke.cjs`, while the established test file remains named `scripts/sprinter-v611-smoke.cjs`. Corrected ONLY the workflow's invocation, path trigger and own workflow filename reference to match actual repository paths. Gameplay and loader remain v612 without modifications. Rerun the real Chromium test for both Sprinters.
+
+---
+
 # v612 — FIX COP SPRINTER INITIAL SKIN BOUNDS — 2026-10-12
 
 - User supplied two Sprinter GLBs, both integrated in v611. Both assets successfully load with REAL animated skinned Mixamo knees/arms and textures; previous first Sprinter browser test found a Playwright start navigation wait (fixed by QA-only commit `6e15279e3cbee4c0b54d33d1d6732b702ae73591`).
