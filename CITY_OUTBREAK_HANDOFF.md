@@ -1,3 +1,14 @@
+# v645 — REAL USER-UPLOADED INFECTED GLB / SKINNED CRAWLER — 2026-10-12
+
+- User uploaded **`assets/zombie_animated.glb`** on GitHub `main` commit `59538d3d7af4e653b52a0bae27c84ccf4614b42f` and requested it replace the Infected in-game, not any other zombie. Preserve v644 as predecessor; protected v324 remains unchanged.
+- Actual GLB independently audited in GitHub Actions run `38303601722`: 2,072,116 bytes, genuine 34-bone Mixamo armature, one full skinned mesh, 1 authored material with diffuse texture, and one 48-channel source animation named **`jad`** from `Zombie Agonizing.fbx`. This source clip is NOT a walking/running or crawl clip. Never fabricate model animations.
+- v645 `src/game.js`: loads and clones the REAL GLB for every `kind==="infected"`; map 17 native Mixamo joints to Hips/Spine/Chest/Neck/Head/arms/legs without replacing original model materials. Calibrate standing size to ~1.8m, face player, hide only the previous placeholder render skin. The GLB keeps its own existing skinned geometry, texture, same actor and damage AI. Native source upper-neck/head animation retained at low weight, locomotion driven by original skinned leg/arm joints rather than pretending `jad` is a run.
+- **Amputation without identity swapping:** true GLB joint-weighted limb triangles are clipped on each arm/leg sever rather than scaling skinned shoulders/thighs into a ball; original infected GLB remains when losing both legs, old v644 chest pitch +0.095m grounded pelvis and alternating original arm support/crawling pose remain active. Original-bone head/torso/arms/legs raycast targets replace invisible placeholder targets. Real GLB skeleton is used for PBD ragdoll; other zombie models/controllers untouched.
+- Wave 1 stays **only Infected**, normal 10 spawn; waves 2+ and every-tenth boss roster unchanged; Sprinter opt-in regression unchanged. Chromium smoke scripts advanced to v645 and Parasite smoke now fails if Infected does not actually retain the newly uploaded textured GLB after dual-leg conversion. Check CI, deployed Pages, and user's visual result before claiming fully verified.
+- Loader `./src/game.js?v=645`, Sprinter controller import stays `?v=638` untouched. Test https://xboxlivehd88-hue.github.io/city-outbreak/?v=645-infected-real-glb .
+
+---
+
 # v644 — INFECTED CHEST LIFT AND NATURAL FORWARD CRAWL — 2026-10-12
 
 - User tested v643: Infected crawler chest is still WAY too close to the ground, while arms bend BACKWARD and appear to PUSH AWAY from the player during forward crawling. The goal is pelvis on pavement, chest distinctly raised but still natural, elbows directed toward pavement, and hands pulling the Infected toward its forward movement.
