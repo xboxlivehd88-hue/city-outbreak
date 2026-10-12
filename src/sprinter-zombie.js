@@ -397,27 +397,26 @@ export function createSprinterZombieController(){
   hand.parent.getWorldQuaternion(palmParentQ);
   hand.quaternion.copy(palmParentQ.invert().multiply(palmWorldQ)).normalize();
  }
- const crawlWristA=new THREE.Vector3(),crawlWristB=new THREE.Vector3(),
-  crawlChest=new THREE.Vector3(),crawlHead=new THREE.Vector3(),
-  crawlWorldScale=new THREE.Vector3();
- function groundOriginalCrawlerOnWrists(z,initial=false){
+ // v633: The breastbone and pelvis, not a dangling mesh triangle nor
+ // the hands, determine the height of the original crawling torso.
+ const crawlChest=new THREE.Vector3(),crawlHips=new THREE.Vector3(),
+  crawlHead=new THREE.Vector3(),crawlWorldScale=new THREE.Vector3();
+ function groundOriginalCrawlerTorso(z,initial=false){
   const bones=z.sprinterBones,holder=z.sprinterVisual;
-  const left=bones?.get("L_Hand"),right=bones?.get("R_Hand"),
-   chest=bones?.get("Chest"),head=bones?.get("Head");
-  if(!left||!right||!chest||!head||!holder)return;
+  const chest=bones?.get("Chest"),hips=bones?.get("Hips"),head=bones?.get("Head");
+  if(!chest||!hips||!head||!holder)return;
   holder.updateWorldMatrix(true,true);
-  left.getWorldPosition(crawlWristA);right.getWorldPosition(crawlWristB);
-  chest.getWorldPosition(crawlChest);head.getWorldPosition(crawlHead);
+  chest.getWorldPosition(crawlChest);hips.getWorldPosition(crawlHips);
+  head.getWorldPosition(crawlHead);
   const floor=z.g.position.y;
-  // Bounding-box min can touch the floor on a dangling SKIN vertex while
-  // both hands/chest hover. Plant actual wrist anchors instead.
-  let error=floor+.105-(crawlWristA.y+crawlWristB.y)*.5;
-  error=Math.max(error,floor+.28-crawlChest.y,floor+.20-crawlHead.y);
-  if(!Number.isFinite(error)||Math.abs(error)<.008)return;
+  // The belly hangs below the chest joint; face and pelvis must stay clear.
+  let error=floor+.27-crawlChest.y;
+  error=Math.max(error,floor+.19-crawlHead.y,floor+.20-crawlHips.y);
+  if(!Number.isFinite(error)||Math.abs(error)<.006)return;
   z.g.getWorldScale(crawlWorldScale);
   const gain=Math.max(.05,Math.abs(crawlWorldScale.y));
   holder.position.y+=THREE.MathUtils.clamp(error/gain,
-   initial?-.8:-.085,initial?.8:.085);
+   initial?-.85:-.09,initial?.85:.09);
  }
  function beginCrawler(z,crawlerAsset){
   if(!z?.sprinterVisual||!z.sprinterModel||!z.sprinterMixer||!crawlerAsset?.scene)return false;
@@ -525,30 +524,16 @@ export function createSprinterZombieController(){
     holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.pow(target/h,1/exponent),.25,3));
    }
   }
-  const ground=()=>{
-   const height=measure(),box=crawlerBounds;
-   if(!Number.isFinite(height)||box.isEmpty())return;
-   const floor=z.g.position.y+.035;
-   const oldY=holder.position.y,oldMin=box.min.y;
-   holder.position.y+=.1;
-   const newMin=(measure(),crawlerBounds.min.y);
-   holder.position.y=oldY;
-   const slope=(newMin-oldMin)/.1;
-   const gain=Math.abs(slope)>.15&&Math.abs(slope)<8?slope:Math.max(.2,z.g.scale.y);
-   holder.position.y+=THREE.MathUtils.clamp((floor-oldMin)/gain,-3,3);
-  };
-  ground();
+  // Keep the original pelvis centered in this zombie's local chase frame.
   const hip=hips?.getWorldPosition(new THREE.Vector3());
   if(hip){
    z.g.worldToLocal(hip);
    holder.position.x-=hip.x;
    holder.position.z-=hip.z;
   }
-  ground();
-  // Ground the actual hands after the native upper-body crawl is posed.
+  groundOriginalCrawlerTorso(z,true);
   aimSprinterCrawlerSupport(z,bones,-1,.2);
   aimSprinterCrawlerSupport(z,bones,1,Math.PI+.2);
-  groundOriginalCrawlerOnWrists(z,true);
   z.sprinterCrawlerBasePos=holder.position.clone();
   z.sprinterCrawlerBaseQuat=holder.quaternion.clone();
   z.sprinterCrawlerHeight=measure();
@@ -557,8 +542,9 @@ export function createSprinterZombieController(){
  // Aim a bent, outside-the-ribcage forearm down to the pavement.
  // Do not scale/translate joints or overwrite the torso's real Crawl clip.
  const supportDir=new THREE.Vector3(),parentWorld=new THREE.Quaternion();
- const actorWorld=new THREE.Quaternion();
- const upDir=new THREE.Vector3(),elbowDir=new THREE.Vector3();
+ const actorWorld=new THREE.Quaternion(),upDir=new THREE.Vector3();
+ const elbowDir=new THREE.Vector3(),shoulderWorld=new THREE.Vector3(),
+  elbowWorld=new THREE.Vector3(),wristWorld=new THREE.Vector3();
  function aimSprinterCrawlerSupport(z,bones,side,phase){
   const prefix=side<0?"L":"R";
   const arm=bones.get(prefix+"_UpperArm"),
@@ -570,16 +556,30 @@ export function createSprinterZombieController(){
    supportDir.copy(dir).applyQuaternion(parentWorld.invert()).normalize();
    bone.quaternion.setFromUnitVectors(upDir.copy(child.position).normalize(),supportDir);
   };
-  // Slight alternating reach without crossing the centerline.
-  const walk=Math.sin(phase)*.065;
-  // Support directions must rotate WITH this Sprinter's chase yaw, not the
-  // fixed world/street XZ axes (which fold the elbows inward on turns).
   z.g.getWorldQuaternion(actorWorld);
-  elbowDir.set(side*.78,-.83,-.67+walk).normalize().applyQuaternion(actorWorld);
+  // Plant both arms by their ORIGINAL animated segment lengths rather than
+  // two identical downward angles. Allows chest to ride low while each
+  // real palm keeps contact without passing through the pavement.
+  arm.getWorldPosition(shoulderWorld);
+  lower.getWorldPosition(elbowWorld);
+  hand.getWorldPosition(wristWorld);
+  const upperLength=shoulderWorld.distanceTo(elbowWorld),
+   lowerLength=elbowWorld.distanceTo(wristWorld);
+  if(upperLength<.015||lowerLength<.015)return;
+  const step=Math.sin(phase)*.022,floor=z.g.position.y;
+  const elbowDrop=THREE.MathUtils.clamp(
+   floor+.18+step*.4-shoulderWorld.y,-upperLength*.87,upperLength*.80);
+  elbowDir.set(side*.78,0,-.72+step).normalize().applyQuaternion(actorWorld);
+  elbowDir.multiplyScalar(Math.sqrt(Math.max(.05,1-(elbowDrop/upperLength)**2)));
+  elbowDir.y=elbowDrop/upperLength;
   orient(arm,lower,elbowDir);
   arm.updateWorldMatrix(true,true);
-  // Hands should land ahead of the elbows, not bend backwards into ribs.
-  elbowDir.set(side*.45,-.76,-.99-walk).normalize().applyQuaternion(actorWorld);
+  lower.getWorldPosition(elbowWorld);
+  const wristDrop=THREE.MathUtils.clamp(
+   floor+.085+step-elbowWorld.y,-lowerLength*.87,lowerLength*.82);
+  elbowDir.set(side*.43,0,-1-step).normalize().applyQuaternion(actorWorld);
+  elbowDir.multiplyScalar(Math.sqrt(Math.max(.05,1-(wristDrop/lowerLength)**2)));
+  elbowDir.y=wristDrop/lowerLength;
   orient(lower,hand,elbowDir);
   lower.updateWorldMatrix(true,true);
   plantOriginalPalm(z,hand,side);
@@ -593,6 +593,7 @@ export function createSprinterZombieController(){
   // forward ground-support direction in WORLD space after mixer updates.
   // Preserve the source crawl cycle on hips, spine and neck and all skins.
   const cb=z.sprinterBones;
+  groundOriginalCrawlerTorso(z);
   if(cb?.size){
    const phase=(z.phase||0)+(z.sprinterMixer.time||0)*5;
    aimSprinterCrawlerSupport(z,cb,-1,phase);
@@ -601,9 +602,6 @@ export function createSprinterZombieController(){
    if(neck)neck.rotateX(-.18);
    if(head)head.rotateX(-.13);
   }
-  // Reground by CHEST/HANDS, not by an unrelated lowest mesh vertex.
-  // Four bone world positions are far cheaper than a skinned Box3 scan.
-  groundOriginalCrawlerOnWrists(z);
  }
  function freeze(z){if(z?.sprinterMixer)z.sprinterMixer.timeScale=0}
  function release(z){

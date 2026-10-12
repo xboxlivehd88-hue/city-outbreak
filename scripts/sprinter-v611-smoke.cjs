@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:632,passed:false},errors=[];let browser,page;
+ const report={build:633,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=632$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=633$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -84,7 +84,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
     "    elbowsApart:le&&re?Math.abs(le.x-re.x):null",
     "   };",
    "   return {height:box.max.y-box.min.y,feet:box.min.y-z.g.position.y,",
-   "    wristY:[jointY('L_Hand'),jointY('R_Hand')],chestY:jointY('Chest'),palmDown:[palmDown('L'),palmDown('R')],",
+   "    wristY:[jointY('L_Hand'),jointY('R_Hand')],chestY:jointY('Chest'),hipY:jointY('Hips'),palmDown:[palmDown('L'),palmDown('R')],",
    "    hipToChestForward:hips&&chest?hips.z-chest.z:null,",
    "    hipToHeadForward:hips&&head?hips.z-head.z:null,",
    "    trunkVerticalRise:hips&&chest?chest.y-hips.y:null,",
@@ -119,7 +119,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=632-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=633-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -157,7 +157,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    assert(m.angles.slice(0,4).filter(v=>v>.08).length>=3,"Real knees don't animate: "+JSON.stringify(m.angles));
   }
   report.lifecycle=await page.evaluate(()=>globalThis.__sprinterSmoke.lifecycle());
-  console.log("SPRINTER_V632_GROUND_CONTACTS="+JSON.stringify({cop:report.lifecycle.copCrawl,maniac:report.lifecycle.maniacCrawl}));
+  console.log("SPRINTER_V633_GROUND_CONTACTS="+JSON.stringify({cop:report.lifecycle.copCrawl,maniac:report.lifecycle.maniacCrawl}));
   assert.equal(report.lifecycle.ragNative,true,"Original Sprinter not running native PBD");
   assert(report.lifecycle.ragMove>.03,"Dead Sprinter froze instead of falling");
   assert.equal(report.lifecycle.oneLegHidden,true);
@@ -182,7 +182,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    // Cropped leg skin retains a few triangles below the model's bounds.
    // A Box3 minimum is NOT floor contact for a converted skinned torso.
    // Use real wrist/chest height instead, checked immediately below.
-   assert(m.wristY?.every(y=>Number.isFinite(y)&&y>-.08&&y<.30)&&m.chestY>.25&&m.chestY<.78,
+   assert(m.wristY?.every(y=>Number.isFinite(y)&&y>-.045&&y<.21)&&m.chestY>.18&&m.chestY<.37&&m.hipY>.16&&m.hipY<.43,
      type+" crawler wrists/chest hover above ground or clip into pavement: "+JSON.stringify(m));
    assert(m.palmDown?.every(n=>n!==null&&n>.85),
      type+" hand backs planted instead of original palms: "+JSON.stringify(m));
@@ -204,8 +204,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V632_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V632_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V633_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V633_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();
