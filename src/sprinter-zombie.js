@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=628",
- "assets/zombie_running_on_metel_maniac.glb?v=628"
+ "assets/animated_zombie_cop_running_loop.glb?v=629",
+ "assets/zombie_running_on_metel_maniac.glb?v=629"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -500,11 +500,11 @@ export function createSprinterZombieController(){
   };
   // Slight alternating reach without crossing the centerline.
   const walk=Math.sin(phase)*.085;
-  elbowDir.set(side*.80,-.83,-.68+walk).normalize();
+  elbowDir.set(side*.95,-.94,-.68+walk).normalize();
   orient(arm,lower,elbowDir);
   arm.updateWorldMatrix(true,true);
   // Hands should land ahead of the elbows, not bend backwards into ribs.
-  elbowDir.set(side*.62,-.62,-.81-walk).normalize();
+  elbowDir.set(side*.80,-.77,-.81-walk).normalize();
   orient(lower,hand,elbowDir);
  }
  function syncCrawler(z,dt){
@@ -521,8 +521,8 @@ export function createSprinterZombieController(){
    aimSprinterCrawlerSupport(z,cb,-1,phase);
    aimSprinterCrawlerSupport(z,cb,1,phase+Math.PI);
    const neck=cb.get("Neck"),head=cb.get("Head");
-   if(neck)neck.rotateX(-.16);
-   if(head)head.rotateX(-.12);
+   if(neck)neck.rotateX(-.18);
+   if(head)head.rotateX(-.13);
   }
   // The actual Crawl animation owns shoulders/elbows/hands. Keep ground
   // clearance without costly all-vertex bounds checks on every frame.

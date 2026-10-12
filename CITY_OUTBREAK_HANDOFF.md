@@ -1,3 +1,11 @@
+# v629 — LEGLESS SPRINTER CRAWLER ELBOW SPREAD / HEAD CLEARANCE — 2026-10-12
+
+- The user-approved standing animated Cop and Maniac Sprinters stay exactly as in v620: sizes, colors, 66-joint source Run motion, hitboxes, damage, 10-Sprinter-only testing waves, limb destruction.
+- On both-leg conversion preserve the original skinned GLB and clipped-away thigh geometry. v627 fixed crawler floor clearance. v628 Chromium confirmed Cop grounded and original torso forward, but its head-to-hand clearance only 0.0745 vs required 0.08; Maniac hand separation 0.198 laterally vs required 0.24. v628 original Hazmat/Green diagnostic PASS; v628 Parasite regression failed and should be inspected, without touching bosses during Sprinter fix.
+- v629 further crawler-only original-bone support aim: upper arms down/out (side*.95,-.94,-.68), forearms (side*.80,-.77,-.81), tiny neck/head pitch adjustment. No mesh swap, new glow, altered standing GLB, skeleton regeneration or rig-scale change. Test actual browser head, arms, floor, crawl pose and separate regressions before claiming fixed. Current loader `./src/game.js?v=629`, controller `?v=629`; candidate `https://xboxlivehd88-hue.github.io/city-outbreak/?v=629-sprinter-crawler-stance`. Protected v324 untouched.
+
+---
+
 # v628 — SPRINTER CRAWLER HANDS LOWER AND WIDER — 2026-10-12
 
 - v627 test passed original standing 5 Cop/5 Maniac Sprinters, full running animation and limb removal, retargeted 52-joint crawl, original legless textured skin and corrected crawler pavement alignment. Cop crawler feet +0.029 above floor; Maniac -0.010.
