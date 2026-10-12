@@ -62,9 +62,9 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "  const convertedCop=zombies.find(z=>z.kind==='crawler'&&z.sprinterVisual&&z.sprinterModelIndex===0);",
    "  const poseAudit=z=>{",
    "   if(!z)return null;",
-   "   const frame0=z.sprinterBones.get('L_UpperArm')?.quaternion.clone();
-   for(let i=0;i<18;i++){z.phase+=.22;syncCrawlerUpperVisual(z);sprinterZombie.sync(z,1/30)}
-   const armMotion=frame0?.angleTo(z.sprinterBones.get('L_UpperArm')?.quaternion)||0;",
+   "   const frame0=z.sprinterBones.get('L_UpperArm')?.quaternion.clone();",
+   "   for(let i=0;i<18;i++){z.phase+=.22;syncCrawlerUpperVisual(z);sprinterZombie.sync(z,1/30)}",
+   "   const armMotion=frame0?.angleTo(z.sprinterBones.get('L_UpperArm')?.quaternion)||0;",
    "   const box=new THREE.Box3().setFromObject(z.sprinterVisual,true);",
    "   const point=key=>{const b=z.sprinterBones.get(key);if(!b)return null;",
    "    const w=b.getWorldPosition(new THREE.Vector3());return z.g.worldToLocal(w)};",
