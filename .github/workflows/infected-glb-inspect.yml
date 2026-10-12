@@ -1,0 +1,23 @@
+name: Infected uploaded GLB anatomy inspection
+on:
+  push:
+    paths:
+      - '.github/workflows/infected-glb-inspect.yml'
+      - 'scripts/inspect-infected-glb.cjs'
+      - 'assets/zombie_animated.glb'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-infected:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect original user-uploaded GLB JSON chunk
+        run: node scripts/inspect-infected-glb.cjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: infected-asset-anatomy
+          path: INFECTED_GLB_AUDIT.json
