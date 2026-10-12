@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=619",
- "assets/zombie_running_on_metel_maniac.glb?v=619"
+ "assets/animated_zombie_cop_running_loop.glb?v=620",
+ "assets/zombie_running_on_metel_maniac.glb?v=620"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -234,55 +234,33 @@ export function createSprinterZombieController(){
  function stabilizeCop(z){
   if(z.sprinterModelIndex!==0||z.dead||z.knockdown)return;
   const tick=++z.sprinterSizeChecks;
-  if(![1,3,8,24,72,144].includes(tick))return;
-  const holder=z.sprinterVisual,mixer=z.sprinterMixer,clip=z.sprinterRunAction.getClip();
-  if(!mixer||!clip)return;
-  // v617: measure ENTIRE running gait on the FINAL LIVING root, not just
-  // one misleading pose or the pre-spawn source bind.
-  const currentTime=mixer.time;
-  const scan=()=>{
-   liveCycleBounds.makeEmpty();
-   for(let i=0;i<8;i++){
-    mixer.setTime(.04+(i+.5)*clip.duration/8);
-    holder.updateWorldMatrix(true,true);
-    liveBounds.setFromObject(holder,true);
-    if(!liveBounds.isEmpty())liveCycleBounds.union(liveBounds);
-   }
-   mixer.setTime(currentTime);
-   return liveCycleBounds.clone();
-  };
-  let box=scan(),height=box.max.y-box.min.y;
+  if(![1,2,3,4,5,6,8,12,18,30,60,120].includes(tick))return;
+  const holder=z.sprinterVisual;
+  const bounds=new THREE.Box3();
+  holder.updateWorldMatrix(true,true);
+  bounds.setFromObject(holder,true);
+  const actualHeight=bounds.max.y-bounds.min.y;
+  if(!Number.isFinite(actualHeight)||actualHeight<.001)return;
   z.g.getWorldScale(liveRootScale);
-  const target=.70*Math.max(.01,Math.abs(liveRootScale.y));
-  if(!Number.isFinite(height)||height<.001)return;
-  if(height<target*.91||height>target*1.08){
-   // A native glTF skin may transform like s^2; learn actual response
-   // from 2 FULL running clips at this actor's real location/scale.
-   const saved=holder.scale.x;
-   holder.scale.setScalar(saved*.80);
-   const pilot=scan(),pilotH=pilot.max.y-pilot.min.y;
-   holder.scale.setScalar(saved);
-   const rawPower=Math.log(pilotH/height)/Math.log(.8);
-   const power=Number.isFinite(rawPower)?
-     THREE.MathUtils.clamp(rawPower,.55,2.6):1;
-   z.sprinterLiveExponent=power;
-   for(let n=0;n<4;n++){
-    const factor=THREE.MathUtils.clamp(
-      Math.pow(target/Math.max(.001,height),1/power),.018,45);
-    holder.scale.multiplyScalar(factor);
-    box=scan();
-    height=box.max.y-box.min.y;
-    if(!Number.isFinite(height)||height<.001||Math.abs(height-target)<.025)break;
-   }
-   const footCenter=new THREE.Vector3(
-     (box.min.x+box.max.x)*.5,box.min.y,(box.min.z+box.max.z)*.5);
+  const target=1.90*Math.abs(liveRootScale.y);
+  // v620: measure the ACTUAL current living skin, not the inaccurate
+  // reset-and-replay bind-pose fit which kept allowing 10-18m police zombies.
+  // The original Cop's live scaled geometry has confirmed exponent ~2.
+  if(actualHeight>target*1.07||actualHeight<target*.93){
+   const correction=THREE.MathUtils.clamp(Math.sqrt(target/actualHeight),.12,5);
+   holder.scale.multiplyScalar(correction);
+   holder.updateWorldMatrix(true,true);
+   bounds.setFromObject(holder,true);
+   const foot=new THREE.Vector3((bounds.min.x+bounds.max.x)*.5,
+     bounds.min.y,(bounds.min.z+bounds.max.z)*.5);
    z.g.updateWorldMatrix(true,false);
-   const local=z.g.worldToLocal(footCenter);
-   holder.position.x-=local.x;holder.position.z-=local.z;
-   holder.position.y+=.025-local.y;
+   z.g.worldToLocal(foot);
+   holder.position.x-=foot.x;
+   holder.position.z-=foot.z;
+   holder.position.y+=.025-foot.y;
    z.sprinterLiveCorrectionCount=(z.sprinterLiveCorrectionCount||0)+1;
   }
-  z.sprinterLastMeasuredHeight=height;
+  z.sprinterLastMeasuredHeight=bounds.max.y-bounds.min.y;
  }
  function sync(z,dt){
   if(!z?.sprinterVisual)return;

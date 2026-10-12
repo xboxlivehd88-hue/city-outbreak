@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
-import {createSprinterZombieController} from "./sprinter-zombie.js?v=619";
+import {createSprinterZombieController} from "./sprinter-zombie.js?v=620";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -52,8 +52,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v619";
-document.documentElement.dataset.cityOutbreakBuild="619";
+document.title="CITY OUTBREAK — v620";
+document.documentElement.dataset.cityOutbreakBuild="620";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -3928,7 +3928,7 @@ function rebuildGun(){
  shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
  gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
- const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141619,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
+ const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141620,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
  const magazine=(y,z,w=.22,h=.48,d=.32,ang=.08)=>{let q=part(w,h,d,metal,y,z);q.rotation.x=ang;q.userData.reloadHome=q.position.clone();q.userData.reloadHomeQuat=q.quaternion.clone();playerReloadPart=q;box(w*.72,.035,d*1.03,dark,0,h*.22,0,q);return q};
@@ -5765,7 +5765,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  }
  // Eye glow stays in the eye/emissive material; avoid a dynamic PointLight on every zombie.
  let nose=taperedPrism(.030,.018,.055,.024,.016,skin,0,-.010,-.126,head);nose.rotation.x=Math.PI/2;
- let mouth=box(.075,.012,.008,kind==="acidic"?ZM(0xaa1616,.75):ZM(0x361918,.9),0,-.112,-.128,head);
+ let mouth=box(.075,.012,.008,kind==="acidic"?ZM(0xaa1616,.75):ZM(0x362018,.9),0,-.112,-.128,head);
  let hair=null;
  if(i%3!==0){hair=box(.19,.040,.135,ZM(i%2?0x221d19:0x30271f,.94),0,.145,-.005,head);hair.rotation.x=-.02}
 
