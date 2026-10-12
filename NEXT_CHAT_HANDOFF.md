@@ -1,3 +1,13 @@
+# v631 — MODEL-SPECIFIC COP/MANIAC PRONE ORIENTATION, REAL CRAWLER ANATOMY TEST — 2026-10-12
+
+- User v629 screenshots: Cop legless crawler lies face-down with folded arms; Maniac/clown crawler presents its back, arms folded into chest. Prior v629 test PASS was misleading: `src/game.js?v=629` still imported **stale Sprinter controller `?v=627`**. v630 fixed loader/cache and changed crawler-only arm support targets to follow the zombie's actual yaw, plus stricter elbow/head testing.
+- v630 Chromium exposed **model-specific bind-facing difference**: v630 source-yaw-0 gave the MANIAC excellent authentic crawl anatomy: head local height 0.54, forward extension 0.73, elbows lateral separation 0.77 with both OUT from chest, arms 1.01m apart, on ground. But v630 Cop yaw 0 put its head at **-1.042 local Y** and folded both elbows to only 0.037 lateral separation UNDER chest; fail. **Do not use one yaw for both source GLBs.**
+- **v631 targeted fix:** At Sprinter-only legless crawler conversion, Cop (variant 0) retains original holder 180-degree facing for original head/upper body, while Maniac (variant 1) uses source yaw 0. Both then pitch native 66-bone torso into crawler axis and aim real elbows/forearms using z.g turning yaw as v630, not street/world XZ. Preserve distinct original textured GLBs, running sizes, standing animations, walk, damage, skin-trimmed real leg amputations, PBD, original legless crawler, and 10-Sprinter-only test waves. No change to other zombies, 19-boss rotation or recovery v324.
+- v631 Chromium QA validates **both** model crawlers' head above pavement, shoulders/elbows spread to outer sides, hands forward and feet on ground across real locomotion; additionally tests original run/size, native ragdoll, hitboxes and no source skin replacement. CI/Pages must PASS before calling fixed.
+- Loader `./src/game.js?v=631`, Sprinter module/glb URLs `?v=631`. Play `https://xboxlivehd88-hue.github.io/city-outbreak/?v=631-crawlers-two-facing-fix`. Protected v324 remains untouched.
+
+---
+
 # v630 — FIX SPRINTER CRAWLER FACING + TURNING-RELATIVE ARMS; LOAD THE ACTUAL CONTROLLER — 2026-10-12
 
 - USER supplied two v629 screenshots showing native legless COP belly-down with arms folding inward and Maniac (clown) visibly backward with the same crossed/embedded elbows. Sizes, running, textured original GLBs, real joint amputations explicitly APPROVED; both crawlers currently remain broken despite past numerical crawler pose smoke PASS.

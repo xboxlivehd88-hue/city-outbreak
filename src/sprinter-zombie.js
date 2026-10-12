@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=630",
- "assets/zombie_running_on_metel_maniac.glb?v=630"
+ "assets/animated_zombie_cop_running_loop.glb?v=631",
+ "assets/zombie_running_on_metel_maniac.glb?v=631"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -415,12 +415,13 @@ export function createSprinterZombieController(){
   z.sprinterCrawlerRetargetTracks=mapped;
   const holder=z.sprinterVisual,bones=z.sprinterBones;
   z.g.updateWorldMatrix(true,true);
-  // v630: standing GLBs are yaw-flipped to face the player. Retaining that
-  // 180-degree yaw while pitching a crawler turns the original textured face
-  // into the street and presents the model's back to the player.
-  // Use the authentic model's forward axis for a prone body. The zombie
-  // navigation root (z.g) still supplies its real-world pursuit yaw.
-  holder.quaternion.identity();
+  // v631: original Cop and Maniac Mixamo source skeletons have OPPOSITE
+  // native crawling head/shoulder orientations. Chromium verified that
+  // keeping the Cop's standing yaw gives head above road and outer shoulders;
+  // keeping Maniac's source yaw upright exposes its face and spreads elbows.
+  // A shared yaw sent Cop's head 1 meter under street and crossed both arms.
+  // Only this converted legless crawler's holder orientation changes.
+  holder.rotation.set(0,index===0?Math.PI:0,0);
   const hips=bones.get("Hips"),chest=bones.get("Chest");
   if(hips&&chest){
    const a=hips.getWorldPosition(new THREE.Vector3()),b=chest.getWorldPosition(new THREE.Vector3());
