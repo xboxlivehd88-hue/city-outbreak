@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
-import {createSprinterZombieController} from "./sprinter-zombie.js?v=613";
+import {createSprinterZombieController} from "./sprinter-zombie.js?v=614";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -52,8 +52,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v613";
-document.documentElement.dataset.cityOutbreakBuild="613";
+document.title="CITY OUTBREAK — v614";
+document.documentElement.dataset.cityOutbreakBuild="614";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -5498,8 +5498,12 @@ function releaseZombieVisual(z){
 // v143: introduce special infected gradually instead of jumping from 0% on wave 1
 // straight to 42% on wave 2. Each new threat gets a wave to become readable before
 // the full mixed roster settles back near the old late-wave intensity.
+// v614 TEMP SPRINTER-ONLY VISUAL TEST: no Hazmats, Shamblers, or bosses
+// appear in gameplay until both running replacements are user-approved.
+let sprinterOnlyTest=true;
 function rolledZombieKind(w,roll){
- // v599 TEMP VISUAL TEST: Wave 1 is only Acidic Hazmat zombies.
+ if(sprinterOnlyTest)return "sprinter";
+ // Historical normal wave roster retained below for after testing.
  if(w===1)return "acidic";
  if(w===2)return roll<.18?"sprinter":"shambler";
  if(w===3){
@@ -6353,7 +6357,7 @@ function spawnQueuedZombies(){
 }
 function spawnWave(){
  let d=diff(wave);currentBoss=null;recentZombieSpawnPoints.length=0;zombieSpawnAngleOffset=rnd()*Math.PI*2;
- if(isBossWave(wave)){
+ if(isBossWave(wave)&&!sprinterOnlyTest){
    // v598: Parasite's temporary Wave 1 test is over. All bosses (including
    // Parasite) spawn only on the every-tenth-wave no-repeat selection.
    const spec=bossWaveSpec(wave);

@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=613",
- "assets/zombie_running_on_metel_maniac.glb?v=613"
+ "assets/animated_zombie_cop_running_loop.glb?v=614",
+ "assets/zombie_running_on_metel_maniac.glb?v=614"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -135,46 +135,71 @@ export function createSprinterZombieController(){
   }});
   z.g.add(holder);
   if(staleCopBounds){
-   // v613: measure the COP's actually SKINNED geometry in the live scene.
-   // Some glTF imports scale with the holder linearly, others quadratically.
-   // A two-sample calibration discovers the real scale response safely.
-   const scanBox=new THREE.Box3(),rootScale=new THREE.Vector3(),rootPos=new THREE.Vector3();
-   const measure=()=>{
-    holder.updateWorldMatrix(true,true);
-    scanBox.setFromObject(holder,true);
-    return scanBox.max.y-scanBox.min.y;
-   };
-   const h0=measure(),startScale=holder.scale.x;
-   holder.scale.setScalar(startScale*2);
-   const h1=measure();
-   const ratio=h1/Math.max(h0,1e-6);
-   const rawExponent=Math.log(ratio)/Math.log(2);
-   const exponent=Number.isFinite(rawExponent)?
-     THREE.MathUtils.clamp(rawExponent,.7,2.6):1;
-   z.g.getWorldScale(rootScale);
-   const goal=1.88*Math.max(.01,Math.abs(rootScale.y));
-   if(h0>.005&&Number.isFinite(goal)){
-    const factor=THREE.MathUtils.clamp(Math.pow(goal/h0,1/exponent),.15,150);
-    holder.scale.setScalar(startScale*factor);
-    const h2=measure();
-    if(h2>.001){
-     const correction=THREE.MathUtils.clamp(Math.pow(goal/h2,1/exponent),.15,8);
-     holder.scale.multiplyScalar(correction);
+   // v614: original Cop can expand enormously AFTER its first run frame.
+   // Calibrate against EVERY representative pose, not its tiny startup pose.
+   // One expensive full-cycle calibration is shared by all future Cop clones.
+   const stored=asset.calibration;
+   if(stored){
+    holder.scale.setScalar(stored.scale);
+    holder.position.copy(stored.offset);
+    z.sprinterCopCycleHeight=stored.cycleHeight;
+    z.sprinterScaleExponent=stored.exponent;
+   }else{
+    const scanBox=new THREE.Box3(),aggregate=new THREE.Box3();
+    const frameCount=16,clipDuration=asset.run.duration;
+    const sampleCycle=()=>{
+     aggregate.makeEmpty();
+     for(let k=0;k<frameCount;k++){
+      mixer.setTime(.04+clipDuration*(k+.5)/frameCount);
+      holder.updateWorldMatrix(true,true);
+      scanBox.setFromObject(holder,true);
+      if(!scanBox.isEmpty())aggregate.union(scanBox);
+     }
+     mixer.setTime(.09);
+     holder.updateWorldMatrix(true,true);
+     return aggregate.clone();
+    };
+    const originalBounds=sampleCycle();
+    const h0=originalBounds.max.y-originalBounds.min.y;
+    holder.scale.setScalar(holder.scale.x*2);
+    const doubledBounds=sampleCycle();
+    const h1=doubledBounds.max.y-doubledBounds.min.y;
+    const slope=Math.log(h1/Math.max(h0,1e-8))/Math.LN2;
+    const exponent=Number.isFinite(slope)?THREE.MathUtils.clamp(slope,.65,2.6):1;
+    const rootWorldScale=new THREE.Vector3();
+    z.g.getWorldScale(rootWorldScale);
+    const desiredHeight=1.80*Math.max(.01,Math.abs(rootWorldScale.y));
+    // The real Cop GLB can require a large SHRINK, not a fixed .9 factor.
+    // Cover that range without influencing Maniac or the 66 authored bones.
+    holder.scale.setScalar(THREE.MathUtils.clamp(
+      Math.pow(desiredHeight/Math.max(.001,h0),1/exponent),.00001,200));
+    let result=sampleCycle(),measured=result.max.y-result.min.y;
+    for(let i=0;i<2&&measured>.001;i++){
+     const adjust=THREE.MathUtils.clamp(
+       Math.pow(desiredHeight/measured,1/exponent),.04,20);
+     holder.scale.multiplyScalar(adjust);
+     result=sampleCycle();
+     measured=result.max.y-result.min.y;
+     if(Math.abs(measured-desiredHeight)<.03)break;
     }
-   }else holder.scale.setScalar(startScale);
-   z.sprinterActualHeight=measure();
-   z.sprinterScaleExponent=exponent;
-   z.sprinterInitialHeight=h0;
-   // The entire ORIGINAL skinned model is lifted and centered as a unit.
-   // No change to source joint positions or to old gameplay/world collision.
-   scanBox.getCenter(tempWorld);
-   z.g.getWorldPosition(rootPos);
-   holder.position.x+=(rootPos.x-tempWorld.x)/Math.max(.01,Math.abs(rootScale.x));
-   holder.position.z+=(rootPos.z-tempWorld.z)/Math.max(.01,Math.abs(rootScale.z));
-   holder.position.y+=(rootPos.y+.025-scanBox.min.y)/Math.max(.01,Math.abs(rootScale.y));
-   console.log("CITY OUTBREAK v613: calibrated original Cop Sprinter skinned geometry",{
-    initial:h0,pilot:h1,exponent,final:z.sprinterActualHeight,holderScale:holder.scale.x
-   });
+    // Convert the actual skinned animation's union center/feet into the
+    // zombie's LOCAL coordinates, so rotation toward player cannot offset it.
+    const bottomCenter=new THREE.Vector3(
+     (result.min.x+result.max.x)*.5,result.min.y,(result.min.z+result.max.z)*.5);
+    z.g.updateWorldMatrix(true,false);
+    const local=z.g.worldToLocal(bottomCenter);
+    holder.position.x-=local.x;
+    holder.position.z-=local.z;
+    holder.position.y+=.025-local.y;
+    mixer.setTime(.09);
+    z.sprinterCopCycleHeight=measured;
+    z.sprinterScaleExponent=exponent;
+    asset.calibration={scale:holder.scale.x,offset:holder.position.clone(),
+      cycleHeight:measured,exponent,baseline:h0,scaledPilot:h1};
+    console.log("CITY OUTBREAK v614: Cop calibrated using full running cycle",
+      {baseline:h0,pilot:h1,exponent,measured,
+        holderScale:holder.scale.x,offset:holder.position.toArray()});
+   }
   }
   z.sprinterVisual=holder;z.sprinterModel=model;z.sprinterBones=bones;
   z.sprinterMixer=mixer;z.sprinterRunAction=action;

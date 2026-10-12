@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"613",pass:false};let browser;
+ const report={version:"614",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=613$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=614$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -16,7 +16,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // Force the final available name in the existing no-repeat bag, NOT the
   // spawn code or hardwired name: exercise the actual Wave 10 selection.
   for(const z of zombies)releaseZombieVisual(z);
-  zombies=[];currentBoss=null;bossWaveName="";wave=10;
+  zombies=[];currentBoss=null;bossWaveName="";wave=10;sprinterOnlyTest=false;
   usedBossNames=BOSS_NAME_POOL.filter(n=>n!==PARASITE_BOSS_NAME);
   spawnWave();
   return {selected:bossWaveName,used:[...usedBossNames],poolSize:BOSS_NAME_POOL.length,
@@ -257,7 +257,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=613-rotation-regression",{waitUntil:"domcontentloaded",timeout:61300});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=614-rotation-regression",{waitUntil:"domcontentloaded",timeout:61400});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click();
@@ -277,7 +277,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V613_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V614_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -289,7 +289,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   // The multi-scale diagnostic proved square-law behavior in v587; check the final live size here.
   assert.equal(report.http,200);
   assert.equal(report.assetHttp,200);
-  assert.equal(report.state.build,"613");
+  assert.equal(report.state.build,"614");
   assert.equal(report.waveOne.wave,1);
   assert.equal(report.waveOne.target,10);
   assert.equal(report.waveOne.spawned,10);
@@ -359,7 +359,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V613_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V614_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
