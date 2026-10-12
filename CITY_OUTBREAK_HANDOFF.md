@@ -1,3 +1,13 @@
+# v636 — SMALL CHEST LIFT, KEEP CRAWLER PELVIS GROUNDED — 2026-10-12
+
+- User tested v635 and says the legless Cop and Maniac/Clown crawlers are now full sized and grounded, but their upper torso looks like it is slithering on the pavement. They want a **small chest lift only** so original palms/elbows support the chest. No handoff requested, make the direct change.
+- In `src/sprinter-zombie.js` `poseOriginalCrawlerPelvis`, change the spine world pitch target from **13cm to 16cm chest rise above pelvis**; pelvis stays exactly +0.095m above road. Do NOT change imported GLB scale preservation, per-model turning/yaw, arm segment orientation, real palm-down solver, native run, limb clipping, ragdoll, waves, other zombies, or hitboxes. This is a slight 3cm rise, not an overall model lift.
+- Strengthen Sprinter browser test to require chest +0.22–0.33m above street, hip +0.045–0.145m and chest +0.125–0.205m above pelvis while preserving hand/palm orientation, original standing/crawler upper-arm world segment scales within 5%, texture, hitboxes, knee motion and leg-loss support. Increment loader to v636, controller import to v636 and keep Hazmat/Parasite regression smoke intercepts aligned.
+- `index.html` loader `./src/game.js?v=636`; `src/game.js` import `./sprinter-zombie.js?v=636`; original GLB URLs unchanged. Play: https://xboxlivehd88-hue.github.io/city-outbreak/?v=636-crawler-chest-lift . The v324 protected recovery checkpoint is UNCHANGED.
+- Do not assert verified until GitHub Actions Sprinter/Hazmat/Parasite and GitHub Pages deployments are checked.
+
+---
+
 # v635 — ORIGINAL SPRINTER SCALE PRESERVED THROUGH CRAWLER CONVERSION — 2026-10-12
 
 - User v634 screenshot: Cop crawler looks MUCH smaller than its running model, Clown/Maniac also shrinks slightly; pelvis-on-ground and palm-orientation now acceptable enough to preserve.

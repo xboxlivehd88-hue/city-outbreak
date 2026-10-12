@@ -412,10 +412,10 @@ export function createSprinterZombieController(){
   chest.getWorldPosition(crawlChest);
   const flatSpine=Math.hypot(crawlChest.x-crawlHips.x,crawlChest.z-crawlHips.z);
   if(flatSpine>.10){
-   // Pitch the ORIGINAL full torso so chest RISES 13cm from pelvis;
+   // v636: Lift original chest gently to 16cm above pelvis (was 13cm);
    // v633 incorrectly had the pelvis HIGHER than the chest.
    const rise=crawlChest.y-crawlHips.y;
-   const targetAngle=Math.atan2(.13,flatSpine);
+   const targetAngle=Math.atan2(.16,flatSpine);
    const currentAngle=Math.atan2(rise,flatSpine);
    holder.quaternion.premultiply(crawlPitchQ.setFromAxisAngle(crawlRight,
     THREE.MathUtils.clamp(targetAngle-currentAngle,-.75,.75))).normalize();
