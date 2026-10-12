@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"643",pass:false};let browser;
+ const report={version:"644",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=643$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=644$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -25,24 +25,34 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const local=key=>{const q=jp(key);return q?z.g.worldToLocal(q):null;};
   const h=local("Hips"),c=local("Chest"),head=local("Head"),
    left=local("L_Hand"),right=local("R_Hand");
-  // Test four distinct gait poses. In v642 both original arms stayed visually
-  // frozen; the wrist/forearm must genuinely translate along the street.
+  // v644: inspect ORIGINAL joints at forward plant, backward pull, and
+  // recovered hand lift. Also ensure elbow bends below the shoulder toward
+  // the ground and neither elbow folds behind its shoulder.
   const originalPhase=z.phase,armFrames=[];
   for(const crawlPhase of [0,Math.PI/2,Math.PI,Math.PI*1.5]){
    z.phase=crawlPhase;poseOriginalInfectedCrawler(z);
-   armFrames.push(["L_Hand","R_Hand","L_LowerArm","R_LowerArm"]
+   armFrames.push(["L_Hand","R_Hand","L_LowerArm","R_LowerArm","L_UpperArm","R_UpperArm"]
     .map(key=>local(key)?.toArray()||null));
   }
   z.phase=originalPhase;poseOriginalInfectedCrawler(z);
+  const elbowsSupportChest=armFrames.every(frame=>[0,1].every(side=>{
+   const wrist=frame[side],elbow=frame[side+2],shoulder=frame[side+4];
+   return wrist&&elbow&&shoulder&&elbow[1]<shoulder[1]-.035&&
+    elbow[1]>wrist[1]-.09&&
+    elbow[2]<shoulder[2]+.06&&elbow[2]>wrist[2]-.12&&
+    wrist[2]<shoulder[2]-.065;
+  }));
   const armMotion={
    leftTravel:Math.abs(armFrames[0][0][2]-armFrames[2][0][2]),
    rightTravel:Math.abs(armFrames[0][1][2]-armFrames[2][1][2]),
    leftElbowTravel:Math.abs(armFrames[0][2][2]-armFrames[2][2][2]),
    rightElbowTravel:Math.abs(armFrames[0][3][2]-armFrames[2][3][2]),
-   leftRecoveryLift:armFrames[1][0][1]-armFrames[3][0][1],
-   rightRecoveryLift:armFrames[3][1][1]-armFrames[1][1][1],
+   // LEFT planted at PI/2 and recovers at 3PI/2; RIGHT is opposite.
+   leftRecoveryLift:armFrames[3][0][1]-armFrames[1][0][1],
+   rightRecoveryLift:armFrames[1][1][1]-armFrames[3][1][1],
    oppositeStroke:(armFrames[0][0][2]-armFrames[2][0][2])*
-    (armFrames[0][1][2]-armFrames[2][1][2])<0
+    (armFrames[0][1][2]-armFrames[2][1][2])<0,
+   elbowsSupportChest
   };
   const skinAudit=z.infectedCrawlerSkinAudit||null,clippedSkins=[];
   visual.traverse(o=>{if(o.isSkinnedMesh)clippedSkins.push({
@@ -310,7 +320,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=643-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=644-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -331,7 +341,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V643_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V644_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -363,14 +373,14 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const infected=report.infectedCrawler,ip=infected.pose;
   assert(infected.skinAudit?.changed>=1&&infected.skinAudit?.removed>=10,
    "Leg skin clipping failed; zero-scaled thighs pull torso into ball: "+JSON.stringify(infected));
-  assert(ip&&ip.hipY>.025&&ip.hipY<.16&&ip.chestY>ip.hipY+.045&&
-   ip.chestY<.46&&ip.headY>.16&&ip.headForward>.14&&ip.handsApart>.22,
+  assert(ip&&ip.hipY>.025&&ip.hipY<.16&&ip.chestY>ip.hipY+.16&&
+   ip.chestY>.27&&ip.chestY<.47&&ip.headY>.16&&ip.headForward>.14&&ip.handsApart>.22,
    "Infected still folded into a compact ball instead of dragging on its pelvis: "+JSON.stringify(ip));
   assert(infected.armMotion?.leftTravel>.08&&infected.armMotion?.rightTravel>.08&&
    infected.armMotion?.leftElbowTravel>.035&&infected.armMotion?.rightElbowTravel>.035&&
    infected.armMotion?.leftRecoveryLift>.025&&infected.armMotion?.rightRecoveryLift>.025&&
-   infected.armMotion?.oppositeStroke,
-   "Original Infected arms do not alternately crawl/push/recover: "+JSON.stringify(infected.armMotion));
+   infected.armMotion?.oppositeStroke&&infected.armMotion?.elbowsSupportChest,
+   "Original Infected arms must plant, pull BACK under raised chest, recover FORWARD, never reverse elbows: "+JSON.stringify(infected.armMotion));
   assert(ip.handYs?.every(y=>Number.isFinite(y)&&y>-.12&&y<.38),
    "Infected support hands hover far above ground or clip floor: "+JSON.stringify(ip));
   assert.equal(report.rotation.poolSize,19);
@@ -438,7 +448,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V643_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V644_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
