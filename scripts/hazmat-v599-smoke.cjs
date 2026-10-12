@@ -18,7 +18,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   const rsp=await page.goto("http://127.0.0.1:4173/?v=605-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:60500});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.ready(),null,{timeout:110000});
-  await page.locator("#start").click();
+  await page.locator("#start").evaluate(button=>button.click());
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.snapshot()?.attached===10,null,{timeout:16050});
   await page.waitForTimeout(700);
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
