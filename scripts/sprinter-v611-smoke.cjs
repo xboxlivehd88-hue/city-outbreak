@@ -61,7 +61,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   const res=await page.goto("http://127.0.0.1:4173/?v=611-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
-  await page.locator("#start").click();
+  await page.locator("#start").click({noWaitAfter:true});
   await page.waitForTimeout(850);
   report.assets=await page.evaluate(()=>globalThis.__sprinterSmoke.status());
   report.models=await page.evaluate(()=>globalThis.__sprinterSmoke.spawn());

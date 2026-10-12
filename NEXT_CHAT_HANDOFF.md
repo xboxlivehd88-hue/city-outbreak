@@ -1,3 +1,10 @@
+# v611 QA follow-up — real browser Sprinter test start navigation wait — 2026-10-12
+
+- First Sprinter Chromium audit loaded BOTH user's GLBs successfully, native source run clips `Animation` and `mixamo.com` present, zero page JS errors, but Playwright's regular `#start.click()` timed out AFTER the click action had completed, waiting for scheduled browser navigation. This was a TEST HARNESS wait, not a model-parse failure.
+- Change only the browser QA click to `noWaitAfter:true` so it can inspect both original Sprinters after game start. No gameplay code/assets/loader changed. Rerun both-variant, skinned knee, hitbox, ragdoll and original-model crawler asserts. v611 main already deployed; prior Hazmat/Green Guy test PASS and Parasite QA running; protected v324 unchanged.
+
+---
+
 # v611 — TWO USER-UPLOADED AUTHENTIC ANIMATED SPRINTER GLBS — 2026-10-12
 
 - User added two replacement Sprinter assets directly to GitHub and requested they replace the two old low-poly blue/gray Sprinter variants identified in their screenshot: `assets/animated_zombie_cop_running_loop.glb` and `assets/zombie_running_on_metel_maniac.glb`.
