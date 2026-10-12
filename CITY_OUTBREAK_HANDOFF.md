@@ -1,3 +1,13 @@
+# v644 — INFECTED CHEST LIFT AND NATURAL FORWARD CRAWL — 2026-10-12
+
+- User tested v643: Infected crawler chest is still WAY too close to the ground, while arms bend BACKWARD and appear to PUSH AWAY from the player during forward crawling. The goal is pelvis on pavement, chest distinctly raised but still natural, elbows directed toward pavement, and hands pulling the Infected toward its forward movement.
+- **Exact targeted changes in `src/game.js`:** Infected-only torso tilt target changed from `(0,.23,-1)` to `(0,.45,-1)` (hips remain anchored at +.095m) to lift real original Chest and upper torso instead of raising the whole zombie. Existing original Head/Neck aim and skin clip are preserved. Replaced v643 backwards arm animation: original shoulder/elbow/hand two-bone IK now has a planted low **forward-to-back pull during phase 0..PI**, then a raised **back-to-forward recovery during PI..2PI** with left/right alternating by PI. Elbows are bent downward, slightly outward and forward, no inverted elbow arcs; hands stay forward of shoulders. World-bone raycast hitboxes remain mounted to their original bones.
+- **Regression updates:** `scripts/parasite-v586-smoke.cjs` now requires chest >.27m and at least .16m above grounded pelvis, checks real original hand/elbow longitudinal displacement at 4 gait phases, verifies stance/recovery lift direction and non-backward elbow support; also preserves original actor, skin triangles, legs removed, source hitboxes, Wave 1 Infected-only and Wave 10 Parasite boss. Sprinter and Hazmat independent browser smoke scripts/workflows advanced to v644. Browser/Pages PASS must be checked, not assumed.
+- Do NOT replace Infected with generic crawler, even before/after user adds replacement GLB. Preserve normal Wave 1 Infected-only, original model size/materials/ragdoll and existing Sprinter/Maniac/Hazmat/Parasite; protected recovery **v324 UNCHANGED**.
+- Loader `./src/game.js?v=644`; Sprinter import remains `?v=638` (untouched). Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=644-infected-chest-arm-crawl .
+
+---
+
 # v643 — ORIGINAL INFECTED CRAWLER ARMS NOW ALTERNATE — 2026-10-12
 
 - User tested v642 and screenshot shows the original Infected crawler lying with both arms spread wide and effectively frozen. Preserve SAME original Infected skinned model and actor on dual-leg loss, original textures and vertex-clipped legs, head upright, pelvis ~0.095m, slightly elevated chest, shootable head/chest/arms, no generic model switch, and **Wave 1 infected-only** until user provides replacement GLB.
