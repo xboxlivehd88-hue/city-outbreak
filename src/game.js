@@ -7157,7 +7157,9 @@ const infectedCrawlHip=new THREE.Vector3(),infectedCrawlChest=new THREE.Vector3(
  infectedCrawlDir=new THREE.Vector3(),infectedCrawlAim=new THREE.Vector3(),
  infectedCrawlTarget=new THREE.Vector3(0,.23,-1).normalize(),
  infectedCrawlShoulder=new THREE.Vector3(),infectedCrawlElbow=new THREE.Vector3(),
- infectedCrawlWrist=new THREE.Vector3(),infectedCrawlFlat=new THREE.Vector3();
+ infectedCrawlWrist=new THREE.Vector3(),infectedCrawlFlat=new THREE.Vector3(),
+ infectedCrawlGoal=new THREE.Vector3(),infectedCrawlAxis=new THREE.Vector3(),
+ infectedCrawlBend=new THREE.Vector3(),infectedCrawlElbowTarget=new THREE.Vector3();
 function preserveOriginalInfectedLeglessSkin(z){
  if(z.infectedCrawlerSkinReady)return true;
  const visual=z.infectedVisual||z.rigVisual;
@@ -7242,9 +7244,12 @@ function aimInfectedCrawlerArm(z,bones,side,phase){
  const setSegment=(bone,child,aim)=>{
   if(child.position.lengthSq()<1e-7)return;
   bone.parent.getWorldQuaternion(infectedCrawlParentQ);
-  infectedCrawlAim.copy(aim).applyQuaternion(infectedCrawlParentQ.invert()).normalize();
-  bone.quaternion.setFromUnitVectors(infectedCrawlDir.copy(child.position).normalize(),infectedCrawlAim);
+  infectedCrawlFlat.copy(aim).applyQuaternion(infectedCrawlParentQ.invert()).normalize();
+  bone.quaternion.setFromUnitVectors(infectedCrawlDir.copy(child.position).normalize(),infectedCrawlFlat);
  };
+ // v643: drive the ORIGINAL Infected shoulder/elbow/hand joints through an
+ // alternating crawling stroke. v642 only changed a normalized arm direction
+ // by .018, which was practically static even though z.phase advanced.
  z.g.getWorldQuaternion(infectedCrawlWorldQ);
  upper.getWorldPosition(infectedCrawlShoulder);
  lower.getWorldPosition(infectedCrawlElbow);
@@ -7252,24 +7257,37 @@ function aimInfectedCrawlerArm(z,bones,side,phase){
  const upperLength=infectedCrawlShoulder.distanceTo(infectedCrawlElbow);
  const lowerLength=infectedCrawlElbow.distanceTo(infectedCrawlWrist);
  if(upperLength<.02||lowerLength<.02)return;
- const step=Math.sin(phase)*.018,ground=z.g.position.y;
- const elbowY=THREE.MathUtils.clamp(
-  ground+.16-infectedCrawlShoulder.y,-upperLength*.86,upperLength*.76);
- infectedCrawlFlat.set(side*.70,0,-.75+step).normalize()
-  .applyQuaternion(infectedCrawlWorldQ);
- infectedCrawlFlat.y=0;infectedCrawlFlat.normalize()
-  .multiplyScalar(Math.sqrt(Math.max(0,1-(elbowY/upperLength)**2)));
- infectedCrawlFlat.y=elbowY/upperLength;
- setSegment(upper,lower,infectedCrawlFlat);
+ const fullReach=upperLength+lowerLength,stroke=Math.cos(phase),
+  recovery=Math.max(0,Math.sin(phase));
+ // Hands alternately plant, pull backward under the chest, lift slightly,
+ // then reach forward. These are actual target positions (not tiny changes
+ // to normalized directions), so both the wrist and elbow visibly travel.
+ infectedCrawlGoal.set(side*fullReach*.23,0,-fullReach*(.39+.22*stroke))
+  .applyQuaternion(infectedCrawlWorldQ).add(infectedCrawlShoulder);
+ infectedCrawlGoal.y=z.g.position.y+.065+.080*recovery;
+ infectedCrawlAxis.subVectors(infectedCrawlGoal,infectedCrawlShoulder);
+ const rawDistance=infectedCrawlAxis.length();
+ if(rawDistance<.001)return;
+ const minReach=Math.abs(upperLength-lowerLength)+.005;
+ const maxReach=Math.max(minReach+.002,fullReach-.012);
+ const distance=THREE.MathUtils.clamp(rawDistance,minReach,maxReach);
+ infectedCrawlAxis.multiplyScalar(1/rawDistance);
+ infectedCrawlGoal.copy(infectedCrawlShoulder).addScaledVector(infectedCrawlAxis,distance);
+ // Two-bone triangle IK: keep the ORIGINAL upper/lower arm bone lengths.
+ // Bend elbows outside and slightly forward of the torso rather than folding
+ // both arms into the belly. Never stretch or shrink the imported skin.
+ const along=(upperLength*upperLength-lowerLength*lowerLength+distance*distance)/(2*distance);
+ const bendRadius=Math.sqrt(Math.max(0,upperLength*upperLength-along*along));
+ infectedCrawlBend.set(side*.78,.10,-.36).applyQuaternion(infectedCrawlWorldQ);
+ infectedCrawlBend.addScaledVector(infectedCrawlAxis,-infectedCrawlBend.dot(infectedCrawlAxis)).normalize();
+ infectedCrawlElbowTarget.copy(infectedCrawlShoulder).addScaledVector(infectedCrawlAxis,along)
+  .addScaledVector(infectedCrawlBend,bendRadius);
+ infectedCrawlElbowTarget.sub(infectedCrawlShoulder);
+ setSegment(upper,lower,infectedCrawlElbowTarget);
  upper.updateWorldMatrix(true,true);
  lower.getWorldPosition(infectedCrawlElbow);
- const wristY=THREE.MathUtils.clamp(
-  ground+.075+step-infectedCrawlElbow.y,-lowerLength*.88,lowerLength*.82);
- infectedCrawlFlat.set(side*.27,0,-1).normalize().applyQuaternion(infectedCrawlWorldQ);
- infectedCrawlFlat.y=0;infectedCrawlFlat.normalize()
-  .multiplyScalar(Math.sqrt(Math.max(0,1-(wristY/lowerLength)**2)));
- infectedCrawlFlat.y=wristY/lowerLength;
- setSegment(lower,hand,infectedCrawlFlat);
+ infectedCrawlGoal.sub(infectedCrawlElbow);
+ setSegment(lower,hand,infectedCrawlGoal);
  lower.updateWorldMatrix(true,true);
 }
 function originalInfectedBones(z,holder){
