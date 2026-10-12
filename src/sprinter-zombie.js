@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=615",
- "assets/zombie_running_on_metel_maniac.glb?v=615"
+ "assets/animated_zombie_cop_running_loop.glb?v=616",
+ "assets/zombie_running_on_metel_maniac.glb?v=616"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -229,24 +229,50 @@ export function createSprinterZombieController(){
  function stabilizeCop(z){
   if(z.sprinterModelIndex!==0||z.dead||z.knockdown)return;
   const tick=++z.sprinterSizeChecks;
-  if(![1,3,8,18,40,85].includes(tick))return;
+  if(![1,2,3,5,9,18,36,72,144].includes(tick))return;
   const holder=z.sprinterVisual;
-  holder.updateWorldMatrix(true,true);
-  liveBounds.setFromObject(holder,true);
-  const h=liveBounds.max.y-liveBounds.min.y;
+  const measure=()=>{
+   holder.updateWorldMatrix(true,true);
+   liveBounds.setFromObject(holder,true);
+   return liveBounds.max.y-liveBounds.min.y;
+  };
+  let height=measure();
   z.g.getWorldScale(liveRootScale);
-  const goal=1.80*Math.max(.01,Math.abs(liveRootScale.y));
-  if(!Number.isFinite(h)||h<.001||h>=goal*.83&&h<=goal*1.13)return;
-  const exponent=THREE.MathUtils.clamp(z.sprinterScaleExponent||1,.65,2.6);
-  holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.pow(goal/h,1/exponent),.04,18));
-  holder.updateWorldMatrix(true,true);
-  liveBounds.setFromObject(holder,true);
-  const bottom=new THREE.Vector3(
-   (liveBounds.min.x+liveBounds.max.x)*.5,liveBounds.min.y,
-   (liveBounds.min.z+liveBounds.max.z)*.5);
-  const local=z.g.worldToLocal(bottom);
-  holder.position.x-=local.x;holder.position.z-=local.z;
-  holder.position.y+=.025-local.y;
+  const target=1.80*Math.max(.01,Math.abs(liveRootScale.y));
+  if(!Number.isFinite(height)||height<.001)return;
+  if(height<target*.87||height>target*1.13){
+   // CRITICAL v616: runtime COP geometry scales LINEARLY even though its
+   // earlier bind-pose calibration suggested quadratic scaling. Measure a
+   // pilot at the SAME animation frame and solve the real native response.
+   if(!z.sprinterLiveExponent){
+    const original=holder.scale.x;
+    holder.scale.setScalar(original*.75);
+    const pilot=measure();
+    holder.scale.setScalar(original);
+    const e=Math.log(pilot/height)/Math.log(.75);
+    z.sprinterLiveExponent=Number.isFinite(e)?
+     THREE.MathUtils.clamp(e,.55,2.6):1;
+   }
+   const exponent=z.sprinterLiveExponent;
+   for(let correctionIndex=0;correctionIndex<3;correctionIndex++){
+    const amount=THREE.MathUtils.clamp(
+      Math.pow(target/height,1/exponent),.025,30);
+    holder.scale.multiplyScalar(amount);
+    height=measure();
+    if(!Number.isFinite(height)||height<.001||Math.abs(height-target)<.045)break;
+   }
+   // Keep the model's lowest visible foot close to ground after correction.
+   const floorWorld=new THREE.Vector3(
+    (liveBounds.min.x+liveBounds.max.x)*.5,liveBounds.min.y,
+    (liveBounds.min.z+liveBounds.max.z)*.5);
+   z.g.updateWorldMatrix(true,false);
+   const floorLocal=z.g.worldToLocal(floorWorld);
+   holder.position.x-=floorLocal.x;
+   holder.position.z-=floorLocal.z;
+   holder.position.y+=.025-floorLocal.y;
+   z.sprinterLiveCorrectionCount=(z.sprinterLiveCorrectionCount||0)+1;
+  }
+  z.sprinterLastMeasuredHeight=height;
  }
  function sync(z,dt){
   if(!z?.sprinterVisual)return;
