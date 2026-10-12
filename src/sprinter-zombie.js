@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=626",
- "assets/zombie_running_on_metel_maniac.glb?v=626"
+ "assets/animated_zombie_cop_running_loop.glb?v=627",
+ "assets/zombie_running_on_metel_maniac.glb?v=627"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -500,11 +500,11 @@ export function createSprinterZombieController(){
   };
   // Slight alternating reach without crossing the centerline.
   const walk=Math.sin(phase)*.085;
-  elbowDir.set(side*.45,-.56,-.72+walk).normalize();
+  elbowDir.set(side*.64,-.56,-.72+walk).normalize();
   orient(arm,lower,elbowDir);
   arm.updateWorldMatrix(true,true);
   // Hands should land ahead of the elbows, not bend backwards into ribs.
-  elbowDir.set(side*.12,-.35,-.93-walk).normalize();
+  elbowDir.set(side*.40,-.38,-.87-walk).normalize();
   orient(lower,hand,elbowDir);
  }
  function syncCrawler(z,dt){
@@ -527,12 +527,24 @@ export function createSprinterZombieController(){
   // The actual Crawl animation owns shoulders/elbows/hands. Keep ground
   // clearance without costly all-vertex bounds checks on every frame.
   z.sprinterCrawlerTick=(z.sprinterCrawlerTick||0)+1;
-  if(z.sprinterCrawlerTick%36===0){
-   z.sprinterVisual.updateWorldMatrix(true,true);
-   crawlerBounds.setFromObject(z.sprinterVisual,true);
-   const error=z.g.position.y+.035-crawlerBounds.min.y;
-   if(Number.isFinite(error)&&Math.abs(error)>.12)
-    z.sprinterVisual.position.y+=THREE.MathUtils.clamp(error/Math.max(.2,z.g.scale.y),-.18,.18);
+  if(z.sprinterCrawlerTick<=12||z.sprinterCrawlerTick%36===0){
+   const holder=z.sprinterVisual;
+   holder.updateWorldMatrix(true,true);
+   crawlerBounds.setFromObject(holder,true);
+   const floor=z.g.position.y+.035,error=floor-crawlerBounds.min.y;
+   if(Number.isFinite(error)&&Math.abs(error)>.035){
+    // The Cop GLB moves its skinned vertices nonlinearly: measure an
+    // actual holder translation, not just divide by the zombie root scale.
+    const base=holder.position.y,minY=crawlerBounds.min.y;
+    holder.position.y=base+.10;
+    holder.updateWorldMatrix(true,true);
+    crawlerBounds.setFromObject(holder,true);
+    const slope=(crawlerBounds.min.y-minY)/.10;
+    holder.position.y=base;
+    const gain=Number.isFinite(slope)&&Math.abs(slope)>.12&&Math.abs(slope)<8?
+      slope:Math.max(.2,z.g.scale.y);
+    holder.position.y+=THREE.MathUtils.clamp(error/gain,-.38,.38);
+   }
   }
  }
  function freeze(z){if(z?.sprinterMixer)z.sprinterMixer.timeScale=0}

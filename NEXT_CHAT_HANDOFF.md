@@ -1,3 +1,11 @@
+# v627 — LEGLESS SPRINTER CRAWLER HAND-SPREAD / FLOOR CORRECTION — 2026-10-12
+
+- USER video `2026-10-12 02-15-42.mp4` shows malformed crawling after approved standing Sprinter size/gait/amputations. v626 browser evidence: original green/Hazmat unaffected gameplay but its old QA build marker was stale. v626 Sprinter lifecycle verified both native crawl clips and improved forward reach and head placement, but Cop crawler feet **-0.223 below floor** and Maniac hands only **0.210 apart** — test failed. No unverified fix claim.
+- v627 target: keep original 66-bone Sprinter GLBs, authentic 52-track source Crawl retarget on trunks, original standing Run size/animation, leg-skin triangle removal, health, hitboxes, 10-only Sprinter waves. After crawl frame, spread the real left/right original arm bones farther laterally, so support hands stay out of the ribcage; correct crawler-only skinned floor clearance on first 12 frames with 0.10-unit translation pilot (Cop skin moves nonlinearly), then sparse every-36-frame touchups. DO NOT modify standing Cop/Maniac transforms.
+- Loader, controller cache version, internal source dataset marker, 3 Chromium tests/workflows versioned v627. **Protected recovery v324 remains unchanged.** Candidate URL `https://xboxlivehd88-hue.github.io/city-outbreak/?v=627-sprinter-crawler-arm-ground`. Await confirmed current CI/Pages before saying it works.
+
+---
+
 # v626 — SPRINTER CRAWLER ARM SUPPORT / HEAD PITCH TEST — 2026-10-12
 
 - USER: Sprinter runners and amputations approved but legless Cop/Maniac crawlers were malformed: first floating tightly balled up, and newer v625 video `2026-10-12 02-15-42.mp4` still shows crawling bodies with the arms folded awkwardly through the torso.
