@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
+import {createSprinterZombieController} from "./sprinter-zombie.js?v=611";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -51,8 +52,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v610";
-document.documentElement.dataset.cityOutbreakBuild="610";
+document.title="CITY OUTBREAK — v611";
+document.documentElement.dataset.cityOutbreakBuild="611";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -862,6 +863,11 @@ new GLTFLoader().load("assets/green%20guy.glb?v=395",gltf=>{
 const hazmatZombie=createHazmatZombieController();
 hazmatZombie.load(()=>{
   for(const z of zombies)if(z.kind==="acidic"&&!z.dead)hazmatZombie.attach(z);
+});
+const sprinterZombie=createSprinterZombieController();
+sprinterZombie.load(index=>{
+ for(const z of zombies)if(z.kind==="sprinter"&&!z.dead&&z.sprinterModelIndex===index)
+  sprinterZombie.attach(z,index);
 });
 
 // v399: user-supplied replacement for the common/basic Shambler walkers.
@@ -5473,6 +5479,7 @@ function releaseZombieVisual(z){
  // "Cannot set properties of undefined (setting '_cacheIndex')", freezing the
  // game during leg-loss crawler replacement. Stop actions and drop references;
  // the removed mixer/root can then be garbage-collected safely.
+ sprinterZombie.release(z);
  if(z.radiatedGreenMixer){try{z.radiatedGreenMixer.stopAllAction()}catch(_){}}
  if(z.naturalCrawlerMixer){try{z.naturalCrawlerMixer.stopAllAction()}catch(_){}}
  if(z.parasiteBossMixer){try{z.parasiteBossMixer.stopAllAction()}catch(_){}}
@@ -5824,7 +5831,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(kind==="crawler"){speed*=.82;damage=Math.round(damage*.95);hp=Math.ceil(hp*.95)}
  if(kind==="boss"){const spec=bossSpec||bossWaveSpec(wave);speed=spec.speed;damage=spec.damage;hp=spec.hp;attack=spec.attack;strafe*=.10;surge=Math.min(.98,surge+.10);g.scale.multiplyScalar(1.58)}
 
- let zz={g,head,torso,armL,armR,legL,legR,chest,stomach,pelvis,neck,jaw,marker,mouth,shoulderL,shoulderR,elbowL,elbowR,kneeL,kneeR,jacket,ownedMaterials,ownedGeometries:null,naturalCrawlerSpawn,
+ let zz={g,head,torso,armL,armR,legL,legR,chest,stomach,pelvis,neck,jaw,marker,mouth,shoulderL,shoulderR,elbowL,elbowR,kneeL,kneeR,jacket,ownedMaterials,ownedGeometries:null,naturalCrawlerSpawn,sprinterModelIndex:i%2,
    baseArmLX,baseArmRX,headLean,gait,bob,limp,dragSide,hunch:hunchBias,turnRate,lurch:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.10:kind==="boss"?.76:.92,
    shoulderDrop,pauseClock,attackAnim,attackSide,feral,twitch,snapBias,snapRate,nightmareType,armDrop,kind,groundY:0,
    hp,maxHP:hp,dead:false,speed,attack,damage,strafe,surge,bossName:kind==="boss"?(bossSpec?.name||bossWaveName||"BOSS"):"",bossBounty:kind==="boss"?(bossSpec?.bounty||250):0,bossSpecialCd:kind==="boss"?(bossSpec?.specialCd||7.5):0,bossAttackState:"",bossAttackT:0,bossChargeHit:false,
@@ -6049,6 +6056,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    hitMeshes.push(o)
  });
  zz.hitMeshes=hitMeshes;
+ if(kind==="sprinter")sprinterZombie.attach(zz,zz.sprinterModelIndex);
  if(kind==="radiated")buildRadiatedGreenHitboxes(zz);
  if(kind==="acidic")hazmatZombie.attach(zz);
  if(kind==="shambler")buildBasicWalkerHitboxes(zz);
@@ -6479,6 +6487,8 @@ function bodyPbdRig(z){
  // Native weighted Hazmat bones receive unpowered corpse and knockdown physics.
  if(z?.hazmatVisual&&z.hazmatBones?.size>=16)
   return{holder:z.hazmatVisual,bones:z.hazmatBones,kind:"hazmat"};
+ if(z?.sprinterVisual&&z.sprinterBones?.size>=16)
+  return{holder:z.sprinterVisual,bones:z.sprinterBones,kind:"sprinter"};
  // The new naturally spawned GLB owns its real bones during ragdoll; the
  // converted legless crawler still uses the approved legacy PBD skeleton.
  if(z?.naturalCrawlerBones?.size&&z.naturalCrawlerVisual)
@@ -6706,6 +6716,8 @@ function updateBodyPbd(z,rag,dt){
 function hideRigLimb(z,name){
  const hazmatBone=z.hazmatBones?.get(name);
  if(hazmatBone){hazmatBone.scale.setScalar(.00001);hazmatBone.updateMatrixWorld(true)}
+ const sprinterBone=z.sprinterBones?.get(name);
+ if(sprinterBone){sprinterBone.scale.setScalar(.00001);sprinterBone.updateMatrixWorld(true)}
  const b=rigBone(z,name);
  if(b){b.scale.set(.001,.001,.001);b.updateMatrixWorld(true)}
  const gb=z.radiatedGreenBones?.get(name);
@@ -6737,8 +6749,8 @@ function launchDetachedLimb(z,limb,side,leg=false){
 function detachArm(z,side){
  const key=side==="left"?"leftArmDetached":"rightArmDetached";
  if(z[key])return;
- if(z.hazmatVisual||z.radiatedGreenVisual||z.walkerVisual){
-   const customBones=z.hazmatBones||z.radiatedGreenBones||z.walkerBones;
+ if(z.hazmatVisual||z.sprinterVisual||z.radiatedGreenVisual||z.walkerVisual){
+   const customBones=z.hazmatBones||z.sprinterBones||z.radiatedGreenBones||z.walkerBones;
    const bone=customBones?.get(side==="left"?"L_UpperArm":"R_UpperArm");
    const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.35:.35,1.35,0));
    z[key]=true;hideRigLimb(z,side==="left"?"L_UpperArm":"R_UpperArm");
@@ -6780,6 +6792,7 @@ function transferCrawlerUpperVisual(source,crawler){
  let holder=null,bones=null,type="";
  if(source?.walkerVisual&&source?.walkerBones?.size){holder=source.walkerVisual;bones=source.walkerBones;type="walker"}
  else if(source?.radiatedGreenVisual&&source?.radiatedGreenBones?.size){holder=source.radiatedGreenVisual;bones=source.radiatedGreenBones;type="green"}
+ else if(source?.sprinterVisual&&source?.sprinterBones?.size){holder=source.sprinterVisual;bones=source.sprinterBones;type="sprinter"}
  else return false;
 
  const pose=captureCrawlerUpperPose(holder,bones,type);
@@ -6796,6 +6809,9 @@ function transferCrawlerUpperVisual(source,crawler){
  if(type==="walker"){
    crawler.walkerVisual=holder;crawler.walkerBones=bones;crawler.walkerModel=source.walkerModel;crawler.walkerSourceHeight=source.walkerSourceHeight;
    source.walkerVisual=null;source.walkerModel=null;source.walkerBones=null;
+ }else if(type==="sprinter"){
+   crawler.sprinterVisual=holder;crawler.sprinterBones=bones;crawler.sprinterModel=source.sprinterModel;
+   source.sprinterVisual=null;source.sprinterModel=null;source.sprinterBones=null;
  }else{
    crawler.radiatedGreenVisual=holder;crawler.radiatedGreenBones=bones;crawler.radiatedGreenModel=source.radiatedGreenModel;
    source.radiatedGreenVisual=null;source.radiatedGreenModel=null;source.radiatedGreenBones=null;
@@ -6968,8 +6984,8 @@ function convertLeglessToCrawler(z){
 function detachLeg(z,side){
  const key=side==="left"?"leftLegDetached":"rightLegDetached";
  if(z[key])return;
- if(z.hazmatVisual||z.radiatedGreenVisual||z.walkerVisual){
-   const customBones=z.hazmatBones||z.radiatedGreenBones||z.walkerBones;
+ if(z.hazmatVisual||z.sprinterVisual||z.radiatedGreenVisual||z.walkerVisual){
+   const customBones=z.hazmatBones||z.sprinterBones||z.radiatedGreenBones||z.walkerBones;
    const bone=customBones?.get(side==="left"?"L_UpperLeg":"R_UpperLeg");
    const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.15:.15,.72,0));
    z[key]=true;hideRigLimb(z,side==="left"?"L_UpperLeg":"R_UpperLeg");
@@ -7075,6 +7091,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  if(z.mixer)z.mixer.stopAllAction();
  if(z.parasiteBossMixer)z.parasiteBossMixer.timeScale=0;
  if(z.hazmatVisual)hazmatZombie.freeze(z);
+ if(z.sprinterVisual)sprinterZombie.freeze(z);
  // v553: stopAllAction() UNBINDS and restores the Mixamo T-pose instantly,
  // causing the visible crawler to spring upright at death. Freeze the last
  // animated pose in place (keep actions bound), then release it into PBD.
@@ -7634,6 +7651,7 @@ function addKnockdownBlastImpulse(z,k,origin,strength){
 function beginKnockdown(z,origin,strength=1){
  if(!z||z.dead||z.kind==="boss")return;
  if(z.hazmatVisual)hazmatZombie.freeze(z);
+ if(z.sprinterVisual)sprinterZombie.freeze(z);
  if(z.knockdown?.bodyPbd){addKnockdownBlastImpulse(z,z.knockdown,origin,strength);return}
 
  if(z.mixer)z.mixer.stopAllAction();
@@ -8231,7 +8249,7 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
  // settlement explicitly marks rag.active=false. Never stop just because a
  // scripted fall timer or root-ground flag says the corpse is "done."
  if(z.ragdoll?.active!==false)updateRagdoll(z,dt);
- syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
  // Do not clean up ANY corpse while it is still in active ragdoll motion.
  if(z.corpseAge>10&&z.ragdoll?.active===false&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
 }
@@ -8272,7 +8290,7 @@ for(let z of active){
    z.groan-=dt;z.step-=dt;
    updateKnockdown(z,dt);
    updateNaturalCrawlerVisual(z,dt);
-   syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);
+   syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
    continue;
  }
 
@@ -8537,7 +8555,7 @@ resolveZombiePlayerContact(z,ox,oz);
    }
  }
  updateNaturalCrawlerVisual(z,dt);
- syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 const perfGuard=createPerformanceGuard({
  renderer:ren,

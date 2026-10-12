@@ -1,0 +1,34 @@
+name: v611 Two original animated Sprinters gameplay
+on:
+  push:
+    paths:
+      - 'src/game.js'
+      - 'src/sprinter-zombie.js'
+      - 'scripts/sprinter-v611-smoke.cjs'
+      - '.github/workflows/sprinter-v611-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sprinter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify both native Sprinters, running, original texture, hitbox and crawler
+        run: |
+          python3 -m http.server 4173 >/tmp/sprinter-server.log 2>&1 &
+          sleep 2
+          node scripts/sprinter-v611-smoke.cjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sprinter-v611-audit
+          path: SPRINTER_V611_AUDIT.json
