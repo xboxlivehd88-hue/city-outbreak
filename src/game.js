@@ -7184,6 +7184,7 @@ const infectedCrawlHip=new THREE.Vector3(),infectedCrawlChest=new THREE.Vector3(
  infectedCrawlParentQ=new THREE.Quaternion(),infectedCrawlWorldQ=new THREE.Quaternion(),
  infectedCrawlDir=new THREE.Vector3(),infectedCrawlAim=new THREE.Vector3(),
  infectedCrawlTarget=new THREE.Vector3(0,.45,-1).normalize(),
+ infectedCrawlTargetGLB=new THREE.Vector3(0,.77,-1).normalize(),
  infectedCrawlShoulder=new THREE.Vector3(),infectedCrawlElbow=new THREE.Vector3(),
  infectedCrawlWrist=new THREE.Vector3(),infectedCrawlFlat=new THREE.Vector3(),
  infectedCrawlGoal=new THREE.Vector3(),infectedCrawlAxis=new THREE.Vector3(),
@@ -7552,7 +7553,8 @@ function poseOriginalInfectedCrawler(z){
    z.g.getWorldQuaternion(infectedCrawlWorldQ);
    infectedCrawlDir.applyQuaternion(infectedCrawlWorldQ.invert()).normalize();
    if(infectedCrawlDir.lengthSq()>.0001)
-    holder.quaternion.premultiply(infectedCrawlQ.setFromUnitVectors(infectedCrawlDir,infectedCrawlTarget));
+    holder.quaternion.premultiply(infectedCrawlQ.setFromUnitVectors(infectedCrawlDir,
+     z.infectedVisual?infectedCrawlTargetGLB:infectedCrawlTarget));
   }
   pose.infectedHorizontalQuat=holder.quaternion.clone();
  }
