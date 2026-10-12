@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:636,passed:false},errors=[];let browser,page;
+ const report={build:637,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=636$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=637$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -75,6 +75,10 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "    const prior=z.sprinterStandingArmLengths?.[i];return prior&&u&&e?u.getWorldPosition(new THREE.Vector3()).distanceTo(e.getWorldPosition(new THREE.Vector3()))/prior:null;});",
    "   const palmDown=side=>{const hand=z.sprinterBones.get(side+'_Hand'),basis=z.sprinterCrawlerPalmBasis?.[side];",
    "    return hand&&basis?basis.palm.clone().applyQuaternion(hand.getWorldQuaternion(new THREE.Quaternion())).dot(new THREE.Vector3(0,-1,0)):null;};",
+   "   const hitShot=(bone,part)=>{const b=z.sprinterBones.get(bone);if(!b)return false;",
+   "    const target=b.getWorldPosition(new THREE.Vector3()),origin=target.clone().add(new THREE.Vector3(0,1.7,0));",
+   "    const ray=new THREE.Raycaster(origin,new THREE.Vector3(0,-1,0),0,3.6);",
+   "    return ray.intersectObjects(z.hitMeshes||[],false).some(h=>h.object.userData.zombie===z&&h.object.userData.part===part);};",
     "   const armsLocal={leftShoulder:ls?.toArray(),rightShoulder:rs?.toArray(),",
     "    leftElbow:le?.toArray(),rightElbow:re?.toArray(),",
     "    leftHand:l?.toArray(),rightHand:r?.toArray(),",
@@ -88,6 +92,9 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "   return {height:box.max.y-box.min.y,feet:box.min.y-z.g.position.y,",
    "    wristY:[jointY('L_Hand'),jointY('R_Hand')],chestY:jointY('Chest'),hipY:jointY('Hips'),palmDown:[palmDown('L'),palmDown('R')],",
    "    armScaleRatios,scalePreserved:z.sprinterCrawlerScalePreserved===true,standingWorldScale:z.sprinterStandingWorldScale,",
+   "    shotHitboxes:z.hitMeshes?.length||0,hitVolumeNames:z.hitMeshes?.map(h=>h.name)||[],",
+   "    shotCoverage:{head:hitShot('Head','head'),chest:hitShot('Chest','torso'),pelvis:hitShot('Hips','torso'),",
+   "     leftArm:hitShot('L_LowerArm','leftArm'),rightArm:hitShot('R_LowerArm','rightArm')},",
    "    hipToChestForward:hips&&chest?hips.z-chest.z:null,",
    "    hipToHeadForward:hips&&head?hips.z-head.z:null,",
    "    trunkVerticalRise:hips&&chest?chest.y-hips.y:null,",
@@ -122,7 +129,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=636-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=637-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -160,7 +167,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    assert(m.angles.slice(0,4).filter(v=>v>.08).length>=3,"Real knees don't animate: "+JSON.stringify(m.angles));
   }
   report.lifecycle=await page.evaluate(()=>globalThis.__sprinterSmoke.lifecycle());
-  console.log("SPRINTER_V636_GROUND_CONTACTS="+JSON.stringify({cop:report.lifecycle.copCrawl,maniac:report.lifecycle.maniacCrawl}));
+  console.log("SPRINTER_V637_GROUND_CONTACTS="+JSON.stringify({cop:report.lifecycle.copCrawl,maniac:report.lifecycle.maniacCrawl}));
   assert.equal(report.lifecycle.ragNative,true,"Original Sprinter not running native PBD");
   assert(report.lifecycle.ragMove>.03,"Dead Sprinter froze instead of falling");
   assert.equal(report.lifecycle.oneLegHidden,true);
@@ -174,6 +181,9 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    assert(m&&m.naturalCrawl&&m.retargetTracks>=13&&m.boneCount>=16,
      type+" original skeleton did NOT receive real crawl motion: "+JSON.stringify(m));
    assert(m.armMotion>.03,type+" arms locked/stiff in crawler animation: "+JSON.stringify(m));
+   assert(m.shotHitboxes>=10&&m.hitVolumeNames.every(n=>n.startsWith("SprinterLegless_"))&&
+     Object.values(m.shotCoverage||{}).every(Boolean),
+     type+" CRAWLER BULLETS MISS visible head/chest/pelvis/arms: "+JSON.stringify({boxes:m.hitVolumeNames,rays:m.shotCoverage}));
    assert(m.scalePreserved&&m.armScaleRatios?.every(r=>r!==null&&r>.95&&r<1.05),
      type+" SHRANK on conversion: upper-arm original world lengths changed "+JSON.stringify(m.armScaleRatios));
    assert(m.trimmed&&m.skin?.changedMeshes>=1&&m.skin?.removedTris>20,
@@ -209,8 +219,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V636_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V636_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V637_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V637_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();

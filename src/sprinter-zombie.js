@@ -526,6 +526,7 @@ export function createSprinterZombieController(){
   z.sprinterCrawlerBasePos=holder.position.clone();
   z.sprinterCrawlerBaseQuat=holder.quaternion.clone();
   z.sprinterCrawlerHeight=measure();
+  makeCrawlerHitboxes(z);
   return true;
  }
  // Aim a bent, outside-the-ribcage forearm down to the pavement.
@@ -573,6 +574,82 @@ export function createSprinterZombieController(){
   lower.updateWorldMatrix(true,true);
   plantOriginalPalm(z,hand,side);
  }
+ // v637: Converted legless Sprinters keep their own skinned body, but v636
+ // shot against the HIDDEN procedural crawler's old standing-shaped meshes.
+ // Create independent invisible shooting targets that FOLLOW each ORIGINAL
+ // Cop/Maniac joint every frame. These exist only after both legs are gone.
+ const hitUp=new THREE.Vector3(0,1,0),hitFrom=new THREE.Vector3(),
+  hitTo=new THREE.Vector3(),hitVector=new THREE.Vector3(),
+  hitRootScale=new THREE.Vector3(),hitWorld=new THREE.Vector3();
+ const crawlerUnitBox=new THREE.BoxGeometry(1,1,1);
+ const crawlerUnitSphere=new THREE.SphereGeometry(1,10,8);
+ function makeCrawlerHitboxes(z){
+  if(!z?.sprinterBones?.size||!z.sprinterCrawlerAction)return false;
+  if(z.sprinterCrawlerHitVolumes?.length)return true;
+  // Never let the invisible native crawler body steal or miss bullets.
+  for(const h of z.hitMeshes||[])if(h)h.raycast=()=>{};
+  const mat=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false,
+   depthTest:false,side:THREE.DoubleSide});
+  const defs=[
+   ["CrawlPelvis","Hips",null,"torso",.30,.27,.0],
+   ["CrawlAbdomen","Hips","Chest","torso",.54,.48,.30],
+   ["CrawlChest","Chest","Neck","torso",.57,.49,.27],
+   ["CrawlHead","Head",null,"head",.265,.265,0],
+   ["CrawlLeftUpperArm","L_UpperArm","L_LowerArm","leftArm",.255,.255,.12],
+   ["CrawlLeftForearm","L_LowerArm","L_Hand","leftArm",.22,.22,.11],
+   ["CrawlLeftHand","L_Hand",null,"leftArm",.14,.14,0],
+   ["CrawlRightUpperArm","R_UpperArm","R_LowerArm","rightArm",.255,.255,.12],
+   ["CrawlRightForearm","R_LowerArm","R_Hand","rightArm",.22,.22,.11],
+   ["CrawlRightHand","R_Hand",null,"rightArm",.14,.14,0]
+  ];
+  const volumes=[];
+  for(const [name,first,last,part,width,depth,pad] of defs){
+   if(!z.sprinterBones.has(first)||(last&&!z.sprinterBones.has(last)))continue;
+   const geo=last?crawlerUnitBox:crawlerUnitSphere;
+   const mesh=new THREE.Mesh(geo,mat);
+   mesh.name="SprinterLegless_"+name;
+   mesh.userData.zombie=z;mesh.userData.part=part;
+   if(part==="head")mesh.userData.isHead=true;
+   mesh.castShadow=false;mesh.receiveShadow=false;
+   z.g.add(mesh);volumes.push({mesh,first,last,width,depth,pad});
+  }
+  if(volumes.length<8){for(const v of volumes)v.mesh.removeFromParent();mat.dispose();return false;}
+  z.sprinterCrawlerHitVolumes=volumes;
+  z.sprinterCrawlerHitMaterial=mat;
+  z.hitMeshes=volumes.map(v=>v.mesh);
+  z.ownedMaterials?.push(mat);
+  // Two shared geometries per crawler, not 10 duplicate geometries/frame.
+  // The controller-level primitives live for the game session.
+  syncCrawlerHitboxes(z);
+  return true;
+ }
+ function syncCrawlerHitboxes(z){
+  const volumes=z.sprinterCrawlerHitVolumes,bones=z.sprinterBones;
+  if(!volumes?.length||!bones)return;
+  z.g.updateWorldMatrix(true,false);
+  z.g.getWorldScale(hitRootScale);
+  const sx=Math.max(.01,Math.abs(hitRootScale.x)),
+   sy=Math.max(.01,Math.abs(hitRootScale.y)),sz=Math.max(.01,Math.abs(hitRootScale.z));
+  for(const v of volumes){
+   const a=bones.get(v.first),b=v.last?bones.get(v.last):null;
+   if(!a)continue;
+   a.getWorldPosition(hitFrom);
+   if(b)b.getWorldPosition(hitTo);
+   else hitTo.copy(hitFrom);
+   hitWorld.copy(hitFrom).add(hitTo).multiplyScalar(.5);
+   z.g.worldToLocal(hitWorld);
+   v.mesh.position.copy(hitWorld);
+   if(b){
+    // Capsule-like elongated box, centered between real moving bones.
+    hitVector.subVectors(hitTo,hitFrom);
+    const length=hitVector.length();
+    if(length>.0001)v.mesh.quaternion.setFromUnitVectors(hitUp,hitVector.multiplyScalar(1/length).applyQuaternion(
+     z.g.getWorldQuaternion(hitParentQ).invert()));
+    v.mesh.scale.set(v.width/sx,Math.max(v.width*.8,length+v.pad)/sy,v.depth/sz);
+   }else v.mesh.scale.set(v.width/sx,v.width/sy,v.depth/sz);
+  }
+ }
+ const hitParentQ=new THREE.Quaternion();
  function syncCrawler(z,dt){
   if(!z?.sprinterCrawlerAction||!z.sprinterMixer||z.dead||z.knockdown)return;
   z.sprinterMixer.update(Math.max(0,dt)*.82);
@@ -591,6 +668,7 @@ export function createSprinterZombieController(){
    if(neck)neck.rotateX(-.18);
    if(head)head.rotateX(-.13);
   }
+  syncCrawlerHitboxes(z);
  }
  function freeze(z){if(z?.sprinterMixer)z.sprinterMixer.timeScale=0}
  function release(z){

@@ -1,3 +1,13 @@
+# v637 — REAL ORIGINAL SPRINTER CRAWLER SHOOTING HITBOXES — 2026-10-12
+
+- User testing v636 reports almost no shots register after Cop/Maniac lose both legs. This is a REAL gameplay failure despite v636 pose-only smoke tests passing. Do not modify the now-approved pelvis-grounded, slightly raised-chest, palm-supported, original-sized crawler pose or standing/running GLBs.
+- **Root cause:** `convertLeglessToCrawler` spawns a generic crawler and `hideNativeCrawlerVisual` hides its procedural meshes, but leaves its generic upright-shape `crawler.hitMeshes` active. Original Sprinter GLB mesh is explicitly marked visual-only / raycast-disabled. Therefore shotgun/bullet raycaster targets invisible unrelated procedural anatomy rather than the visible original Cop/Maniac prone upper body.
+- **Fix:** `src/sprinter-zombie.js` creates only for converted legless Sprinters 10 invisible anatomical raycast targets: true original skinned Hip/Pelvis, segmented Abdomen and Chest, Head headshot sphere, upper/lower Arms and Hands for both sides. Disable old generic crawler raycast targets; set `crawler.hitMeshes` to new targets, each with `userData.zombie`, `part` and `isHead` as appropriate. Sync every frame to original animated 66-bone positions and orient elongated boxes along actual live skeletal segments. Volumes reuse a single box and sphere primitive for low memory and invisible double-sided material. Preserve existing damage/headshot and limb detach rules; no shoot function changes.
+- **QA:** Sprinter Chromium smoke now tests actual `THREE.Raycaster` intersection against active `z.hitMeshes` for both Cop and Maniac at original HEAD, CHEST, HIPS, LEFT and RIGHT forearms, in addition to size/pose/texture/limb/ragdoll. No more passing because only `hitMeshes.length>2`. Hazmat and Parasite regression loader versions advanced to v637.
+- Loader `./src/game.js?v=637`, Sprinter module `?v=637`; original GLB unchanged; protected v324 unchanged. Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=637-crawler-hitboxes. Do not claim real verified before Sprinter Chromium, other regression checks and Pages deployment succeed.
+
+---
+
 # v636 — SMALL CHEST LIFT, KEEP CRAWLER PELVIS GROUNDED — 2026-10-12
 
 - User tested v635 and says the legless Cop and Maniac/Clown crawlers are now full sized and grounded, but their upper torso looks like it is slithering on the pavement. They want a **small chest lift only** so original palms/elbows support the chest. No handoff requested, make the direct change.
