@@ -5,7 +5,7 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 export function createHazmatZombieController(){
   let source=null,loadingError=null,attached=0,attachDebug=null;
-  const url="assets/zombie_hazmat.glb?v=607";
+  const url="assets/zombie_hazmat.glb?v=608";
   const clipsRequired=["Zombie_Idle","Zombie_Walk_Root","Zombie_Skill"];
   function load(onReady){
     new GLTFLoader().load(url,gltf=>{
@@ -24,6 +24,58 @@ export function createHazmatZombieController(){
         const x=t.values[0],z=t.values[2];
         for(let i=0;i<t.values.length;i+=3){t.values[i]=x;t.values[i+2]=z}
       }
+      // v608: original Hazmat walk is accelerated ~6-12x to match movement.
+      // That also exaggerates the uploaded clip's long upper-arm pendulum swing.
+      // Reduce ONLY genuine recorded arm quaternion arcs toward this SAME GLB's
+      // native Idle pose. Lower-body tracks, hips, stride and gait are untouched.
+      const idleClip=clips.get("Zombie_Idle");
+      const idleQuatTracks=new Map(idleClip.tracks
+        .filter(t=>t.name.endsWith(".quaternion")).map(t=>[t.name,t]));
+      const armTuning={tracks:0,left:false,right:false,upperArms:0,
+        upperOriginalArc:0,upperCorrectedArc:0,reference:"Zombie_Idle",
+        naturalWalk:"Zombie_Walk_Root",nativeLegTracksUnchanged:true};
+      for(const t of walk.tracks){
+        if(!t.name.endsWith(".quaternion")||t.values.length<8)continue;
+        const n=t.name.toLowerCase().replace(/[^a-z]/g,"");
+        const side=n.includes("left")?"left":n.includes("right")?"right":null;
+        if(!side)continue;
+        const upper=n.includes(side+"arm")&&!n.includes("forearm");
+        const forearm=n.includes(side+"forearm");
+        const shoulder=n.includes(side+"shoulder");
+        const hand=n.includes(side+"hand");
+        if(!upper&&!forearm&&!shoulder&&!hand)continue;
+        const strength=upper?.34:forearm?.46:shoulder?.45:.62;
+        const idleTrack=idleQuatTracks.get(t.name);
+        const sourcePose=idleTrack?.createInterpolant().evaluate(
+          Math.min(.35,idleClip.duration*.25))||t.values.subarray(0,4);
+        const anchor=new THREE.Quaternion().fromArray(sourcePose).normalize();
+        const from=new THREE.Quaternion(),to=new THREE.Quaternion();
+        const first=new THREE.Quaternion().fromArray(t.values,0);
+        let originalArc=0,correctedArc=0;
+        for(let i=0;i<t.values.length;i+=4){
+          from.fromArray(t.values,i).normalize();
+          originalArc=Math.max(originalArc,first.angleTo(from));
+          to.copy(anchor).slerp(from,strength).normalize();
+          if(i===0)first.copy(from);
+          to.toArray(t.values,i);
+        }
+        if(upper){
+          // The first quaternion is overwritten in the clone; compare all
+          // adjusted frames against the newly recorded adjusted first frame.
+          const correctedFirst=new THREE.Quaternion().fromArray(t.values,0);
+          for(let i=0;i<t.values.length;i+=4){
+            to.fromArray(t.values,i);
+            correctedArc=Math.max(correctedArc,correctedFirst.angleTo(to));
+          }
+          armTuning.upperArms++;
+          armTuning.upperOriginalArc=Math.max(armTuning.upperOriginalArc,originalArc);
+          armTuning.upperCorrectedArc=Math.max(armTuning.upperCorrectedArc,correctedArc);
+        }
+        armTuning.tracks++;
+        armTuning[side]=true;
+      }
+      if(armTuning.upperArms<2||!armTuning.left||!armTuning.right)
+        console.warn("HAZMAT: original arm rotation tracks incomplete",armTuning);
       clips.set("Zombie_Walk_Root",walk);
       // Original source root travels 67.802 units over its 2.625s
       // walk cycle, under a 0.01-scale GLB parent = ~0.678 local units.
@@ -44,7 +96,7 @@ export function createHazmatZombieController(){
         }
       }
       if(!(walkStride>.25&&walkStride<1.5))walkStride=.678;
-      source={scene:gltf.scene,clips,walkStride};
+      source={scene:gltf.scene,clips,walkStride,armTuning};
       document.documentElement.dataset.hazmatAsset="loaded";
       document.documentElement.dataset.hazmatClips=[...clips.keys()].join(",");
       console.log("CITY OUTBREAK v602: original Hazmat gait measured", {walkStride,clips:[...clips.keys()]});
@@ -204,5 +256,5 @@ export function createHazmatZombieController(){
     }
   }
   return {load,attach,sync,release,freeze,crawl,suppressDetached,
-    status:()=>({loaded:!!source,error:String(loadingError||""),clips:[...(source?.clips.keys()||[])],attached,attachDebug,walkStride:source?.walkStride})};
+    status:()=>({loaded:!!source,error:String(loadingError||""),clips:[...(source?.clips.keys()||[])],attached,attachDebug,walkStride:source?.walkStride,armTuning:source?.armTuning})};
 }

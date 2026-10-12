@@ -1,3 +1,13 @@
+# v608 — NATURAL HAZMAT RUNNING ARMS, ORIGINAL v602 LEGS — 2026-10-11
+
+- USER: "when running they swing their arms un-naturally", provided gameplay `2026-10-11 21-34-18.mp4` testing v607. Video shows both Hazmat shoulders and arms rocking exaggeratedly forward/back during pursuit. This is original GLB `Zombie_Walk_Root` running at the existing 6+ playback speed, making its original arm swings especially obvious.
+- **Targeted source fix:** On loading the ORIGINAL animated Hazmat GLB, clone only its `Zombie_Walk_Root` clip and attenuate quaternion track movement for native left/right upper arms, forearms, shoulders and hands toward the SAME GLB's recorded `Zombie_Idle` reference posture; preserve original recorded walk-phase motion (NOT frozen, no procedural arm swings). 34% upper arm motion, 46% forearms, 45% shoulders, 62% hands. Completely leave all hip/leg/knee/root/torso animation keyframes, source native skeleton/GLB, zombie movement speeds and stride calibration unchanged. When idle/attacking, the original untouched clips still play. Existing native PBD ragdoll, real bone amputations and forward-leaning Hazmat crawler unchanged.
+- **v607 red mist removal remains intact:** Acidic does not construct any red mist object, original suit textures unaffected. Wave 1 stays 10 Acidic/Hazmats for review, 19 boss pool, weapons/grenades, graphics and recovery v324 untouched.
+- **Updated v608 browser regression** checks original Hazmat model, all 10 red-free actors, recorded real bilateral leg movement, a nontrivial ORIGINAL animated arm arc reduced by the new arm-blend while leaving native arms skinned, plus previous native PBD, amputations, crawler, hitboxes and explosion tests. Parasite/19-boss regression version and both workflow labels updated. Await GitHub Actions and Pages pass before claiming verification.
+- Loader `./src/game.js?v=608` and Hazmat GLB `?v=608`; playable `https://xboxlivehd88-hue.github.io/city-outbreak/?v=608-hazmat-natural-arms`. Protected recovery v324 unchanged.
+
+---
+
 # v607 — REMOVE ACIDIC HAZMAT RED AURA COMPLETELY — 2026-10-11
 
 - USER: "we need to completely remove the red" and provided `2026-10-11 21-23-51.mp4` on v606 (v602-restored Hazmats). Video shows translucent red contamination spheres still surrounding zombies. This request explicitly supersedes the historical v606 note prohibiting red mist removal.
