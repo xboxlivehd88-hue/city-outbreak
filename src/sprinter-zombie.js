@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=611",
- "assets/zombie_running_on_metel_maniac.glb?v=611"
+ "assets/animated_zombie_cop_running_loop.glb?v=612",
+ "assets/zombie_running_on_metel_maniac.glb?v=612"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -115,11 +115,18 @@ export function createSprinterZombieController(){
   // Evaluate the POSED imported mesh, not its unanimated bind-pose transform.
   const box=new THREE.Box3().setFromObject(model,true),size=new THREE.Vector3();
   box.getSize(size);
-  if(!Number.isFinite(size.y)||size.y<.05||size.y>2000)return false;
+  // Cop's first skinned frame can report a tiny bind-pose Box3 (~.015m)
+  // despite its original GLB later rendering at normal human scale.
+  // Match the Hazmat workaround: keep natural native scale, never magnify 100x.
+  const staleCopBounds=variant===0&&Number.isFinite(size.y)&&size.y<.05;
+  if(!staleCopBounds&&(!Number.isFinite(size.y)||size.y<.05||size.y>2000)){
+   console.warn("Sprinter source bounds invalid",variant,size.toArray());
+   return false;
+  }
   const center=box.getCenter(new THREE.Vector3());
   const holder=new THREE.Group();holder.name="SprinterOriginalAnimatedGLB";
   holder.rotation.y=Math.PI;
-  holder.scale.setScalar(THREE.MathUtils.clamp(1.88/size.y,.007,12));
+  holder.scale.setScalar(staleCopBounds?1.0:THREE.MathUtils.clamp(1.88/size.y,.007,12));
   model.position.set(-center.x,-box.min.y,-center.z);
   holder.add(model);
   // Remove ONLY the old procedural visuals; its physics/AI state lives on z.g.
@@ -130,6 +137,7 @@ export function createSprinterZombieController(){
   z.sprinterVisual=holder;z.sprinterModel=model;z.sprinterBones=bones;
   z.sprinterMixer=mixer;z.sprinterRunAction=action;
   z.sprinterModelIndex=variant;z.sprinterSourceHeight=size.y;
+  z.sprinterStaleCopBounds=staleCopBounds;
   z.sprinterLastX=z.g.position.x;z.sprinterLastZ=z.g.position.z;
 
   // Invisible anatomical shooting volumes driven from original animated joints.

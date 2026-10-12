@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
-import {createSprinterZombieController} from "./sprinter-zombie.js?v=611";
+import {createSprinterZombieController} from "./sprinter-zombie.js?v=612";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -52,8 +52,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v611";
-document.documentElement.dataset.cityOutbreakBuild="611";
+document.title="CITY OUTBREAK — v612";
+document.documentElement.dataset.cityOutbreakBuild="612";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -8249,7 +8249,7 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
  // settlement explicitly marks rag.active=false. Never stop just because a
  // scripted fall timer or root-ground flag says the corpse is "done."
  if(z.ragdoll?.active!==false)updateRagdoll(z,dt);
- syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
  // Do not clean up ANY corpse while it is still in active ragdoll motion.
  if(z.corpseAge>10&&z.ragdoll?.active===false&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
 }
@@ -8290,7 +8290,7 @@ for(let z of active){
    z.groan-=dt;z.step-=dt;
    updateKnockdown(z,dt);
    updateNaturalCrawlerVisual(z,dt);
-   syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
+   syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
    continue;
  }
 
@@ -8555,7 +8555,7 @@ resolveZombiePlayerContact(z,ox,oz);
    }
  }
  updateNaturalCrawlerVisual(z,dt);
- syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 const perfGuard=createPerformanceGuard({
  renderer:ren,

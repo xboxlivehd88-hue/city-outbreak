@@ -1,3 +1,13 @@
+# v612 — FIX COP SPRINTER INITIAL SKIN BOUNDS — 2026-10-12
+
+- User supplied two Sprinter GLBs, both integrated in v611. Both assets successfully load with REAL animated skinned Mixamo knees/arms and textures; previous first Sprinter browser test found a Playwright start navigation wait (fixed by QA-only commit `6e15279e3cbee4c0b54d33d1d6732b702ae73591`).
+- Second v611 real-browser test reached gameplay: **Maniac Sprinter** variant 1 successfully spawned as original skinned model (2 texture-mapped meshes, 17 game-mapped bones, native 72-track Run, natural ~1.73 world-unit height, feet on ground within 0.018, bilateral knees bending and 11 native-joint-following combat hitboxes). **Cop Sprinter** variant 0 failed to attach, despite its original GLB and 58-track Run loading fully. v611 is NOT confirmed for both.
+- v612 targeted fix: like the approved original Hazmat workaround, the Cop may report stale/tiny first-frame skinned geometry bounds. When this happens, retain the original Cop at native scale 1.0 instead of rejecting it or inflating it ~125x. Maniac's normal original bound-based sizing stays unchanged. Log anomalous bound sizes. Test v612 both variants including correct size/ground placement and native PBD death, hitboxes and same-original-model legless crawler. Model colors/assets and 50/50 alternation remain unchanged.
+- Tiny performance guard prevents unnecessary crawler upper-body pose sync calls on zombies with no sprinter crawler holder. Keep all prior approved Hazmat red aura removal, Green Guy no aura, 19 boss pool, weapons, graphics and map.
+- Browser QA versions bumped to **612** for Sprinter/Hazmat/Parasite. v612 loader `./src/game.js?v=612`, playable `https://xboxlivehd88-hue.github.io/city-outbreak/?v=612-two-animated-sprinters`. Protected v324 recovery checkpoint unchanged. Wait for GitHub Actions and Pages results before declaring done.
+
+---
+
 # v611 QA follow-up — real browser Sprinter test start navigation wait — 2026-10-12
 
 - First Sprinter Chromium audit loaded BOTH user's GLBs successfully, native source run clips `Animation` and `mixamo.com` present, zero page JS errors, but Playwright's regular `#start.click()` timed out AFTER the click action had completed, waiting for scheduled browser navigation. This was a TEST HARNESS wait, not a model-parse failure.

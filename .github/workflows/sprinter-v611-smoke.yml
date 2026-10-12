@@ -1,11 +1,11 @@
-name: v611 Two original animated Sprinters gameplay
+name: v612 Two original animated Sprinters gameplay
 on:
   push:
     paths:
       - 'src/game.js'
       - 'src/sprinter-zombie.js'
-      - 'scripts/sprinter-v611-smoke.cjs'
-      - '.github/workflows/sprinter-v611-smoke.yml'
+      - 'scripts/sprinter-v612-smoke.cjs'
+      - '.github/workflows/sprinter-v612-smoke.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,9 +26,9 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/sprinter-server.log 2>&1 &
           sleep 2
-          node scripts/sprinter-v611-smoke.cjs
+          node scripts/sprinter-v612-smoke.cjs
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sprinter-v611-audit
-          path: SPRINTER_V611_AUDIT.json
+          name: sprinter-v612-audit
+          path: SPRINTER_V612_AUDIT.json
