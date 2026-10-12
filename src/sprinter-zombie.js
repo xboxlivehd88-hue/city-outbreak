@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=618",
- "assets/zombie_running_on_metel_maniac.glb?v=618"
+ "assets/animated_zombie_cop_running_loop.glb?v=619",
+ "assets/zombie_running_on_metel_maniac.glb?v=619"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -182,7 +182,7 @@ export function createSprinterZombieController(){
    mixer.setTime(.09);
    z.sprinterCopCycleHeight=bounds.max.y-bounds.min.y;
    z.sprinterScaleExponent=exponent;z.sprinterInitialHeight=h0;
-   // v618: full LIVE browser gait was ~16–18 units despite the spawn
+   // v619: full LIVE browser gait was ~16–18 units despite the spawn
    // calibration reading ~1.9. Apply the independent corrective factor
    // to the actual skinned visual only; all gameplay scales stay unchanged.
    // Refit from measured live gait in subsequent tested increments.
@@ -253,7 +253,7 @@ export function createSprinterZombieController(){
   };
   let box=scan(),height=box.max.y-box.min.y;
   z.g.getWorldScale(liveRootScale);
-  const target=1.80*Math.max(.01,Math.abs(liveRootScale.y));
+  const target=.70*Math.max(.01,Math.abs(liveRootScale.y));
   if(!Number.isFinite(height)||height<.001)return;
   if(height<target*.91||height>target*1.08){
    // A native glTF skin may transform like s^2; learn actual response
