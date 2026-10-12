@@ -12,6 +12,15 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 ;globalThis.__parasiteSmoke={
  ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&!!infectedGlbAsset&&newCityCollisionReady,
  waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],preview:!sprinterOnlyTest}),
+ infectedDebug:()=>({
+  wave,waveSpawned,waveTarget,ready:!!infectedGlbAsset,assetError:String(infectedGlbError||""),
+  attached:document.documentElement.dataset.infectedGlbAttached,
+  attachError:document.documentElement.dataset.infectedGlbAttachError,
+  gameErrors:document.documentElement.dataset.cityOutbreakBuild,
+  zombies:zombies.slice(0,10).map(z=>({kind:z.kind,dead:z.dead,
+   rig:!!z.rigVisual,newVisual:!!z.infectedVisual,
+   bones:z.infectedBones?.size||0,source:z.infectedGLBSource||null}))
+ }),
  infectedCrawlerAudit:()=>{
   const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual);
   if(!z)throw Error("New Infected GLB not attached: "+JSON.stringify({
@@ -453,6 +462,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  }catch(e){
   report.failure=String(e?.stack||e);
   try{report.debugState=await page.evaluate(()=>globalThis.__parasiteSmoke?.state())}catch(_){}
+  try{report.debugInfected=await page.evaluate(()=>globalThis.__parasiteSmoke?.infectedDebug())}catch(_){}
+  report.errors=errors;
  }
  finally{
   if(browser)await browser.close();
