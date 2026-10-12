@@ -647,6 +647,10 @@ export function createSprinterZombieController(){
      z.g.getWorldQuaternion(hitParentQ).invert()));
     v.mesh.scale.set(v.width/sx,Math.max(v.width*.8,length+v.pad)/sy,v.depth/sz);
    }else v.mesh.scale.set(v.width/sx,v.width/sy,v.depth/sz);
+   // v638: shots can be fired between draw calls and smoke tests raycast
+   // immediately after pose updates. Force CURRENT collider world matrices.
+   // The renderer's later automatic update is too late for those raycasts.
+   v.mesh.updateMatrixWorld(true);
   }
  }
  const hitParentQ=new THREE.Quaternion();

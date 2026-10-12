@@ -1,3 +1,13 @@
+# v638 — CRAWLER HITBOX RAYCAST WORLD-MATRIX SYNCHRONIZATION — 2026-10-12
+
+- User reported nearly all bullets missing Cop/Maniac converted crawlers, despite v636's working full-sized pelvis-grounded chest-raised model and palm orientation. v637 replaced the hidden procedural crawler's hitMeshes with 10 correctly posed original-joint anatomical volumes (head, two torso sections, pelvis, two complete arms).
+- **v637 Chromium actual shooting regression FAILED:** Both original models created 10 hitboxes, but an immediate `THREE.Raycaster` after pose animation missed ALL five targets (head/chest/pelvis/both arms). Their `Mesh.position/quaternion/scale` had changed without updating `mesh.matrixWorld`, which stale raycasts use until a render. Therefore mere presence of hitboxes is insufficient. See v637 failed Action run 38291280926.
+- **v638 fix:** Force `v.mesh.updateMatrixWorld(true)` immediately after each new crawler hitbox pose/scale update in `syncCrawlerHitboxes`. This makes actual current animated head/chest/hip/arms raycastable in the *same* frame, even prior to render, including immediately after conversion. Do not modify the approved Cop and Maniac original skins, textures, limb clipping, world-size preservation, authentic Run/Crawl, pelvis position (+0.095), chest rise (+0.16 above pelvis), palms or ragdoll.
+- Preserve new smoke assertion using real rays on active `z.hitMeshes` targeting all 5 anatomical parts for BOTH Cop/Maniac; require 10 original-crawler hitboxes with correct `userData.zombie,part,isHead` alongside earlier animations/appearance/headshots/leg-amputation/PBD. Retest Chromium and all regression workflows; do not declare success until tests PASS.
+- Version v638 loader `./src/game.js?v=638`, module `./sprinter-zombie.js?v=638`, browser https://xboxlivehd88-hue.github.io/city-outbreak/?v=638-crawler-hitboxes-live . Protected recovery v324 unchanged.
+
+---
+
 # v637 — REAL ORIGINAL SPRINTER CRAWLER SHOOTING HITBOXES — 2026-10-12
 
 - User testing v636 reports almost no shots register after Cop/Maniac lose both legs. This is a REAL gameplay failure despite v636 pose-only smoke tests passing. Do not modify the now-approved pelvis-grounded, slightly raised-chest, palm-supported, original-sized crawler pose or standing/running GLBs.
