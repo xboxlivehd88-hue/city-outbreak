@@ -51,8 +51,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v608";
-document.documentElement.dataset.cityOutbreakBuild="608";
+document.title="CITY OUTBREAK — v609";
+document.documentElement.dataset.cityOutbreakBuild="609";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -5306,11 +5306,10 @@ function applyZombieRigProfile(rig,kind){
  for(const nm of ["L_LowerLeg","R_LowerLeg"]){const b=rig.getObjectByName(nm);if(b)b.scale.set(...p.lowerLegScale)}
  return{neckBone,headBone,chestBone,spineBone,profile:p};
 }
-function attachRiggedZombie(z,g,kind,variant=0,hazardMist=null){
+function attachRiggedZombie(z,g,kind,variant=0){
  if(!zombieRigAsset||kind==="crawler")return false;
  // Keep old procedural pieces as invisible hitboxes; the skinned rig is visual only.
  g.traverse(o=>{if(o.isMesh){o.visible=false;o.castShadow=false;o.receiveShadow=false}});
- if(hazardMist){hazardMist.visible=true;hazardMist.raycast=()=>{}};
  const rig=zombieRigAsset?SkeletonUtils.clone(zombieRigAsset.scene):null;
  if(!rig)return false;
  rig.name="RiggedZombieVisual";
@@ -5804,17 +5803,11 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(i%2===1){gash=box(.085,.135,.012,torsoPatch,-.065,1.39,-.132,g);gash.rotation.z=.16}
  if(i%4===0){chestPatch=box(.095,.13,.012,torsoPatch,.075,1.48,-.134,g);chestPatch.rotation.z=-.12}
 
- // v607: NEVER construct the red Acidic contamination volume around Hazmats.
- // Radiated zombies still retain their approved green glow.
- let hazardMist=null;
- if(kind==="radiated"){
-   hazardMist=new THREE.Mesh(new THREE.SphereGeometry(.38,8,6),new THREE.MeshBasicMaterial({color:0x38ff59,transparent:true,opacity:.09,depthWrite:false}));
-   hazardMist.scale.set(1.0,1.55,1.0);hazardMist.position.y=1.02;g.add(hazardMist);
- }
+ // v609: Neither Acidic Hazmats nor Radiated Green Guys construct an aura.
+ // Keep each zombie's actual skin, green eyes and original effects intact.
  const ownedMaterials=[eyeMat];
  if(patchMat!==wound)ownedMaterials.push(patchMat);
  if(torsoPatch!==wound&&torsoPatch!==patchMat)ownedMaterials.push(torsoPatch);
- if(hazardMist&&hazardMist.material)ownedMaterials.push(hazardMist.material);
 
  let marker=null;
  let safe=pushOutsideBuilding(x,z,.50);g.position.set(safe.x,0,safe.z);scene.add(g);
@@ -5834,7 +5827,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(kind==="crawler"){speed*=.82;damage=Math.round(damage*.95);hp=Math.ceil(hp*.95)}
  if(kind==="boss"){const spec=bossSpec||bossWaveSpec(wave);speed=spec.speed;damage=spec.damage;hp=spec.hp;attack=spec.attack;strafe*=.10;surge=Math.min(.98,surge+.10);g.scale.multiplyScalar(1.58)}
 
- let zz={g,head,torso,armL,armR,legL,legR,chest,stomach,pelvis,neck,jaw,marker,mouth,shoulderL,shoulderR,elbowL,elbowR,kneeL,kneeR,jacket,hazardMist,ownedMaterials,ownedGeometries:null,naturalCrawlerSpawn,
+ let zz={g,head,torso,armL,armR,legL,legR,chest,stomach,pelvis,neck,jaw,marker,mouth,shoulderL,shoulderR,elbowL,elbowR,kneeL,kneeR,jacket,ownedMaterials,ownedGeometries:null,naturalCrawlerSpawn,
    baseArmLX,baseArmRX,headLean,gait,bob,limp,dragSide,hunch:hunchBias,turnRate,lurch:kind==="sprinter"||kind==="infected"||kind==="acidic"?1.10:kind==="boss"?.76:.92,
    shoulderDrop,pauseClock,attackAnim,attackSide,feral,twitch,snapBias,snapRate,nightmareType,armDrop,kind,groundY:0,
    hp,maxHP:hp,dead:false,speed,attack,damage,strafe,surge,bossName:kind==="boss"?(bossSpec?.name||bossWaveName||"BOSS"):"",bossBounty:kind==="boss"?(bossSpec?.bounty||250):0,bossSpecialCd:kind==="boss"?(bossSpec?.specialCd||7.5):0,bossAttackState:"",bossAttackT:0,bossChargeHit:false,
@@ -6025,7 +6018,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  const ownedGeometrySet=new Set();
  g.traverse(o=>{if(o.isMesh&&o.geometry&&!o.userData.sharedGeometry)ownedGeometrySet.add(o.geometry)});
  zz.ownedGeometries=[...ownedGeometrySet];
- attachRiggedZombie(zz,g,kind,i,hazardMist);
+ attachRiggedZombie(zz,g,kind,i);
  if(kind==="radiated")attachRadiatedGreenGuy(zz,g);
  if(kind==="shambler")attachBasicWalkerVisual(zz,g);
  if(kind==="boss"&&zz.rigVisual){
@@ -6809,9 +6802,8 @@ function transferCrawlerUpperVisual(source,crawler){
  }else{
    crawler.radiatedGreenVisual=holder;crawler.radiatedGreenBones=bones;crawler.radiatedGreenModel=source.radiatedGreenModel;
    source.radiatedGreenVisual=null;source.radiatedGreenModel=null;source.radiatedGreenBones=null;
-   const geo=new THREE.SphereGeometry(.38,8,6),mat=new THREE.MeshBasicMaterial({color:0x46ff59,transparent:true,opacity:.10,depthWrite:false});
-   const aura=new THREE.Mesh(geo,mat);aura.name="PreservedGreenCrawlerAura";aura.scale.set(1.10,.70,1.18);aura.position.set(0,.54,-.04);aura.userData.visualOnly=true;aura.raycast=()=>{};
-   crawler.g.add(aura);if(crawler.ownedGeometries)crawler.ownedGeometries.push(geo);if(crawler.ownedMaterials)crawler.ownedMaterials.push(mat);
+   // v609: Preserve the original Green Guy upper-body GLB on crawlers,
+   // but never create the old translucent green crawler aura.
  }
  return true;
 }
@@ -6880,7 +6872,7 @@ function captureCrawlerIdentity(z){
    skin=0xb89478;shirt=0x3567a3;pants=0x172845;eye=0xffd85a;
  }
  if(z?.radiatedGreenVisual||kind==="radiated"){
-   skin=0x78a64e;shirt=0x315a8e;pants=0x1b314d;eye=0x52ff62;aura=0x46ff59;
+   skin=0x78a64e;shirt=0x315a8e;pants=0x1b314d;eye=0x52ff62; // no crawler identity aura
  }else if(kind==="infected"){
    skin=0x777164;shirt=0x5b3030;pants=0x252a31;eye=0xff3e3e;aura=0x8f1616;
  }else if(kind==="acidic"){
@@ -8445,8 +8437,6 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
    if(z.kneeR)z.kneeR.rotation.x=.05+Math.max(0,-walk)*.30+(drag>0?z.limp*.045:0);
    z.g.position.y=z.groundY;
  }
-
- if(z.hazardMist){z.hazardMist.rotation.y+=dt*.24;z.hazardMist.scale.y=1.48+Math.sin(last*.002+z.phase)*.08}
 
  const attackRange=isBoss?1.34:isCrawler?1.04:isSprinter?1.08:1.00;
  const movementClearance=isBoss?.50:ZOMBIE_COLLISION_RADIUS;

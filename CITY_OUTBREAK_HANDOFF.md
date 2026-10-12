@@ -1,3 +1,13 @@
+# v609 — COMPLETELY REMOVE GREEN GUY AURA (INCLUDING CRAWLERS) — 2026-10-11
+
+- USER: "lets remove the green aura altogether" after reporting improved low-end performance from v607 removal of Hazmat red translucent mist.
+- **Removed at the source** the translucent green `hazardMist` SphereGeometry / MeshBasicMaterial from every Radiated Green Guy; `hazardMist` is no longer constructed, passed to the rig, animated or registered as renderable geometry. Red Hazmat aura remains absent.
+- **Also fixed BOTH Green Guy legless-crawler routes**: `transferCrawlerUpperVisual` no longer spawns a `PreservedGreenCrawlerAura` transparent green mesh, and `captureCrawlerIdentity` no longer requests a Radiated-colored `CrawlerIdentityAura` fallback. Preserves original visible `green guy.glb` appearance, green eyes, damage/stats, movement, grenades/spintop targeting, original crawler, hitboxes, ragdoll and dismemberment behavior. Other zombie colors and unrelated effects unchanged.
+- **v609 Chromium regression** adds a real forced Radiated spawn with original Green Guy GLB and the double-leg crawler transfer; asserts NO green aura mesh on either standing Green Guy or preserved crawler, while keeping a real mesh/armature and functioning hitboxes. Existing full Hazmat v608 motion/no-red/physics/grenade checks and 19-boss Parasite smoke retained at v609, workflows updated.
+- Loader `./src/game.js?v=609`, playable `https://xboxlivehd88-hue.github.io/city-outbreak/?v=609-green-aura-removed`. Temporary 10 Hazmats on Wave 1 and protected recovery checkpoint v324 not modified. Verify GitHub Pages, Hazmat+Green Guy and Parasite CI before reporting success.
+
+---
+
 # v608 — NATURAL HAZMAT RUNNING ARMS, ORIGINAL v602 LEGS — 2026-10-11
 
 - USER: "when running they swing their arms un-naturally", provided gameplay `2026-10-11 21-34-18.mp4` testing v607. Video shows both Hazmat shoulders and arms rocking exaggeratedly forward/back during pursuit. This is original GLB `Zombie_Walk_Root` running at the existing 6+ playback speed, making its original arm swings especially obvious.
