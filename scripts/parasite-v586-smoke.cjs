@@ -1,21 +1,22 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"644",pass:false};let browser;
+ const report={version:"645",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=644$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=645$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
- ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&newCityCollisionReady,
+ ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&!!infectedGlbAsset&&newCityCollisionReady,
  waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],preview:!sprinterOnlyTest}),
  infectedCrawlerAudit:()=>{
-  const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.rigVisual);
+  const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual);
   if(!z)throw Error("No visible original Infected in Wave 1");
-  const beforeCount=zombies.length,root=z.g,visual=z.rigVisual,meshCount=[];
+  const beforeCount=zombies.length,root=z.g,visual=z.infectedVisual,meshCount=[];
+  const glb=z.infectedModel,source=z.infectedGLBSource,hadTexture=!!glb?.getObjectByProperty;
   visual.traverse(o=>{if(o.isSkinnedMesh)meshCount.push(o.name)});
   z.hp=Math.max(z.hp,65);
   detachLeg(z,"left");detachLeg(z,"right");
@@ -25,7 +26,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const local=key=>{const q=jp(key);return q?z.g.worldToLocal(q):null;};
   const h=local("Hips"),c=local("Chest"),head=local("Head"),
    left=local("L_Hand"),right=local("R_Hand");
-  // v644: inspect ORIGINAL joints at forward plant, backward pull, and
+  // v645: inspect ORIGINAL joints at forward plant, backward pull, and
   // recovered hand lift. Also ensure elbow bends below the shoulder toward
   // the ground and neither elbow folds behind its shoulder.
   const originalPhase=z.phase,armFrames=[];
@@ -65,8 +66,9 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    return ray.intersectObjects(hitboxes,false).some(x=>x.object.userData.zombie===z);
   };
   return{kind:z.kind,source:z.crawlerSourceKind,originalActor:zombies.includes(z),
-   noReplacement:zombies.length===beforeCount,sameRoot:z.g===root,sameVisibleRig:z.rigVisual===visual,
+   noReplacement:zombies.length===beforeCount,sameRoot:z.g===root,sameVisibleRig:z.infectedVisual===visual,uploadedGLB:source,
    visibleSkins:meshCount.length,colliders:hitboxes.length,skinAudit,clippedSkins,armMotion,
+   hasNativeTexture:(()=>{let ok=false;glb?.traverse(o=>{if(o.isSkinnedMesh&&(Array.isArray(o.material)?o.material:[o.material]).some(m=>!!m?.map))ok=true});return ok})(),
    pose:{hipY:h?.y,chestY:c?.y,headY:head?.y,headForward:h&&head?h.z-head.z:null,
     chestForward:h&&c?h.z-c.z:null,handYs:[left?.y,right?.y],
     handsApart:left&&right?left.distanceTo(right):null,
@@ -320,7 +322,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=644-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=645-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -341,7 +343,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V644_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V645_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -363,7 +365,9 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   assert(report.infectedCrawler.originalActor&&report.infectedCrawler.noReplacement&&
    report.infectedCrawler.sameRoot&&report.infectedCrawler.sameVisibleRig&&
    report.infectedCrawler.flag&&report.infectedCrawler.source==="infected"&&
-   report.infectedCrawler.kind==="crawler"&&report.infectedCrawler.visibleSkins>0,
+   report.infectedCrawler.kind==="crawler"&&report.infectedCrawler.visibleSkins>0&&
+   report.infectedCrawler.uploadedGLB==="assets/zombie_animated.glb"&&
+   report.infectedCrawler.hasNativeTexture,
    "Infected switched into a generic crawler instead of retaining its original rig: "+JSON.stringify(report.infectedCrawler));
   assert(report.infectedCrawler.leftLegGone&&report.infectedCrawler.rightLegGone&&
    report.infectedCrawler.headshot&&report.infectedCrawler.body&&
@@ -448,7 +452,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V644_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V645_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
