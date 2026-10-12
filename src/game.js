@@ -7155,7 +7155,7 @@ const infectedCrawlHip=new THREE.Vector3(),infectedCrawlChest=new THREE.Vector3(
  infectedCrawlHead=new THREE.Vector3(),infectedCrawlQ=new THREE.Quaternion(),
  infectedCrawlParentQ=new THREE.Quaternion(),infectedCrawlWorldQ=new THREE.Quaternion(),
  infectedCrawlDir=new THREE.Vector3(),infectedCrawlAim=new THREE.Vector3(),
- infectedCrawlTarget=new THREE.Vector3(0,.23,-1).normalize(),
+ infectedCrawlTarget=new THREE.Vector3(0,.45,-1).normalize(),
  infectedCrawlShoulder=new THREE.Vector3(),infectedCrawlElbow=new THREE.Vector3(),
  infectedCrawlWrist=new THREE.Vector3(),infectedCrawlFlat=new THREE.Vector3(),
  infectedCrawlGoal=new THREE.Vector3(),infectedCrawlAxis=new THREE.Vector3(),
@@ -7247,9 +7247,14 @@ function aimInfectedCrawlerArm(z,bones,side,phase){
   infectedCrawlFlat.copy(aim).applyQuaternion(infectedCrawlParentQ.invert()).normalize();
   bone.quaternion.setFromUnitVectors(infectedCrawlDir.copy(child.position).normalize(),infectedCrawlFlat);
  };
- // v643: drive the ORIGINAL Infected shoulder/elbow/hand joints through an
- // alternating crawling stroke. v642 only changed a normalized arm direction
- // by .018, which was practically static even though z.phase advanced.
+ // v644: stance is a low PLANTED backward hand pull (as the pelvis moves
+ // forward); recovery is a LIFTED forward reach. The v643 sine lift was
+ // reversed, visually making the hands push the body away from the player.
+ const cycle=((phase%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
+ const planted=cycle<Math.PI,t=planted?cycle/Math.PI:(cycle-Math.PI)/Math.PI;
+ const smooth=t*t*(3-2*t);
+ const reach=planted?1-smooth:smooth;
+ const recoveryLift=planted?0:Math.sin(Math.PI*t);
  z.g.getWorldQuaternion(infectedCrawlWorldQ);
  upper.getWorldPosition(infectedCrawlShoulder);
  lower.getWorldPosition(infectedCrawlElbow);
@@ -7257,14 +7262,13 @@ function aimInfectedCrawlerArm(z,bones,side,phase){
  const upperLength=infectedCrawlShoulder.distanceTo(infectedCrawlElbow);
  const lowerLength=infectedCrawlElbow.distanceTo(infectedCrawlWrist);
  if(upperLength<.02||lowerLength<.02)return;
- const fullReach=upperLength+lowerLength,stroke=Math.cos(phase),
-  recovery=Math.max(0,Math.sin(phase));
- // Hands alternately plant, pull backward under the chest, lift slightly,
- // then reach forward. These are actual target positions (not tiny changes
- // to normalized directions), so both the wrist and elbow visibly travel.
- infectedCrawlGoal.set(side*fullReach*.23,0,-fullReach*(.39+.22*stroke))
+ const fullReach=upperLength+lowerLength;
+ // Both wrists stay FORWARD of their shoulder joint in zombie-local -Z.
+ // Side separation stays modest, so the original arms are under the chest.
+ // Alternating original-arm sweep is ~.2m, never a backward-facing elbow.
+ infectedCrawlGoal.set(side*fullReach*.20,0,-fullReach*(.21+.38*reach))
   .applyQuaternion(infectedCrawlWorldQ).add(infectedCrawlShoulder);
- infectedCrawlGoal.y=z.g.position.y+.065+.080*recovery;
+ infectedCrawlGoal.y=z.g.position.y+.070+.095*recoveryLift;
  infectedCrawlAxis.subVectors(infectedCrawlGoal,infectedCrawlShoulder);
  const rawDistance=infectedCrawlAxis.length();
  if(rawDistance<.001)return;
@@ -7273,12 +7277,11 @@ function aimInfectedCrawlerArm(z,bones,side,phase){
  const distance=THREE.MathUtils.clamp(rawDistance,minReach,maxReach);
  infectedCrawlAxis.multiplyScalar(1/rawDistance);
  infectedCrawlGoal.copy(infectedCrawlShoulder).addScaledVector(infectedCrawlAxis,distance);
- // Two-bone triangle IK: keep the ORIGINAL upper/lower arm bone lengths.
- // Bend elbows outside and slightly forward of the torso rather than folding
- // both arms into the belly. Never stretch or shrink the imported skin.
+ // True original-length two-bone IK with elbows pointing DOWN and slightly
+ // outward. v643 chose an UP/REAR bend and made both arms look reversed.
  const along=(upperLength*upperLength-lowerLength*lowerLength+distance*distance)/(2*distance);
  const bendRadius=Math.sqrt(Math.max(0,upperLength*upperLength-along*along));
- infectedCrawlBend.set(side*.78,.10,-.36).applyQuaternion(infectedCrawlWorldQ);
+ infectedCrawlBend.set(side*.23,-1,-.16).applyQuaternion(infectedCrawlWorldQ);
  infectedCrawlBend.addScaledVector(infectedCrawlAxis,-infectedCrawlBend.dot(infectedCrawlAxis)).normalize();
  infectedCrawlElbowTarget.copy(infectedCrawlShoulder).addScaledVector(infectedCrawlAxis,along)
   .addScaledVector(infectedCrawlBend,bendRadius);
