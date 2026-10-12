@@ -7214,6 +7214,27 @@ function preserveOriginalInfectedLeglessSkin(z){
  z.infectedCrawlerSkinAudit={changed,removed,meshes:results};
  return true;
 }
+function aimInfectedCrawlerHead(z,bones){
+ const chest=bones.get("Chest"),neck=bones.get("Neck"),head=bones.get("Head");
+ if(!chest||!neck||!head||!chest.parent||!neck.parent)return;
+ // The recorded RUN pose was curving the neck DOWN when the whole original
+ // Infected rig was turned horizontal. Lift its actual cervical chain.
+ const aim=(bone,child,x,y,zForward)=>{
+  if(child.position.lengthSq()<1e-7)return;
+  z.g.getWorldQuaternion(infectedCrawlWorldQ);
+  bone.parent.getWorldQuaternion(infectedCrawlParentQ);
+  infectedCrawlAim.set(x,y,zForward).normalize().applyQuaternion(infectedCrawlWorldQ)
+   .applyQuaternion(infectedCrawlParentQ.invert()).normalize();
+  bone.quaternion.setFromUnitVectors(infectedCrawlDir.copy(child.position).normalize(),infectedCrawlAim);
+ };
+ aim(chest,neck,0,.46,-.89);
+ chest.updateWorldMatrix(true,true);
+ aim(neck,head,0,.80,-.60);
+ neck.updateWorldMatrix(true,true);
+ const frozen=z.crawlerUpperPose?.rotations?.get("Head");
+ if(frozen)head.rotation.copy(frozen);
+ head.rotateX(-.07);
+}
 function aimInfectedCrawlerArm(z,bones,side,phase){
  const p=side<0?"L":"R",upper=bones.get(p+"_UpperArm"),
   lower=bones.get(p+"_LowerArm"),hand=bones.get(p+"_Hand");
@@ -7315,9 +7336,7 @@ function poseOriginalInfectedCrawler(z){
   holder.position.z-=infectedCrawlHip.z;
  }
  holder.updateWorldMatrix(true,true);
- const neck=bones.get("Neck"),head=bones.get("Head");
- if(neck)neck.rotateX(-.055);
- if(head)head.rotateX(-.06);
+ aimInfectedCrawlerHead(z,bones);
  // Shoulder/elbow/wrist targets belong to the Infected's ORIGINAL rig.
  // The Sprinter GLB arm basis drove these arms into the belly in v640.
  aimInfectedCrawlerArm(z,bones,-1,z.phase||0);

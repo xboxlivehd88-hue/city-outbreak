@@ -1,3 +1,12 @@
+# v642 — ORIGINAL INFECTED CRAWLER HEAD UPRIGHT — 2026-10-12
+
+- User screenshot v640: Infected severely folded into a tiny hunched ball after losing both legs. Must retain same Infected original skinned rig and actor; NO generic crawler swap. Wave 1 stays Infected-only pending user GLB.
+- v641 removed only leg-weighted polygons rather than scaling thigh skin into pelvis, restored source thigh scales and gave Infected-specific support arms. Browser tested (Parasite smoke run 38298649762) and still found HEAD below CHEST: hips 0.095m, chest 0.215m, head 0.103m, arms near ground. Skin was correctly clipped (424 triangles) and hitboxes/headshots still valid. The stricter silhouette audit correctly FAILED and exposed the head-buried flaw, so do not call v641 complete.
+- v642 adds Infected-only aimInfectedCrawlerHead: orient actual original Chest→Neck and Neck→Head bone chains gently UP/FORWARD (directions +0.46/-0.89 and +0.80/-0.60), then preserve original Head rotation with slight pitch. Keep v641 model/skin/arm fix, pelvis anchored +0.095m, original crawling identity, textures, original root, damage and hitboxes. Existing Sprinter/Hazmat/Parasite gameplay untouched. Browser pose test now must see head world Y >0.16 and forward, not buried.
+- Loader `./src/game.js?v=642`, original Sprinter controller `?v=638` (unchanged). Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=642-infected-crawler-head . Preserve protected recovery v324. Await Pages + real Chromium success before claiming verified.
+
+---
+
 # v641 — REPAIR INFECTED ORIGINAL-SKIN CRAWLER POSTURE — 2026-10-12
 
 - User screenshot of v640 confirms the Infected retains its own model on dual-leg amputation but folds into a tiny inverted compact body instead of dragging itself; despite prior v640 identity/headshot-only Chromium smoke passing. User specifically does NOT want a generic crawler swap, and still wants only Infected spawning on normal Wave 1 before supplying a replacement GLB.
