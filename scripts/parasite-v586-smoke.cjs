@@ -1,17 +1,17 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"638",pass:false};let browser;
+ const report={version:"639",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=638$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=639$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
  ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&newCityCollisionReady,
- waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length}),
+ waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],preview:!sprinterOnlyTest}),
  selectViaRealBossRotation:()=>{
   // Force the final available name in the existing no-repeat bag, NOT the
   // spawn code or hardwired name: exercise the actual Wave 10 selection.
@@ -257,7 +257,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=638-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=639-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -277,7 +277,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V638_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V639_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -294,6 +294,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   assert.equal(report.waveOne.target,10);
   assert.equal(report.waveOne.spawned,10);
   assert.equal(report.waveOne.bosses,0,"Wave 1 must contain only normal zombies");
+  assert.equal(report.waveOne.preview,true,"Normal game must not force Sprinter-only test mode");
+  assert.deepEqual(report.waveOne.kinds,["infected"],"Normal Wave 1 must spawn only Infected");
   assert.equal(report.rotation.poolSize,19);
   assert.equal(report.rotation.unique,19,"Boss rotation contains duplicate names");
   assert.equal(report.rotation.selected,"PARASITE MONSTER","Parasite not drawn through real no-repeat rotation");
@@ -359,7 +361,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V638_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V639_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }

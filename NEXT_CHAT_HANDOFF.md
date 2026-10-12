@@ -1,3 +1,13 @@
+# v639 — WAVE 1 INFECTED-ONLY PREVIEW WHILE USER SOURCES NEW GLB — 2026-10-12
+
+- User requested the **Infected** become the ONLY zombie kind spawning in normal Wave 1, ready for a forthcoming user-uploaded Infected GLB. Keep its EXISTING placeholder visual until that asset is added. This is not the Cop/Maniac Sprinter and not the Hazmat Acidic model.
+- In `src/game.js`, default `rolledZombieKind(1,...)` now returns `"infected"` and disables the former global v614 Sprinter-only preview. The original mixed Wave 2+ progression and regular every-tenth-wave 19-name boss roster stay untouched. Wave 1 keeps its standard spawn count (10) and spawn rules.
+- Preserve the ability to test **both original Sprinters** (including their v638 real anatomical crawler hitboxes) through explicitly opt-in `?sprinterTest=1` URL query. Updated Sprinter Chromium smoke to request this only in tests; ordinary game players do NOT see Sprinters in Wave 1. Parasite boss rotation regression now explicitly asserts 10 normal Wave-1 Infected and still tests Wave-10 boss rotation. Keep Hazmat smoke loader interception current without modifying Hazmat visuals.
+- No GLBs, combat, sizes, hitboxes, rigs, existing crawler animations, weapon mechanics or recovery checkpoints modified. Protected v324 remains intact. `index.html` loader `./src/game.js?v=639`, `src/game.js` Sprinter controller stays `?v=638` because its source did not change.
+- New playable URL: https://xboxlivehd88-hue.github.io/city-outbreak/?v=639-infected-wave1 . Confirm Actions and Pages before claiming live verified.
+
+---
+
 # v638 — CRAWLER HITBOX RAYCAST WORLD-MATRIX SYNCHRONIZATION — 2026-10-12
 
 - User reported nearly all bullets missing Cop/Maniac converted crawlers, despite v636's working full-sized pelvis-grounded chest-raised model and palm orientation. v637 replaced the hidden procedural crawler's hitMeshes with 10 correctly posed original-joint anatomical volumes (head, two torso sections, pelvis, two complete arms).
