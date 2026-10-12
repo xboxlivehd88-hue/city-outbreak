@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
-import {createSprinterZombieController} from "./sprinter-zombie.js?v=624";
+import {createSprinterZombieController} from "./sprinter-zombie.js?v=625";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -52,8 +52,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v624";
-document.documentElement.dataset.cityOutbreakBuild="624";
+document.title="CITY OUTBREAK — v625";
+document.documentElement.dataset.cityOutbreakBuild="625";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -2957,6 +2957,10 @@ new GLTFLoader().load(NATURAL_CRAWLER_GLB_URL,gltf=>{
   }
  });
  naturalCrawlerAsset={scene:gltf.scene,clips};
+ // A Sprinter may lose both legs before this existing asset has loaded.
+ // Upgrade ONLY those converted Crawlers once the real Crawl clip arrives.
+ for(const z of zombies)if(z.kind==="crawler"&&z.crawlerUpperPose?.type==="sprinter"&&!z.sprinterCrawlerAction)
+  sprinterZombie.beginCrawler(z,naturalCrawlerAsset);
  // Existing GLB's genuine Run + Attack clips also animate the rigged
  // Parasite; supports either asynchronous asset-load order.
  for(const z of zombies)if(z.bossName===PARASITE_BOSS_NAME&&z.parasiteBossVisual&&!z.parasiteBossMixer)
@@ -6831,7 +6835,11 @@ function transferCrawlerUpperVisual(source,crawler){
    if(crawler.sprinterMixer)crawler.sprinterMixer.timeScale=0;
    source.sprinterVisual=null;source.sprinterModel=null;source.sprinterBones=null;
    source.sprinterMixer=null;source.sprinterRunAction=null;
-   syncCrawlerUpperVisual(crawler);
+   // v625: feed an authentic crawling motion to the ORIGINAL 66-bone
+   // Sprinter skin; no hand-made poses from frozen running frames.
+   if(sprinterZombie.beginCrawler(crawler,naturalCrawlerAsset))
+    pose.sprinterRetargeted=true;
+   else syncCrawlerUpperVisual(crawler);
  }else{
    crawler.radiatedGreenVisual=holder;crawler.radiatedGreenBones=bones;crawler.radiatedGreenModel=source.radiatedGreenModel;
    source.radiatedGreenVisual=null;source.radiatedGreenModel=null;source.radiatedGreenBones=null;
@@ -6996,6 +7004,9 @@ function syncCrawlerUpperVisual(z){
 
  const phase=z.phase||0,s=Math.sin(phase),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
  if(pose.type==="sprinter"){
+  // Source crawl clip owns both shoulders, hands, hips and head; do not
+  // override any of those with the legacy "ball-up" procedural animation.
+  if(z.sprinterCrawlerAction)return true;
   holder.position.copy(pose.sprinterCrawlerPos||pose.holderPos);
   holder.quaternion.copy(pose.sprinterCrawlQuat||pose.holderQuat);
   syncSprinterCrawlerUpper(z,holder,bones,pose,phase,attack);

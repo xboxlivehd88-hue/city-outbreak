@@ -1,3 +1,13 @@
+# v625 — REAL CRAWL-ANIMATION RETARGET FOR LEGLESS SPRINTER GLBS — 2026-10-12
+
+- USER says "not fixed" and supplied gameplay videos `2026-10-12 02-01-48.mp4` and `02-15-42.mp4`. Both show visually broken legless Sprinters: upper bodies folded into floating balls, arms crossed through torso, then low but distorted. Later v624's numeric checks passed but user has NOT approved visual state. Previous approach froze the Cop/Maniac's original RUNNING pose at arbitrary frame, rotated the whole holder horizontal and then manually aimed shoulders/forearms. This leaves the imported SKIN distorted; meeting numeric ground/hand checks does NOT guarantee natural appearance.
+- v625 **replaces ONLY the Sprinter crawler pose controller** with the existing game's REAL `Crawl` Mixamo animation from `assets/zombie_number_3_-_animated.glb`, **retargeted bone-by-bone to the original uploaded Cop or Maniac 66-bone GLBs**. For each corresponding bone, use both rigs' original rest quaternions as retarget offsets, not artificial straight-line arm IK. Preserve the same original actor's textured/skinned visual, material, full arm skeleton, z.g gameplay AI, health, head/arm/leg hits, limb damage, existing v624 detached-leg geometry clipping. The crawler clip animates proper shoulder/elbow/wrist/neck cycles; initial model is pitched from actual hips-to-chest direction, uniformly calibrated just for crawler size/ground and then animated at restrained cadence. If the native crawler asset finishes loading AFTER a leg removal, attach the true crawl cycle when ready.
+- Retain approved **v620 standing Sprinter sizes** (5 Cop+5 Maniac Wave 1), 50/50 mix, genuine ORIGINAL Run clips, hitboxes, PBD death, no red/green auras, normal boss roster disabled only for Sprinter test; protected v324 untouched. No user visual approval yet.
+- Chromium v625 smoke adds assertions that BOTH original skinned crawlers have a live retargeted native Crawl action, mapped at least 13 real joints and varying upper-arm quaternions, original leg mesh clipping, reasonable grounded envelope. Hazmat/Green Guy and boss rotation regressions retained. Do not claim completion before real browser checks; screenshots/user visual approval still important.
+- Loader `./src/game.js?v=625`, playable `https://xboxlivehd88-hue.github.io/city-outbreak/?v=625-sprinter-real-crawl`.
+
+---
+
 # v624 — PREVENT SEE-THROUGH & FLOATING SPRINTER CRAWLER SKIN — 2026-10-12
 
 - USER supplied `2026-10-12 02-37-44.mp4` after v623 QA passed: original Cop/Maniac converted crawlers continue to float and show transparent/broken limbs. The numeric torso/hands/ground audit did **not** demonstrate visual quality; no user approval.

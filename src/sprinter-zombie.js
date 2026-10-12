@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=624",
- "assets/zombie_running_on_metel_maniac.glb?v=624"
+ "assets/animated_zombie_cop_running_loop.glb?v=625",
+ "assets/zombie_running_on_metel_maniac.glb?v=625"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -266,7 +266,7 @@ export function createSprinterZombieController(){
   if(!z?.sprinterVisual)return;
   // v621: a legless converted crawler must not restart Run and overwrite its
   // planted hands/crawl posture (original mixer stays frozen for its skin).
-  if(z.kind==="crawler")return;
+  if(z.kind==="crawler"){syncCrawler(z,dt);return;}
   if(!z.dead&&!z.knockdown&&z.sprinterMixer){
    if(z.sprinterMixer.timeScale===0)z.sprinterMixer.timeScale=1;
    const gx=z.g.position.x,gz=z.g.position.z;
@@ -353,6 +353,150 @@ export function createSprinterZombieController(){
    removedTris,keptTris,meshes:outputs,nativeThighScale:true};
   return true;
  }
+
+ // v625: a converted legless Sprinter needs ACTUAL crawl joint keys. Twisting
+ // randomly frozen RUN frames with hand-made arm quaternions was visibly
+ // broken despite numerical ground tests. Retarget the existing real Mixamo
+ // Crawl animation to the ORIGINAL Cop/Maniac skinned GLB instead. Never
+ // change a standing sprinter's successful Run clip, size or amputations.
+ const crawlClipCache=new Map(),crawlerBounds=new THREE.Box3();
+ function beginCrawler(z,crawlerAsset){
+  if(!z?.sprinterVisual||!z.sprinterModel||!z.sprinterMixer||!crawlerAsset?.scene)return false;
+  if(z.sprinterCrawlerAction)return true;
+  const sourceClip=crawlerAsset.clips?.get("Crawl");
+  if(!sourceClip||!sourceClip.tracks?.length)return false;
+  const srcBones=new Map(),dstBones=new Map();
+  crawlerAsset.scene.traverse(o=>{if(o.isBone)srcBones.set(cleanBoneName(o.name),o)});
+  // Preserve the original imported skeleton and native skin inverse binds.
+  const restored=new Set();
+  z.sprinterModel.traverse(o=>{
+   if(o.isSkinnedMesh&&!restored.has(o.skeleton)){
+    o.skeleton.pose();restored.add(o.skeleton);
+   }
+   if(o.isBone)dstBones.set(cleanBoneName(o.name),o);
+  });
+  const index=z.sprinterModelIndex;
+  let clip=crawlClipCache.get(index),mapped=0;
+  if(!clip){
+   const tracks=[];
+   const sourceQuat=new THREE.Quaternion(),sourceInv=new THREE.Quaternion(),
+    destQuat=new THREE.Quaternion(),frame=new THREE.Quaternion(),out=new THREE.Quaternion();
+   for(const t of sourceClip.tracks){
+    if(!t.name.endsWith(".quaternion")||t.values.length<4)continue;
+    const clean=cleanBoneName(t.name.slice(0,-11).split("/").pop());
+    const src=srcBones.get(clean),dst=dstBones.get(clean);
+    if(!src||!dst)continue;
+    sourceQuat.copy(src.quaternion).normalize();
+    sourceInv.copy(sourceQuat).invert();
+    destQuat.copy(dst.quaternion).normalize();
+    const values=new Float32Array(t.values.length);
+    for(let k=0;k<t.values.length;k+=4){
+     frame.fromArray(t.values,k).normalize();
+     out.copy(destQuat).multiply(sourceInv).multiply(frame).normalize();
+     out.toArray(values,k);
+    }
+    tracks.push(new THREE.QuaternionKeyframeTrack(dst.name+".quaternion",t.times,values));
+   }
+   if(tracks.length<13){
+    console.warn("Sprinter crawler native Crawl retarget incomplete",tracks.length);
+    return false;
+   }
+   clip=new THREE.AnimationClip("NativeOriginalSprinterCrawl_"+index,sourceClip.duration,tracks);
+   crawlClipCache.set(index,clip);
+  }
+  mapped=clip.tracks.length;
+  z.sprinterMixer.stopAllAction();
+  z.sprinterMixer.timeScale=1;
+  const action=z.sprinterMixer.clipAction(clip);
+  action.setLoop(THREE.LoopRepeat,Infinity);
+  action.reset().play();
+  z.sprinterMixer.setTime(.12);
+  z.sprinterCrawlerAction=action;
+  z.sprinterCrawlerRetargetTracks=mapped;
+  const holder=z.sprinterVisual,bones=z.sprinterBones;
+  z.g.updateWorldMatrix(true,true);
+  const hips=bones.get("Hips"),chest=bones.get("Chest");
+  if(hips&&chest){
+   const a=hips.getWorldPosition(new THREE.Vector3()),b=chest.getWorldPosition(new THREE.Vector3());
+   z.g.worldToLocal(a);z.g.worldToLocal(b);
+   const spine=b.sub(a);
+   if(spine.lengthSq()>.00001){
+    const target=new THREE.Vector3(0,.16,-1).normalize();
+    holder.quaternion.premultiply(new THREE.Quaternion().setFromUnitVectors(spine.normalize(),target));
+   }
+  }
+  // Separate torso orientation from positional grounding. Never rotate each
+  // arm independently or collapse a Mixamo hip joint to imitate a crawler.
+  const measure=()=>{
+   holder.updateWorldMatrix(true,true);
+   crawlerBounds.setFromObject(holder,true);
+   return crawlerBounds.max.y-crawlerBounds.min.y;
+  };
+  const originalTime=z.sprinterMixer.time;
+  const sample=()=>{
+   let height=0;
+   for(let j=0;j<10;j++){
+    z.sprinterMixer.setTime((j+.5)*clip.duration/10);
+    height=Math.max(height,measure());
+   }
+   z.sprinterMixer.setTime(originalTime);
+   return height;
+  };
+  let h=sample();
+  if(Number.isFinite(h)&&h>.08){
+   const rootScale=new THREE.Vector3();z.g.getWorldScale(rootScale);
+   const target=1.03*Math.abs(rootScale.y);
+   const startScale=holder.scale.x;
+   holder.scale.multiplyScalar(.84);
+   const probe=sample();
+   let exponent=Math.log(probe/h)/Math.log(.84);
+   exponent=Number.isFinite(exponent)?THREE.MathUtils.clamp(exponent,.65,2.6):1;
+   holder.scale.setScalar(startScale);
+   for(let i=0;i<3;i++){
+    h=sample();
+    if(!Number.isFinite(h)||h<.01||Math.abs(h-target)<.035)break;
+    holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.pow(target/h,1/exponent),.25,3));
+   }
+  }
+  const ground=()=>{
+   const height=measure(),box=crawlerBounds;
+   if(!Number.isFinite(height)||box.isEmpty())return;
+   const floor=z.g.position.y+.035;
+   const oldY=holder.position.y,oldMin=box.min.y;
+   holder.position.y+=.1;
+   const newMin=(measure(),crawlerBounds.min.y);
+   holder.position.y=oldY;
+   const slope=(newMin-oldMin)/.1;
+   const gain=Math.abs(slope)>.15&&Math.abs(slope)<8?slope:Math.max(.2,z.g.scale.y);
+   holder.position.y+=THREE.MathUtils.clamp((floor-oldMin)/gain,-3,3);
+  };
+  ground();
+  const hip=hips?.getWorldPosition(new THREE.Vector3());
+  if(hip){
+   z.g.worldToLocal(hip);
+   holder.position.x-=hip.x;
+   holder.position.z-=hip.z;
+  }
+  ground();
+  z.sprinterCrawlerBasePos=holder.position.clone();
+  z.sprinterCrawlerBaseQuat=holder.quaternion.clone();
+  z.sprinterCrawlerHeight=measure();
+  return true;
+ }
+ function syncCrawler(z,dt){
+  if(!z?.sprinterCrawlerAction||!z.sprinterMixer||z.dead||z.knockdown)return;
+  z.sprinterMixer.update(Math.max(0,dt)*.82);
+  // The actual Crawl animation owns shoulders/elbows/hands. Keep ground
+  // clearance without costly all-vertex bounds checks on every frame.
+  z.sprinterCrawlerTick=(z.sprinterCrawlerTick||0)+1;
+  if(z.sprinterCrawlerTick%36===0){
+   z.sprinterVisual.updateWorldMatrix(true,true);
+   crawlerBounds.setFromObject(z.sprinterVisual,true);
+   const error=z.g.position.y+.035-crawlerBounds.min.y;
+   if(Number.isFinite(error)&&Math.abs(error)>.12)
+    z.sprinterVisual.position.y+=THREE.MathUtils.clamp(error/Math.max(.2,z.g.scale.y),-.18,.18);
+  }
+ }
  function freeze(z){if(z?.sprinterMixer)z.sprinterMixer.timeScale=0}
  function release(z){
   if(z?.sprinterMixer)try{z.sprinterMixer.stopAllAction()}catch(_){}
@@ -361,5 +505,5 @@ export function createSprinterZombieController(){
    z.sprinterModel=null;z.sprinterBones=null;z.sprinterHitboxes=null;
   }
  }
- return{load,attach,sync,freeze,release,suppressDetached,preserveLeglessCrawlerSkin,status};
+ return{load,attach,sync,beginCrawler,freeze,release,suppressDetached,preserveLeglessCrawlerSkin,status};
 }

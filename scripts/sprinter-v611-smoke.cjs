@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:624,passed:false},errors=[];let browser,page;
+ const report={build:625,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=624$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=625$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -62,7 +62,9 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "  const convertedCop=zombies.find(z=>z.kind==='crawler'&&z.sprinterVisual&&z.sprinterModelIndex===0);",
    "  const poseAudit=z=>{",
    "   if(!z)return null;",
-   "   for(let i=0;i<8;i++){z.phase+=.22;syncCrawlerUpperVisual(z)}",
+   "   const frame0=z.sprinterBones.get('L_UpperArm')?.quaternion.clone();
+   for(let i=0;i<18;i++){z.phase+=.22;syncCrawlerUpperVisual(z);sprinterZombie.sync(z,1/30)}
+   const armMotion=frame0?.angleTo(z.sprinterBones.get('L_UpperArm')?.quaternion)||0;",
    "   const box=new THREE.Box3().setFromObject(z.sprinterVisual,true);",
    "   const point=key=>{const b=z.sprinterBones.get(key);if(!b)return null;",
    "    const w=b.getWorldPosition(new THREE.Vector3());return z.g.worldToLocal(w)};",
@@ -77,7 +79,9 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "    handsApart:l&&r?l.distanceTo(r):0,",
    "    leftAhead:l&&chest?chest.z-l.z:null,rightAhead:r&&chest?chest.z-r.z:null,",
    "    handsBelowHead:l&&r&&head?[head.y-l.y,head.y-r.y]:null,",
-   "    frozen:z.sprinterMixer?.timeScale===0,modelName:z.sprinterModel?.name,",
+   "    naturalCrawl:!!z.sprinterCrawlerAction,retargetTracks:z.sprinterCrawlerRetargetTracks||0,
+    armMotion,clip:z.sprinterCrawlerAction?.getClip()?.name,
+    modelName:z.sprinterModel?.name,",
    "    boneCount:z.sprinterBones?.size||0,",
    "    trimmed:z.sprinterCrawlerSkinReady===true,",
    "    skin:z.sprinterCrawlerSkinAudit||null,",
@@ -100,7 +104,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=624-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=625-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -148,7 +152,9 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert.equal(report.lifecycle.legGone,true);
   assert(report.lifecycle.crawlerHitboxes>2);
   for(const [type,m] of [["Cop",report.lifecycle.copCrawl],["Maniac",report.lifecycle.maniacCrawl]]){
-   assert(m&&m.frozen&&m.boneCount>=16,type+" crawler original skinned skeleton/mixer missing");
+   assert(m&&m.naturalCrawl&&m.retargetTracks>=13&&m.boneCount>=16,
+     type+" original skeleton did NOT receive real crawl motion: "+JSON.stringify(m));
+   assert(m.armMotion>.03,type+" arms locked/stiff in crawler animation: "+JSON.stringify(m));
    assert(m.trimmed&&m.skin?.changedMeshes>=1&&m.skin?.removedTris>20,
      type+" original thigh polygons were not safely removed: "+JSON.stringify(m.skin));
    assert(m.leftThighScale>.95&&m.rightThighScale>.95,
@@ -174,8 +180,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V624_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V624_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V625_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V625_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();
