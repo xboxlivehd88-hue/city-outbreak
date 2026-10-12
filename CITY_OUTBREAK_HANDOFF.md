@@ -1,3 +1,13 @@
+# v643 — ORIGINAL INFECTED CRAWLER ARMS NOW ALTERNATE — 2026-10-12
+
+- User tested v642 and screenshot shows the original Infected crawler lying with both arms spread wide and effectively frozen. Preserve SAME original Infected skinned model and actor on dual-leg loss, original textures and vertex-clipped legs, head upright, pelvis ~0.095m, slightly elevated chest, shootable head/chest/arms, no generic model switch, and **Wave 1 infected-only** until user provides replacement GLB.
+- Root cause: v642 `aimInfectedCrawlerArm` varied only `-.75+sin(phase)*.018` in an arm direction that was normalized; practically no wrist/forearm travel despite advancing `z.phase`.
+- v643 replaces ONLY the Infected converted-crawler arm pose routine in `src/game.js` with actual opposing crawling strokes: each source rig shoulder/elbow/hand forms a two-bone IK chain with its authentic lengths, alternately reaches forward, plants a hand, drags backward, and lifts the recovering wrist ~8cm. Arm motion uses existing movement-distance-driven phase; left and right are offset by PI. Both limbs and their actual original-bone raycast targets move together, immediately updating world matrices. Head, pelvis, body pitch, skin clipping, original model, damage and other zombie types otherwise unchanged.
+- Browser regression `scripts/parasite-v586-smoke.cjs` now samples four original Infected rig gait phases and REQUIRES meaningful *both-hand* fore-aft displacement, elbow displacement, raised recovery hands, and opposite timing, plus all v642 anatomical/raycast/skin/wave/boss assertions. Sprinter and Hazmat Chromium smoke loaders and workflows retargeted to v643. Do not claim browser or Pages PASS until a run proves it and the user visually confirms.
+- Main loader `./src/game.js?v=643`; Sprinter imported controller `?v=638` unchanged. Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=643-infected-arm-crawl . Protected recovery checkpoint v324 UNCHANGED.
+
+---
+
 # v642 — ORIGINAL INFECTED CRAWLER HEAD UPRIGHT — 2026-10-12
 
 - User screenshot v640: Infected severely folded into a tiny hunched ball after losing both legs. Must retain same Infected original skinned rig and actor; NO generic crawler swap. Wave 1 stays Infected-only pending user GLB.
