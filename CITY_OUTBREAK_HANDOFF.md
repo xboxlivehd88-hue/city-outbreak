@@ -1,3 +1,12 @@
+# v633 — CRAWLER TORSOS LOWERED AND ORIGINAL PALMS PRESERVED — 2026-10-12
+
+- User v632 screenshot: Cop/Maniac legless crawler palms now look fixed, but their torsos visibly FLOAT above ground. v632 smoke misleadingly permitted native chest height up to 0.78m; on real Chromium, Cop chest was 0.507m, Maniac 0.604m.
+- **v633 crawler-only fix on main:** Replace vertical support from average wrists with actual **original chest +0.27m**, original hips >=+0.20m and head >=+0.19m; keep the 66-joint original GLB body, textures, standing/running animations, original model-specific facing, native Crawl cycle, trimmed native leg skin, hitboxes and PBD. For each frame, recompute original upper and lower arm world segment lengths and independently aim original elbow +0.18m and each wrist +0.085m above pavement while reaching out and forward. **Preserve v632 original palms downward** by applying the wrist quaternion solve unchanged.
+- Strengthened Sprinter Chromium smoke to reject floating chest: require chest 0.18–0.37m, hip 0.16–0.43m, each wrist -0.045–0.21m, both real original palms downward, and prior original model size, running, limb amputation, textures, elbow spread, head, PBD ragdoll. Both original Sprinters remain the ONLY Wave 1 testing targets. Hazmat/Green and Parasite smoke loader version updated to prevent stale test interception; gameplay unaffected.
+- Loader `./src/game.js?v=633`, imported `./sprinter-zombie.js?v=633`; original GLB cache versions unchanged (binary files unmodified). New playable link: https://xboxlivehd88-hue.github.io/city-outbreak/?v=633-crawler-low-body. Await real CI and Pages PASS before claiming validated. Protected recovery v324 untouched.
+
+---
+
 # v632 — CRAWLER HAND PALMS AND WRIST-GROUNDED TORSO — 2026-10-12
 
 - User v631 screenshot: Cop and Maniac now face the player with spread arms; BUT both hover above pavement and bear weight on the backs of their hands. Do not change standing size/animation or restored facing.
