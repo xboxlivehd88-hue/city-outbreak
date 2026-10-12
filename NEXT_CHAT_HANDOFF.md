@@ -1,3 +1,12 @@
+# v628 — SPRINTER CRAWLER HANDS LOWER AND WIDER — 2026-10-12
+
+- v627 test passed original standing 5 Cop/5 Maniac Sprinters, full running animation and limb removal, retargeted 52-joint crawl, original legless textured skin and corrected crawler pavement alignment. Cop crawler feet +0.029 above floor; Maniac -0.010.
+- v627 browser crawl anatomy STILL failed: Cop head-to-hand vertical gap just 0.010 where >=0.08 was required; Maniac hands only 0.267 apart and sideways gap 0.165, still visibly tucked inward. Original source animation retained.
+- v628 crawler-only fix uses the same actual original skinned arm bones already controlled in v627, but reorients them farther DOWN and OUT: upper arm world reach `(side*.80,-.83,-.68)`; forearm `(side*.62,-.62,-.81)`, keeping short alternating phases and head/neck orientation. V627 experimental grounding calibration retained. Standing original Cop and Maniac sizes, run skeleton, limb destruction, AI, sprites, GLB skin, original boss bag, temporary Sprinter-only waves unchanged. No protected v324 edit. New v628 Chromium tests must pass before user-facing fix claim.
+- v628 loader `./src/game.js?v=628`, original Sprinter controller `?v=628`. Candidate test `https://xboxlivehd88-hue.github.io/city-outbreak/?v=628-crawler-outward-hands`.
+
+---
+
 # v627 — LEGLESS SPRINTER CRAWLER HAND-SPREAD / FLOOR CORRECTION — 2026-10-12
 
 - USER video `2026-10-12 02-15-42.mp4` shows malformed crawling after approved standing Sprinter size/gait/amputations. v626 browser evidence: original green/Hazmat unaffected gameplay but its old QA build marker was stale. v626 Sprinter lifecycle verified both native crawl clips and improved forward reach and head placement, but Cop crawler feet **-0.223 below floor** and Maniac hands only **0.210 apart** — test failed. No unverified fix claim.
