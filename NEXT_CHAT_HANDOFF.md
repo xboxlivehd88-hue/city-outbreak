@@ -1,3 +1,9 @@
+# v622 QA-only correction — 2026-10-12
+
+- First v622 SPRINTER browser workflow failed BEFORE launching Chromium gameplay: an inserted test-audit JavaScript string included unquoted literal newlines. Fixed the **test script only** (`scripts/sprinter-v611-smoke.cjs`) by making each injected JS line a separately quoted array string. No game code or GLB/animation/standing scale changes. v622 Pages deployment and Hazmat/Green + 19-boss regressions PASS. Re-run v622 Sprinter crawler geometry checks before claiming completion.
+
+---
+
 # v622 — FIX SPRINTER CRAWLERS' CRAB/HUNCH AND FACE-DOWN POSE — 2026-10-12
 
 - USER video `2026-10-12 02-15-42.mp4` shows v621 Cop + Maniac legless crawlers now touch pavement but remain severely WRONG: backs hunch/arch high, heads point down into ground and arms hang stiffly; v621's browser smoke passing height/ground and wide-apart hands did not catch this visible mistake. Earlier `2026-10-12 02-01-48.mp4` showed floating folded ball. Never claim correct based only on ground contact.
