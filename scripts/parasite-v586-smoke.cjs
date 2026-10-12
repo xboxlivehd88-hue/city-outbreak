@@ -14,7 +14,12 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],preview:!sprinterOnlyTest}),
  infectedCrawlerAudit:()=>{
   const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual);
-  if(!z)throw Error("No visible original Infected in Wave 1");
+  if(!z)throw Error("New Infected GLB not attached: "+JSON.stringify({
+   ready:!!infectedGlbAsset,error:infectedGlbError,
+   attachError:document.documentElement.dataset.infectedGlbAttachError,
+   zombies:zombies.filter(q=>!q.dead).map(q=>({kind:q.kind,infectedVisual:!!q.infectedVisual,
+    rig:!!q.rigVisual,hasHitMeshes:!!q.hitMeshes,source:q.infectedGLBSource})).slice(0,10)
+  }));
   const beforeCount=zombies.length,root=z.g,visual=z.infectedVisual,meshCount=[];
   const glb=z.infectedModel,source=z.infectedGLBSource,hadTexture=!!glb?.getObjectByProperty;
   visual.traverse(o=>{if(o.isSkinnedMesh)meshCount.push(o.name)});
