@@ -1,3 +1,13 @@
+# v646 — VERIFIED ORIGINAL INFECTED GLB / FRESH CACHE — 2026-10-12
+
+- Replaced Infected Wave-1's shared placeholder with the user's real `assets/zombie_animated.glb` (uploaded to `main` in commit `59538d3`). The uploaded model has 34 real Mixamo bones, one original textured skinned body, and one native `jad` / "Zombie Agonizing" clip; the native clip is not a run, so gameplay leg/arm locomotion is driven on those actual imported joints.
+- **Real Chromium v645 PASS**: [Parasite/Infected](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38305163724), [original Cop+Maniac](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38305163703), [Hazmat+Green](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38305163698), [GitHub Pages](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38305163342). Infected Wave 1 = 10 only. All head/torso/arm raycasts, original texture, 992 cut leg triangles, original same model and actor after dual-leg removal, PBD compatibility and ordinary 19-boss Wave-10 roster preserved. Real converted GLB measurements: pelvis 0.095m, chest 0.295m, head 0.438m, wrists 0.065/0.098m; original arms show alternating planted strokes and recovery, elbows support chest.
+- v646 changes only cache version (main loader `./src/game.js?v=646` and Infected GLB URL `?v=646`) + aligned test scripts/workflows; do not change approved v645 posture/physics/animation. User visual feedback remains authoritative, and independent Chromium checks should be run against final loader before claiming v646 PASS.
+- Preserve user request: Infected-only Wave 1 until further notice; original GLB on amputated crawler, not a generic crawler, no animation freeze or old placeholder. Leave Cop/Maniac Sprinters, Hazmat, green, bosses and protected v324 recovery alone.
+- Test https://xboxlivehd88-hue.github.io/city-outbreak/?v=646-infected-original-glb . Protected v324 unchanged.
+
+---
+
 # v645 — REAL USER-UPLOADED INFECTED GLB / SKINNED CRAWLER — 2026-10-12
 
 - User uploaded **`assets/zombie_animated.glb`** on GitHub `main` commit `59538d3d7af4e653b52a0bae27c84ccf4614b42f` and requested it replace the Infected in-game, not any other zombie. Preserve v644 as predecessor; protected v324 remains unchanged.
