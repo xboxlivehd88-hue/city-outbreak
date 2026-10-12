@@ -1,3 +1,12 @@
+# v634 — ACTUAL PELVIS-ON-PAVEMENT SPRINTER CRAWL — 2026-10-12
+
+- User corrected the failed v633 visual premise: **the PELVIS must DRAG ON THE GROUND, the CHEST is slightly RAISED, and elbows/palms support the upper body.** v633 head/chest planted but pelvis was still 0.39m above road, higher than chest ~0.27m, making a nose-down levitating crawler. No handoff instructions to user: fix directly in main.
+- v634 Sprinter-only `poseOriginalCrawlerPelvis` measures actual original Hips and Chest skinned bone world coordinates every Crawl frame. Pitches the whole original holder in zombie-local X to maintain chest ~0.13m ABOVE pelvis, around true Hips joint; then moves holder (never physics root) to set hips ~0.095m above road and preserve hips XZ. This preserves native Cop/Maniac GLB, model-specific crawl facing, 66-bone retargeted Crawl, ripped-leg clipped skin, original palms held downward, independent planted elbows/wrists, authentic standing/running behavior, sizes, ragdoll and all other zombie types.
+- Crawler Chromium regression now FAILS if pelvis is high: each hip 0.045–0.145m, chest 0.15–0.29m and ABOVE pelvis by 0.07–0.23m; palms aligned, wrists -0.055–0.21m, full original run/knee, real limb destruction, textured source GLBs, PBD, wave setup and boss regression. All unrelated regression scripts loader versions advanced so they intercept v634. Recheck CI and actual playable orientation/height; do not declare browser verified before CI passes.
+- Loader `./src/game.js?v=634`, Sprinter controller `?v=634`. Original GLB versions remain unchanged. Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=634-pelvis-ground-crawl . Protected v324 recovery unchanged.
+
+---
+
 # v633 — CRAWLER TORSOS LOWERED AND ORIGINAL PALMS PRESERVED — 2026-10-12
 
 - User v632 screenshot: Cop/Maniac legless crawler palms now look fixed, but their torsos visibly FLOAT above ground. v632 smoke misleadingly permitted native chest height up to 0.78m; on real Chromium, Cop chest was 0.507m, Maniac 0.604m.

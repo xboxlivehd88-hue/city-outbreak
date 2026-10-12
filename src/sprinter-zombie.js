@@ -397,26 +397,37 @@ export function createSprinterZombieController(){
   hand.parent.getWorldQuaternion(palmParentQ);
   hand.quaternion.copy(palmParentQ.invert().multiply(palmWorldQ)).normalize();
  }
- // v633: The breastbone and pelvis, not a dangling mesh triangle nor
- // the hands, determine the height of the original crawling torso.
+ // v634: Pelvis DRAGS on the pavement; chest is supported just above it.
+ // Keep the user's original skinned torso/hand bones, not a fake crawler.
  const crawlChest=new THREE.Vector3(),crawlHips=new THREE.Vector3(),
-  crawlHead=new THREE.Vector3(),crawlWorldScale=new THREE.Vector3();
- function groundOriginalCrawlerTorso(z,initial=false){
+  crawlAfterHip=new THREE.Vector3(),crawlAnchorWorld=new THREE.Vector3(),
+  crawlAnchorLocal=new THREE.Vector3(),crawlAfterLocal=new THREE.Vector3(),
+  crawlPitchQ=new THREE.Quaternion(),crawlRight=new THREE.Vector3(1,0,0);
+ function poseOriginalCrawlerPelvis(z){
   const bones=z.sprinterBones,holder=z.sprinterVisual;
-  const chest=bones?.get("Chest"),hips=bones?.get("Hips"),head=bones?.get("Head");
-  if(!chest||!hips||!head||!holder)return;
+  const chest=bones?.get("Chest"),hips=bones?.get("Hips");
+  if(!chest||!hips||!holder)return;
   holder.updateWorldMatrix(true,true);
-  chest.getWorldPosition(crawlChest);hips.getWorldPosition(crawlHips);
-  head.getWorldPosition(crawlHead);
-  const floor=z.g.position.y;
-  // The belly hangs below the chest joint; face and pelvis must stay clear.
-  let error=floor+.27-crawlChest.y;
-  error=Math.max(error,floor+.19-crawlHead.y,floor+.20-crawlHips.y);
-  if(!Number.isFinite(error)||Math.abs(error)<.006)return;
-  z.g.getWorldScale(crawlWorldScale);
-  const gain=Math.max(.05,Math.abs(crawlWorldScale.y));
-  holder.position.y+=THREE.MathUtils.clamp(error/gain,
-   initial?-.85:-.09,initial?.85:.09);
+  hips.getWorldPosition(crawlHips);
+  chest.getWorldPosition(crawlChest);
+  const flatSpine=Math.hypot(crawlChest.x-crawlHips.x,crawlChest.z-crawlHips.z);
+  if(flatSpine>.10){
+   // Pitch the ORIGINAL full torso so chest RISES 13cm from pelvis;
+   // v633 incorrectly had the pelvis HIGHER than the chest.
+   const rise=crawlChest.y-crawlHips.y;
+   const targetAngle=Math.atan2(.13,flatSpine);
+   const currentAngle=Math.atan2(rise,flatSpine);
+   holder.quaternion.premultiply(crawlPitchQ.setFromAxisAngle(crawlRight,
+    THREE.MathUtils.clamp(targetAngle-currentAngle,-.75,.75))).normalize();
+  }
+  // Rotate around original hip joint, and lock it on the pavement without
+  // moving z.g's AI / collider. Preserve the pelvis horizontal position.
+  holder.updateWorldMatrix(true,true);
+  hips.getWorldPosition(crawlAfterHip);
+  crawlAnchorWorld.set(crawlHips.x,z.g.position.y+.095,crawlHips.z);
+  crawlAnchorLocal.copy(crawlAnchorWorld);z.g.worldToLocal(crawlAnchorLocal);
+  crawlAfterLocal.copy(crawlAfterHip);z.g.worldToLocal(crawlAfterLocal);
+  holder.position.add(crawlAnchorLocal.sub(crawlAfterLocal));
  }
  function beginCrawler(z,crawlerAsset){
   if(!z?.sprinterVisual||!z.sprinterModel||!z.sprinterMixer||!crawlerAsset?.scene)return false;
@@ -531,7 +542,7 @@ export function createSprinterZombieController(){
    holder.position.x-=hip.x;
    holder.position.z-=hip.z;
   }
-  groundOriginalCrawlerTorso(z,true);
+  poseOriginalCrawlerPelvis(z);
   aimSprinterCrawlerSupport(z,bones,-1,.2);
   aimSprinterCrawlerSupport(z,bones,1,Math.PI+.2);
   z.sprinterCrawlerBasePos=holder.position.clone();
@@ -593,7 +604,7 @@ export function createSprinterZombieController(){
   // forward ground-support direction in WORLD space after mixer updates.
   // Preserve the source crawl cycle on hips, spine and neck and all skins.
   const cb=z.sprinterBones;
-  groundOriginalCrawlerTorso(z);
+  poseOriginalCrawlerPelvis(z);
   if(cb?.size){
    const phase=(z.phase||0)+(z.sprinterMixer.time||0)*5;
    aimSprinterCrawlerSupport(z,cb,-1,phase);

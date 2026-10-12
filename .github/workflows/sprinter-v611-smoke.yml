@@ -1,4 +1,4 @@
-name: v633 Two original animated Sprinters gameplay
+name: v634 Two original animated Sprinters gameplay
 on:
   push:
     paths:
@@ -30,5 +30,5 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sprinter-v633-audit
-          path: SPRINTER_V633_AUDIT.json
+          name: sprinter-v634-audit
+          path: SPRINTER_V634_AUDIT.json
