@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
-import {createSprinterZombieController} from "./sprinter-zombie.js?v=634";
+import {createSprinterZombieController} from "./sprinter-zombie.js?v=635";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -6811,6 +6811,16 @@ function transferCrawlerUpperVisual(source,crawler){
  if(type==="sprinter"&&!sprinterLegSkinReady)
   console.warn("CITY OUTBREAK: Sprinter crawler's original leg skin was not clipped",source.sprinterModelIndex);
  const pose=captureCrawlerUpperPose(holder,bones,type);
+ // v635: record ORIGINAL standing world scale and a physical limb length.
+ // Reparenting into another randomized crawler root must NOT resize skin.
+ const originalSprinterWorldScale=type==="sprinter"?
+  holder.getWorldScale(new THREE.Vector3()):null;
+ const originalSprinterArmLengths=type==="sprinter"?["L","R"].map(side=>{
+  const upper=bones.get(side+"_UpperArm"),lower=bones.get(side+"_LowerArm");
+  if(!upper||!lower)return null;
+  return upper.getWorldPosition(new THREE.Vector3()).distanceTo(
+   lower.getWorldPosition(new THREE.Vector3()));
+ }):null;
  // Retire the old standing hitboxes embedded in this model. The native crawler's
  // stable hitboxes remain active underneath the preserved visible upper body.
  holder.traverse(o=>{
@@ -6819,6 +6829,18 @@ function transferCrawlerUpperVisual(source,crawler){
  holder.removeFromParent();hideNativeCrawlerVisual(crawler);crawler.g.add(holder);
  holder.position.copy(pose.holderPos);holder.position.y-=type==="walker"?.48:.46;
  holder.quaternion.copy(pose.holderQuat);
+ if(originalSprinterWorldScale){
+  // Preserve physical/world bone scale despite the replacement root.
+  holder.updateWorldMatrix(true,true);
+  const after=holder.getWorldScale(new THREE.Vector3());
+  holder.scale.set(
+   holder.scale.x*originalSprinterWorldScale.x/Math.max(1e-8,after.x),
+   holder.scale.y*originalSprinterWorldScale.y/Math.max(1e-8,after.y),
+   holder.scale.z*originalSprinterWorldScale.z/Math.max(1e-8,after.z));
+  holder.updateWorldMatrix(true,true);
+  crawler.sprinterStandingArmLengths=originalSprinterArmLengths;
+  crawler.sprinterStandingWorldScale=originalSprinterWorldScale.toArray();
+ }
 
  crawler.crawlerUpperVisual=holder;crawler.crawlerUpperBones=bones;crawler.crawlerUpperPose=pose;
  if(type==="walker"){

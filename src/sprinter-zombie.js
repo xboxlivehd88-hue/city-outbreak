@@ -509,32 +509,10 @@ export function createSprinterZombieController(){
    crawlerBounds.setFromObject(holder,true);
    return crawlerBounds.max.y-crawlerBounds.min.y;
   };
-  const originalTime=z.sprinterMixer.time;
-  const sample=()=>{
-   let height=0;
-   for(let j=0;j<10;j++){
-    z.sprinterMixer.setTime((j+.5)*clip.duration/10);
-    height=Math.max(height,measure());
-   }
-   z.sprinterMixer.setTime(originalTime);
-   return height;
-  };
-  let h=sample();
-  if(Number.isFinite(h)&&h>.08){
-   const rootScale=new THREE.Vector3();z.g.getWorldScale(rootScale);
-   const target=1.03*Math.abs(rootScale.y);
-   const startScale=holder.scale.x;
-   holder.scale.multiplyScalar(.84);
-   const probe=sample();
-   let exponent=Math.log(probe/h)/Math.log(.84);
-   exponent=Number.isFinite(exponent)?THREE.MathUtils.clamp(exponent,.65,2.6):1;
-   holder.scale.setScalar(startScale);
-   for(let i=0;i<3;i++){
-    h=sample();
-    if(!Number.isFinite(h)||h<.01||Math.abs(h-target)<.035)break;
-    holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.pow(target/h,1/exponent),.25,3));
-   }
-  }
+  // v635: Preserve the original standing model's calibrated scale.
+  // A prone body has a smaller vertical Box3 by design. Fitting that box
+  // to 1.03m shrank the Cop dramatically and the Maniac slightly.
+  z.sprinterCrawlerScalePreserved=true;
   // Keep the original pelvis centered in this zombie's local chase frame.
   const hip=hips?.getWorldPosition(new THREE.Vector3());
   if(hip){

@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:634,passed:false},errors=[];let browser,page;
+ const report={build:635,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=634$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=635$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -71,6 +71,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
     "   const head=point('Head'),chest=point('Chest'),hips=point('Hips'),l=point('L_Hand'),r=point('R_Hand');",
     "   const ls=point('L_UpperArm'),rs=point('R_UpperArm'),le=point('L_LowerArm'),re=point('R_LowerArm');",
    "   const jointY=key=>z.sprinterBones.get(key)?.getWorldPosition(new THREE.Vector3()).y-z.g.position.y;",
+   "   const armScaleRatios=['L','R'].map((side,i)=>{const u=z.sprinterBones.get(side+'_UpperArm'),e=z.sprinterBones.get(side+'_LowerArm');",
+   "    const prior=z.sprinterStandingArmLengths?.[i];return prior&&u&&e?u.getWorldPosition(new THREE.Vector3()).distanceTo(e.getWorldPosition(new THREE.Vector3()))/prior:null;});",
    "   const palmDown=side=>{const hand=z.sprinterBones.get(side+'_Hand'),basis=z.sprinterCrawlerPalmBasis?.[side];",
    "    return hand&&basis?basis.palm.clone().applyQuaternion(hand.getWorldQuaternion(new THREE.Quaternion())).dot(new THREE.Vector3(0,-1,0)):null;};",
     "   const armsLocal={leftShoulder:ls?.toArray(),rightShoulder:rs?.toArray(),",
@@ -85,6 +87,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
     "   };",
    "   return {height:box.max.y-box.min.y,feet:box.min.y-z.g.position.y,",
    "    wristY:[jointY('L_Hand'),jointY('R_Hand')],chestY:jointY('Chest'),hipY:jointY('Hips'),palmDown:[palmDown('L'),palmDown('R')],",
+   "    armScaleRatios,scalePreserved:z.sprinterCrawlerScalePreserved===true,standingWorldScale:z.sprinterStandingWorldScale,",
    "    hipToChestForward:hips&&chest?hips.z-chest.z:null,",
    "    hipToHeadForward:hips&&head?hips.z-head.z:null,",
    "    trunkVerticalRise:hips&&chest?chest.y-hips.y:null,",
@@ -119,7 +122,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=634-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=635-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -157,7 +160,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    assert(m.angles.slice(0,4).filter(v=>v>.08).length>=3,"Real knees don't animate: "+JSON.stringify(m.angles));
   }
   report.lifecycle=await page.evaluate(()=>globalThis.__sprinterSmoke.lifecycle());
-  console.log("SPRINTER_V634_GROUND_CONTACTS="+JSON.stringify({cop:report.lifecycle.copCrawl,maniac:report.lifecycle.maniacCrawl}));
+  console.log("SPRINTER_V635_GROUND_CONTACTS="+JSON.stringify({cop:report.lifecycle.copCrawl,maniac:report.lifecycle.maniacCrawl}));
   assert.equal(report.lifecycle.ragNative,true,"Original Sprinter not running native PBD");
   assert(report.lifecycle.ragMove>.03,"Dead Sprinter froze instead of falling");
   assert.equal(report.lifecycle.oneLegHidden,true);
@@ -171,13 +174,15 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    assert(m&&m.naturalCrawl&&m.retargetTracks>=13&&m.boneCount>=16,
      type+" original skeleton did NOT receive real crawl motion: "+JSON.stringify(m));
    assert(m.armMotion>.03,type+" arms locked/stiff in crawler animation: "+JSON.stringify(m));
+   assert(m.scalePreserved&&m.armScaleRatios?.every(r=>r!==null&&r>.95&&r<1.05),
+     type+" SHRANK on conversion: upper-arm original world lengths changed "+JSON.stringify(m.armScaleRatios));
    assert(m.trimmed&&m.skin?.changedMeshes>=1&&m.skin?.removedTris>20,
      type+" original thigh polygons were not safely removed: "+JSON.stringify(m.skin));
    assert(m.leftThighScale>.95&&m.rightThighScale>.95,
      type+" ZERO-SCALE THIGH still tears the shared torso skin");
    assert(m.renderMeshes.some(x=>x.visible&&x.faces>100&&x.opacity>.98),
      type+" imported skin still invisible/transparent: "+JSON.stringify(m.renderMeshes));
-   assert(Number.isFinite(m.height)&&m.height>.38&&m.height<1.50,
+   assert(Number.isFinite(m.height)&&m.height>.35&&m.height<3.0,
      type+" crawler original skinned bounds unexpectedly flat or upright: "+JSON.stringify(m));
    // Cropped leg skin retains a few triangles below the model's bounds.
    // A Box3 minimum is NOT floor contact for a converted skinned torso.
@@ -204,8 +209,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V634_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V634_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V635_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V635_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();

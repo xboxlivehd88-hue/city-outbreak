@@ -1,3 +1,14 @@
+# v635 — ORIGINAL SPRINTER SCALE PRESERVED THROUGH CRAWLER CONVERSION — 2026-10-12
+
+- User v634 screenshot: Cop crawler looks MUCH smaller than its running model, Clown/Maniac also shrinks slightly; pelvis-on-ground and palm-orientation now acceptable enough to preserve.
+- Root cause: inside `beginCrawler`, old code artificially recalibrated each already correctly sized original Sprinter model based on the vertical bounds of the prone crawler animation, targeting a hardcoded ~1.03m height. This is NOT body size; prone vertical mesh bounds are shorter than standing stature. Some GLB skins have badly non-linear Box3 results, especially Cop.
+- **v635:** Delete ONLY that second crawler-only holder scale fitting block. Preserve standing-calibrated original visual size. During `transferCrawlerUpperVisual` capture original standing world scale and original upper-arm bone segment lengths BEFORE reparenting; after attaching to separately randomized crawler `z.g` root, correct `holder.scale` to preserve exact source world scale. All original textures, skin, leg cuts, animator/crawl, pelvic contact pose and wrist rotation kept. Standing scale, run gait and bones untouched.
+- Browser Sprinter smoke adds a strict test that both real upper-arm segment world lengths after conversion are within ±5% of standing sizes, detects future shrink even when prone bounding box height changes. Continue checking pelvis +0.095m, chest higher by +0.13m, low planted palms, original limb destruction, original skins, PBD and all 10-Sprinter-only test spawns. Broad prone Box3 height guard only; keep all anatomy checks.
+- v635 loader `./src/game.js?v=635` and Sprinter import `?v=635` (same user original GLB URLs); Hazmat and Parasite test loader intercepts advanced in tandem. Preserve 19-boss rotation and recovery v324 untouched. Do not claim CI PASS or deployment until confirmed.
+- Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=635-no-crawler-shrink
+
+---
+
 # v634 — ACTUAL PELVIS-ON-PAVEMENT SPRINTER CRAWL — 2026-10-12
 
 - User corrected the failed v633 visual premise: **the PELVIS must DRAG ON THE GROUND, the CHEST is slightly RAISED, and elbows/palms support the upper body.** v633 head/chest planted but pelvis was still 0.39m above road, higher than chest ~0.27m, making a nose-down levitating crawler. No handoff instructions to user: fix directly in main.
