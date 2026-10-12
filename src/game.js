@@ -51,8 +51,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v609";
-document.documentElement.dataset.cityOutbreakBuild="609";
+document.title="CITY OUTBREAK — v610";
+document.documentElement.dataset.cityOutbreakBuild="610";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -4665,14 +4665,11 @@ function buildRadiatedGreenGuyTemplate(source){
    if(yf>.84)return bi.head;
    if(yf>.77)return bi.neck;
 
-   // v403: rigid anatomical segmentation. Each triangle belongs to exactly one
-   // body part, so clothing/body vertices can never stretch between torso and arm.
-   if(bossTPose&&yf>.61&&yf<.81&&ax>h*.115){
-     if(ax>h*.37)return left?bi.lhand:bi.rhand;
-     if(ax>h*.275)return left?bi.lla:bi.rla;
-     return left?bi.lua:bi.rua;
-   }
-   if(!bossTPose&&yf>.31&&yf<.74){
+   // v610: the Green Guy is NOT the basic walker's boss T-pose rig.
+   // That stale branch referenced an undefined bossTPose and nonexistent
+   // hand joints, aborting the original GLB loader altogether. Use only
+   // this Green Guy's own 13 weighted bones for rigid arm segmentation.
+   if(yf>.31&&yf<.74){
      const armMinFrac=.105+THREE.MathUtils.clamp((.68-yf)/.36,0,1)*.075;
      if(ax>h*armMinFrac){
        if(yf>.56)return left?bi.lua:bi.rua;

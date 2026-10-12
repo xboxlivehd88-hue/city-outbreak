@@ -1,3 +1,13 @@
+# v610 — GREEN AURA REMOVED, RESTORE ORIGINAL GREEN GUY GLB LOADER — 2026-10-11
+
+- Continued user request: remove green aura altogether. v609 removed green translucent standing SphereGeometry and BOTH preserved/fallback crawler auras at their sources. v609 Hazmat no-red, native gait/PBD, and boss CI passed; green fallback/crawler no-aura checks passed.
+- During rigorous v609 real-browser test, discovered a PREEXISTING Green Guy rig builder failure: `ReferenceError: bossTPose is not defined` from `buildRadiatedGreenGuyTemplate`. It was referencing a `bossTPose` variable and hand-bone indices from the DIFFERENT walker rig, which never exist in the Green Guy's own 13-bone armature, preventing the original `assets/green guy.glb` from ever attaching; game quietly used the generic zombie fallback.
+- **Minimal v610 fix:** delete only the invalid `bossTPose`/nonexistent-hand branch in the Radiated Green Guy geometry classifier, retaining the Green Guy's OWN original 13 weighted bones and its existing non-TPose arm-segmentation logic. No new rig or asset, no changes to health, behavior, hitboxes, movement, crawler transfer, weapons, bosses or map. The green aura removed in v609 remains absent in standing and crawler routes; green character coloring/eyes/skin preserved.
+- v610 Chromium smoke now requires actual native `green guy.glb` to load with 13 bones, original Green Guy standing visual and its same preserved GLB on legless crawler, no green standing or crawler mist/auras. Existing Hazmat native no-red/movement/ragdoll, grenade and Parasite boss regressions continue. No change to protected v324 recovery checkpoint, Wave 1 remains 10 test Hazmats.
+- Loader `./src/game.js?v=610` and link `https://xboxlivehd88-hue.github.io/city-outbreak/?v=610-no-green-aura-original-green-guy`. Await CI + Pages success before final verification.
+
+---
+
 # v609 QA-only fix — test green aura even before optional green guy.glb finishes loading — 2026-10-11
 
 - First v609 browser audit failed ONLY at `__greenAuraAudit.ready()` after 30 seconds, because the separate 8.1 MB `green guy.glb` optional model was not ready during the Hazmat test; the previous v609 Hazmat original model, red aura removal, arm blend, ragdoll, crawler and grenade assertions all passed. Parasite/19-boss regression and Pages deployment passed. NO evidence of gameplay failure.
