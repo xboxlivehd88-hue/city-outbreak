@@ -1,3 +1,14 @@
+# v606 — RESTORE HAZMAT ZOMBIES TO EXACT v602 BEHAVIOR — 2026-10-11
+
+- USER: "can we bring thes guys back to v602" (screenshot of the v602 Hazmat test). Do NOT continue the v603–v605 run/arm experimental changes unless newly requested. User explicitly requested the **earlier v602 Hazmat baseline**.
+- Took `src/hazmat-zombie.js` and `src/game.js` DIRECTLY from approved historical v602 commit **`2ffd5ca614056a79cc7a531ece2f8be7f3c0cd61`**, changing ONLY the import, file, and build cache version markers to **v606**. Removed later `HazmatRetargetedRun`/recorded crawler source retarget, v604 idle-arm blending and v605 fabricated run-phase arm swing. The v602 original `Zombie_Walk_Root` clip, 0.678 native stride calibration, native GLB skeleton/skin, v602 native falling ragdoll, arm/leg severing, same-model forward-leaning crawler, original textured suit and hitboxes are restored precisely.
+- **Important visual change:** v602 had the RED Acidic contamination aura/mist. This strict v602 rollback RESTORES red mist on Hazmat zombies; subsequent v604–v605 red mist removal is not carried forward, as user requested return to v602 rather than a hybrid. All original Acidic HP/damage/speed remain. Confirm with user before separately removing aura while preserving v602 movement.
+- Restored the v602 Hazmat and Parasite smoke scripts/workflows adapted to current **v606** (rather than newer smoke tests expecting the v603–v605 Run and disabled mist), and loader `./src/game.js?v=606`. No global rewinds, other zombie/boss/weapon/map/settings changes; main v605 non-Hazmat source was checked and differs from v602 only in v603 Hazmat hooks/comments and loader version. Protected recovery **v324 not modified**.
+- Wave 1 remains temporary **10 Acidic Hazmat Zombies**, allowing immediate user validation. Pages URL: `https://xboxlivehd88-hue.github.io/city-outbreak/?v=606-hazmat-v602-restored`.
+- Next: verify v606 GitHub Actions Chromium source/graphics/death/dismemberment/crawler and Parasite rotation tests and latest GitHub Pages deployment before declaring ready.
+
+---
+
 # v605 — HAZMAT NO RED AURA + NATURAL MOVING ARM SWING — 2026-10-11
 
 - User after approving v603 RUNNING LEGS: "can we remove the red around them? i like the way they are walking but the arms are very off"; provided **`2026-10-11 17-51-38.mp4`** (36.75 sec, 2560x1440 @60). Reviewed video: original Hazmat 53-bone running legs are correct, but borrowed crawler recorded `Run` upper-body retarget pulls shoulders/elbows into awkward poses. User wants extra red haze gone, not GLB recolored.

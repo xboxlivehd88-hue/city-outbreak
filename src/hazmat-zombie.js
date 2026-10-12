@@ -1,101 +1,11 @@
 // CITY OUTBREAK v599: original uploaded 53-bone animated Hazmat GLB, ONLY for Acidic zombies.
-// Keeps original helmet, suit, face, running legs, and ragdoll physics; hides red haze.
+// Keeps original helmet, suit, face, textures, animation, root game AI/physics and red mist.
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 export function createHazmatZombieController(){
-  let source=null,loadingError=null,attached=0,attachDebug=null,runSource=null,armPoseTracks=0;
-  // v603: avoid the v602 6-12x hyper-fast walking loop. Borrow the REAL
-  // multi-frame Mixamo Run already used successfully by the Parasite,
-  // retargeting its bone rotations into the original 53-joint Hazmat suit.
-  function norm(n){return String(n||"").replace(/\.quaternion$/,"")
-    .replace(/_\d+$/,"").replace(/^mixamorig:?/i,"").toLowerCase()}
-  function setRunSource(other){
-    if(!other?.clips?.has("Run"))return false;
-    runSource=other;
-    if(!source)return false;
-    const src=other.clips.get("Run");
-    if(src.duration<.3)return false;
-    const from=new Map(),to=new Map();
-    other.scene.traverse(o=>{if(o.isBone)from.set(norm(o.name),o)});
-    source.scene.traverse(o=>{if(o.isBone)to.set(norm(o.name),o)});
-    const tracks=[],labels=new Set(),q=new THREE.Quaternion(),delta=new THREE.Quaternion();
-    const pitchAxis=new THREE.Vector3(1,0,0),pitch=new THREE.Quaternion();
-    // Keep all v603 LEG and hip keyframes unchanged. Hazmat's own native
-    // idle animation supplies a natural baseline for shoulders, elbows and
-    // hands; the borrowed crawler Run's exaggerated arm gestures contribute
-    // just subtle opposite-side swing rather than full rotations.
-    const idleArms=new Map(),walkArms=new Map();
-    for(const t of source.clips.get("Zombie_Idle")?.tracks||[])
-      if(t.name.endsWith(".quaternion"))idleArms.set(norm(t.name),t);
-    for(const t of source.clips.get("Zombie_Walk_Root")?.tracks||[])
-      if(t.name.endsWith(".quaternion"))walkArms.set(norm(t.name),t);
-    armPoseTracks=0;
-    const isArm=n=>/^(left|right)(shoulder|arm|forearm|hand|handthumb|handindex|handmiddle|handring|handpinky)/.test(n);
-    const swing=n=>/forearm/.test(n)?.18:/shoulder/.test(n)?.15:
-      /hand/.test(n)?.12:/arm/.test(n)?.25:.14;
-    for(const track of src.tracks){
-      if(!track.name.endsWith(".quaternion")||track.times.length<2)continue;
-      const name=norm(track.name),a=from.get(name),b=to.get(name);
-      if(!a||!b)continue;
-      const inv=a.quaternion.clone().invert(),rest=b.quaternion.clone();
-      const arm=isArm(name);
-      const authored=arm?(idleArms.get(name)||walkArms.get(name)):null;
-      const base=authored?.values?.length>=4?
-        new THREE.Quaternion().fromArray(authored.values,0).normalize():rest;
-      if(arm&&authored)armPoseTracks++;
-      const values=new Float32Array(track.values.length);
-      for(let i=0;i<track.times.length;i++){
-        const k=4*i;
-        q.fromArray(track.values,k).normalize();
-        delta.copy(inv).multiply(q).premultiply(rest).normalize();
-        if(arm){
-          delta.slerpQuaternions(base,delta,swing(name));
-          // The borrowed crawler Run's arm tracks are nearly static. Add
-          // a restrained, phase-locked opposite-arm swing to the authentic
-          // native idle shoulder/elbow pose; do not change RUN LEG tracks.
-          if(/^(left|right)(shoulder|arm|forearm)$/.test(name)){
-            const amount=/forearm/.test(name)?.085:
-              /shoulder/.test(name)?.045:.23;
-            const phase=2*Math.PI*track.times[i]/Math.max(.1,src.duration)+
-              (name.startsWith("left")?0:Math.PI);
-            pitch.setFromAxisAngle(pitchAxis,amount*Math.sin(phase));
-            delta.multiply(pitch).normalize();
-          }
-        }
-        delta.toArray(values,k);
-      }
-      tracks.push(new THREE.QuaternionKeyframeTrack(b.name+".quaternion",track.times,values));
-      labels.add(name);
-    }
-    if(tracks.length<16||!["leftupleg","leftleg","rightupleg","rightleg",
-      "leftarm","rightarm"].every(k=>labels.has(k))){
-      console.error("CITY OUTBREAK v603: cannot retarget natural Hazmat Run", [...labels]);
-      return false;
-    }
-    const clip=new THREE.AnimationClip("HazmatRetargetedRun",src.duration,tracks);
-    source.clips.set(clip.name,clip);
-    document.documentElement.dataset.hazmatRun="retargeted-recorded";
-    console.log("CITY OUTBREAK v605: soft phase-locked native Hazmat arms and unchanged running legs",
-      {duration:clip.duration,tracks:tracks.length,armPoseTracks,
-       frames:src.tracks.find(t=>t.times.length>20)?.times.length||0});
-    return true;
-  }
-  function enableRun(z){
-    const clip=source?.clips?.get("HazmatRetargetedRun");
-    if(!clip||!z?.hazmatMixer||z.dead)return false;
-    if(z.hazmatActions.HazmatRetargetedRun){
-      z.hazmatNativeRun=true;
-      if(!Number.isFinite(z.hazmatRunPlayback))z.hazmatRunPlayback=1;
-      return true;
-    }
-    const action=z.hazmatMixer.clipAction(clip);
-    action.setLoop(THREE.LoopRepeat,Infinity);
-    z.hazmatActions.HazmatRetargetedRun=action;
-    z.hazmatNativeRun=true;z.hazmatRunPlayback=1;
-    return true;
-  }
-  const url="assets/zombie_hazmat.glb?v=605";
+  let source=null,loadingError=null,attached=0,attachDebug=null;
+  const url="assets/zombie_hazmat.glb?v=606";
   const clipsRequired=["Zombie_Idle","Zombie_Walk_Root","Zombie_Skill"];
   function load(onReady){
     new GLTFLoader().load(url,gltf=>{
@@ -135,7 +45,6 @@ export function createHazmatZombieController(){
       }
       if(!(walkStride>.25&&walkStride<1.5))walkStride=.678;
       source={scene:gltf.scene,clips,walkStride};
-      if(runSource)setRunSource(runSource);
       document.documentElement.dataset.hazmatAsset="loaded";
       document.documentElement.dataset.hazmatClips=[...clips.keys()].join(",");
       console.log("CITY OUTBREAK v602: original Hazmat gait measured", {walkStride,clips:[...clips.keys()]});
@@ -216,7 +125,7 @@ export function createHazmatZombieController(){
     const mixer=new THREE.AnimationMixer(model),actions={};
     for(const [name,clip] of source.clips){
       const a=mixer.clipAction(clip);
-      a.setLoop(name==="Zombie_Idle"||name==="Zombie_Walk_Root"||name==="HazmatRetargetedRun"?THREE.LoopRepeat:THREE.LoopOnce,Infinity);
+      a.setLoop(name==="Zombie_Idle"||name==="Zombie_Walk_Root"?THREE.LoopRepeat:THREE.LoopOnce,Infinity);
       if(name==="Zombie_Skill"||name==="Zombie_EnemySpotted")a.clampWhenFinished=true;
       actions[name]=a;
     }
@@ -241,14 +150,12 @@ export function createHazmatZombieController(){
     z.hazmatActions=actions;z.hazmatAction=idle;z.hazmatActionName="Zombie_Idle";
     z.hazmatSourceHeight=height;z.hazmatBones=bones;
     z.hazmatStrideDistance=source.walkStride*holder.scale.x*z.g.scale.x;
-    enableRun(z);
     z.hazmatLastX=z.g.position.x;z.hazmatLastZ=z.g.position.z;
     // Hide old rig and legacy clothes. Retain original hidden gameplay collider,
     // old ragdoll physics, and ONLY the existing red contamination mist.
     if(z.rigVisual)z.rigVisual.traverse(o=>{if(o.isMesh)o.visible=false});
     else z.g.traverse(o=>{if(o.isMesh&&o!==z.hazardMist&&!o.userData.visualOnly)o.visible=false});
-    if(z.hazardMist)z.hazardMist.visible=false;
-    z.hazmatRedMistRemoved=true;
+    if(z.hazardMist)z.hazardMist.visible=true;
     document.documentElement.dataset.hazmatAttached=String(++attached);
     console.log("CITY OUTBREAK v600: native Hazmat visual attached",
       {originalHeight:height,scale:holder.scale.x,skinned});
@@ -256,34 +163,25 @@ export function createHazmatZombieController(){
   }
   function sync(z,dt){
     if(!z?.hazmatMixer||z.dead)return;
-    if(z.hazardMist)z.hazardMist.visible=false;
     if(z.knockdown?.bodyPbd?.holder===z.hazmatVisual)return;
     if(z.hazmatMixer.timeScale===0)z.hazmatMixer.timeScale=1;
     const x=z.g.position.x,y=z.g.position.z;
     const distance=Math.hypot(x-(z.hazmatLastX??x),y-(z.hazmatLastZ??y));
     z.hazmatLastX=x;z.hazmatLastZ=y;
     const speed=distance/Math.max(.008,dt);
-    const nativeRun=!!z.hazmatActions.HazmatRetargetedRun&&!z.hazmatCrawler;
-    const desired=(z.attackAnim||0)>.035?"Zombie_Skill":
-      speed>.08?(nativeRun?"HazmatRetargetedRun":"Zombie_Walk_Root"):"Zombie_Idle";
+    const desired=(z.attackAnim||0)>.035?"Zombie_Skill":speed>.08?"Zombie_Walk_Root":"Zombie_Idle";
     const next=z.hazmatActions[desired];
     if(next&&next!==z.hazmatAction){
       z.hazmatAction?.fadeOut(.14);
       next.reset().fadeIn(.14).play();
       z.hazmatAction=next;z.hazmatActionName=desired;
     }
-    // v603: a natural recorded human run, rather than speeding an
-    // entire 2.625-second Hazmat walk cycle up to a cartoonish 6-12x.
-    // Smooth actual movement speed; no change to NPC speed or game rules.
-    const target=THREE.MathUtils.clamp(speed/2.1,.55,1.8);
-    z.hazmatRunPlayback=THREE.MathUtils.damp(z.hazmatRunPlayback||1,
-      target,5,Math.max(0,dt));
-    if(z.hazmatActions.HazmatRetargetedRun)
-      z.hazmatActions.HazmatRetargetedRun.timeScale=z.hazmatRunPlayback;
-    // Native fallback/crawler still uses original uploaded walking clip,
-    // but never the previous hyper-fast 12.5x cap.
+    // v602: true imported gait distance, adjusted for THIS zombie's
+    // actual body scale. v601's 1.12m cycle and 5.6x max skated.
+    const stride=z.hazmatStrideDistance||.78;
     z.hazmatActions.Zombie_Walk_Root.timeScale=THREE.MathUtils.clamp(
-      speed/1.5,.6,2.25);
+      speed*source.clips.get("Zombie_Walk_Root").duration/
+        (z.hazmatCrawler?stride*.88:stride),.6,12.5);
     z.hazmatActions.Zombie_Skill.timeScale=source.clips.get("Zombie_Skill").duration/.60;
     z.hazmatMixer.update(Math.max(0,dt));
     // The real native clip contains scale tracks: reapply amputations
@@ -302,10 +200,6 @@ export function createHazmatZombieController(){
       z.hazmatVisual=null;z.hazmatModel=null;z.hazmatBones=null;
     }
   }
-  return {load,attach,sync,release,freeze,crawl,suppressDetached,setRunSource,enableRun,
-    status:()=>({loaded:!!source,error:String(loadingError||""),clips:[...(source?.clips.keys()||[])],
-      attached,attachDebug,walkStride:source?.walkStride,
-      nativeRun:!!source?.clips.has("HazmatRetargetedRun"),
-      runDuration:source?.clips.get("HazmatRetargetedRun")?.duration,
-      armPoseTracks})};
+  return {load,attach,sync,release,freeze,crawl,suppressDetached,
+    status:()=>({loaded:!!source,error:String(loadingError||""),clips:[...(source?.clips.keys()||[])],attached,attachDebug,walkStride:source?.walkStride})};
 }
