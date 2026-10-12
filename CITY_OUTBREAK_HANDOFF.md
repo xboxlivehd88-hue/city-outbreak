@@ -1,3 +1,12 @@
+# v626 — SPRINTER CRAWLER ARM SUPPORT / HEAD PITCH TEST — 2026-10-12
+
+- USER: Sprinter runners and amputations approved but legless Cop/Maniac crawlers were malformed: first floating tightly balled up, and newer v625 video `2026-10-12 02-15-42.mp4` still shows crawling bodies with the arms folded awkwardly through the torso.
+- Current v625 original Crawl 52-track retarget loaded and grounded; real Chromium v625 FAILED crawler anatomy: e.g. Maniac head below hands by 0.269, front hand behind hips; Cop head below one hand by 0.273. Do not mistake size/ground pass for visually correct arm support. The Sprinter-only temporary wave test remains enabled and standing Sprinter run size/colors/limb destruction preserved.
+- v626 only targets converted Sprinters. After native retargeted Crawl frame, aim *original* left/right upper arm and forearm bone chains in WORLD axes toward a bent forward/down support position, with opposite-phase tiny reach. Prevent elbows/hands crossing chest; adjust neck/head slight upward tilt. Original GLB textures, skin, hips, chest locomotion clip, clipped leg triangles, PBD/hitboxes and all normal standing Sprinter clips untouched. Test live geometry/anatomy before claiming fix.
+- Updated loader/game/controller, regression scripts and workflow labels for v626; **protected v324 remains untouched**. URL `https://xboxlivehd88-hue.github.io/city-outbreak/?v=626-crawler-support-test`.
+
+---
+
 # v625 — REAL CRAWL-ANIMATION RETARGET FOR LEGLESS SPRINTER GLBS — 2026-10-12
 
 - USER says "not fixed" and supplied gameplay videos `2026-10-12 02-01-48.mp4` and `02-15-42.mp4`. Both show visually broken legless Sprinters: upper bodies folded into floating balls, arms crossed through torso, then low but distorted. Later v624's numeric checks passed but user has NOT approved visual state. Previous approach froze the Cop/Maniac's original RUNNING pose at arbitrary frame, rotated the whole holder horizontal and then manually aimed shoulders/forearms. This leaves the imported SKIN distorted; meeting numeric ground/hand checks does NOT guarantee natural appearance.

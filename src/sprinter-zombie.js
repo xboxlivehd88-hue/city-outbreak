@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=625",
- "assets/zombie_running_on_metel_maniac.glb?v=625"
+ "assets/animated_zombie_cop_running_loop.glb?v=626",
+ "assets/zombie_running_on_metel_maniac.glb?v=626"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -483,9 +483,47 @@ export function createSprinterZombieController(){
   z.sprinterCrawlerHeight=measure();
   return true;
  }
+ // Aim a bent, outside-the-ribcage forearm down to the pavement.
+ // Do not scale/translate joints or overwrite the torso's real Crawl clip.
+ const supportDir=new THREE.Vector3(),parentWorld=new THREE.Quaternion();
+ const upDir=new THREE.Vector3(),elbowDir=new THREE.Vector3();
+ function aimSprinterCrawlerSupport(z,bones,side,phase){
+  const prefix=side<0?"L":"R";
+  const arm=bones.get(prefix+"_UpperArm"),
+   lower=bones.get(prefix+"_LowerArm"),hand=bones.get(prefix+"_Hand");
+  if(!arm||!lower||!hand)return;
+  const orient=(bone,child,dir)=>{
+   if(!bone.parent||child.position.lengthSq()<.000001)return;
+   bone.parent.getWorldQuaternion(parentWorld);
+   supportDir.copy(dir).applyQuaternion(parentWorld.invert()).normalize();
+   bone.quaternion.setFromUnitVectors(upDir.copy(child.position).normalize(),supportDir);
+  };
+  // Slight alternating reach without crossing the centerline.
+  const walk=Math.sin(phase)*.085;
+  elbowDir.set(side*.45,-.56,-.72+walk).normalize();
+  orient(arm,lower,elbowDir);
+  arm.updateWorldMatrix(true,true);
+  // Hands should land ahead of the elbows, not bend backwards into ribs.
+  elbowDir.set(side*.12,-.35,-.93-walk).normalize();
+  orient(lower,hand,elbowDir);
+ }
  function syncCrawler(z,dt){
   if(!z?.sprinterCrawlerAction||!z.sprinterMixer||z.dead||z.knockdown)return;
   z.sprinterMixer.update(Math.max(0,dt)*.82);
+  // v626: the source crawler's local arm axes do not match the Cop/Maniac
+  // Mixamo bind axes. Retargeting those arm rotations directly folds the
+  // wrists through the chest. Pose their ORIGINAL bone chains toward the
+  // forward ground-support direction in WORLD space after mixer updates.
+  // Preserve the source crawl cycle on hips, spine and neck and all skins.
+  const cb=z.sprinterBones;
+  if(cb?.size){
+   const phase=(z.phase||0)+(z.sprinterMixer.time||0)*5;
+   aimSprinterCrawlerSupport(z,cb,-1,phase);
+   aimSprinterCrawlerSupport(z,cb,1,phase+Math.PI);
+   const neck=cb.get("Neck"),head=cb.get("Head");
+   if(neck)neck.rotateX(-.16);
+   if(head)head.rotateX(-.12);
+  }
   // The actual Crawl animation owns shoulders/elbows/hands. Keep ground
   // clearance without costly all-vertex bounds checks on every frame.
   z.sprinterCrawlerTick=(z.sprinterCrawlerTick||0)+1;

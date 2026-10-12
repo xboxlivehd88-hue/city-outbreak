@@ -52,7 +52,7 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v625";
+document.title="CITY OUTBREAK — v626";
 document.documentElement.dataset.cityOutbreakBuild="625";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
@@ -6835,7 +6835,7 @@ function transferCrawlerUpperVisual(source,crawler){
    if(crawler.sprinterMixer)crawler.sprinterMixer.timeScale=0;
    source.sprinterVisual=null;source.sprinterModel=null;source.sprinterBones=null;
    source.sprinterMixer=null;source.sprinterRunAction=null;
-   // v625: feed an authentic crawling motion to the ORIGINAL 66-bone
+   // v626: feed an authentic crawling motion to the ORIGINAL 66-bone
    // Sprinter skin; no hand-made poses from frozen running frames.
    if(sprinterZombie.beginCrawler(crawler,naturalCrawlerAsset))
     pose.sprinterRetargeted=true;
