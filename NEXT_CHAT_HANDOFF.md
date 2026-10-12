@@ -6,6 +6,10 @@
 - Chromium Sprinter smoke upgraded to check both wrist/chest world height and each original hand palm-down alignment in addition to the established original model, animation, elbow, head, skin and ragdoll checks. **Do not claim verified until Actions/Pages PASS.**
 - Loader `./src/game.js?v=632`, module `./sprinter-zombie.js?v=632`. GLB data unchanged (URLs remain `?v=631`). Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=632-crawler-palms-ground
 
+## v632 QA harness follow-up — 2026-10-12
+
+- After v632, Hazmat and Parasite browser regression tests falsely timed out because their Playwright route interceptors still matched `src/game.js?v=631`. The HTML loader is correctly `v=632`; update ONLY those two test harnesses/workflow artifact names to match v632, preserving gameplay completely. Sprinter v632 test is checked separately. No changes to protected recovery v324.
+
 ---
 
 # v631 — MODEL-SPECIFIC COP/MANIAC PRONE ORIENTATION, REAL CRAWLER ANATOMY TEST — 2026-10-12
