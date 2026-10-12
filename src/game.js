@@ -6726,6 +6726,8 @@ function hideRigLimb(z,name){
  if(hazmatBone){hazmatBone.scale.setScalar(.00001);hazmatBone.updateMatrixWorld(true)}
  const sprinterBone=z.sprinterBones?.get(name);
  if(sprinterBone){sprinterBone.scale.setScalar(.00001);sprinterBone.updateMatrixWorld(true)}
+ const infectedBone=z.infectedBones?.get(name);
+ if(infectedBone){infectedBone.scale.setScalar(.00001);infectedBone.updateMatrixWorld(true)}
  const b=rigBone(z,name);
  if(b){b.scale.set(.001,.001,.001);b.updateMatrixWorld(true)}
  const gb=z.radiatedGreenBones?.get(name);
@@ -6757,8 +6759,10 @@ function launchDetachedLimb(z,limb,side,leg=false){
 function detachArm(z,side){
  const key=side==="left"?"leftArmDetached":"rightArmDetached";
  if(z[key])return;
- if(z.hazmatVisual||z.sprinterVisual||z.radiatedGreenVisual||z.walkerVisual){
-   const customBones=z.hazmatBones||z.sprinterBones||z.radiatedGreenBones||z.walkerBones;
+ if(z.hazmatVisual||z.sprinterVisual||z.radiatedGreenVisual||z.walkerVisual||
+    z.infectedVisual||((z.kind==="infected"||z.infectedCrawler)&&z.rigVisual)){
+   const customBones=z.hazmatBones||z.sprinterBones||z.radiatedGreenBones||z.walkerBones||
+    z.infectedBones||(z.rigVisual?originalInfectedBones(z,z.rigVisual):null);
    const bone=customBones?.get(side==="left"?"L_UpperArm":"R_UpperArm");
    const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.35:.35,1.35,0));
    z[key]=true;hideRigLimb(z,side==="left"?"L_UpperArm":"R_UpperArm");
@@ -7135,10 +7139,111 @@ function applyCrawlerIdentity(crawler,id){
    if(crawler.ownedMaterials)crawler.ownedMaterials.push(mat);
  }
 }
+// v640 — Infected crawlers never swap to the procedural generic zombie.
+// The original skinned character remains attached to the SAME living actor;
+// when an Infected GLB is installed it can use infectedVisual/infectedBones.
+const infectedCrawlHip=new THREE.Vector3(),infectedCrawlChest=new THREE.Vector3(),
+ infectedCrawlQ=new THREE.Quaternion(),infectedCrawlParentQ=new THREE.Quaternion(),
+ infectedCrawlWorldQ=new THREE.Quaternion(),infectedCrawlDir=new THREE.Vector3(),
+ infectedCrawlTarget=new THREE.Vector3(0,.16,-.70).normalize();
+function originalInfectedBones(z,holder){
+ if(z.infectedBones?.size)return z.infectedBones;
+ const bones=new Map();
+ for(const key of ["Hips","Spine","Chest","Neck","Head","L_UpperArm","L_LowerArm","L_Hand",
+  "R_UpperArm","R_LowerArm","R_Hand","L_UpperLeg","R_UpperLeg"]){
+  const bone=holder.getObjectByName(key);
+  if(bone?.isBone)bones.set(key,bone);
+ }
+ return bones;
+}
+function makeOriginalInfectedCrawlerTargets(z,bones){
+ if(z.infectedCrawlerHits?.length)return;
+ const geo=new THREE.SphereGeometry(1,10,8);
+ const mat=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false,depthTest:false,side:THREE.DoubleSide});
+ const defs=[["Head","head",.25],["Neck","torso",.20],["Chest","torso",.36],
+  ["Spine","torso",.34],["Hips","torso",.36],
+  ["L_UpperArm","leftArm",.25],["L_LowerArm","leftArm",.23],["L_Hand","leftArm",.18],
+  ["R_UpperArm","rightArm",.25],["R_LowerArm","rightArm",.23],["R_Hand","rightArm",.18]];
+ const hits=[];
+ for(const [key,part,radius] of defs){
+  const bone=bones.get(key);if(!bone)continue;
+  bone.updateWorldMatrix(true,false);
+  const scale=bone.getWorldScale(new THREE.Vector3());
+  const mesh=new THREE.Mesh(geo,mat);
+  mesh.name="OriginalInfectedCrawlerHit_"+key;
+  mesh.scale.set(radius/Math.max(.001,Math.abs(scale.x)),
+   radius/Math.max(.001,Math.abs(scale.y)),radius/Math.max(.001,Math.abs(scale.z)));
+  mesh.userData.zombie=z;mesh.userData.part=part;
+  if(key==="Head")mesh.userData.isHead=true;
+  bone.add(mesh);hits.push(mesh);
+ }
+ if(hits.length<7){for(const mesh of hits)mesh.removeFromParent();geo.dispose();mat.dispose();return}
+ for(const hit of z.hitMeshes||[])hit.raycast=()=>{};
+ z.infectedCrawlerHits=hits;z.hitMeshes=hits;
+ z.ownedGeometries?.push(geo);z.ownedMaterials?.push(mat);
+}
+function poseOriginalInfectedCrawler(z){
+ if(!z?.infectedCrawler||z.dead||z.knockdown||z.ragdoll)return;
+ const holder=z.crawlerUpperVisual,bones=z.crawlerUpperBones,pose=z.crawlerUpperPose;
+ if(!holder||!bones?.size||!pose)return;
+ holder.position.copy(pose.holderPos);holder.quaternion.copy(pose.holderQuat);
+ for(const [key,base] of pose.rotations){const bone=bones.get(key);if(bone)bone.rotation.copy(base)}
+ holder.updateWorldMatrix(true,true);
+ if(!pose.infectedHorizontalQuat){
+  const hips=bones.get("Hips"),chest=bones.get("Chest");
+  if(hips&&chest){
+   hips.getWorldPosition(infectedCrawlHip);chest.getWorldPosition(infectedCrawlChest);
+   infectedCrawlDir.subVectors(infectedCrawlChest,infectedCrawlHip);
+   z.g.getWorldQuaternion(infectedCrawlWorldQ);
+   infectedCrawlDir.applyQuaternion(infectedCrawlWorldQ.invert()).normalize();
+   if(infectedCrawlDir.lengthSq()>.0001)
+    holder.quaternion.premultiply(infectedCrawlQ.setFromUnitVectors(infectedCrawlDir,infectedCrawlTarget));
+  }
+  pose.infectedHorizontalQuat=holder.quaternion.clone();
+ }
+ holder.quaternion.copy(pose.infectedHorizontalQuat);
+ holder.updateWorldMatrix(true,true);
+ const hips=bones.get("Hips");
+ if(hips){
+  hips.getWorldPosition(infectedCrawlHip);z.g.worldToLocal(infectedCrawlHip);
+  holder.position.x-=infectedCrawlHip.x;holder.position.y+=.095-infectedCrawlHip.y;
+  holder.position.z-=infectedCrawlHip.z;
+ }
+ holder.updateWorldMatrix(true,true);
+ const neck=bones.get("Neck"),head=bones.get("Head");
+ if(neck)neck.rotateX(-.12);
+ if(head)head.rotateX(-.10);
+ // The original shoulder/forearm chains, not generic crawler limbs, support it.
+ aimSprinterCrawlerArm(z,bones,-1,z.phase||0);
+ aimSprinterCrawlerArm(z,bones,1,(z.phase||0)+Math.PI);
+ holder.updateWorldMatrix(true,true); // raycasts see this frame's positions
+}
+function turnInfectedCrawlerWithoutSwap(z){
+ if(z.infectedCrawler)return true;
+ const visual=z.infectedVisual||z.rigVisual;
+ if(!visual)return false;
+ const bones=originalInfectedBones(z,visual);
+ if(!bones.has("Hips")||!bones.has("Chest")||!bones.has("Head"))return false;
+ z.crawlerUpperPose=captureCrawlerUpperPose(visual,bones,"infected");
+ z.crawlerUpperVisual=visual;z.crawlerUpperBones=bones;
+ z.infectedCrawler=true;z.crawlerSourceKind="infected";z.kind="crawler";
+ z.naturalCrawlerSpawn=false;z.speed*=.82;
+ z.navForceRepath=true;z.navCheckT=0;z.think=0;
+ if(z.mixer)z.mixer.timeScale=0;
+ if(z.infectedMixer)z.infectedMixer.timeScale=0;
+ for(const key of ["L_UpperLeg","R_UpperLeg"]){const b=bones.get(key);if(b)b.scale.setScalar(.00001)}
+ poseOriginalInfectedCrawler(z);
+ makeOriginalInfectedCrawlerTargets(z,bones);
+ return true;
+}
 function convertLeglessToCrawler(z){
  if(!z||z.dead||z.kind==="boss"||z.kind==="crawler"||z.hp<=0||!z.leftLegDetached||!z.rightLegDetached)return;
  // Hazmat keeps the ORIGINAL GLB visual, not a generic crawler flash/swap.
  if(z.hazmatVisual){if(hazmatZombie.crawl(z))show("CRIPPLED — HAZMAT CRAWLER");return}
+ if(z.kind==="infected"){
+  if(turnInfectedCrawlerWithoutSwap(z))show("CRIPPLED — INFECTED CRAWLER");
+  return; // Never replace a future uploaded Infected GLB with a generic body.
+ }
 
  // v431: do NOT fold a standing skinned zombie into a crawler. The game already
  // has a dedicated native crawler body/animation/hitbox setup that was authored
@@ -7173,8 +7278,10 @@ function convertLeglessToCrawler(z){
 function detachLeg(z,side){
  const key=side==="left"?"leftLegDetached":"rightLegDetached";
  if(z[key])return;
- if(z.hazmatVisual||z.sprinterVisual||z.radiatedGreenVisual||z.walkerVisual){
-   const customBones=z.hazmatBones||z.sprinterBones||z.radiatedGreenBones||z.walkerBones;
+ if(z.hazmatVisual||z.sprinterVisual||z.radiatedGreenVisual||z.walkerVisual||
+    z.infectedVisual||((z.kind==="infected"||z.infectedCrawler)&&z.rigVisual)){
+   const customBones=z.hazmatBones||z.sprinterBones||z.radiatedGreenBones||z.walkerBones||
+    z.infectedBones||(z.rigVisual?originalInfectedBones(z,z.rigVisual):null);
    const bone=customBones?.get(side==="left"?"L_UpperLeg":"R_UpperLeg");
    const p=new THREE.Vector3();if(bone)bone.getWorldPosition(p);else p.copy(z.g.position).add(new THREE.Vector3(side==="left"?-.15:.15,.72,0));
    z[key]=true;hideRigLimb(z,side==="left"?"L_UpperLeg":"R_UpperLeg");
@@ -8438,7 +8545,7 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
  // settlement explicitly marks rag.active=false. Never stop just because a
  // scripted fall timer or root-ground flag says the corpse is "done."
  if(z.ragdoll?.active!==false)updateRagdoll(z,dt);
- syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);if(z.infectedCrawler)poseOriginalInfectedCrawler(z);
  // Do not clean up ANY corpse while it is still in active ragdoll motion.
  if(z.corpseAge>10&&z.ragdoll?.active===false&&z.g.parent){releaseZombieVisual(z);z.cleaned=true;}
 }
@@ -8479,7 +8586,7 @@ for(let z of active){
    z.groan-=dt;z.step-=dt;
    updateKnockdown(z,dt);
    updateNaturalCrawlerVisual(z,dt);
-   syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
+   syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);if(z.infectedCrawler)poseOriginalInfectedCrawler(z);
    continue;
  }
 
@@ -8487,7 +8594,7 @@ z.cool=Math.max(0,z.cool-dt);z.stagger=Math.max(0,(z.stagger||0)-dt);z.attackAni
 const playerDistToZombie=Math.hypot(px-z.g.position.x,pz-z.g.position.z);
 const huntMode=highlightLast&&z.kind!=="boss";
 const huntRun=huntMode&&z.kind!=="crawler"&&z.kind!=="boss";
-if(z.mixer){
+if(z.mixer&&!z.infectedCrawler){
  setZombieLocomotion(z,huntRun);
  const naturalRunner=z.kind==="sprinter"||z.kind==="infected"||z.kind==="acidic";
  const huntRigScale=playerDistToZombie>32?1.44:playerDistToZombie>16?1.34:1.24;
@@ -8744,7 +8851,7 @@ resolveZombiePlayerContact(z,ox,oz);
    }
  }
  updateNaturalCrawlerVisual(z,dt);
- syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);
+ syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);if(z.infectedCrawler)poseOriginalInfectedCrawler(z);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 const perfGuard=createPerformanceGuard({
  renderer:ren,

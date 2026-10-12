@@ -1,17 +1,39 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"639",pass:false};let browser;
+ const report={version:"640",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=639$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=640$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
  ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&newCityCollisionReady,
  waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],preview:!sprinterOnlyTest}),
+ infectedCrawlerAudit:()=>{
+  const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.rigVisual);
+  if(!z)throw Error("No visible original Infected in Wave 1");
+  const beforeCount=zombies.length,root=z.g,visual=z.rigVisual,meshCount=[];
+  visual.traverse(o=>{if(o.isSkinnedMesh)meshCount.push(o.name)});
+  z.hp=Math.max(z.hp,65);
+  detachLeg(z,"left");detachLeg(z,"right");
+  poseOriginalInfectedCrawler(z);
+  const hitboxes=z.hitMeshes||[],bones=z.crawlerUpperBones;
+  const shoot=key=>{
+   const bone=bones?.get(key);if(!bone)return false;
+   const origin=bone.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0,1,0));
+   const ray=new THREE.Raycaster(origin,new THREE.Vector3(0,-1,0),0,3);
+   return ray.intersectObjects(hitboxes,false).some(x=>x.object.userData.zombie===z);
+  };
+  return{kind:z.kind,source:z.crawlerSourceKind,originalActor:zombies.includes(z),
+   noReplacement:zombies.length===beforeCount,sameRoot:z.g===root,sameVisibleRig:z.rigVisual===visual,
+   visibleSkins:meshCount.length,colliders:hitboxes.length,
+   headshot:hitboxes.some(x=>x.userData.part==="head"&&x.userData.isHead),
+   body:hitboxes.some(x=>x.userData.part==="torso"),hitHead:shoot("Head"),hitChest:shoot("Chest"),
+   leftLegGone:z.leftLegDetached,rightLegGone:z.rightLegDetached,flag:z.infectedCrawler};
+ },
  selectViaRealBossRotation:()=>{
   // Force the final available name in the existing no-repeat bag, NOT the
   // spawn code or hardwired name: exercise the actual Wave 10 selection.
@@ -257,12 +279,13 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=639-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=640-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.waveOne()?.spawned===10,null,{timeout:30000});
   report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
+  report.infectedCrawler=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedCrawlerAudit());
   report.rotation=await page.evaluate(()=>globalThis.__parasiteSmoke.selectViaRealBossRotation());
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().attached,null,{timeout:30000});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().nativeRun&&
@@ -277,7 +300,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V639_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V640_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -296,6 +319,16 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   assert.equal(report.waveOne.bosses,0,"Wave 1 must contain only normal zombies");
   assert.equal(report.waveOne.preview,true,"Normal game must not force Sprinter-only test mode");
   assert.deepEqual(report.waveOne.kinds,["infected"],"Normal Wave 1 must spawn only Infected");
+  assert(report.infectedCrawler.originalActor&&report.infectedCrawler.noReplacement&&
+   report.infectedCrawler.sameRoot&&report.infectedCrawler.sameVisibleRig&&
+   report.infectedCrawler.flag&&report.infectedCrawler.source==="infected"&&
+   report.infectedCrawler.kind==="crawler"&&report.infectedCrawler.visibleSkins>0,
+   "Infected switched into a generic crawler instead of retaining its original rig: "+JSON.stringify(report.infectedCrawler));
+  assert(report.infectedCrawler.leftLegGone&&report.infectedCrawler.rightLegGone&&
+   report.infectedCrawler.headshot&&report.infectedCrawler.body&&
+   report.infectedCrawler.colliders>=8&&report.infectedCrawler.hitHead&&
+   report.infectedCrawler.hitChest,
+   "Preserved Infected crawler missing legs/shot hitboxes: "+JSON.stringify(report.infectedCrawler));
   assert.equal(report.rotation.poolSize,19);
   assert.equal(report.rotation.unique,19,"Boss rotation contains duplicate names");
   assert.equal(report.rotation.selected,"PARASITE MONSTER","Parasite not drawn through real no-repeat rotation");
@@ -361,7 +394,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V639_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V640_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }

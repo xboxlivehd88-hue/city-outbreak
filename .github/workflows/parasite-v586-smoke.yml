@@ -1,4 +1,4 @@
-name: v639 Parasite boss rotation regression
+name: v640 Parasite boss rotation regression
 on:
   push:
     paths:
@@ -29,5 +29,5 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: parasite-v639-audit
-          path: PARASITE_V639_AUDIT.json
+          name: parasite-v640-audit
+          path: PARASITE_V640_AUDIT.json

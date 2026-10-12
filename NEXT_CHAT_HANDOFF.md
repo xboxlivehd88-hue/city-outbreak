@@ -1,3 +1,14 @@
+# v640 — PRESERVE ORIGINAL INFECTED MODEL ON BOTH-LEG LOSS — 2026-10-12
+
+- User requested **before importing a replacement Infected GLB** that amputating both legs must NOT switch the zombie to a generic crawler. New model should remain the SAME visible identity in a crawl, exactly like the original sprinters. User also asked for Wave 1 Infected-only; v639 already did that, retain it.
+- Existing `convertLeglessToCrawler` handles Hazmat in-place, but for Infected always called `makeZombie(...,"crawler")` to create a generic replacement. The recolored fallback is not acceptable for a new GLB.
+- v640 introduces `turnInfectedCrawlerWithoutSwap` in `src/game.js`, ahead of the generic conversion route. It **retains the same original actor, root, rig and material/skin** (now `rigVisual`, future `infectedVisual`/`infectedBones`), sets kind to crawler, lowers hips near pavement while aiming the original torso/head forward with support arms, freezes standing mixer, and uses invisible original-skeleton head/torso/arm shooting targets. It never calls `makeZombie("crawler")` for Infected. Both legs hide their original rig bones; limb damage and combat remain linked to the same actor. The upcoming GLB still needs skeleton mapping and authored crawl refinement when available; do NOT replace the user's original model with a generic fallback.
+- v640 Parasite/regression real-browser audit in Wave 1 converts an Infected by shooting/detaching both legs and verifies that **object identity, original skinned rig, world root, active living actor, head/chest raycasts and crawler behavior remain**; continues to test the Wave 10 Parasite boss roster afterward. Sprinter test remains opt-in via `?sprinterTest=1`, preserving original models and latest v638 animated crawler hitboxes. No changes to their animations/GLBs. Hazmat regression retained.
+- Main loader `./src/game.js?v=640` in `index.html`; Sprinter controller remains v638 (unchanged). Original 19-boss rotation and protected recovery v324 untouched. Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=640-infected-crawler-identity .
+- Verify Chromium regression + GitHub Pages before claiming success; inspect any browser failure and fix rather than claiming tests passed.
+
+---
+
 # v639 — WAVE 1 INFECTED-ONLY PREVIEW WHILE USER SOURCES NEW GLB — 2026-10-12
 
 - User requested the **Infected** become the ONLY zombie kind spawning in normal Wave 1, ready for a forthcoming user-uploaded Infected GLB. Keep its EXISTING placeholder visual until that asset is added. This is not the Cop/Maniac Sprinter and not the Hazmat Acidic model.
