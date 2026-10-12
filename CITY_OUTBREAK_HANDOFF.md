@@ -1,3 +1,13 @@
+# v606 — VERIFIED EXACT v602 HAZMAT RESTORE — 2026-10-11
+
+- User explicitly said **"can we bring thes guys back to v602"**, with screenshot of v602 Pages. The original Hazmat model/AI/animation/appearance and native death/crawler behavior have been restored from actual v602 commit `2ffd5ca614056a79cc7a531ece2f8be7f3c0cd61`, only the version/cache marker changed to **606**. Do NOT reintroduce v603–v605 animated `Run` retarget, altered/fabricated arm swing, or the later v604–v605 red mist removal without fresh user approval.
+- v602 had the **red Acidic haze**; strict rollback RESTORED it. Original 53-bone GLB, suit/head original materials, `Zombie_Walk_Root` animation, 10-only-Hazmat Wave 1 testing, ragdolls, no fake limbs, forward-leaning legless crawler and same physical hitboxes all retained. Other zombies, 19-boss pool, weapons, map, settings and recovery unaffected.
+- **Verified Chromium real gameplay PASS:** v606 Hazmat smoke run [38190832790](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38190832790) confirms all 10 v602-style Hazmats, original two textured skins, original four recorded clips, red mist visible, both legs animated, native death ragdoll (0.79 world-unit visual travel), true leg-loss/crawler identity, forward lean, head/torso hitboxes, blast test and zero JS errors.
+- **Verified Parasite/19-boss rotation PASS:** v606 Chromium run [38190835326](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38190835326). **Pages deployment PASS:** run [38190834985](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38190834985). The first v606 test runs failed ONLY because copied historical smoke scripts still targeted `?v=602`; test route/build markers were fixed in later two QA-only commits with NO gameplay changes, and both reruns passed.
+- Current loader `./src/game.js?v=606`, playable `https://xboxlivehd88-hue.github.io/city-outbreak/?v=606-hazmat-v602-restored`. Both handoffs current. **Protected recovery v324 untouched**. Await further user feedback; v602 rollback is intentional even if later user experiments are different.
+
+---
+
 # v606 — RESTORE HAZMAT ZOMBIES TO EXACT v602 BEHAVIOR — 2026-10-11
 
 - USER: "can we bring thes guys back to v602" (screenshot of the v602 Hazmat test). Do NOT continue the v603–v605 run/arm experimental changes unless newly requested. User explicitly requested the **earlier v602 Hazmat baseline**.
