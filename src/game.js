@@ -52,8 +52,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v621";
-document.documentElement.dataset.cityOutbreakBuild="621";
+document.title="CITY OUTBREAK — v622";
+document.documentElement.dataset.cityOutbreakBuild="622";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -6850,11 +6850,15 @@ function setCrawlerArmToward(bones,upperKey,lowerKey,side,phase){
    lower.rotation.set(.72+Math.max(0,Math.sin(phase))* .12,0,side*.035);
  }
 }
-// v621: the two imported Sprinters have a real Mixamo skeleton and calibrated
-// world-space skin. Aim their elbows from actual PARENT axes; generic walkers'
-// hard-coded local rotations fold their hands across the chest.
+// v622: Keep the imported Mixamo SKIN, but orient the whole torso
+// HORIZONTALLY before posing arms. v621 bent the HIPS 1.04 radians instead,
+// putting the head into the pavement and the butt up in the air.
+// A complete holder rotation retains the source skeleton's proportions.
 const sprinterCrawlQ=new THREE.Quaternion(),sprinterParentQ=new THREE.Quaternion();
-const sprinterAim=new THREE.Vector3(),sprinterCrawlBox=new THREE.Box3();
+const sprinterCrawlDelta=new THREE.Quaternion(),sprinterAim=new THREE.Vector3();
+const sprinterCrawlBox=new THREE.Box3(),sprinterCrawlTmpA=new THREE.Vector3();
+const sprinterCrawlTmpB=new THREE.Vector3(),sprinterCrawlLocalA=new THREE.Vector3();
+const sprinterCrawlLocalB=new THREE.Vector3(),sprinterCrawlTarget=new THREE.Vector3(0,.22,-1).normalize();
 const sprinterRootScale=new THREE.Vector3();
 function aimSprinterCrawlerArm(z,bones,side,phase){
  const name=side<0?"L":"R";
@@ -6862,50 +6866,80 @@ function aimSprinterCrawlerArm(z,bones,side,phase){
  if(!arm||!forearm||!arm.parent)return;
  z.g.getWorldQuaternion(sprinterCrawlQ);
  arm.parent.getWorldQuaternion(sprinterParentQ);
- sprinterAim.set(side*.39,-.29,-.93+Math.sin(phase)*.05)
+ // Place the ELBOW down and outside the chest rather than driving the
+ // whole arm straight ahead through the face. Both real Mixamo arm chains
+ // are used, and the support hands reach the pavement IN FRONT of the body.
+ sprinterAim.set(side*.47,-.82,-.34+Math.sin(phase)*.025)
   .applyQuaternion(sprinterCrawlQ).applyQuaternion(sprinterParentQ.invert()).normalize();
  if(forearm.position.lengthSq()>.000001)
-  arm.quaternion.setFromUnitVectors(forearm.position.clone().normalize(),sprinterAim);
+  arm.quaternion.setFromUnitVectors(sprinterCrawlLocalA.copy(forearm.position).normalize(),sprinterAim);
+ arm.updateWorldMatrix(true,true);
  if(hand&&hand.parent===forearm&&hand.position.lengthSq()>.000001){
   forearm.getWorldQuaternion(sprinterParentQ);
-  sprinterAim.set(side*.16,-.38,-.94)
+  sprinterAim.set(side*.16,-.43,-.91)
    .applyQuaternion(sprinterCrawlQ).applyQuaternion(sprinterParentQ.invert()).normalize();
-  forearm.quaternion.setFromUnitVectors(hand.position.clone().normalize(),sprinterAim);
+  forearm.quaternion.setFromUnitVectors(sprinterCrawlLocalA.copy(hand.position).normalize(),sprinterAim);
  }
 }
 function syncSprinterCrawlerUpper(z,holder,bones,pose,phase,attack){
  const step=Math.sin(phase);
- const add=(key,x=0,y=0,v=0)=>{
+ // Reset to the actual frozen glTF pose. Don't fold the hips like a human
+ // bending at the waist: it produces the user's crab/hunched crawler.
+ for(const key of ["Hips","Spine","Chest","Neck","Head"]){
   const bone=bones.get(key),base=pose.rotations.get(key);
-  if(bone&&base)bone.rotation.set(base.x+x,base.y+y,base.z+v);
- };
- add("Hips",1.04,.015*step,0);
- add("Spine",.20,0,.015*step);
- add("Chest",.04,0,-.014*step);
- add("Neck",-.30,0,0);
- add("Head",-.21+attack*.035,-.02*step,0);
- holder.updateMatrixWorld(true,true);
+  if(bone&&base)bone.rotation.copy(base);
+ }
+ const neck=bones.get("Neck"),head=bones.get("Head");
+ // Compensate for body pitch so the skull LOOKS AHEAD, not face-first
+ // into the street. The small oscillation keeps a living crawl.
+ if(neck)neck.rotateX(-.42);
+ if(head)head.rotateX(-.20+attack*.025);
+ holder.updateWorldMatrix(true,true);
+
+ if(!pose.sprinterCrawlQuat){
+  const hips=bones.get("Hips"),chest=bones.get("Chest");
+  if(hips&&chest){
+   hips.getWorldPosition(sprinterCrawlTmpA);
+   chest.getWorldPosition(sprinterCrawlTmpB);
+   z.g.worldToLocal(sprinterCrawlTmpA);z.g.worldToLocal(sprinterCrawlTmpB);
+   sprinterCrawlTmpB.sub(sprinterCrawlTmpA);
+   if(sprinterCrawlTmpB.lengthSq()>.00001){
+    sprinterCrawlDelta.setFromUnitVectors(sprinterCrawlTmpB.normalize(),sprinterCrawlTarget);
+    holder.quaternion.premultiply(sprinterCrawlDelta);
+   }
+  }
+  pose.sprinterCrawlQuat=holder.quaternion.clone();
+ }
+ holder.quaternion.copy(pose.sprinterCrawlQuat);
+ holder.updateWorldMatrix(true,true);
  aimSprinterCrawlerArm(z,bones,-1,phase);
  aimSprinterCrawlerArm(z,bones,1,phase+Math.PI);
- holder.updateMatrixWorld(true,true);
+ holder.updateWorldMatrix(true,true);
+
  if(!pose.sprinterGrounded){
-  // Ground each ORIGINAL GLB by its real SKINNED bounding box, once at
-  // conversion. Cop's bind offsets make the previous -.46 offset invalid.
+  // Fit the one-time pose by the real textured SKIN and by its supporting
+  // hands. Keep the head ABOVE its hands and ground under the body rather
+  // than yanking the entire body down by an old -.46 standing offset.
   sprinterCrawlBox.setFromObject(holder,true);
   if(!sprinterCrawlBox.isEmpty()&&Number.isFinite(sprinterCrawlBox.min.y)){
    z.g.updateWorldMatrix(true,false);
-   const center=new THREE.Vector3(
-    (sprinterCrawlBox.min.x+sprinterCrawlBox.max.x)*.5,
-    sprinterCrawlBox.min.y,
-    (sprinterCrawlBox.min.z+sprinterCrawlBox.max.z)*.5);
-   z.g.worldToLocal(center);
-   holder.position.x-=center.x;holder.position.z-=center.z;
+   const hips=bones.get("Hips");
+   if(hips){
+    hips.getWorldPosition(sprinterCrawlTmpA);
+    z.g.worldToLocal(sprinterCrawlTmpA);
+    holder.position.x-=sprinterCrawlTmpA.x;
+    holder.position.z-=sprinterCrawlTmpA.z;
+   }
+   holder.updateWorldMatrix(true,true);
+   sprinterCrawlBox.setFromObject(holder,true);
    z.g.getWorldScale(sprinterRootScale);
-   holder.position.y+=(z.g.position.y+.025-sprinterCrawlBox.min.y)/
-    Math.max(.01,Math.abs(sprinterRootScale.y));
+   holder.position.y+=(z.g.position.y+.035-sprinterCrawlBox.min.y)/
+      Math.max(.01,Math.abs(sprinterRootScale.y));
+   // Lift only when the model genuinely clips below the road. Don't re-ground
+   // each frame; that is what made v621 crawlers bob and contort as they chased.
    pose.sprinterCrawlerPos=holder.position.clone();
    pose.sprinterGrounded=true;
-   holder.updateMatrixWorld(true,true);
+   holder.updateWorldMatrix(true,true);
   }
  }
 }
@@ -6918,7 +6952,7 @@ function syncCrawlerUpperVisual(z){
  const phase=z.phase||0,s=Math.sin(phase),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
  if(pose.type==="sprinter"){
   holder.position.copy(pose.sprinterCrawlerPos||pose.holderPos);
-  holder.quaternion.copy(pose.holderQuat);
+  holder.quaternion.copy(pose.sprinterCrawlQuat||pose.holderQuat);
   syncSprinterCrawlerUpper(z,holder,bones,pose,phase,attack);
   return true;
  }

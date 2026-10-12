@@ -1,3 +1,12 @@
+# v622 — FIX SPRINTER CRAWLERS' CRAB/HUNCH AND FACE-DOWN POSE — 2026-10-12
+
+- USER video `2026-10-12 02-15-42.mp4` shows v621 Cop + Maniac legless crawlers now touch pavement but remain severely WRONG: backs hunch/arch high, heads point down into ground and arms hang stiffly; v621's browser smoke passing height/ground and wide-apart hands did not catch this visible mistake. Earlier `2026-10-12 02-01-48.mp4` showed floating folded ball. Never claim correct based only on ground contact.
+- **v622 targeted skeleton replacement** ONLY in `src/game.js` Sprinter-preserved-crawler path: stop bending source Mixamo hip +1.04 rad and crossing its arms. Preserve the original frozen skin/clip (no return to T-pose), align the ORIGINAL whole torso's hips→chest vector horizontally and toward the player along -Z with its real holder quaternion; adjust head/neck slightly so it looks forward. Retarget genuine left/right upper arm+forearm joints in their parent-local frames with elbow DOWN and hands forward/outside. Ground the preserved skinned GLB once, center on its hips. No synthetic model, no substitute crawler flash, no generic limbs. Non-Sprinter crawler, original standing/running Cop + Maniac calibrated size, stats, attack, maps, weapons, effects, performance settings are unchanged.
+- Stronger **real-browser** `scripts/sprinter-v611-smoke.cjs` v622 asserts both Cop/Maniac crawlers have hips behind chest/head in +Z, head above both supporting hands, shoulders/elbows spaced laterally, valid below-1.7 world height, feet at road level, identical GLB/skinned bones, real native ragdoll and original no-generic-limbs. Run all original 10-Sprinter first wave, Hazmat/Green and 19-boss rotation CI; DO NOT mark success until passing. This captures the user's visibly WRONG v621 crab pose that the previous tests missed.
+- Loader `./src/game.js?v=622`; preview `https://xboxlivehd88-hue.github.io/city-outbreak/?v=622-sprinter-crawl-pose`. Sprinter-only test mode stays ON across waves, 5 Cops + 5 Maniacs in Wave 1. Protected recovery v324 is untouched.
+
+---
+
 # v621 — SPRINTER CRAWLER FLOATING BALL / ARMS INSIDE TORSO FIX — 2026-10-12
 
 - USER: v620 regular Cop and Maniac Sprinter SIZE IS GREAT and LIMB DESTRUCTION GREAT; but after BOTH legs are gone the converted Sprinters ball up into floating bodies with arms crossed through the chest. Evidence: `2026-10-12 02-01-48.mp4`. DO NOT CHANGE accepted v620 standing/running scales, original 66-bone running animations, original GLB textures, or limb detachment.
