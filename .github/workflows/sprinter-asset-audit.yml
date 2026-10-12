@@ -1,0 +1,27 @@
+name: Sprinter two uploaded GLB asset audit
+on:
+  push:
+    paths:
+      - 'scripts/sprinter-asset-audit.cjs'
+      - '.github/workflows/sprinter-asset-audit.yml'
+      - 'assets/animated_zombie_cop_running_loop.glb'
+      - 'assets/zombie_running_on_metel_maniac.glb'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect animation tracks, skeletons, geometry and textures
+        run: node scripts/sprinter-asset-audit.cjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sprinter-model-inspection
+          path: SPRINTER_ASSET_AUDIT.json
