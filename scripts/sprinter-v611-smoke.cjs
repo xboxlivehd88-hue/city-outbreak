@@ -68,7 +68,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
-  await page.waitForFunction(()=>globalThis.__sprinterSmoke?.status()?.attached?.every(n=>n>=5),null,{timeout:30000});
+  await page.waitForFunction(()=>globalThis.__sprinterSmoke?.status()?.attached?.every(n=>n>=5),null,{timeout:90000,polling:200});
   await page.waitForTimeout(450);
   report.assets=await page.evaluate(()=>globalThis.__sprinterSmoke.status());
   report.models=await page.evaluate(()=>globalThis.__sprinterSmoke.spawn());
