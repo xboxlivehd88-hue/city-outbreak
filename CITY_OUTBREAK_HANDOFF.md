@@ -1,3 +1,13 @@
+# v632 — CRAWLER HAND PALMS AND WRIST-GROUNDED TORSO — 2026-10-12
+
+- User v631 screenshot: Cop and Maniac now face the player with spread arms; BUT both hover above pavement and bear weight on the backs of their hands. Do not change standing size/animation or restored facing.
+- **v632 crawler-only correction:** derive each original Cop/Maniac GLB wrist's real palm normal from the Mixamo Index1/Pinky1 knuckle bones. After retargeted Crawl and support arm posing, orient the existing real hand bone so palms face downward and fingertips forward relative to the zombie's current yaw. No replacement body parts.
+- **Grounding correction:** old Box3 floor minimum touched on an irrelevant skinned polygon while chest/hands hovered. Move the converted crawler's visible holder by the real wrist world heights (aim +0.105m) with protective chest/head ground clearances. Correct after each Crawl frame using four bone positions (no skinned vertex scan). Leave original GLB mesh, leg-trim, ragdoll, hitboxes, standing Run/knees/size, 10 Sprinter-only test waves, 19 boss rotation and recovery v324 unchanged.
+- Chromium Sprinter smoke upgraded to check both wrist/chest world height and each original hand palm-down alignment in addition to the established original model, animation, elbow, head, skin and ragdoll checks. **Do not claim verified until Actions/Pages PASS.**
+- Loader `./src/game.js?v=632`, module `./sprinter-zombie.js?v=632`. GLB data unchanged (URLs remain `?v=631`). Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=632-crawler-palms-ground
+
+---
+
 # v631 — MODEL-SPECIFIC COP/MANIAC PRONE ORIENTATION, REAL CRAWLER ANATOMY TEST — 2026-10-12
 
 - User v629 screenshots: Cop legless crawler lies face-down with folded arms; Maniac/clown crawler presents its back, arms folded into chest. Prior v629 test PASS was misleading: `src/game.js?v=629` still imported **stale Sprinter controller `?v=627`**. v630 fixed loader/cache and changed crawler-only arm support targets to follow the zombie's actual yaw, plus stricter elbow/head testing.
