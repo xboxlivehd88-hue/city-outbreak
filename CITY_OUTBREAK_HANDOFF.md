@@ -1,3 +1,11 @@
+# v623 VERIFIED — ORIGINAL SPRINTER CRAWLERS NOW LOW, GROUNDED AND FORWARD — 2026-10-12
+
+- **REAL Chromium Sprinter 10-zombie gameplay PASS** [run 38213135786](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38213135786): Cop transformed crawler actual skinned visual **1.1409** world units tall and **0.0341** above street; Maniac crawler **1.1571** tall and **0.01794** above street. Both torsos have hips→chest forward **0.37–0.38** with only **0.08** vertical rise; heads project well ahead of hips by **0.64–0.78**, float **0.206–0.231** above the hands; natural arms separated horizontally by **0.82–0.88**. Original 17 mapped bones and untouched source 66-bone skin/clips/mixers retained, original model when both legs shot off, original rigid-body dismemberment and native ragdoll. Still only 5 Cops and 5 Maniacs in Wave 1; original standing sizes and gait unchanged. No JS errors.
+- **Hazmat/Green regression PASS** [38213135791](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38213135791); **19-boss rotation regression PASS** [38213135922](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38213135922); **Pages deployment PASS** [38213135824](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38213135824).
+- Game loader is `./src/game.js?v=623`, live `https://xboxlivehd88-hue.github.io/city-outbreak/?v=623-sprinter-crawlers-grounded`. This is a mathematical/real-browser QA pass, **not user visual sign-off**; user should review crawling visual, arms and head in actual gameplay. Protected v324 recovery unchanged.
+
+---
+
 # v623 — LOWER/REGROUND PRESERVED SPRINTER CRAWLERS FROM LIVE SKIN — 2026-10-12
 
 - USER: v621 converted Cop/Maniac crawlers still crab-hunched with head down, arms hanging; reference `2026-10-12 02-15-42.mp4`. v622 replaced broken hip folding with horizontally aligned original Mixamo torso, forward-facing head and real bent elbows/arms. **v622 strict Chromium audit** confirmed torso now genuinely forward: Cop hips→chest ahead .438, head ahead .913, skull .245 above hands, hand separation 1.038; Maniac similarly forward with skull .287 above hands. HOWEVER v622 still FAILED: live original GLB crawler height **1.747/1.828** and original skinned feet float **.572/.409** above pavement. This is real, not a QA syntax problem; don't claim fixed.
