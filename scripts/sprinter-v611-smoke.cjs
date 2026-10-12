@@ -157,6 +157,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    assert(m.angles.slice(0,4).filter(v=>v>.08).length>=3,"Real knees don't animate: "+JSON.stringify(m.angles));
   }
   report.lifecycle=await page.evaluate(()=>globalThis.__sprinterSmoke.lifecycle());
+  console.log("SPRINTER_V632_GROUND_CONTACTS="+JSON.stringify({cop:report.lifecycle.copCrawl,maniac:report.lifecycle.maniacCrawl}));
   assert.equal(report.lifecycle.ragNative,true,"Original Sprinter not running native PBD");
   assert(report.lifecycle.ragMove>.03,"Dead Sprinter froze instead of falling");
   assert.equal(report.lifecycle.oneLegHidden,true);
