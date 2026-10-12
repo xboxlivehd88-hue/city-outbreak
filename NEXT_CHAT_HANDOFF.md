@@ -1,3 +1,10 @@
+# v609 QA-only fix — test green aura even before optional green guy.glb finishes loading — 2026-10-11
+
+- First v609 browser audit failed ONLY at `__greenAuraAudit.ready()` after 30 seconds, because the separate 8.1 MB `green guy.glb` optional model was not ready during the Hazmat test; the previous v609 Hazmat original model, red aura removal, arm blend, ragdoll, crawler and grenade assertions all passed. Parasite/19-boss regression and Pages deployment passed. NO evidence of gameplay failure.
+- QA-only amendment: test Radiated forced spawn and crawler fallback whether the optional green GLB has finished loading or not, recording the source availability. If the original GLB has loaded, assert the original native Green Guy model/bones and preserved crawler; otherwise validate the game's real fallback green character and corresponding green-identity crawler. Both branches must have **ZERO** green hazard mist / standing aura / crawler aura objects. No gameplay source changes; v609 loader and URL remain identical. Re-run Hazmat smoke before declaring final pass.
+
+---
+
 # v609 — COMPLETELY REMOVE GREEN GUY AURA (INCLUDING CRAWLERS) — 2026-10-11
 
 - USER: "lets remove the green aura altogether" after reporting improved low-end performance from v607 removal of Hazmat red translucent mist.
