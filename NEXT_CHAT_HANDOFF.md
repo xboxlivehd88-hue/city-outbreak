@@ -1,3 +1,12 @@
+# v624 — PREVENT SEE-THROUGH & FLOATING SPRINTER CRAWLER SKIN — 2026-10-12
+
+- USER supplied `2026-10-12 02-37-44.mp4` after v623 QA passed: original Cop/Maniac converted crawlers continue to float and show transparent/broken limbs. The numeric torso/hands/ground audit did **not** demonstrate visual quality; no user approval.
+- Root suspected from source: standing Sprinter dismemberment sets original Mixamo `L_UpperLeg` and `R_UpperLeg` to scale `.00001` to hide each leg. Original skinned mesh has blended weights around thighs/hips/torso, so the zero-scale collapses polygons into torn/transparent-looking holes once the SAME model becomes a crawler.
+- v624 crawler-only fix: clone the original existing skinned geometry and remove triangles primarily weighted to leg/foot bones; retain its original GLB upper-body/arms/face, UVs, texture and skeleton. Restore the formerly collapsed upper-leg bone scales to one, so remaining torso skin cannot collapse. Do not rewrite standing/crawling animation or the approved walking scale. No generic model, no aura, no changes to gameplay stats, temporary 100% Sprinter test roster, or protected recovery v324.
+- New Chromium assertions require BOTH converted variants to have leg-dominated triangles removed, original thigh scales restored, fully opaque skinned model visibly present, and their prior exact head/hands/ground/pose/aesthetic-relevant metrics. Await CI verification and actual user visual sign-off. Loader `./src/game.js?v=624`, proposed URL `https://xboxlivehd88-hue.github.io/city-outbreak/?v=624-solid-sprinter-crawlers`.
+
+---
+
 # v623 VERIFIED — ORIGINAL SPRINTER CRAWLERS NOW LOW, GROUNDED AND FORWARD — 2026-10-12
 
 - **REAL Chromium Sprinter 10-zombie gameplay PASS** [run 38213135786](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38213135786): Cop transformed crawler actual skinned visual **1.1409** world units tall and **0.0341** above street; Maniac crawler **1.1571** tall and **0.01794** above street. Both torsos have hips→chest forward **0.37–0.38** with only **0.08** vertical rise; heads project well ahead of hips by **0.64–0.78**, float **0.206–0.231** above the hands; natural arms separated horizontally by **0.82–0.88**. Original 17 mapped bones and untouched source 66-bone skin/clips/mixers retained, original model when both legs shot off, original rigid-body dismemberment and native ragdoll. Still only 5 Cops and 5 Maniacs in Wave 1; original standing sizes and gait unchanged. No JS errors.

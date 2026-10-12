@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=621",
- "assets/zombie_running_on_metel_maniac.glb?v=621"
+ "assets/animated_zombie_cop_running_loop.glb?v=624",
+ "assets/zombie_running_on_metel_maniac.glb?v=624"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -288,6 +288,71 @@ export function createSprinterZombieController(){
    ["leftLegDetached","L_UpperLeg"],["rightLegDetached","R_UpperLeg"]
   ])if(z[flag])z.sprinterBones.get(key)?.scale.setScalar(.00001);
  }
+ // v624: A Mixamo skin blends adjacent leg/hip/torso vertices. Scaling a thigh
+ // bone to 0.00001 to "amputate" it pulls weighted pelvis and shirt polygons
+ // into a point, making translucent-looking holes and flying torn triangles.
+ // For a LEGLESS CRAWLER ONLY, remove triangles that belong to the original
+ // leg skin weights, and restore the skeleton's native scale. Keep the exact
+ // original textured GLB upper body, original arms, original skinned pose.
+ function preserveLeglessCrawlerSkin(source,crawler){
+  const model=source?.sprinterModel,bones=source?.sprinterBones;
+  if(!model||!bones?.size||!crawler)return false;
+  const legs=new Set(["leftupleg","leftleg","leftfoot","lefttoebase",
+    "rightupleg","rightleg","rightfoot","righttoebase"]);
+  let originalTris=0,keptTris=0,removedTris=0,changedMeshes=0;
+  const outputs=[];
+  model.traverse(mesh=>{
+   if(!mesh.isSkinnedMesh||!mesh.geometry)return;
+   const original=mesh.geometry,ids=original.getAttribute("skinIndex"),
+     weights=original.getAttribute("skinWeight"),pos=original.getAttribute("position");
+   if(!ids||!weights||!pos)return;
+   const skeleton=mesh.skeleton,legIndices=new Set();
+   for(let i=0;i<skeleton.bones.length;i++)
+    if(legs.has(cleanBoneName(skeleton.bones[i].name)))legIndices.add(i);
+   if(legIndices.size<4)return;
+   const influence=new Float32Array(pos.count);
+   for(let i=0;i<pos.count;i++){
+    let value=0;
+    for(let j=0;j<4;j++)if(legIndices.has(ids.getComponent(i,j)))
+     value+=weights.getComponent(i,j);
+    influence[i]=value;
+   }
+   const indices=original.index,read=i=>indices?indices.getX(i):i;
+   const count=indices?indices.count:pos.count,keep=[];
+   let cut=0;
+   for(let i=0;i+2<count;i+=3){
+    const a=read(i),b=read(i+1),c=read(i+2);
+    const wa=influence[a],wb=influence[b],wc=influence[c];
+    const mostlyLeg=(wa>.55?1:0)+(wb>.55?1:0)+(wc>.55?1:0);
+    // Mixed seam triangles stay with the original torso; remove only clear
+    // leg-only faces. This avoids holes in hip and shoulder skin.
+    if(mostlyLeg>=2||(wa+wb+wc)/3>.72){cut++;continue}
+    keep.push(a,b,c);
+   }
+   const total=Math.floor(count/3);
+   if(cut<8||keep.length<30)return;
+   // Preserve GLB mesh, materials, joints, UVs and normals. Copy just its
+   // index list; the source geometry is shared with standing Sprinters.
+   const clipped=original.clone();
+   clipped.clearGroups();
+   clipped.setIndex(keep);
+   mesh.geometry=clipped;
+   mesh.visible=true;
+   if(!crawler.ownedGeometries)crawler.ownedGeometries=[];
+   crawler.ownedGeometries.push(clipped);
+   changedMeshes++;originalTris+=total;removedTris+=cut;keptTris+=keep.length/3;
+   outputs.push({mesh:mesh.name,removed:cut,original:total});
+  });
+  if(!changedMeshes)return false;
+  // Restore only the previously collapsed real thigh transforms AFTER the
+  // original leg triangles are gone. Other GLB bones and colors untouched.
+  for(const key of ["L_UpperLeg","R_UpperLeg"]){
+   const bone=bones.get(key);if(bone){bone.scale.set(1,1,1);bone.updateMatrixWorld(true)}
+  }
+  crawler.sprinterCrawlerSkinAudit={changedMeshes,originalTris,
+   removedTris,keptTris,meshes:outputs,nativeThighScale:true};
+  return true;
+ }
  function freeze(z){if(z?.sprinterMixer)z.sprinterMixer.timeScale=0}
  function release(z){
   if(z?.sprinterMixer)try{z.sprinterMixer.stopAllAction()}catch(_){}
@@ -296,5 +361,5 @@ export function createSprinterZombieController(){
    z.sprinterModel=null;z.sprinterBones=null;z.sprinterHitboxes=null;
   }
  }
- return{load,attach,sync,freeze,release,suppressDetached,status};
+ return{load,attach,sync,freeze,release,suppressDetached,preserveLeglessCrawlerSkin,status};
 }

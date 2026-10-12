@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
-import {createSprinterZombieController} from "./sprinter-zombie.js?v=620";
+import {createSprinterZombieController} from "./sprinter-zombie.js?v=624";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -52,8 +52,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v623";
-document.documentElement.dataset.cityOutbreakBuild="623";
+document.title="CITY OUTBREAK — v624";
+document.documentElement.dataset.cityOutbreakBuild="624";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -6799,6 +6799,13 @@ function transferCrawlerUpperVisual(source,crawler){
  else if(source?.sprinterVisual&&source?.sprinterBones?.size){holder=source.sprinterVisual;bones=source.sprinterBones;type="sprinter"}
  else return false;
 
+ // v624: collapsed old leg bones deform shared hip and torso vertices
+ // into apparent transparency and floating shards. Clip original GLB leg
+ // skin triangles ONLY on the converted crawler, then restore bone scale.
+ const sprinterLegSkinReady=type!=="sprinter"||
+   sprinterZombie.preserveLeglessCrawlerSkin(source,crawler);
+ if(type==="sprinter"&&!sprinterLegSkinReady)
+  console.warn("CITY OUTBREAK: Sprinter crawler's original leg skin was not clipped",source.sprinterModelIndex);
  const pose=captureCrawlerUpperPose(holder,bones,type);
  // Retire the old standing hitboxes embedded in this model. The native crawler's
  // stable hitboxes remain active underneath the preserved visible upper body.
@@ -6820,6 +6827,7 @@ function transferCrawlerUpperVisual(source,crawler){
    crawler.sprinterVisual=holder;crawler.sprinterBones=bones;crawler.sprinterModel=source.sprinterModel;
    crawler.sprinterMixer=source.sprinterMixer;crawler.sprinterRunAction=source.sprinterRunAction;
    crawler.sprinterModelIndex=source.sprinterModelIndex;
+   crawler.sprinterCrawlerSkinReady=sprinterLegSkinReady;
    if(crawler.sprinterMixer)crawler.sprinterMixer.timeScale=0;
    source.sprinterVisual=null;source.sprinterModel=null;source.sprinterBones=null;
    source.sprinterMixer=null;source.sprinterRunAction=null;

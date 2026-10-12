@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:623,passed:false},errors=[];let browser,page;
+ const report={build:624,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=623$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=624$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -78,20 +78,29 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "    leftAhead:l&&chest?chest.z-l.z:null,rightAhead:r&&chest?chest.z-r.z:null,",
    "    handsBelowHead:l&&r&&head?[head.y-l.y,head.y-r.y]:null,",
    "    frozen:z.sprinterMixer?.timeScale===0,modelName:z.sprinterModel?.name,",
-   "    boneCount:z.sprinterBones?.size||0};",
+   "    boneCount:z.sprinterBones?.size||0,",
+   "    trimmed:z.sprinterCrawlerSkinReady===true,",
+   "    skin:z.sprinterCrawlerSkinAudit||null,",
+   "    leftThighScale:z.sprinterBones?.get('L_UpperLeg')?.scale.x,",
+   "    rightThighScale:z.sprinterBones?.get('R_UpperLeg')?.scale.x,",
+   "    renderMeshes:(()=>{const out=[];z.sprinterModel?.traverse(o=>{if(!o.isSkinnedMesh)return;",
+   "     const mats=Array.isArray(o.material)?o.material:[o.material];",
+   "     out.push({name:o.name,visible:o.visible,faces:o.geometry.index?.count/3||0,",
+   "       opacity:Math.min(...mats.filter(Boolean).map(m=>m.opacity))});",
+   "    });return out})()};",
    "  };",
    "  return {maniacCrawl:poseAudit(next),copCrawl:poseAudit(convertedCop),",
    "   ragNative,ragMove,oneLegHidden,detachedGenericParts:parts.filter(p=>p.limb).length-prior,",
    "   crawlerFound:!!next,kind:next?.kind,crawlerModelSame:next?.sprinterModel===original,",
    "   crawlerNewRoot:next?.g!==oldRoot,crawlerBones:next?.sprinterBones?.size||0,",
-   "   legGone:next?.sprinterBones?.get('L_UpperLeg')?.scale.x<.001&&next?.sprinterBones?.get('R_UpperLeg')?.scale.x<.001,",
+   "   legGone:!!(next?.sprinterCrawlerSkinReady&&next.sprinterCrawlerSkinAudit?.removedTris>20),",
    "   crawlerHitboxes:next?.hitMeshes?.length||0};",
    " }",
    "};"
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=623-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=624-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -140,6 +149,12 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert(report.lifecycle.crawlerHitboxes>2);
   for(const [type,m] of [["Cop",report.lifecycle.copCrawl],["Maniac",report.lifecycle.maniacCrawl]]){
    assert(m&&m.frozen&&m.boneCount>=16,type+" crawler original skinned skeleton/mixer missing");
+   assert(m.trimmed&&m.skin?.changedMeshes>=1&&m.skin?.removedTris>20,
+     type+" original thigh polygons were not safely removed: "+JSON.stringify(m.skin));
+   assert(m.leftThighScale>.95&&m.rightThighScale>.95,
+     type+" ZERO-SCALE THIGH still tears the shared torso skin");
+   assert(m.renderMeshes.some(x=>x.visible&&x.faces>100&&x.opacity>.98),
+     type+" imported skin still invisible/transparent: "+JSON.stringify(m.renderMeshes));
    assert(Number.isFinite(m.height)&&m.height>0.65&&m.height<1.50,
      type+" crawler balled up or standing upright: "+JSON.stringify(m));
    assert(m.feet>-.12&&m.feet<.15,
@@ -159,8 +174,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V623_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V623_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V624_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V624_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();
