@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:645,passed:false},errors=[];let browser,page;
+ const report={build:646,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=645$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=646$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -129,7 +129,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=645-sprinter-two-models&sprinterTest=1",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=646-sprinter-two-models&sprinterTest=1",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -167,7 +167,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    assert(m.angles.slice(0,4).filter(v=>v>.08).length>=3,"Real knees don't animate: "+JSON.stringify(m.angles));
   }
   report.lifecycle=await page.evaluate(()=>globalThis.__sprinterSmoke.lifecycle());
-  console.log("SPRINTER_V645_GROUND_CONTACTS="+JSON.stringify({cop:report.lifecycle.copCrawl,maniac:report.lifecycle.maniacCrawl}));
+  console.log("SPRINTER_V646_GROUND_CONTACTS="+JSON.stringify({cop:report.lifecycle.copCrawl,maniac:report.lifecycle.maniacCrawl}));
   assert.equal(report.lifecycle.ragNative,true,"Original Sprinter not running native PBD");
   assert(report.lifecycle.ragMove>.03,"Dead Sprinter froze instead of falling");
   assert.equal(report.lifecycle.oneLegHidden,true);
@@ -219,8 +219,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V645_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V645_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V646_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V646_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();
