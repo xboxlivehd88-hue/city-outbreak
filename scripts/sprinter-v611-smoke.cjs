@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:629,passed:false},errors=[];let browser,page;
+ const report={build:630,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=629$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=630$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -68,7 +68,18 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "   const box=new THREE.Box3().setFromObject(z.sprinterVisual,true);",
    "   const point=key=>{const b=z.sprinterBones.get(key);if(!b)return null;",
    "    const w=b.getWorldPosition(new THREE.Vector3());return z.g.worldToLocal(w)};",
-   "   const head=point('Head'),chest=point('Chest'),hips=point('Hips'),l=point('L_Hand'),r=point('R_Hand');",
+   "   const head=point('Head'),chest=point('Chest'),hips=point('Hips'),l=point('L_Hand'),r=point('R_Hand');
+   const ls=point('L_UpperArm'),rs=point('R_UpperArm'),le=point('L_LowerArm'),re=point('R_LowerArm');
+   const armsLocal={leftShoulder:ls?.toArray(),rightShoulder:rs?.toArray(),
+    leftElbow:le?.toArray(),rightElbow:re?.toArray(),
+    leftHand:l?.toArray(),rightHand:r?.toArray(),
+    leftElbowAway:ls&&le&&chest?Math.abs(le.x-chest.x)-Math.abs(ls.x-chest.x):null,
+    rightElbowAway:rs&&re&&chest?Math.abs(re.x-chest.x)-Math.abs(rs.x-chest.x):null,
+    leftHandAway:l&&ls&&chest?Math.abs(l.x-chest.x)-Math.abs(ls.x-chest.x):null,
+    rightHandAway:r&&rs&&chest?Math.abs(r.x-chest.x)-Math.abs(rs.x-chest.x):null,
+    shouldersApart:ls&&rs?Math.abs(ls.x-rs.x):null,
+    elbowsApart:le&&re?Math.abs(le.x-re.x):null
+   };",
    "   return {height:box.max.y-box.min.y,feet:box.min.y-z.g.position.y,",
    "    hipToChestForward:hips&&chest?hips.z-chest.z:null,",
    "    hipToHeadForward:hips&&head?hips.z-head.z:null,",
@@ -79,7 +90,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "    handsApart:l&&r?l.distanceTo(r):0,",
    "    leftAhead:l&&chest?chest.z-l.z:null,rightAhead:r&&chest?chest.z-r.z:null,",
    "    handsBelowHead:l&&r&&head?[head.y-l.y,head.y-r.y]:null,",
-   "    naturalCrawl:!!z.sprinterCrawlerAction,retargetTracks:z.sprinterCrawlerRetargetTracks||0,",
+   "    armsLocal, naturalCrawl:!!z.sprinterCrawlerAction,retargetTracks:z.sprinterCrawlerRetargetTracks||0,",
    "    armMotion,clip:z.sprinterCrawlerAction?.getClip()?.name,",
    "    modelName:z.sprinterModel?.name,",
    "    boneCount:z.sprinterBones?.size||0,",
@@ -104,7 +115,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=629-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=630-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -169,8 +180,11 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
      type+" crawler arms crossed into body: "+JSON.stringify(m));
    assert(m.hipToChestForward>.18&&m.hipToHeadForward>.23,
      type+" still crab-hunched/head below torso instead of forward crawling: "+JSON.stringify(m));
-   assert(m.headAboveHands>.08,
-     type+" face points into the ground or arms hang above head: "+JSON.stringify(m));
+   assert(m.headAboveHands>.08&&m.headLocalHeight>.04,
+     type+" head/face points below the street or arms hover above skull: "+JSON.stringify(m));
+   assert(m.armsLocal?.elbowsApart>.22&&m.armsLocal?.leftElbowAway>-.04&&
+     m.armsLocal?.rightElbowAway>-.04,
+     type+" elbows are crossing back inside the chest: "+JSON.stringify(m.armsLocal));
   }
   assert.equal(errors.length,0,"Page errors: "+errors.join("; "));
   report.passed=true;
@@ -180,8 +194,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V629_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V629_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V630_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V630_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();

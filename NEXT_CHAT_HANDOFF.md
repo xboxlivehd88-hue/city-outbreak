@@ -1,3 +1,14 @@
+# v630 — FIX SPRINTER CRAWLER FACING + TURNING-RELATIVE ARMS; LOAD THE ACTUAL CONTROLLER — 2026-10-12
+
+- USER supplied two v629 screenshots showing native legless COP belly-down with arms folding inward and Maniac (clown) visibly backward with the same crossed/embedded elbows. Sizes, running, textured original GLBs, real joint amputations explicitly APPROVED; both crawlers currently remain broken despite past numerical crawler pose smoke PASS.
+- **ROOT CAUSE 1: STALE MODULE CACHE.** v629 game.js still imported `./sprinter-zombie.js?v=627` even though `src/sprinter-zombie.js` was edited in v628 and v629. Browser may keep using older Sprinter crawler transformations. v630 loader is `./src/game.js?v=630` and the actual Sprinter import and BOTH original GLB URLs use `?v=630`. This fixes a real update propagation regression (not just hard refresh).
+- **ROOT CAUSE 2: crawler body facing.** Both authored models look toward source +Z; standing holders use +180 degree yaw. Pitching that yaw-inverted holder to crawl rotates the face into the ground and shows the back toward the player. Crawler-only `beginCrawler` resets the transferred holder orientation to original +Z first, then pitches the natural spine toward the actor's local forward (-Z); `z.g` keeps all chase/AI yaw. No standing walk model change.
+- **ROOT CAUSE 3: arm target in fixed world space** rather than the zombie's turning world frame. Crawler-only `aimSprinterCrawlerSupport` now transforms both real upper- and forearm target vectors through `z.g` world quaternion before conversion to each bone-parent coordinate system. This preserves actual native 66-bone skinned hands/arms and keeps elbows on the outer sides as zombies turn instead of crossed inside the torso.
+- **Expanded Chromium smoke** now checks native Cop and Maniac arm **elbow positions** and head height above street, not merely hands-separated metrics that previously passed while the characters visibly faced backward. Native running, animated knees, geometry, sizes, original legless-skin trim, PBD ragdoll, normal hitboxes, 10-Sprinter-only Wave 1 and all waves, 19-boss internal regression and all other zombie assets preserved. Recovery v324 untouched.
+- Candidate playable `https://xboxlivehd88-hue.github.io/city-outbreak/?v=630-sprinter-crawlers-facing`. **Await real Chromium+Pages results before claiming user-visible fix is verified.**
+
+---
+
 # v629 — LEGLESS SPRINTER CRAWLER ELBOW SPREAD / HEAD CLEARANCE — 2026-10-12
 
 - The user-approved standing animated Cop and Maniac Sprinters stay exactly as in v620: sizes, colors, 66-joint source Run motion, hitboxes, damage, 10-Sprinter-only testing waves, limb destruction.

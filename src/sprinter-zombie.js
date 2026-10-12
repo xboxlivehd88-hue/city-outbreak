@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=629",
- "assets/zombie_running_on_metel_maniac.glb?v=629"
+ "assets/animated_zombie_cop_running_loop.glb?v=630",
+ "assets/zombie_running_on_metel_maniac.glb?v=630"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -415,6 +415,12 @@ export function createSprinterZombieController(){
   z.sprinterCrawlerRetargetTracks=mapped;
   const holder=z.sprinterVisual,bones=z.sprinterBones;
   z.g.updateWorldMatrix(true,true);
+  // v630: standing GLBs are yaw-flipped to face the player. Retaining that
+  // 180-degree yaw while pitching a crawler turns the original textured face
+  // into the street and presents the model's back to the player.
+  // Use the authentic model's forward axis for a prone body. The zombie
+  // navigation root (z.g) still supplies its real-world pursuit yaw.
+  holder.quaternion.identity();
   const hips=bones.get("Hips"),chest=bones.get("Chest");
   if(hips&&chest){
    const a=hips.getWorldPosition(new THREE.Vector3()),b=chest.getWorldPosition(new THREE.Vector3());
@@ -486,6 +492,7 @@ export function createSprinterZombieController(){
  // Aim a bent, outside-the-ribcage forearm down to the pavement.
  // Do not scale/translate joints or overwrite the torso's real Crawl clip.
  const supportDir=new THREE.Vector3(),parentWorld=new THREE.Quaternion();
+ const actorWorld=new THREE.Quaternion();
  const upDir=new THREE.Vector3(),elbowDir=new THREE.Vector3();
  function aimSprinterCrawlerSupport(z,bones,side,phase){
   const prefix=side<0?"L":"R";
@@ -499,12 +506,15 @@ export function createSprinterZombieController(){
    bone.quaternion.setFromUnitVectors(upDir.copy(child.position).normalize(),supportDir);
   };
   // Slight alternating reach without crossing the centerline.
-  const walk=Math.sin(phase)*.085;
-  elbowDir.set(side*.95,-.94,-.68+walk).normalize();
+  const walk=Math.sin(phase)*.065;
+  // Support directions must rotate WITH this Sprinter's chase yaw, not the
+  // fixed world/street XZ axes (which fold the elbows inward on turns).
+  z.g.getWorldQuaternion(actorWorld);
+  elbowDir.set(side*.78,-.83,-.67+walk).normalize().applyQuaternion(actorWorld);
   orient(arm,lower,elbowDir);
   arm.updateWorldMatrix(true,true);
   // Hands should land ahead of the elbows, not bend backwards into ribs.
-  elbowDir.set(side*.80,-.77,-.81-walk).normalize();
+  elbowDir.set(side*.45,-.76,-.99-walk).normalize().applyQuaternion(actorWorld);
   orient(lower,hand,elbowDir);
  }
  function syncCrawler(z,dt){
