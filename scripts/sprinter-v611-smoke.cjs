@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:614,passed:false},errors=[];let browser,page;
+ const report={build:615,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=614$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=615$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -16,7 +16,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "  const units=zombies.filter(z=>z.kind==='sprinter'&&!z.dead&&z.sprinterVisual);",
    "  const counts=[0,0];for(const z of units)counts[z.sprinterModelIndex]++;",
    "  globalThis.__sprinterWaveAudit={wave,waveTarget,waveSpawned,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],count:units.length,counts,testOnly:sprinterOnlyTest};",
-   "  return [units.find(z=>z.sprinterModelIndex===0),units.find(z=>z.sprinterModelIndex===1)].filter(Boolean).map(z=>{",
+   "  return units.map(z=>{",
    "   const box=new THREE.Box3().setFromObject(z.sprinterVisual,true),size=new THREE.Vector3();box.getSize(size);",
    "   const meshes=[];z.sprinterModel.traverse(o=>{if(o.isSkinnedMesh){",
    "    const mats=Array.isArray(o.material)?o.material:[o.material];",
@@ -64,7 +64,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=614-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=615-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -81,8 +81,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert.equal(report.wave.count,10);
   assert.equal(report.http,200);
   assert.deepEqual(report.assets.loaded,[true,true],"Both original GLBs not loaded");
-  assert.equal(report.models.length,2,"Expected TWO original animated Sprinters");
-  assert.deepEqual(report.models.map(z=>z.index).sort(),[0,1]);
+  assert.equal(report.models.length,10,"Expected ten authentic Wave 1 Sprinters");
+  assert.deepEqual(report.models.map(z=>z.index).sort(),[0,0,0,0,0,1,1,1,1,1]);
   for(const m of report.models){
    assert(m.bones>=16,"Original native armature absent: "+JSON.stringify(m));
    assert(m.skinned.length>=2&&m.skinned.every(x=>x.vertices>=100),
@@ -119,8 +119,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V614_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V614_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V615_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V615_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();

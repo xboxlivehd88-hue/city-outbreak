@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=614",
- "assets/zombie_running_on_metel_maniac.glb?v=614"
+ "assets/animated_zombie_cop_running_loop.glb?v=615",
+ "assets/zombie_running_on_metel_maniac.glb?v=615"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -135,71 +135,55 @@ export function createSprinterZombieController(){
   }});
   z.g.add(holder);
   if(staleCopBounds){
-   // v614: original Cop can expand enormously AFTER its first run frame.
-   // Calibrate against EVERY representative pose, not its tiny startup pose.
-   // One expensive full-cycle calibration is shared by all future Cop clones.
-   const stored=asset.calibration;
-   if(stored){
-    holder.scale.setScalar(stored.scale);
-    holder.position.copy(stored.offset);
-    z.sprinterCopCycleHeight=stored.cycleHeight;
-    z.sprinterScaleExponent=stored.exponent;
-   }else{
-    const scanBox=new THREE.Box3(),aggregate=new THREE.Box3();
-    const frameCount=16,clipDuration=asset.run.duration;
-    const sampleCycle=()=>{
-     aggregate.makeEmpty();
-     for(let k=0;k<frameCount;k++){
-      mixer.setTime(.04+clipDuration*(k+.5)/frameCount);
-      holder.updateWorldMatrix(true,true);
-      scanBox.setFromObject(holder,true);
-      if(!scanBox.isEmpty())aggregate.union(scanBox);
-     }
-     mixer.setTime(.09);
+   // v615: per-Cop skinned bind offsets vary. Never reuse an untested
+   // holder scale or model offset for a DIFFERENT Cop in the same wave.
+   const prior=asset.calibration;
+   if(prior)holder.scale.setScalar(prior.scale);
+   const poseBounds=new THREE.Box3(),cycle=new THREE.Box3(),frameCount=prior?7:16;
+   const scan=()=>{
+    cycle.makeEmpty();
+    for(let k=0;k<frameCount;k++){
+     mixer.setTime(.04+(k+.5)*asset.run.duration/frameCount);
      holder.updateWorldMatrix(true,true);
-     return aggregate.clone();
-    };
-    const originalBounds=sampleCycle();
-    const h0=originalBounds.max.y-originalBounds.min.y;
-    holder.scale.setScalar(holder.scale.x*2);
-    const doubledBounds=sampleCycle();
-    const h1=doubledBounds.max.y-doubledBounds.min.y;
-    const slope=Math.log(h1/Math.max(h0,1e-8))/Math.LN2;
-    const exponent=Number.isFinite(slope)?THREE.MathUtils.clamp(slope,.65,2.6):1;
-    const rootWorldScale=new THREE.Vector3();
-    z.g.getWorldScale(rootWorldScale);
-    const desiredHeight=1.80*Math.max(.01,Math.abs(rootWorldScale.y));
-    // The real Cop GLB can require a large SHRINK, not a fixed .9 factor.
-    // Cover that range without influencing Maniac or the 66 authored bones.
-    holder.scale.setScalar(THREE.MathUtils.clamp(
-      Math.pow(desiredHeight/Math.max(.001,h0),1/exponent),.00001,200));
-    let result=sampleCycle(),measured=result.max.y-result.min.y;
-    for(let i=0;i<2&&measured>.001;i++){
-     const adjust=THREE.MathUtils.clamp(
-       Math.pow(desiredHeight/measured,1/exponent),.04,20);
-     holder.scale.multiplyScalar(adjust);
-     result=sampleCycle();
-     measured=result.max.y-result.min.y;
-     if(Math.abs(measured-desiredHeight)<.03)break;
+     poseBounds.setFromObject(holder,true);
+     if(!poseBounds.isEmpty())cycle.union(poseBounds);
     }
-    // Convert the actual skinned animation's union center/feet into the
-    // zombie's LOCAL coordinates, so rotation toward player cannot offset it.
-    const bottomCenter=new THREE.Vector3(
-     (result.min.x+result.max.x)*.5,result.min.y,(result.min.z+result.max.z)*.5);
-    z.g.updateWorldMatrix(true,false);
-    const local=z.g.worldToLocal(bottomCenter);
-    holder.position.x-=local.x;
-    holder.position.z-=local.z;
-    holder.position.y+=.025-local.y;
     mixer.setTime(.09);
-    z.sprinterCopCycleHeight=measured;
-    z.sprinterScaleExponent=exponent;
-    asset.calibration={scale:holder.scale.x,offset:holder.position.clone(),
-      cycleHeight:measured,exponent,baseline:h0,scaledPilot:h1};
-    console.log("CITY OUTBREAK v614: Cop calibrated using full running cycle",
-      {baseline:h0,pilot:h1,exponent,measured,
-        holderScale:holder.scale.x,offset:holder.position.toArray()});
+    return cycle.clone();
+   };
+   let bounds=scan(),h0=bounds.max.y-bounds.min.y;
+   let exponent=prior?.exponent||1;
+   if(!prior){
+    const initialScale=holder.scale.x;
+    holder.scale.setScalar(initialScale*2);
+    const doubled=scan(),h1=doubled.max.y-doubled.min.y;
+    const p=Math.log(h1/Math.max(h0,.001))/Math.LN2;
+    exponent=Number.isFinite(p)?THREE.MathUtils.clamp(p,.65,2.6):1;
+    holder.scale.setScalar(initialScale);
    }
+   const rootScale=new THREE.Vector3();z.g.getWorldScale(rootScale);
+   const goal=1.80*Math.max(.01,Math.abs(rootScale.y));
+   for(let i=0;i<3;i++){
+    const h=bounds.max.y-bounds.min.y;
+    if(!Number.isFinite(h)||h<.001)break;
+    holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.pow(goal/h,1/exponent),.001,150));
+    bounds=scan();
+    if(Math.abs(bounds.max.y-bounds.min.y-goal)<.035)break;
+   }
+   // Center THIS actor's original skinned animation relative to its own
+   // current rotated root and align lowest sampled sole to the ground.
+   const bottom=new THREE.Vector3(
+    (bounds.min.x+bounds.max.x)*.5,bounds.min.y,
+    (bounds.min.z+bounds.max.z)*.5);
+   z.g.updateWorldMatrix(true,false);
+   const local=z.g.worldToLocal(bottom);
+   holder.position.x-=local.x;holder.position.z-=local.z;
+   holder.position.y+=.025-local.y;
+   mixer.setTime(.09);
+   z.sprinterCopCycleHeight=bounds.max.y-bounds.min.y;
+   z.sprinterScaleExponent=exponent;z.sprinterInitialHeight=h0;
+   z.sprinterSizeChecks=0;
+   if(!prior)asset.calibration={scale:holder.scale.x,exponent};
   }
   z.sprinterVisual=holder;z.sprinterModel=model;z.sprinterBones=bones;
   z.sprinterMixer=mixer;z.sprinterRunAction=action;
@@ -241,6 +225,29 @@ export function createSprinterZombieController(){
   loadedCounts[variant]++;
   return true;
  }
+ const liveBounds=new THREE.Box3(),liveRootScale=new THREE.Vector3();
+ function stabilizeCop(z){
+  if(z.sprinterModelIndex!==0||z.dead||z.knockdown)return;
+  const tick=++z.sprinterSizeChecks;
+  if(![1,3,8,18,40,85].includes(tick))return;
+  const holder=z.sprinterVisual;
+  holder.updateWorldMatrix(true,true);
+  liveBounds.setFromObject(holder,true);
+  const h=liveBounds.max.y-liveBounds.min.y;
+  z.g.getWorldScale(liveRootScale);
+  const goal=1.80*Math.max(.01,Math.abs(liveRootScale.y));
+  if(!Number.isFinite(h)||h<.001||h>=goal*.83&&h<=goal*1.13)return;
+  const exponent=THREE.MathUtils.clamp(z.sprinterScaleExponent||1,.65,2.6);
+  holder.scale.multiplyScalar(THREE.MathUtils.clamp(Math.pow(goal/h,1/exponent),.04,18));
+  holder.updateWorldMatrix(true,true);
+  liveBounds.setFromObject(holder,true);
+  const bottom=new THREE.Vector3(
+   (liveBounds.min.x+liveBounds.max.x)*.5,liveBounds.min.y,
+   (liveBounds.min.z+liveBounds.max.z)*.5);
+  const local=z.g.worldToLocal(bottom);
+  holder.position.x-=local.x;holder.position.z-=local.z;
+  holder.position.y+=.025-local.y;
+ }
  function sync(z,dt){
   if(!z?.sprinterVisual)return;
   if(!z.dead&&!z.knockdown&&z.sprinterMixer){
@@ -253,6 +260,7 @@ export function createSprinterZombieController(){
    z.sprinterRunAction.timeScale=THREE.MathUtils.clamp(speed/2.0,.20,1.40);
    z.sprinterMixer.update(Math.max(0,dt));
    suppressDetached(z);
+   stabilizeCop(z);
   }
   syncHitboxes(z);
  }
