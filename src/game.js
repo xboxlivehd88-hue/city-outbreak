@@ -870,6 +870,25 @@ sprinterZombie.load(index=>{
   sprinterZombie.attach(z,index);
 });
 
+// v645: replacement Infected is the REAL user-uploaded 34-bone Mixamo GLB.
+// It is not the natural crawler, Sprinter, Hazmat, or a rebuilt procedural skin.
+let infectedGlbAsset=null,infectedGlbError=null;
+new GLTFLoader().load("assets/zombie_animated.glb?v=645",gltf=>{
+ const skinned=[];gltf.scene.traverse(o=>{if(o.isSkinnedMesh)skinned.push(o)});
+ if(!skinned.length||!gltf.animations?.length){
+  infectedGlbError="Infected GLB missing real skinned mesh or animation";
+  console.error(infectedGlbError);return;
+ }
+ infectedGlbAsset=gltf;
+ document.documentElement.dataset.infectedGlbStatus="ready";
+ for(const z of zombies)if(!z.dead&&(z.kind==="infected"||z.infectedCrawler))
+  attachInfectedGLB(z);
+},undefined,e=>{
+ infectedGlbError=String(e);document.documentElement.dataset.infectedGlbStatus="error";
+ console.error("CITY OUTBREAK: uploaded Infected GLB failed to load",e);
+});
+
+
 // v399: user-supplied replacement for the common/basic Shambler walkers.
 // The GLB is static, so CITY OUTBREAK builds a measured runtime rig while
 // retaining the approved Shambler stats, AI, spawn weighting and gameplay logic.
@@ -5493,11 +5512,13 @@ function releaseZombieVisual(z){
  if(z.radiatedGreenMixer){try{z.radiatedGreenMixer.stopAllAction()}catch(_){}}
  if(z.naturalCrawlerMixer){try{z.naturalCrawlerMixer.stopAllAction()}catch(_){}}
  if(z.parasiteBossMixer){try{z.parasiteBossMixer.stopAllAction()}catch(_){}}
+ if(z.infectedMixer){try{z.infectedMixer.stopAllAction()}catch(_){}}
  hazmatZombie.release(z);
  if(z.mixer){try{z.mixer.stopAllAction()}catch(_){}}
  z.naturalCrawlerMixer=null;z.naturalCrawlerActions=null;z.naturalCrawlerAction=null;
  z.parasiteBossMixer=null;z.parasiteBossVisual=null;z.parasiteBossModel=null;
  z.naturalCrawlerVisual=null;z.naturalCrawlerBones=null;
+ z.infectedMixer=null;z.infectedAction=null;z.infectedVisual=null;z.infectedBones=null;
  z.radiatedGreenMixer=null;z.mixer=null;z.rigActions=null;z.rigBase=null;z.rigTransient=null;
  if(z.rigMaterials){for(const m of z.rigMaterials){try{m.dispose()}catch(_){}}z.rigMaterials.length=0}
  if(z.ownedGeometries){for(const geo of z.ownedGeometries){try{geo.dispose()}catch(_){}}z.ownedGeometries.length=0}
@@ -6070,6 +6091,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    hitMeshes.push(o)
  });
  zz.hitMeshes=hitMeshes;
+ if(kind==="infected")attachInfectedGLB(zz);
  if(kind==="sprinter")sprinterZombie.attach(zz,zz.sprinterModelIndex);
  if(kind==="radiated")buildRadiatedGreenHitboxes(zz);
  if(kind==="acidic")hazmatZombie.attach(zz);
@@ -6499,6 +6521,8 @@ const bodyPbdParentQ=new THREE.Quaternion(),bodyPbdInvQ=new THREE.Quaternion(),b
 
 function bodyPbdRig(z){
  // Native weighted Hazmat bones receive unpowered corpse and knockdown physics.
+ if(z?.infectedVisual&&z.infectedBones?.size>=15)
+  return{holder:z.infectedVisual,bones:z.infectedBones,kind:"infected"};
  if(z?.hazmatVisual&&z.hazmatBones?.size>=16)
   return{holder:z.hazmatVisual,bones:z.hazmatBones,kind:"hazmat"};
  if(z?.sprinterVisual&&z.sprinterBones?.size>=16)
@@ -6733,7 +6757,10 @@ function hideRigLimb(z,name){
  const sprinterBone=z.sprinterBones?.get(name);
  if(sprinterBone){sprinterBone.scale.setScalar(.00001);sprinterBone.updateMatrixWorld(true)}
  const infectedBone=z.infectedBones?.get(name);
- if(infectedBone){infectedBone.scale.setScalar(.00001);infectedBone.updateMatrixWorld(true)}
+ // New Mixamo skin: clip actual weighted limb triangles, never collapse the
+ // source upper leg bone (which would pinch pelvis/abdomen into a small ball).
+ if(infectedBone&&z.infectedVisual)clipInfectedGLBLimbs(z);
+ else if(infectedBone){infectedBone.scale.setScalar(.00001);infectedBone.updateMatrixWorld(true)}
  const b=rigBone(z,name);
  if(b){b.scale.set(.001,.001,.001);b.updateMatrixWorld(true)}
  const gb=z.radiatedGreenBones?.get(name);
@@ -7160,8 +7187,165 @@ const infectedCrawlHip=new THREE.Vector3(),infectedCrawlChest=new THREE.Vector3(
  infectedCrawlWrist=new THREE.Vector3(),infectedCrawlFlat=new THREE.Vector3(),
  infectedCrawlGoal=new THREE.Vector3(),infectedCrawlAxis=new THREE.Vector3(),
  infectedCrawlBend=new THREE.Vector3(),infectedCrawlElbowTarget=new THREE.Vector3();
+// v645: native Infected Mixamo GLB mapping. Preserve the uploaded mesh, source
+// texture, skeleton and character both standing and legless.
+const INFECTED_GLB_KEYS={
+ Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
+ L_UpperArm:"leftarm",L_LowerArm:"leftforearm",L_Hand:"lefthand",
+ R_UpperArm:"rightarm",R_LowerArm:"rightforearm",R_Hand:"righthand",
+ L_UpperLeg:"leftupleg",L_LowerLeg:"leftleg",L_Foot:"leftfoot",
+ R_UpperLeg:"rightupleg",R_LowerLeg:"rightleg",R_Foot:"rightfoot"
+};
+const infectedGlbQ=new THREE.Quaternion(),infectedGlbAxis=new THREE.Vector3(),
+ infectedGlbParentQ=new THREE.Quaternion(),infectedGlbDir=new THREE.Vector3(),
+ infectedGlbBoneRestX=new THREE.Quaternion(),infectedGlbTmp=new THREE.Vector3();
+function infectedGlbBoneLabel(n){
+ return (n||"").toLowerCase().replace(/^mixamorig[:_]?/,"").replace(/_[0-9]+$/,"");
+}
+function clipInfectedGLBLimbs(z){
+ if(!z.infectedVisual||!z.infectedBones)return null;
+ const detachedKeys=[];
+ for(const [side,word] of [["L","left"],["R","right"]]){
+  if(z[word+"LegDetached"])detachedKeys.push(side+"_UpperLeg",side+"_LowerLeg",side+"_Foot");
+  if(z[word+"ArmDetached"])detachedKeys.push(side+"_UpperArm",side+"_LowerArm",side+"_Hand");
+ }
+ if(!detachedKeys.length)return null;
+ const removedBones=new Set(detachedKeys.map(key=>z.infectedBones.get(key)).filter(Boolean));
+ let changed=0,removed=0;
+ z.infectedVisual.traverse(mesh=>{
+  if(!mesh.isSkinnedMesh||!mesh.skeleton)return;
+  const base=mesh.userData.infectedBaseGeometry||mesh.geometry;
+  mesh.userData.infectedBaseGeometry=base;
+  const skin=base.getAttribute("skinIndex"),weights=base.getAttribute("skinWeight"),
+    pos=base.getAttribute("position");
+  if(!skin||!weights||!pos)return;
+  const boneIndices=new Set();
+  mesh.skeleton.bones.forEach((bone,i)=>{if(removedBones.has(bone))boneIndices.add(i)});
+  if(!boneIndices.size)return;
+  const legWeight=new Float32Array(pos.count);
+  for(let i=0;i<pos.count;i++){
+   let total=0;
+   for(let k=0;k<Math.min(4,skin.itemSize,weights.itemSize);k++)
+    if(boneIndices.has(skin.getComponent(i,k)))total+=weights.getComponent(i,k);
+   legWeight[i]=total;
+  }
+  const index=base.index,count=index?.count||pos.count,read=i=>index?index.getX(i):i;
+  const groups=base.groups?.length?base.groups:[{start:0,count,materialIndex:0}];
+  const indices=[],outGroups=[];let clipped=0;
+  for(const group of groups){
+   const first=indices.length,stop=Math.min(count,group.start+group.count);
+   for(let i=group.start;i+2<stop;i+=3){
+    const a=read(i),b=read(i+1),d=read(i+2),
+     wa=legWeight[a],wb=legWeight[b],wd=legWeight[d];
+    if(Number(wa>.55)+Number(wb>.55)+Number(wd>.55)>=2||(wa+wb+wd)/3>.72){
+     clipped++;continue;
+    }
+    indices.push(a,b,d);
+   }
+   if(indices.length>first)outGroups.push({start:first,count:indices.length-first,materialIndex:group.materialIndex||0});
+  }
+  if(!clipped||indices.length<12)return;
+  const copy=base.clone();copy.setIndex(indices);copy.clearGroups();
+  for(const group of outGroups)copy.addGroup(group.start,group.count,group.materialIndex);
+  mesh.geometry=copy;z.ownedGeometries?.push(copy);
+  changed++;removed+=clipped;
+ });
+ return{changed,removed};
+}
+function attachInfectedGLB(z){
+ if(!infectedGlbAsset||!z||z.dead||z.infectedVisual||
+    (z.kind!=="infected"&&!z.infectedCrawler))return false;
+ const model=SkeletonUtils.clone(infectedGlbAsset.scene);
+ const lookup=new Map(),bones=new Map(),rest=new Map();
+ model.traverse(o=>{
+  if(o.isBone)lookup.set(infectedGlbBoneLabel(o.name),o);
+  if(!o.isMesh)return;
+  o.castShadow=false;o.receiveShadow=false;o.frustumCulled=false;
+  o.userData.visualOnly=true;o.raycast=()=>{};
+ });
+ for(const [key,name] of Object.entries(INFECTED_GLB_KEYS)){
+  const bone=lookup.get(name);if(bone){bones.set(key,bone);rest.set(key,bone.quaternion.clone())}
+ }
+ if(bones.size<15){
+  console.error("CITY OUTBREAK: Infected GLB's 34-joint anatomy couldn't be mapped",bones.size);
+  return false;
+ }
+ model.updateWorldMatrix(true,true);
+ const bounds=new THREE.Box3().setFromObject(model,true),height=bounds.max.y-bounds.min.y;
+ if(!Number.isFinite(height)||height<.3||height>800)return false;
+ const holder=new THREE.Group();holder.name="OriginalInfectedZombieGLB_v645";
+ holder.rotation.y=Math.PI;holder.scale.setScalar(THREE.MathUtils.clamp(1.80/height,.004,10));
+ model.position.y-=bounds.min.y;
+ model.position.x-=(bounds.min.x+bounds.max.x)*.5;
+ model.position.z-=(bounds.min.z+bounds.max.z)*.5;
+ holder.add(model);z.g.add(holder);
+ // Hide ONLY the replaced shared rig's render meshes, leaving zombie physics,
+ // old hitbox deactivation, source ragdoll and damage state alive.
+ z.rigVisual?.traverse(o=>{if(o.isMesh){
+  o.visible=false;o.castShadow=false;o.receiveShadow=false;o.raycast=()=>{};
+ }});
+ z.infectedVisual=holder;z.infectedModel=model;z.infectedBones=bones;
+ z.infectedRest=rest;z.infectedHolderStart=holder.position.clone();
+ z.infectedGLBSource="assets/zombie_animated.glb";
+ // The one authored "jad" clip is an agonizing upper-body performance,
+ // not locomotion; lightly preserve its REAL neck/head rotation while our
+ // measured locomotion moves genuine hips, knees, elbows and hands.
+ const partial=infectedGlbAsset.animations[0].clone();
+ partial.tracks=partial.tracks.filter(t=>/\.quaternion$/.test(t.name)&&
+   /head|neck/i.test(t.name));
+ if(partial.tracks.length){
+  z.infectedMixer=new THREE.AnimationMixer(model);
+  z.infectedAction=z.infectedMixer.clipAction(partial);
+  z.infectedAction.setLoop(THREE.LoopRepeat,Infinity);
+  z.infectedAction.setEffectiveWeight(.35).play();
+ }
+ if(z.infectedCrawler){
+  z.crawlerUpperVisual=holder;z.crawlerUpperBones=bones;
+  z.crawlerUpperPose=captureCrawlerUpperPose(holder,bones,"infected");
+  z.infectedCrawlerSkinReady=false;
+  clipInfectedGLBLimbs(z);
+  if(z.infectedCrawlerHits?.length)for(const mesh of z.infectedCrawlerHits)mesh.raycast=()=>{};
+  z.infectedCrawlerHits=null;
+  poseOriginalInfectedCrawler(z);
+ }
+ makeOriginalInfectedCrawlerTargets(z,bones);
+ document.documentElement.dataset.infectedGlbAttached=
+  String(Number(document.documentElement.dataset.infectedGlbAttached||0)+1);
+ return true;
+}
+function syncInfectedGLB(z,dt){
+ if(!z?.infectedVisual||z.dead||z.infectedCrawler)return;
+ if(z.infectedMixer)z.infectedMixer.update(dt);
+ const bones=z.infectedBones,rest=z.infectedRest,phase=z.phase||0;
+ const step=Math.sin(phase),other=-step;
+ // The authored clip is agonizing, not a run clip. Animate this SAME genuine
+ // Mixamo skin in place: alternating hip/knee flex plus opposing arm swings.
+ const setRot=(key,x,y=0,zAngle=0)=>{
+  const b=bones.get(key),q=rest.get(key);if(!b||!q)return;
+  b.quaternion.copy(q).multiply(infectedGlbQ.setFromEuler(new THREE.Euler(x,y,zAngle,"XYZ")));
+ };
+ setRot("L_UpperLeg",step*.46);setRot("R_UpperLeg",other*.46);
+ setRot("L_LowerLeg",-Math.max(0,-step)*.70-.07);
+ setRot("R_LowerLeg",-Math.max(0,step)*.70-.07);
+ setRot("L_Foot",Math.max(0,-step)*.25);
+ setRot("R_Foot",Math.max(0,step)*.25);
+ setRot("L_UpperArm",-.18-other*.29);
+ setRot("R_UpperArm",-.18-step*.29);
+ setRot("L_LowerArm",-.30-Math.max(0,step)*.20);
+ setRot("R_LowerArm",-.30-Math.max(0,other)*.20);
+ // Keep baked animation's real head/neck distress while standing.
+ z.infectedVisual.updateWorldMatrix(true,true);
+}
+
 function preserveOriginalInfectedLeglessSkin(z){
  if(z.infectedCrawlerSkinReady)return true;
+ if(z.infectedVisual){
+  const audit=clipInfectedGLBLimbs(z);
+  if(!audit||!audit.changed)return false;
+  z.infectedCrawlerSkinReady=true;
+  z.infectedCrawlerSkinAudit=audit;
+  return true;
+ }
  const visual=z.infectedVisual||z.rigVisual;
  if(!visual)return false;
  const results=[];let removed=0,changed=0;
@@ -7310,10 +7494,13 @@ function makeOriginalInfectedCrawlerTargets(z,bones){
  const defs=[["Head","head",.25],["Neck","torso",.20],["Chest","torso",.36],
   ["Spine","torso",.34],["Hips","torso",.36],
   ["L_UpperArm","leftArm",.25],["L_LowerArm","leftArm",.23],["L_Hand","leftArm",.18],
-  ["R_UpperArm","rightArm",.25],["R_LowerArm","rightArm",.23],["R_Hand","rightArm",.18]];
+  ["R_UpperArm","rightArm",.25],["R_LowerArm","rightArm",.23],["R_Hand","rightArm",.18],
+  ["L_UpperLeg","leftLeg",.24],["R_UpperLeg","rightLeg",.24],
+  ["L_LowerLeg","leftLeg",.20],["R_LowerLeg","rightLeg",.20]];
  const hits=[];
  for(const [key,part,radius] of defs){
   const bone=bones.get(key);if(!bone)continue;
+  if((part==="leftLeg"&&z.leftLegDetached)||(part==="rightLeg"&&z.rightLegDetached))continue;
   bone.updateWorldMatrix(true,false);
   const scale=bone.getWorldScale(new THREE.Vector3());
   const mesh=new THREE.Mesh(geo,mat);
@@ -8754,6 +8941,7 @@ if(z.mixer&&!z.infectedCrawler){
  z.mixer.update(dt);
  applyRigLocomotionPolish(z,huntRun,dt);
 }
+if(z.infectedVisual&&!z.infectedCrawler)syncInfectedGLB(z,dt);
 z.groan-=dt;z.step-=dt;z.surgeT-=dt;z.pauseClock-=dt;
 let animRate=0;
 if(z.pauseClock<=0){z.pauseClock=1.1+rnd()*3.2;if(rnd()<.22)z.stagger=Math.max(z.stagger,.10+rnd()*.12)}
