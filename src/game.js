@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v645 verification trigger: loader now matches browser regressions (?v=645) on main.
+// v646 verified Infected GLB: fresh module and asset cache URLs; v645 gameplay unchanged.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -874,7 +874,7 @@ sprinterZombie.load(index=>{
 // v645: replacement Infected is the REAL user-uploaded 34-bone Mixamo GLB.
 // It is not the natural crawler, Sprinter, Hazmat, or a rebuilt procedural skin.
 let infectedGlbAsset=null,infectedGlbError=null;
-new GLTFLoader().load("assets/zombie_animated.glb?v=645",gltf=>{
+new GLTFLoader().load("assets/zombie_animated.glb?v=646",gltf=>{
  const skinned=[];gltf.scene.traverse(o=>{if(o.isSkinnedMesh)skinned.push(o)});
  if(!skinned.length||!gltf.animations?.length){
   infectedGlbError="Infected GLB missing real skinned mesh or animation";
