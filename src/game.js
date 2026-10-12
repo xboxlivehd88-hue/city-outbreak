@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
-import {createHazmatZombieController} from "./hazmat-zombie.js?v=606";
+import {createHazmatZombieController} from "./hazmat-zombie.js?v=607";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
@@ -51,8 +51,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v606";
-document.documentElement.dataset.cityOutbreakBuild="606";
+document.title="CITY OUTBREAK — v607";
+document.documentElement.dataset.cityOutbreakBuild="607";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -5804,10 +5804,11 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(i%2===1){gash=box(.085,.135,.012,torsoPatch,-.065,1.39,-.132,g);gash.rotation.z=.16}
  if(i%4===0){chestPatch=box(.095,.13,.012,torsoPatch,.075,1.48,-.134,g);chestPatch.rotation.z=-.12}
 
+ // v607: NEVER construct the red Acidic contamination volume around Hazmats.
+ // Radiated zombies still retain their approved green glow.
  let hazardMist=null;
- if(kind==="radiated"||kind==="acidic"){
-   const mc=kind==="radiated"?0x38ff59:0xb81616;
-   hazardMist=new THREE.Mesh(new THREE.SphereGeometry(.38,8,6),new THREE.MeshBasicMaterial({color:mc,transparent:true,opacity:kind==="radiated"?.09:.13,depthWrite:false}));
+ if(kind==="radiated"){
+   hazardMist=new THREE.Mesh(new THREE.SphereGeometry(.38,8,6),new THREE.MeshBasicMaterial({color:0x38ff59,transparent:true,opacity:.09,depthWrite:false}));
    hazardMist.scale.set(1.0,1.55,1.0);hazardMist.position.y=1.02;g.add(hazardMist);
  }
  const ownedMaterials=[eyeMat];

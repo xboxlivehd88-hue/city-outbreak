@@ -1,11 +1,11 @@
 // CITY OUTBREAK v599: original uploaded 53-bone animated Hazmat GLB, ONLY for Acidic zombies.
-// Keeps original helmet, suit, face, textures, animation, root game AI/physics and red mist.
+// Keeps original helmet, suit, face, textures, animation, and game AI/physics; no red mist.
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 export function createHazmatZombieController(){
   let source=null,loadingError=null,attached=0,attachDebug=null;
-  const url="assets/zombie_hazmat.glb?v=606";
+  const url="assets/zombie_hazmat.glb?v=607";
   const clipsRequired=["Zombie_Idle","Zombie_Walk_Root","Zombie_Skill"];
   function load(onReady){
     new GLTFLoader().load(url,gltf=>{
@@ -83,7 +83,7 @@ export function createHazmatZombieController(){
   function freeze(z){if(z?.hazmatMixer)z.hazmatMixer.timeScale=0}
   function crawl(z){
    if(!z?.hazmatVisual||z.dead)return false;
-   // KEEP the same textured/skinned Hazmat zombie and red mist; don't
+   // KEEP the same textured/skinned Hazmat zombie; don't
    // create the game's generic crawler or discard this Mixamo skeleton.
    z.kind="crawler";z.nightmareType="crawler";z.hazmatCrawler=true;
    z.speed*=.82;z.legDamage=0;
@@ -151,17 +151,20 @@ export function createHazmatZombieController(){
     z.hazmatSourceHeight=height;z.hazmatBones=bones;
     z.hazmatStrideDistance=source.walkStride*holder.scale.x*z.g.scale.x;
     z.hazmatLastX=z.g.position.x;z.hazmatLastZ=z.g.position.z;
-    // Hide old rig and legacy clothes. Retain original hidden gameplay collider,
-    // old ragdoll physics, and ONLY the existing red contamination mist.
+    // Hide old rig/legacy clothes while preserving the original game collider and physics.
+    // v607: even an old pre-attach Acidic mist must be physically removed, never re-enabled.
     if(z.rigVisual)z.rigVisual.traverse(o=>{if(o.isMesh)o.visible=false});
-    else z.g.traverse(o=>{if(o.isMesh&&o!==z.hazardMist&&!o.userData.visualOnly)o.visible=false});
-    if(z.hazardMist)z.hazardMist.visible=true;
+    else z.g.traverse(o=>{if(o.isMesh&&!o.userData.visualOnly)o.visible=false});
+    if(z.hazardMist){
+      z.hazardMist.visible=false;z.g.remove(z.hazardMist);z.hazardMist=null;
+    }
     document.documentElement.dataset.hazmatAttached=String(++attached);
     console.log("CITY OUTBREAK v600: native Hazmat visual attached",
       {originalHeight:height,scale:holder.scale.x,skinned});
     return true;
   }
   function sync(z,dt){
+    if(z?.hazardMist)z.hazardMist.visible=false; // defense against any stale Acidic FX
     if(!z?.hazmatMixer||z.dead)return;
     if(z.knockdown?.bodyPbd?.holder===z.hazmatVisual)return;
     if(z.hazmatMixer.timeScale===0)z.hazmatMixer.timeScale=1;

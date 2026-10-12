@@ -1,3 +1,13 @@
+# v607 — REMOVE ACIDIC HAZMAT RED AURA COMPLETELY — 2026-10-11
+
+- USER: "we need to completely remove the red" and provided `2026-10-11 21-23-51.mp4` on v606 (v602-restored Hazmats). Video shows translucent red contamination spheres still surrounding zombies. This request explicitly supersedes the historical v606 note prohibiting red mist removal.
+- **Root fix**: Acidic zombies no longer instantiate or attach any red `hazardMist` mesh; only Radiated zombies create the unchanged GREEN haze. On Hazmat attach, defensively detach/disable a stale mist if present; no re-enable on frame sync. Don't use a colorless/transparent copy of the red volume—it is absent.
+- **Preserve approved v602 baseline**: the original imported Hazmat GLB skin, original suit/helmet colors and textures, 53-bone skeleton, `Zombie_Walk_Root` walking/arms, gait calibration, deaths, original limb-loss and forward-leaning native crawler, Acidic health/damage, Wave 1 test group, boss rotation, grenades, graphics, and protected recovery v324 unchanged. This specifically removes the red effect AROUND the zombies rather than recoloring the user's approved model.
+- **Regression QA**: v607 Hazmat Chromium script now checks every living Hazmat has **zero hazard mist objects** and **zero visible red mists**, plus prior 10 originals, intact textured skin, native animation, PBD ragdoll, leg amputations, forward crawler, hitboxes and grenades. v607 Parasite/19-boss smoke remains in place. Await v607 CI and Pages verification.
+- Loader `./src/game.js?v=607`, native Hazmat asset `?v=607`; playable `https://xboxlivehd88-hue.github.io/city-outbreak/?v=607-hazmat-no-red`. **Protected v324 checkpoint not modified.**
+
+---
+
 # v606 — VERIFIED EXACT v602 HAZMAT RESTORE — 2026-10-11
 
 - User explicitly said **"can we bring thes guys back to v602"**, with screenshot of v602 Pages. The original Hazmat model/AI/animation/appearance and native death/crawler behavior have been restored from actual v602 commit `2ffd5ca614056a79cc7a531ece2f8be7f3c0cd61`, only the version/cache marker changed to **606**. Do NOT reintroduce v603–v605 animated `Run` retarget, altered/fabricated arm swing, or the later v604–v605 red mist removal without fresh user approval.
