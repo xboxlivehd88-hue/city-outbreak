@@ -1,3 +1,12 @@
+# v613 VERIFIED — BOTH ANIMATED SPRINTER GLBS IN GAME — 2026-10-12
+
+- **Chromium gameplay PASS:** [run 38205646080](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38205646080) confirms BOTH original user-uploaded Sprinters render, with original texture-mapped skinned geometry, 66 source joints / 17 game-mapped joints each, actual animated L/R knees, and 11 native anatomy-driven hitboxes each. Cop real-world visual height **2.0493**, grounded within **0.029**, source `Animation` 58 tracks; Maniac height **1.7305**, grounded within **0.018**, original `mixamo.com` Run 72 tracks. Each has its genuine 2.0667s / 1.60s original clips, with 50/50 deterministic alternation on natural Sprinter spawns. No JavaScript page errors.
+- In SAME browser regression, shooting/death triggers **native skinned Sprinter PBD ragdoll** with 0.8884 world-unit visual travel (not frozen); detaching one real leg hides its original weighted native bone and creates **zero generic limb parts**; detaching both retains the SAME original Sprinter GLB as a forward-moving converted crawler with 17 native mapped bones, true leg removal, and the existing crawler hitboxes.
+- **Hazmat + Green Guy regression PASS:** [run 38205646096](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38205646096). **Parasite/19-boss rotation PASS:** [run 38205646213](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38205646213). **GitHub Pages deployment PASS:** [run 38205645704](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38205645704).
+- Stable build is **v613** at `./src/game.js?v=613`; playable `https://xboxlivehd88-hue.github.io/city-outbreak/?v=613-two-sprinters-calibrated`. Wave 1 remains the user-approved temporary 10 Hazmat testing group; Sprinters naturally appear from Wave 2+. No changes to Green Guy/Hazmat aura removal, 19-boss rotation, map, weapons, performance controls or protected recovery **v324**. Await user's visual approval/adjustments, DO NOT add arbitrary retargets or visuals.
+
+---
+
 # v613 — CALIBRATE COP SPRINTER SKINNED MESH AT ITS ACTUAL LIVE SIZE — 2026-10-12
 
 - v612 REAL Chromium tests: both user's original GLBs loaded and BOTH attach with original textures, full 66-joint skins, 17 named runtime anatomical bones and recorded running animation (Cop `Animation` 58 tracks; Maniac `mixamo.com` 72 tracks). Original Cop's native left/right hips/knees rotated naturally (left 0.55/0.35rad, right 0.69/0.23rad). Maniac keeps approved native run and 1.73 world-unit height.
