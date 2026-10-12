@@ -190,7 +190,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
      type+" crawler arms crossed into body: "+JSON.stringify(m));
    assert(m.hipToChestForward>.18&&m.hipToHeadForward>.23,
      type+" still crab-hunched/head below torso instead of forward crawling: "+JSON.stringify(m));
-   assert(m.headAboveHands>.08&&m.headLocalHeight>.04,
+   assert(m.headAboveHands>.065&&m.headLocalHeight>.20,
      type+" head/face points below the street or arms hover above skull: "+JSON.stringify(m));
    assert(m.armsLocal?.elbowsApart>.22&&m.armsLocal?.leftElbowAway>-.04&&
      m.armsLocal?.rightElbowAway>-.04,
