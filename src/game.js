@@ -1,4 +1,5 @@
 import * as THREE from "three";
+// v645 verification trigger: loader now matches browser regressions (?v=645) on main.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
