@@ -5408,6 +5408,12 @@ function attachRiggedZombie(z,g,kind,variant=0){
  z.rigPolishPhase=(variant%4)*1.37;z.rigRunBlend=(kind==="sprinter"||kind==="infected"||kind==="acidic")?1:0;
  z.rigLastMoveX=g.position.x;z.rigLastMoveZ=g.position.z;
  const hips=rig.getObjectByName("Hips");z.rigHipsBaseY=hips?hips.position.y:.9;
+ if(kind==="infected"){
+  // v641: amputated original model joints must restore their actual bind
+  // scales after the leg-only triangles are removed.
+  z.infectedOriginalThighScales=new Map(["L_UpperLeg","R_UpperLeg"]
+   .map(k=>[k,rig.getObjectByName(k)?.scale.clone()]).filter(([,v])=>!!v));
+ }
  return true;
 }
 function applyRigLocomotionPolish(z,wantsRun,dt){
@@ -7142,10 +7148,109 @@ function applyCrawlerIdentity(crawler,id){
 // v640 — Infected crawlers never swap to the procedural generic zombie.
 // The original skinned character remains attached to the SAME living actor;
 // when an Infected GLB is installed it can use infectedVisual/infectedBones.
+// v641: original skinned Infected keeps its torso, head and both hands in
+// the converted crawler. The amputated leg SKIN is clipped; bone scaling
+// no longer crushes the pelvis and shirt into a tiny ball.
 const infectedCrawlHip=new THREE.Vector3(),infectedCrawlChest=new THREE.Vector3(),
- infectedCrawlQ=new THREE.Quaternion(),infectedCrawlParentQ=new THREE.Quaternion(),
- infectedCrawlWorldQ=new THREE.Quaternion(),infectedCrawlDir=new THREE.Vector3(),
- infectedCrawlTarget=new THREE.Vector3(0,.16,-.70).normalize();
+ infectedCrawlHead=new THREE.Vector3(),infectedCrawlQ=new THREE.Quaternion(),
+ infectedCrawlParentQ=new THREE.Quaternion(),infectedCrawlWorldQ=new THREE.Quaternion(),
+ infectedCrawlDir=new THREE.Vector3(),infectedCrawlAim=new THREE.Vector3(),
+ infectedCrawlTarget=new THREE.Vector3(0,.23,-1).normalize(),
+ infectedCrawlShoulder=new THREE.Vector3(),infectedCrawlElbow=new THREE.Vector3(),
+ infectedCrawlWrist=new THREE.Vector3(),infectedCrawlFlat=new THREE.Vector3();
+function preserveOriginalInfectedLeglessSkin(z){
+ if(z.infectedCrawlerSkinReady)return true;
+ const visual=z.infectedVisual||z.rigVisual;
+ if(!visual)return false;
+ const results=[];let removed=0,changed=0;
+ visual.traverse(mesh=>{
+  if(!mesh.isSkinnedMesh||!mesh.geometry||!mesh.skeleton)return;
+  const geo=mesh.geometry,idx=geo.getAttribute("skinIndex"),
+   weight=geo.getAttribute("skinWeight"),pos=geo.getAttribute("position");
+  if(!idx||!weight||!pos)return;
+  const legIndices=new Set();
+  mesh.skeleton.bones.forEach((bone,i)=>{
+   if(/^[LR]_(UpperLeg|LowerLeg|Foot)$/.test(bone.name))legIndices.add(i);
+  });
+  if(legIndices.size<2)return;
+  const legWeights=new Float32Array(pos.count);
+  for(let i=0;i<pos.count;i++){
+   let w=0;
+   for(let c=0;c<4;c++)if(legIndices.has(idx.getComponent(i,c)))w+=weight.getComponent(i,c);
+   legWeights[i]=w;
+  }
+  const indices=geo.index;
+  const count=indices?.count||pos.count,read=i=>indices?indices.getX(i):i;
+  const originalGroups=geo.groups?.length?geo.groups:[{start:0,count,materialIndex:0}];
+  const out=[],groups=[];let deleted=0;
+  for(const group of originalGroups){
+   const start=out.length,limit=Math.min(count,group.start+group.count);
+   for(let i=group.start;i+2<limit;i+=3){
+    const va=read(i),vb=read(i+1),vc=read(i+2);
+    const wa=legWeights[va],wb=legWeights[vb],wc=legWeights[vc];
+    if((wa>.55)+(wb>.55)+(wc>.55)>=2||(wa+wb+wc)/3>.72){deleted++;continue}
+    out.push(va,vb,vc);
+   }
+   if(out.length>start)groups.push({start,count:out.length-start,materialIndex:group.materialIndex||0});
+  }
+  if(deleted<6||out.length<12)return;
+  const clipped=geo.clone();clipped.setIndex(out);clipped.clearGroups();
+  for(const group of groups)clipped.addGroup(group.start,group.count,group.materialIndex);
+  mesh.geometry=clipped;
+  z.ownedGeometries?.push(clipped);
+  removed+=deleted;changed++;
+  results.push({name:mesh.name,removed:deleted,remaining:out.length/3});
+ });
+ if(changed===0)return false;
+ // Restore the source-rig calibration rather than setting 1 on a profiled
+ // skeleton; keep the true pelvis/shirt weights intact at the ripped seams.
+ for(const key of ["L_UpperLeg","R_UpperLeg"]){
+  const bone=visual.getObjectByName(key);
+  if(!bone)continue;
+  bone.scale.copy(z.infectedOriginalThighScales?.get(key)||new THREE.Vector3(1,1,1));
+  bone.updateWorldMatrix(true,true);
+ }
+ z.infectedCrawlerSkinReady=true;
+ z.infectedCrawlerSkinAudit={changed,removed,meshes:results};
+ return true;
+}
+function aimInfectedCrawlerArm(z,bones,side,phase){
+ const p=side<0?"L":"R",upper=bones.get(p+"_UpperArm"),
+  lower=bones.get(p+"_LowerArm"),hand=bones.get(p+"_Hand");
+ if(!upper||!lower||!hand||!upper.parent||!lower.parent)return;
+ const setSegment=(bone,child,aim)=>{
+  if(child.position.lengthSq()<1e-7)return;
+  bone.parent.getWorldQuaternion(infectedCrawlParentQ);
+  infectedCrawlAim.copy(aim).applyQuaternion(infectedCrawlParentQ.invert()).normalize();
+  bone.quaternion.setFromUnitVectors(infectedCrawlDir.copy(child.position).normalize(),infectedCrawlAim);
+ };
+ z.g.getWorldQuaternion(infectedCrawlWorldQ);
+ upper.getWorldPosition(infectedCrawlShoulder);
+ lower.getWorldPosition(infectedCrawlElbow);
+ hand.getWorldPosition(infectedCrawlWrist);
+ const upperLength=infectedCrawlShoulder.distanceTo(infectedCrawlElbow);
+ const lowerLength=infectedCrawlElbow.distanceTo(infectedCrawlWrist);
+ if(upperLength<.02||lowerLength<.02)return;
+ const step=Math.sin(phase)*.018,ground=z.g.position.y;
+ const elbowY=THREE.MathUtils.clamp(
+  ground+.16-infectedCrawlShoulder.y,-upperLength*.86,upperLength*.76);
+ infectedCrawlFlat.set(side*.70,0,-.75+step).normalize()
+  .applyQuaternion(infectedCrawlWorldQ);
+ infectedCrawlFlat.y=0;infectedCrawlFlat.normalize()
+  .multiplyScalar(Math.sqrt(Math.max(0,1-(elbowY/upperLength)**2)));
+ infectedCrawlFlat.y=elbowY/upperLength;
+ setSegment(upper,lower,infectedCrawlFlat);
+ upper.updateWorldMatrix(true,true);
+ lower.getWorldPosition(infectedCrawlElbow);
+ const wristY=THREE.MathUtils.clamp(
+  ground+.075+step-infectedCrawlElbow.y,-lowerLength*.88,lowerLength*.82);
+ infectedCrawlFlat.set(side*.27,0,-1).normalize().applyQuaternion(infectedCrawlWorldQ);
+ infectedCrawlFlat.y=0;infectedCrawlFlat.normalize()
+  .multiplyScalar(Math.sqrt(Math.max(0,1-(wristY/lowerLength)**2)));
+ infectedCrawlFlat.y=wristY/lowerLength;
+ setSegment(lower,hand,infectedCrawlFlat);
+ lower.updateWorldMatrix(true,true);
+}
 function originalInfectedBones(z,holder){
  if(z.infectedBones?.size)return z.infectedBones;
  const bones=new Map();
@@ -7211,11 +7316,12 @@ function poseOriginalInfectedCrawler(z){
  }
  holder.updateWorldMatrix(true,true);
  const neck=bones.get("Neck"),head=bones.get("Head");
- if(neck)neck.rotateX(-.12);
- if(head)head.rotateX(-.10);
- // The original shoulder/forearm chains, not generic crawler limbs, support it.
- aimSprinterCrawlerArm(z,bones,-1,z.phase||0);
- aimSprinterCrawlerArm(z,bones,1,(z.phase||0)+Math.PI);
+ if(neck)neck.rotateX(-.055);
+ if(head)head.rotateX(-.06);
+ // Shoulder/elbow/wrist targets belong to the Infected's ORIGINAL rig.
+ // The Sprinter GLB arm basis drove these arms into the belly in v640.
+ aimInfectedCrawlerArm(z,bones,-1,z.phase||0);
+ aimInfectedCrawlerArm(z,bones,1,(z.phase||0)+Math.PI);
  holder.updateWorldMatrix(true,true); // raycasts see this frame's positions
 }
 function turnInfectedCrawlerWithoutSwap(z){
@@ -7231,7 +7337,9 @@ function turnInfectedCrawlerWithoutSwap(z){
  z.navForceRepath=true;z.navCheckT=0;z.think=0;
  if(z.mixer)z.mixer.timeScale=0;
  if(z.infectedMixer)z.infectedMixer.timeScale=0;
- for(const key of ["L_UpperLeg","R_UpperLeg"]){const b=bones.get(key);if(b)b.scale.setScalar(.00001)}
+ // Leg triangles must be removed WITHOUT collapsing weighted pelvis/shirt.
+ // The existing rig remains the same source visual and same living actor.
+ preserveOriginalInfectedLeglessSkin(z);
  poseOriginalInfectedCrawler(z);
  makeOriginalInfectedCrawlerTargets(z,bones);
  return true;

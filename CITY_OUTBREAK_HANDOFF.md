@@ -1,3 +1,13 @@
+# v641 — REPAIR INFECTED ORIGINAL-SKIN CRAWLER POSTURE — 2026-10-12
+
+- User screenshot of v640 confirms the Infected retains its own model on dual-leg amputation but folds into a tiny inverted compact body instead of dragging itself; despite prior v640 identity/headshot-only Chromium smoke passing. User specifically does NOT want a generic crawler swap, and still wants only Infected spawning on normal Wave 1 before supplying a replacement GLB.
+- Root issue: v640 `hideRigLimb` scaled both original shared-rig upper thigh bones to ~0.001, collapsing weighted pelvis/shirt/hip skin triangles into a point. On top of this it reused the Cop/Maniac GLB arm solve instead of using the Infected's own segment lengths/hand contact. Preserve identity, original materials and same living actor.
+- **v641 targeted code:** on Infected's conversion ONLY, clip skinned leg triangles from the original source geometry based on actual thigh/calf/foot weights, handling multi-material groups; restore the exact pre-amputation rig leg bone scales from the original infected rig profile, retaining weighted pelvis and intact torso triangles. New Infected-specific original-skeleton elbow/wrist support follows animated shoulder/forearm lengths, targeting elbows ~.16m and wrists ~.075m above pavement, rather than pointing arms through the abdomen. Keep pelvis ~.095m near pavement and torso ahead, preserve original rig, no generic zombie geometry, movement/combat, original Sprinter/Hazmat/other models untouched.
+- **QA:** parasite regression now records original infected preserved-model geometry, leg triangle removals, original Hip/Chest/Head actual ground heights, forward crawl extension, hand separation and near-ground wrist contact, as well as original actor/ray hitboxes and normal Wave-10 boss rotation. Continue independent opt-in Sprinter and Hazmat browser regression with current loader. Do NOT declare PASS until Chromium, Pages deployment and user visual check; these newly strict silhouette assertions may expose another bone-axis issue requiring correction.
+- Loader `./src/game.js?v=641`; existing Sprinter controller `?v=638` unchanged; original GLB assets unchanged; protected recovery v324 unchanged. Test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=641-infected-crawl-posture
+
+---
+
 # v640 — PRESERVE ORIGINAL INFECTED MODEL ON BOTH-LEG LOSS — 2026-10-12
 
 - User requested **before importing a replacement Infected GLB** that amputating both legs must NOT switch the zombie to a generic crawler. New model should remain the SAME visible identity in a crawl, exactly like the original sprinters. User also asked for Wave 1 Infected-only; v639 already did that, retain it.
