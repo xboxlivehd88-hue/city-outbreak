@@ -52,8 +52,8 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v620";
-document.documentElement.dataset.cityOutbreakBuild="620";
+document.title="CITY OUTBREAK — v621";
+document.documentElement.dataset.cityOutbreakBuild="621";
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
@@ -6814,8 +6814,16 @@ function transferCrawlerUpperVisual(source,crawler){
    crawler.walkerVisual=holder;crawler.walkerBones=bones;crawler.walkerModel=source.walkerModel;crawler.walkerSourceHeight=source.walkerSourceHeight;
    source.walkerVisual=null;source.walkerModel=null;source.walkerBones=null;
  }else if(type==="sprinter"){
+   // Freeze the SAME imported 66-bone animation in place during conversion.
+   // Transfer the mixer so cleaning up the standing zombie does not reset
+   // its real pose back to the Mixamo bind pose (arms folded through body).
    crawler.sprinterVisual=holder;crawler.sprinterBones=bones;crawler.sprinterModel=source.sprinterModel;
+   crawler.sprinterMixer=source.sprinterMixer;crawler.sprinterRunAction=source.sprinterRunAction;
+   crawler.sprinterModelIndex=source.sprinterModelIndex;
+   if(crawler.sprinterMixer)crawler.sprinterMixer.timeScale=0;
    source.sprinterVisual=null;source.sprinterModel=null;source.sprinterBones=null;
+   source.sprinterMixer=null;source.sprinterRunAction=null;
+   syncCrawlerUpperVisual(crawler);
  }else{
    crawler.radiatedGreenVisual=holder;crawler.radiatedGreenBones=bones;crawler.radiatedGreenModel=source.radiatedGreenModel;
    source.radiatedGreenVisual=null;source.radiatedGreenModel=null;source.radiatedGreenBones=null;
@@ -6842,6 +6850,65 @@ function setCrawlerArmToward(bones,upperKey,lowerKey,side,phase){
    lower.rotation.set(.72+Math.max(0,Math.sin(phase))* .12,0,side*.035);
  }
 }
+// v621: the two imported Sprinters have a real Mixamo skeleton and calibrated
+// world-space skin. Aim their elbows from actual PARENT axes; generic walkers'
+// hard-coded local rotations fold their hands across the chest.
+const sprinterCrawlQ=new THREE.Quaternion(),sprinterParentQ=new THREE.Quaternion();
+const sprinterAim=new THREE.Vector3(),sprinterCrawlBox=new THREE.Box3();
+const sprinterRootScale=new THREE.Vector3();
+function aimSprinterCrawlerArm(z,bones,side,phase){
+ const name=side<0?"L":"R";
+ const arm=bones.get(name+"_UpperArm"),forearm=bones.get(name+"_LowerArm"),hand=bones.get(name+"_Hand");
+ if(!arm||!forearm||!arm.parent)return;
+ z.g.getWorldQuaternion(sprinterCrawlQ);
+ arm.parent.getWorldQuaternion(sprinterParentQ);
+ sprinterAim.set(side*.39,-.29,-.93+Math.sin(phase)*.05)
+  .applyQuaternion(sprinterCrawlQ).applyQuaternion(sprinterParentQ.invert()).normalize();
+ if(forearm.position.lengthSq()>.000001)
+  arm.quaternion.setFromUnitVectors(forearm.position.clone().normalize(),sprinterAim);
+ if(hand&&hand.parent===forearm&&hand.position.lengthSq()>.000001){
+  forearm.getWorldQuaternion(sprinterParentQ);
+  sprinterAim.set(side*.16,-.38,-.94)
+   .applyQuaternion(sprinterCrawlQ).applyQuaternion(sprinterParentQ.invert()).normalize();
+  forearm.quaternion.setFromUnitVectors(hand.position.clone().normalize(),sprinterAim);
+ }
+}
+function syncSprinterCrawlerUpper(z,holder,bones,pose,phase,attack){
+ const step=Math.sin(phase);
+ const add=(key,x=0,y=0,v=0)=>{
+  const bone=bones.get(key),base=pose.rotations.get(key);
+  if(bone&&base)bone.rotation.set(base.x+x,base.y+y,base.z+v);
+ };
+ add("Hips",1.04,.015*step,0);
+ add("Spine",.20,0,.015*step);
+ add("Chest",.04,0,-.014*step);
+ add("Neck",-.30,0,0);
+ add("Head",-.21+attack*.035,-.02*step,0);
+ holder.updateMatrixWorld(true,true);
+ aimSprinterCrawlerArm(z,bones,-1,phase);
+ aimSprinterCrawlerArm(z,bones,1,phase+Math.PI);
+ holder.updateMatrixWorld(true,true);
+ if(!pose.sprinterGrounded){
+  // Ground each ORIGINAL GLB by its real SKINNED bounding box, once at
+  // conversion. Cop's bind offsets make the previous -.46 offset invalid.
+  sprinterCrawlBox.setFromObject(holder,true);
+  if(!sprinterCrawlBox.isEmpty()&&Number.isFinite(sprinterCrawlBox.min.y)){
+   z.g.updateWorldMatrix(true,false);
+   const center=new THREE.Vector3(
+    (sprinterCrawlBox.min.x+sprinterCrawlBox.max.x)*.5,
+    sprinterCrawlBox.min.y,
+    (sprinterCrawlBox.min.z+sprinterCrawlBox.max.z)*.5);
+   z.g.worldToLocal(center);
+   holder.position.x-=center.x;holder.position.z-=center.z;
+   z.g.getWorldScale(sprinterRootScale);
+   holder.position.y+=(z.g.position.y+.025-sprinterCrawlBox.min.y)/
+    Math.max(.01,Math.abs(sprinterRootScale.y));
+   pose.sprinterCrawlerPos=holder.position.clone();
+   pose.sprinterGrounded=true;
+   holder.updateMatrixWorld(true,true);
+  }
+ }
+}
 function syncCrawlerUpperVisual(z){
  const holder=z?.crawlerUpperVisual,bones=z?.crawlerUpperBones,pose=z?.crawlerUpperPose;
  if(!holder||!bones?.size||!pose)return false;
@@ -6849,6 +6916,12 @@ function syncCrawlerUpperVisual(z){
  if(z.dead&&z.ragdoll?.bodyPbd?.holder===holder)return true;
 
  const phase=z.phase||0,s=Math.sin(phase),attack=Math.max(0,Math.min(1,(z.attackAnim||0)/.62));
+ if(pose.type==="sprinter"){
+  holder.position.copy(pose.sprinterCrawlerPos||pose.holderPos);
+  holder.quaternion.copy(pose.holderQuat);
+  syncSprinterCrawlerUpper(z,holder,bones,pose,phase,attack);
+  return true;
+ }
  holder.position.copy(pose.holderPos);holder.position.y-=pose.type==="walker"?.48:.46;
  holder.quaternion.copy(pose.holderQuat);
 

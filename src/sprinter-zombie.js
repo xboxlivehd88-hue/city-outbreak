@@ -4,8 +4,8 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 const FILES=[
- "assets/animated_zombie_cop_running_loop.glb?v=620",
- "assets/zombie_running_on_metel_maniac.glb?v=620"
+ "assets/animated_zombie_cop_running_loop.glb?v=621",
+ "assets/zombie_running_on_metel_maniac.glb?v=621"
 ];
 const ANATOMY={
  Hips:"hips",Spine:"spine",Chest:"spine2",Neck:"neck",Head:"head",
@@ -264,6 +264,9 @@ export function createSprinterZombieController(){
  }
  function sync(z,dt){
   if(!z?.sprinterVisual)return;
+  // v621: a legless converted crawler must not restart Run and overwrite its
+  // planted hands/crawl posture (original mixer stays frozen for its skin).
+  if(z.kind==="crawler")return;
   if(!z.dead&&!z.knockdown&&z.sprinterMixer){
    if(z.sprinterMixer.timeScale===0)z.sprinterMixer.timeScale=1;
    const gx=z.g.position.x,gz=z.g.position.z;

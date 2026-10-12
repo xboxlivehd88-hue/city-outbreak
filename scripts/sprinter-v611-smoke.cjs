@@ -1,11 +1,11 @@
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
- const report={build:620,passed:false},errors=[];let browser,page;
+ const report={build:621,passed:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=620$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=621$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -55,7 +55,27 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    "  const oneLegHidden=maniac.sprinterBones.get('L_UpperLeg').scale.x<.001;",
    "  detachLeg(maniac,'right');",
    "  const next=zombies.find(z=>z.kind==='crawler'&&z.sprinterVisual);",
-   "  return {ragNative,ragMove,oneLegHidden,detachedGenericParts:parts.filter(p=>p.limb).length-prior,",
+   "  const copCrawlerSource=zombies.find(z=>z.kind==='sprinter'&&!z.dead&&z.sprinterModelIndex===0);",
+   "  if(!copCrawlerSource)throw Error('No second Cop available to test crawling');",
+   "  copCrawlerSource.hp=Math.max(40,copCrawlerSource.hp);",
+   "  detachLeg(copCrawlerSource,'left');detachLeg(copCrawlerSource,'right');",
+   "  const convertedCop=zombies.find(z=>z.kind==='crawler'&&z.sprinterVisual&&z.sprinterModelIndex===0);",
+   "  const poseAudit=z=>{",
+   "   if(!z)return null;",
+   "   for(let i=0;i<8;i++){z.phase+=.22;syncCrawlerUpperVisual(z)}",
+   "   const box=new THREE.Box3().setFromObject(z.sprinterVisual,true);",
+   "   const point=key=>{const b=z.sprinterBones.get(key);if(!b)return null;",
+   "    const w=b.getWorldPosition(new THREE.Vector3());return z.g.worldToLocal(w)};",
+   "   const head=point('Head'),chest=point('Chest'),l=point('L_Hand'),r=point('R_Hand');",
+   "   return {height:box.max.y-box.min.y,feet:box.min.y-z.g.position.y,",
+   "    handsApart:l&&r?l.distanceTo(r):0,",
+   "    leftAhead:l&&chest?chest.z-l.z:null,rightAhead:r&&chest?chest.z-r.z:null,",
+   "    handsBelowHead:l&&r&&head?[head.y-l.y,head.y-r.y]:null,",
+   "    frozen:z.sprinterMixer?.timeScale===0,modelName:z.sprinterModel?.name,",
+   "    boneCount:z.sprinterBones?.size||0};",
+   "  };",
+   "  return {maniacCrawl:poseAudit(next),copCrawl:poseAudit(convertedCop),",
+   "   ragNative,ragMove,oneLegHidden,detachedGenericParts:parts.filter(p=>p.limb).length-prior,",
    "   crawlerFound:!!next,kind:next?.kind,crawlerModelSame:next?.sprinterModel===original,",
    "   crawlerNewRoot:next?.g!==oldRoot,crawlerBones:next?.sprinterBones?.size||0,",
    "   legGone:next?.sprinterBones?.get('L_UpperLeg')?.scale.x<.001&&next?.sprinterBones?.get('R_UpperLeg')?.scale.x<.001,",
@@ -65,7 +85,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=620-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=621-sprinter-two-models",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -112,6 +132,15 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert.equal(report.lifecycle.crawlerModelSame,true);
   assert.equal(report.lifecycle.legGone,true);
   assert(report.lifecycle.crawlerHitboxes>2);
+  for(const [type,m] of [["Cop",report.lifecycle.copCrawl],["Maniac",report.lifecycle.maniacCrawl]]){
+   assert(m&&m.frozen&&m.boneCount>=16,type+" crawler original skinned skeleton/mixer missing");
+   assert(Number.isFinite(m.height)&&m.height>0.2&&m.height<1.7,
+     type+" crawler balled up or standing upright: "+JSON.stringify(m));
+   assert(m.feet>-.20&&m.feet<.22,
+     type+" crawler floating or underground: "+JSON.stringify(m));
+   assert(m.handsApart>.18&&m.leftAhead>-.10&&m.rightAhead>-.10,
+     type+" crawler arms crossed into body: "+JSON.stringify(m));
+  }
   assert.equal(errors.length,0,"Page errors: "+errors.join("; "));
   report.passed=true;
  }catch(e){
@@ -120,8 +149,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  }finally{
   if(browser)await browser.close();
   report.errors=errors;
-  fs.writeFileSync("SPRINTER_V620_AUDIT.json",JSON.stringify(report,null,2));
-  console.log("SPRINTER_V620_REPORT="+JSON.stringify(report));
+  fs.writeFileSync("SPRINTER_V621_AUDIT.json",JSON.stringify(report,null,2));
+  console.log("SPRINTER_V621_REPORT="+JSON.stringify(report));
   if(!report.passed)process.exitCode=1;
  }
 })();
