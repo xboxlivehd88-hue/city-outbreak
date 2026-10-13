@@ -1,3 +1,16 @@
+# v654 — INFECTED ORIGINAL HEIGHT + NATURAL SHORTER STRIDE — 2026-10-13
+
+- **User tested v653 and said**: "TOBY they seem like they srank and they still dont walk right." v653 corrected ankle Y but lowered the ENTIRE skin holder .12m, reducing apparent visible height by about 12cm (~7%); v653 screenshot also showed a high-knee marching / pedaling gait. User demands real visible fix; do not dismiss observations as cache.
+- v654 **upright walking only**: restore the visible standing silhouette height by scaling the original textured Infected GLB standing holder to 1.09x its saved original scale, retaining the -.12m placement needed for ankle ground contact; this approximates the previously approved visible height, not a change to the source model. Saved unmodified original holder scale in `infectedHolderRestScale`.
+- In `poseInfectedWalkingLeg`, reduce step distance from ±.28m to ±.17m, foot swing lift from +.105m to +.065m, and permit a more extended planted leg with IK max distance segment sum minus .014 rather than .035. The same original Mixamo hip/knee/ankle bones and two-bone leg alignment remain; there should be controlled alternating knee flex and grounded feet, not repeated thigh pumping.
+- Real Infected gait cadence reduced **only for `kind==="infected"`** from 8.8 per distance to 5.3 per distance, keeping ACTUAL zombie movement speed and all other types unchanged. Approved reaching arms continue on same gait phase.
+- **Crawler safety**: On conversion, restore both original `infectedHolderStart` POSITION and saved `infectedHolderRestScale` before capturing approved crawler pose; maintain the original pelvis-low/chest-raised pulling-arm animation, original GLB skin, face, amputations and hitboxes. If actor attaches already as crawler, standing sync never scales it.
+- **Death**: v653 bounded and relaxed gunshot-death native Mixamo body is unchanged except resulting actor may be ~9% taller at kill. Explosive/crawler deaths untouched. All other zombies, guns, bosses, performance, 19 boss roster, 10 infected Wave 1, and protected recovery checkpoint **v324** unchanged.
+- Candidate branch `toby-infected-v654-real-stride` uses same original Infected WebGL front/side/death screenshot smoke, current `scripts/parasite-v586-smoke.cjs`, plus independent Sprinter/Hazmat/Green tests; check actual CI results before publishing and before claiming that visuals are right. The last v653 GitHub main Actions were PASS.
+- Loader `./src/game.js?v=654`; target playable https://xboxlivehd88-hue.github.io/city-outbreak/?v=654-infected-height-natural-steps . User must confirm visual size, heel contact, knee motion.
+
+---
+
 # v653 — VERIFIED ORIGINAL INFECTED GROUNDED GAIT + UNTANGLED DEATH — 2026-10-13
 
 - User strongly rejected v652: walking still appeared straight-legged and killed bodies still curled/tied themselves on the ground. Toby's earlier v649-v652 claims were too strong and visual validation was absent. We found **v652 Parasite/Infected Chromium regression FAILED** (standing reach arm thresholds) despite successful Pages deploy; preserve this lesson: read actual Actions results, do NOT assume success from JS syntax.
