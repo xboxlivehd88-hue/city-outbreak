@@ -1,3 +1,14 @@
+# v652 — REAL MIXAMO KNEE BEND + UNTANGLED INFECTED DEATH — 2026-10-13
+
+- **User report from v651:** Infected STILL walk on straight-looking legs and STILL tie their bodies into knots once dead on the ground. Previous fixed-angle knees and free-spinning torso/limb death variations are not acceptable; do not repeat those fixes.
+- **Standing gait only:** `poseInfectedWalkingLeg` replaces arbitrary Euler rotations of the original GLB thigh/knee/foot with 2-link anatomical IK based on the ORIGINAL Mixamo hip/knee/ankle world positions, original leg lengths and actual rest joint orientations. Foot goals travel forward and backward in opposite phase, lift on swing, and are clamped to reachable lengths; each knee bends FORWARD in the game-facing plane. Original 34-bone GLB, textures, arms-reaching behavior and hip/spine motion stay intact.
+- **Death posture only, nonblast upright Infected:** v651's custom gunshot collapse stays in place, but remove independent twisting from stacked Spine/Chest/Neck bones entirely. Their skinned torso falls as a single solid anatomical segment around the actual hip. Limit head to 0.10 rad, upper arms 0.28, forearms 0.29, upper legs 0.18, lower legs 0.30, feet 0.10, with lower initial angular velocity and contact impulse; cannot wrap legs/arms through the shirt. The player should see a limp collapse, not a stiff/T-posed stop or twisted bundle.
+- **Approved protections**: v646 Infected legless crawling posture/pelvis, chest, arm pulling, original skin, hitboxes, limb and toe removal; the standing Infected's raised/reaching upper arms; non-Infected zombies, bosses, weapons, map, graphics, and Wave 1 ten Infected ONLY. Blast ragdoll and converted crawler death physics unchanged. **Protected v324 recovery remains unchanged**.
+- v652 `scripts/parasite-v586-smoke.cjs` asserts actual knee flex using three world joints and ankle fore-aft/vertical travel at four standing gait phases, rather than checking bone Euler rotations; Infected death visible joints capped at 0.32 rad; preserve original GLB/crawler/boot/hitboxes and 19-boss rotation checks. Sprinter and Hazmat/Green smoke and workflows updated to loader v652.
+- Loader `./src/game.js?v=652`; playable https://xboxlivehd88-hue.github.io/city-outbreak/?v=652-infected-knees-death-untangled . Confirm CI status and user visual review before calling solved.
+
+---
+
 # v651 — INFECTED GUNSHOT TWISTING ROOT-CAUSE REPLACEMENT — 2026-10-13
 
 - User tested v650 and says "they are stil twisting up." Prior v649/650 attempts reducing random spin/foot friction did NOT resolve the main deformation. Avoid repeating those adjustments.
