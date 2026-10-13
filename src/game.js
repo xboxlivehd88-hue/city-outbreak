@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v653: real grounded Infected steps and relaxed original-GLB corpse legs; approved crawler preserved.
+// v654: restore Infected height; compact natural hip-knee-ankle gait, preserved crawler and death.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -7384,6 +7384,7 @@ function attachInfectedGLB(z){
  }});
  z.infectedVisual=holder;z.infectedModel=model;z.infectedBones=bones;
  z.infectedRest=rest;z.infectedHolderStart=holder.position.clone();
+ z.infectedHolderRestScale=holder.scale.clone();
  z.infectedGLBSource="assets/zombie_animated.glb";
  // The one authored "jad" clip is an agonizing upper-body performance,
  // not locomotion; lightly preserve its REAL neck/head rotation while our
@@ -7478,16 +7479,18 @@ function poseInfectedWalkingLeg(z,side,swing){
  // Original foot placement is retained. Move each ankle forward/back as
  // opposite feet step, and lift the moving foot to guarantee visible knee bend.
  infectedLegGoal.copy(base.offset);
- infectedLegGoal.z-=.28*swing;
+ // Do not drive the ankle nearly half a metre every stride: that turned
+ // the small Infected model into a high-knee marching/cycling gait.
+ infectedLegGoal.z-=.17*swing;
  infectedLegGoal.applyQuaternion(infectedLegActorQuat).add(infectedLegHip);
  // Grounded stance ankle ~13cm above sampled floor (sole hangs below ankle).
  // The prior +.11 +.17*swing added height to an ALREADY raised ankle,
  // causing visible marching in mid-air even though the knees rotated.
  infectedLegGoal.y=(Number.isFinite(z.groundY)?z.groundY:z.g.position.y)+
-  .135+.105*Math.max(0,swing);
+  .135+.065*Math.max(0,swing);
  infectedLegThighDir.subVectors(infectedLegGoal,infectedLegHip);
  const minD=Math.abs(base.thigh-base.shin)+.025;
- const maxD=base.thigh+base.shin-.035;
+ const maxD=base.thigh+base.shin-.014;
  const distance=THREE.MathUtils.clamp(infectedLegThighDir.length(),minD,maxD);
  infectedLegThighDir.normalize();
  infectedLegGoal.copy(infectedLegHip).addScaledVector(infectedLegThighDir,distance);
@@ -7528,11 +7531,14 @@ function syncInfectedGLB(z,dt){
  if(z.infectedMixer)z.infectedMixer.update(dt);
  const bones=z.infectedBones,rest=z.infectedRest,phase=z.phase||0,
   step=Math.sin(phase);
- // The source Mixamo leg chains terminate above the street. Lower the
- // standing GLB itself, not its hips/thighs, so both shoes can physically
- // touch the map floor. Restore exact unshifted bind holder for crawlers.
+ // v653 sank the ENTIRE GLB 12cm into the street, shortening its apparent
+ // silhouette. Match the pre-v653 ~1.8m visible height again while keeping
+ // the improved ankle-ground targets and forward-moving knee bones.
+ // Standing ONLY; crawler conversion restores the exact original GLB scale.
+ if(z.infectedHolderRestScale)
+  z.infectedVisual.scale.copy(z.infectedHolderRestScale).multiplyScalar(1.09);
  z.infectedVisual.position.y=z.infectedHolderStart.y-.12+
-  Math.cos(phase*2)*.007;
+  Math.cos(phase*2)*.005;
  // The uploaded 'jad' is an AGONY clip, not a walking clip. Old fixed Euler
  // negative knee angles never checked the Mixamo shin's REAL hinge direction
  // and made the legs look straight even with a moving thigh.
@@ -7790,6 +7796,7 @@ function turnInfectedCrawlerWithoutSwap(z){
   // Standing-only 12cm shoe-ground correction must NEVER alter the
   // v646 approved low-pelvis original crawler capture.
   visual.position.copy(z.infectedHolderStart);
+  if(z.infectedHolderRestScale)visual.scale.copy(z.infectedHolderRestScale);
   for(const key of ["Hips","Spine","Chest","L_UpperArm","L_LowerArm",
    "R_UpperArm","R_LowerArm"]){
    const bone=bones.get(key),base=z.infectedRest.get(key);
@@ -9519,7 +9526,8 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  const motionScale=(huntMode||bossCharging||bossPressuring)?1:surge*shamble;
 let stepX=(nx+sx*zig)*navSpeed*motionScale*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*motionScale*stun*limpSlow*dt;
 let moveLen=Math.hypot(stepX,stepZ);
-const strideRate=(kind==="sprinter"||kind==="infected"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
+// v654: the Infected should walk, not pedal at Sprinter/acidic cadence.
+const strideRate=kind==="infected"?5.3:(kind==="sprinter"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
 z.phase += moveLen*strideRate;
 let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,movementClearance);z.g.position.x=zp.x;z.g.position.z=zp.z;
 resolveZombiePlayerContact(z,ox,oz);
