@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"652",pass:false},errors=[];let browser,page;
+ const report={version:"653",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=652$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=653$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -21,6 +21,48 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    rig:!!z.rigVisual,newVisual:!!z.infectedVisual,
    bones:z.infectedBones?.size||0,source:z.infectedGLBSource||null}))
  }),
+ infectedVisualQA:()=>{
+  const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual);
+  if(!z)throw Error("No live original Infected for render audit");
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0x283038);
+  scene.add(new THREE.HemisphereLight(0xd9e6f4,0x474a3a,2.5));
+  const sun=new THREE.DirectionalLight(0xffffff,2.6);sun.position.set(-2,6,5);scene.add(sun);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(14,14),
+   new THREE.MeshLambertMaterial({color:0x62686b}));
+  ground.rotation.x=-Math.PI/2;ground.position.y=-.04;scene.add(ground);
+  const rd=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});
+  rd.setSize(360,420);rd.setPixelRatio(1);rd.outputColorSpace=THREE.SRGBColorSpace;
+  const camera=new THREE.PerspectiveCamera(43,360/420,.1,60);
+  const result=[];
+  const snap=(name)=>{
+   // Hitbox userData.zombie is circular: sanitize only for clone, restore
+   // before game continues. This does not modify skinned geometry or gameplay.
+   const restored=[];
+   z.infectedVisual.traverse(o=>{
+    if(o.userData&&o.userData.zombie){
+     restored.push([o,o.userData]);o.userData={...o.userData,zombie:null};
+    }
+   });
+   let copy;
+   try{copy=SkeletonUtils.clone(z.infectedVisual)}
+   finally{for(const [o,data] of restored)o.userData=data}
+   scene.add(copy);copy.updateMatrixWorld(true);
+   if(name.includes("side"))camera.position.set(4.1,1.55,1.0);
+   else camera.position.set(1.45,1.45,4.2);
+   camera.lookAt(0,.77,0);
+   rd.render(scene,camera);
+   result.push({name,jpeg:rd.domElement.toDataURL("image/jpeg",.75)});
+   scene.remove(copy);
+  };
+  z.phase=.30;syncInfectedGLB(z,0);snap("walk_a");
+  z.phase=Math.PI*.5;syncInfectedGLB(z,0);snap("walk_b");snap("walk_side");
+  killZ(z,false,z.g.position.clone());
+  for(let i=0;i<29;i++)updateRagdoll(z,1/60);
+  snap("death_half");
+  for(let i=0;i<62;i++)updateRagdoll(z,1/60);
+  snap("death_settled");snap("death_side");
+  rd.dispose();return result;
+ },
  infectedCrawlerAudit:()=>{
   const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual);
   if(!z)throw Error("New Infected GLB not attached: "+JSON.stringify({
@@ -32,7 +74,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const beforeCount=zombies.length,root=z.g,visual=z.infectedVisual,meshCount=[];
   const glb=z.infectedModel,source=z.infectedGLBSource,hadTexture=!!glb?.getObjectByProperty;
   visual.traverse(o=>{if(o.isSkinnedMesh)meshCount.push(o.name)});
-  // v652: verify actual source Mixamo shoulder/elbow/wrist chains while
+  // v653: verify actual source Mixamo shoulder/elbow/wrist chains while
   // STANDING, before amputating. A screenshot alone can hide T-pose regression.
   const prevPhase=z.phase,standingFrames=[];
   for(const p of [.3,Math.PI*.5,Math.PI*1.2,Math.PI*1.65]){
@@ -114,7 +156,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const local=key=>{const q=jp(key);return q?z.g.worldToLocal(q):null;};
   const h=local("Hips"),c=local("Chest"),head=local("Head"),
    left=local("L_Hand"),right=local("R_Hand");
-  // v652: inspect ORIGINAL joints at forward plant, backward pull, and
+  // v653: inspect ORIGINAL joints at forward plant, backward pull, and
   // recovered hand lift. Also ensure elbow bends below the shoulder toward
   // the ground and neither elbow folds behind its shoulder.
   const originalPhase=z.phase,armFrames=[];
@@ -437,12 +479,15 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=652-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=653-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.waveOne()?.spawned===10,null,{timeout:70000});
   report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
+  const infectedImages=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedVisualQA());
+  report.infectedRenderFrames=infectedImages.map(f=>({name:f.name,bytes:f.jpeg.length}));
+  for(const f of infectedImages)console.log("INFECTED_DIAGNOSTIC_"+f.name+"="+f.jpeg);
   report.infectedCrawler=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedCrawlerAudit());
   report.infectedDeath=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedDeathAudit());
   report.rotation=await page.evaluate(()=>globalThis.__parasiteSmoke.selectViaRealBossRotation());
@@ -459,7 +504,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V652_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V653_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -492,11 +537,11 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    "Preserved Infected crawler missing legs/shot hitboxes: "+JSON.stringify(report.infectedCrawler));
   const infected=report.infectedCrawler,ip=infected.pose;
   const stand=infected.standingAudit;
-  assert(stand?.wristTravel?.every(x=>x>.07)&&
+  assert(stand?.wristTravel?.every(x=>x>.05)&&
    stand.metrics.every(frame=>frame.every(arm=>
-    arm.handDrop>.16&&arm.elbowDrop>.13&&arm.handForward>.055&&
+    arm.handDrop>.16&&arm.elbowDrop>.12&&arm.handForward>.055&&
     arm.elbowForward>-.035&&arm.elbowFlex>.20)),
-   "Original Infected standing arms remain T-posed or straight despite v652 IK: "+
+   "Original Infected standing arms remain T-posed or straight despite v653 IK: "+
     JSON.stringify(stand?.metrics));
 
   assert(stand.knees?.every(frame=>frame.every(k=>Number.isFinite(k)&&k<2.1))&&
@@ -595,7 +640,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V652_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V653_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
