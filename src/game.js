@@ -9589,7 +9589,7 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
 let stepX=(nx+sx*zig)*navSpeed*motionScale*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*motionScale*stun*limpSlow*dt;
 let moveLen=Math.hypot(stepX,stepZ);
 // v654: the Infected should walk, not pedal at Sprinter/acidic cadence.
-const strideRate=kind==="infected"?4.15:(kind==="sprinter"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
+const strideRate=kind==="infected"?5.0:(kind==="sprinter"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
 z.phase += moveLen*strideRate;
 let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,movementClearance);z.g.position.x=zp.x;z.g.position.z=zp.z;
 resolveZombiePlayerContact(z,ox,oz);
