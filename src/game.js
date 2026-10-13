@@ -7349,58 +7349,34 @@ function poseInfectedWalkingArm(z,side,phase){
  const upper=bones.get(p+"_UpperArm"),lower=bones.get(p+"_LowerArm"),
   hand=bones.get(p+"_Hand");
  if(!upper||!lower||!hand||!upper.parent||!lower.parent)return;
- upper.getWorldPosition(infectedWalkShoulder);
- lower.getWorldPosition(infectedWalkElbow);
- hand.getWorldPosition(infectedWalkWrist);
- const upperLen=infectedWalkShoulder.distanceTo(infectedWalkElbow),
-  lowerLen=infectedWalkElbow.distanceTo(infectedWalkWrist),
-  fullReach=upperLen+lowerLen;
- if(fullReach<.10)return;
- // Opposing arm phase follows the legs. Keep forearms hanging in FRONT of the
- // ribcage, hands BELOW shoulders, with a small shambling reach instead of
- // leaving the authored arms extended horizontally like a T-pose.
  const stride=Math.sin(phase+(side<0?Math.PI:0));
- const recovery=Math.max(0,stride);
  z.g.getWorldQuaternion(infectedWalkQ);
- infectedWalkOffset.set(side*fullReach*.12,
-  -fullReach*(.67-.045*recovery),-fullReach*(.33+.17*stride));
- infectedWalkHandTarget.copy(infectedWalkOffset)
-  .applyQuaternion(infectedWalkQ).add(infectedWalkShoulder);
- infectedWalkAxis.subVectors(infectedWalkHandTarget,infectedWalkShoulder);
- const rawDistance=infectedWalkAxis.length();if(rawDistance<.001)return;
- const distance=THREE.MathUtils.clamp(rawDistance,
-  Math.abs(upperLen-lowerLen)+.006,fullReach-.013);
- infectedWalkAxis.multiplyScalar(1/rawDistance);
- infectedWalkHandTarget.copy(infectedWalkShoulder)
-  .addScaledVector(infectedWalkAxis,distance);
- const along=(upperLen*upperLen-lowerLen*lowerLen+distance*distance)/(2*distance),
-  bendRadius=Math.sqrt(Math.max(0,upperLen*upperLen-along*along));
- // Elbows hang a little OUT and FORWARD below the shoulders. Their bend is
- // explicitly solved, so native Mixamo forearms no longer point sideways.
- infectedWalkBend.set(side*.66,-.09,-.64).applyQuaternion(infectedWalkQ);
- infectedWalkBend.addScaledVector(infectedWalkAxis,
-  -infectedWalkBend.dot(infectedWalkAxis)).normalize();
- infectedWalkElbowTarget.copy(infectedWalkShoulder)
-  .addScaledVector(infectedWalkAxis,along)
-  .addScaledVector(infectedWalkBend,bendRadius);
- // Rotate actual upper/lower bone axes toward joint targets, preserving
- // original authored twist/roll instead of forcing identity quaternions.
- const aim=(bone,child,key,vector)=>{
-  const original=rest.get(key);if(!original||child.position.lengthSq()<1e-9)return;
+ // v648: source shoulders point straight OUT in the only 'Agonizing' clip.
+ // Aim the original upper-arm BONE down from the shoulder, rather than
+ // targeting only the hand (which left elbows almost shoulder-high in v647).
+ // Keep the upper arm close to the ribcage, and forearms bent toward the player.
+ const aim=(bone,child,key,localDirection)=>{
+  const base=rest.get(key);
+  if(!base||child.position.lengthSq()<1e-9)return;
+  infectedWalkOffset.copy(localDirection).normalize().applyQuaternion(infectedWalkQ);
   bone.parent.getWorldQuaternion(infectedWalkParentQ);
-  infectedWalkLocalDir.copy(vector).applyQuaternion(infectedWalkParentQ.invert()).normalize();
-  infectedWalkRestDir.copy(child.position).applyQuaternion(original).normalize();
+  infectedWalkLocalDir.copy(infectedWalkOffset)
+   .applyQuaternion(infectedWalkParentQ.invert()).normalize();
+  infectedWalkRestDir.copy(child.position).applyQuaternion(base).normalize();
   infectedWalkCorrectQ.setFromUnitVectors(infectedWalkRestDir,infectedWalkLocalDir);
-  bone.quaternion.copy(infectedWalkCorrectQ).multiply(original);
+  bone.quaternion.copy(infectedWalkCorrectQ).multiply(base);
  };
- infectedWalkOffset.subVectors(infectedWalkElbowTarget,infectedWalkShoulder);
- aim(upper,lower,p+"_UpperArm",infectedWalkOffset);
+ // The elbow hangs DOWN near the ribs, never splayed in a T-pose.
+ // Arms alternate a modest forward reach opposite the legs.
+ infectedWalkAxis.set(side*.18,-.93,-.25-.22*stride);
+ aim(upper,lower,p+"_UpperArm",infectedWalkAxis);
  upper.updateWorldMatrix(true,true);
- lower.getWorldPosition(infectedWalkElbow);
- infectedWalkOffset.subVectors(infectedWalkHandTarget,infectedWalkElbow);
- aim(lower,hand,p+"_LowerArm",infectedWalkOffset);
+ // Bent forearms reach out at waist/chest height while elbows stay low.
+ infectedWalkAxis.set(-side*.04,-.48,-.78-.15*stride);
+ aim(lower,hand,p+"_LowerArm",infectedWalkAxis);
  lower.updateWorldMatrix(true,true);
 }
+
 function syncInfectedGLB(z,dt){
  if(!z?.infectedVisual||z.dead||z.infectedCrawler)return;
  if(z.infectedMixer)z.infectedMixer.update(dt);
