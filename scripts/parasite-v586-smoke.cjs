@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"646",pass:false};let browser;
+ const report={version:"647",pass:false};let browser;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   const errors=[];page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=646$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=647$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -32,6 +32,42 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const beforeCount=zombies.length,root=z.g,visual=z.infectedVisual,meshCount=[];
   const glb=z.infectedModel,source=z.infectedGLBSource,hadTexture=!!glb?.getObjectByProperty;
   visual.traverse(o=>{if(o.isSkinnedMesh)meshCount.push(o.name)});
+  // v647: verify actual source Mixamo shoulder/elbow/wrist chains while
+  // STANDING, before amputating. A screenshot alone can hide T-pose regression.
+  const prevPhase=z.phase,standingFrames=[];
+  for(const p of [.3,Math.PI*.5,Math.PI*1.2,Math.PI*1.65]){
+   z.phase=p;syncInfectedGLB(z,0);
+   const point=key=>{
+    const b=z.infectedBones?.get(key);
+    return b?z.g.worldToLocal(b.getWorldPosition(new THREE.Vector3())).toArray():null;
+   };
+   standingFrames.push({
+    phase:p,arms:[-1,1].map(side=>{
+     const pre=side<0?"L":"R";
+     return{shoulder:point(pre+"_UpperArm"),elbow:point(pre+"_LowerArm"),
+      wrist:point(pre+"_Hand")};
+    }),
+    knees:[point("L_UpperLeg"),point("L_LowerLeg"),point("L_Foot"),
+     point("R_UpperLeg"),point("R_LowerLeg"),point("R_Foot")]
+   });
+  }
+  z.phase=prevPhase;syncInfectedGLB(z,0);
+  const angle=(a,b)=>{const d=a.reduce((s,v,i)=>s+v*b[i],0);
+   const la=Math.hypot(...a),lb=Math.hypot(...b);
+   return Math.acos(Math.max(-1,Math.min(1,d/(la*lb||1))))};
+  const metrics=standingFrames.map(f=>f.arms.map(a=>{
+   const s=a.shoulder,e=a.elbow,w=a.wrist;
+   return{handDrop:s[1]-w[1],elbowDrop:s[1]-e[1],
+    handForward:s[2]-w[2],elbowForward:s[2]-e[2],
+    elbowFlex:angle(e.map((v,i)=>v-s[i]),w.map((v,i)=>v-e[i]))};
+  }));
+  const standingAudit={frames:standingFrames,metrics,
+   wristTravel:[0,1].map(i=>Math.max(...standingFrames.map(f=>f.arms[i].wrist[2]))-
+    Math.min(...standingFrames.map(f=>f.arms[i].wrist[2]))),
+   kneeAngles:["L_LowerLeg","R_LowerLeg"].map(key=>{
+    const bone=z.infectedBones.get(key),rest=z.infectedRest.get(key);
+    return bone?.quaternion.angleTo(rest)||0;
+   })};
   z.hp=Math.max(z.hp,65);
   detachLeg(z,"left");detachLeg(z,"right");
   poseOriginalInfectedCrawler(z);
@@ -40,7 +76,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const local=key=>{const q=jp(key);return q?z.g.worldToLocal(q):null;};
   const h=local("Hips"),c=local("Chest"),head=local("Head"),
    left=local("L_Hand"),right=local("R_Hand");
-  // v646: inspect ORIGINAL joints at forward plant, backward pull, and
+  // v647: inspect ORIGINAL joints at forward plant, backward pull, and
   // recovered hand lift. Also ensure elbow bends below the shoulder toward
   // the ground and neither elbow folds behind its shoulder.
   const originalPhase=z.phase,armFrames=[];
@@ -81,7 +117,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   };
   return{kind:z.kind,source:z.crawlerSourceKind,originalActor:zombies.includes(z),
    noReplacement:zombies.length===beforeCount,sameRoot:z.g===root,sameVisibleRig:z.infectedVisual===visual,uploadedGLB:source,
-   visibleSkins:meshCount.length,colliders:hitboxes.length,skinAudit,clippedSkins,armMotion,
+   visibleSkins:meshCount.length,colliders:hitboxes.length,skinAudit,clippedSkins,armMotion,standingAudit,
    hasNativeTexture:(()=>{let ok=false;glb?.traverse(o=>{if(o.isSkinnedMesh&&(Array.isArray(o.material)?o.material:[o.material]).some(m=>!!m?.map))ok=true});return ok})(),
    pose:{hipY:h?.y,chestY:c?.y,headY:head?.y,headForward:h&&head?h.z-head.z:null,
     chestForward:h&&c?h.z-c.z:null,handYs:[left?.y,right?.y],
@@ -336,7 +372,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=646-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=647-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -357,7 +393,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V646_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V647_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -389,6 +425,14 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedCrawler.hitChest,
    "Preserved Infected crawler missing legs/shot hitboxes: "+JSON.stringify(report.infectedCrawler));
   const infected=report.infectedCrawler,ip=infected.pose;
+  const stand=infected.standingAudit;
+  assert(stand?.wristTravel?.every(x=>x>.07)&&
+   stand.metrics.every(frame=>frame.every(arm=>
+    arm.handDrop>.16&&arm.elbowDrop>.07&&arm.handForward>.07&&
+    arm.elbowForward>-.035&&arm.elbowFlex>.20)),
+   "Original Infected standing arms remain T-posed or straight despite v647 IK: "+
+    JSON.stringify(stand?.metrics));
+
   assert(infected.skinAudit?.changed>=1&&infected.skinAudit?.removed>=10,
    "Leg skin clipping failed; zero-scaled thighs pull torso into ball: "+JSON.stringify(infected));
   assert(ip&&ip.hipY>.025&&ip.hipY<.16&&ip.chestY>ip.hipY+.16&&
@@ -468,7 +512,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V646_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V647_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
