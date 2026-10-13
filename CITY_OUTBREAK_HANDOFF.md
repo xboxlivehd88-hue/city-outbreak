@@ -1,3 +1,13 @@
+# v648 — LOWER REAL INFECTED ARMS / NATURAL STANDING GAIT — 2026-10-13
+
+- User video `2026-10-13 00-19-44.mp4`: new textured `assets/zombie_animated.glb` crawlers accepted, but upright walkers had near-T-pose upper arms and stiff gait. Asset has 34 Mixamo bones but ONLY one authored `jad` / "Zombie Agonizing" animation, no authored walking/running clip.
+- v647 built real-bone IK and more knee movement, but Chromium measured elbows only 7–9cm below shoulders (still too horizontal) even though original wrist motion and the crawler passed. v648 corrects this specifically: standing `poseInfectedWalkingArm` aims actual Mixamo upper-arm bone DOWN alongside the ribcage and aims the elbow/forearm forward. Opposing phase naturally alternates reaching while hands remain below shoulders. Authentic skeleton, textures, authored neck/head motion and existing knee/ankle gait are preserved. No artificial new arms or mesh.
+- The v647 fix to `turnInfectedCrawlerWithoutSwap` restores upright sway to source GLB bind quaternions BEFORE capturing the v646 approved crawler. Thus low pelvis, raised chest, natural forward pulling arm motion, headshot/torso hitboxes, clipping original leg skin and same-actor GLB must remain unchanged. Keep Wave 1 Infected-only, all other zombies, bosses and protected v324 recovery untouched.
+- Browser smoke now requires original standing wrists move and actual elbows DROP >13cm below shoulders (not a near T), head/chest hitboxes, converted crawler original mesh, source texture, 19-name boss rotation. Independent Sprinter/Hazmat tests versioned to v648.
+- Main loader `./src/game.js?v=648` (original Infected GLB URL still uses source `?v=646` because asset unchanged). Test https://xboxlivehd88-hue.github.io/city-outbreak/?v=648-infected-lowered-arms . Check final CI and user visuals before asserting naturalness.
+
+---
+
 # v647 — INFECTED STANDING WALK / ELBOWS (CRAWLER PRESERVED) — 2026-10-13
 
 - User video `2026-10-13 00-19-44.mp4` shows the replacement Infected `assets/zombie_animated.glb` wandering with both arms near a T-pose and stiff legs, **while the converted crawlers are visually approved and MUST NOT be redesigned**.
