@@ -1,3 +1,13 @@
+# v657 — SECOND VISUAL PASS / MID-FALL CONTACT — 2026-10-13
+
+- First v657 Infected Chromium run 38476318998 passed but original WebGL mid-fall screenshot still showed legs below street; **not acceptable**. Do not restore that version.
+- Corrected in v657 gameplay commit `f3ce131b3750f4bd92e6d910de1734c5565b347f`: grounded thigh/shin pose blends sooner (0.095–0.5 s, instead of 0.22–0.83 s) and original skinned shoulders/elbows receive independent hand-to-pavement IK after 0.15 s, rather than dangling in midair. Keep arm/leg destruction filtering.
+- Re-rendered exact original GLB in **Infected/Parasite Chromium run 38476716407 PASS**: at death_early_side one knee starts buckling as body drops, at death_half_side BOTH leg meshes visible and original knee bent, at death_side one knee curled and the other extended, arms separate from torso rather than a flat outstretched board. Browser measured peak initial knee flex .471 rad, ROOT tilt .663 rad (compared with v656 .868rad), original Spine flex .5rad, slight side fall .14rad, foot clearance .13m, no page errors, same original `assets/zombie_animated.glb`. User's in-game visual approval still pending.
+- Added stricter original-GLB mid-fall test in `scripts/parasite-v586-smoke.cjs` at commit `ca6c39648276ee3960fe26648115acad2d2373e1`: inspect foot/shin World Y at ~0.5 s and at settling; assert limbs don't sink under pavement (earlier tests only asserted final clearance). Its corresponding run **38476751977** needs confirmed result; recheck before main merge. Sprinter/Hazmat/Green independent regression on v657 latest gameplay already passed.
+- Protected recovery v324, approved original converted Infected crawler, Wave 1 ten Infected only and 19-boss rotation remain unchanged. Only push live loader when all tests pass and use cache-busted `?v=657-infected-knee-collapse` playable link.
+
+---
+
 # v657 — INFECTED ORDINARY GUNSHOT DEATH: KNEES FAIL BEFORE TORSO / NO PLANK FALL — 2026-10-13
 
 - User explicitly reports AGAIN on 2026-10-13 ~18:09 local: "toby the still just fall over when killed". This is a live report after v655 and as v656 was being deployed; do not assume the latest build has been personally approved. Toby inspected ORIGINAL skinned render screenshots of v656 in GitHub Actions run `38475350300`: `death_early_side` upright, `death_half_side` and `death_side` still showed almost a *single elongated horizontal plank* even though smoke passed; the user was right about the visual.
