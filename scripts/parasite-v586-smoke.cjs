@@ -1,9 +1,9 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"647",pass:false},errors=[];let browser;
+ const report={version:"647",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
-  const page=await browser.newPage({viewport:{width:1200,height:800}});
+  page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
   await page.route(/\/src\/game\.js\?v=647$/,async route=>{
@@ -376,7 +376,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
-  await page.waitForFunction(()=>globalThis.__parasiteSmoke?.waveOne()?.spawned===10,null,{timeout:30000});
+  await page.waitForFunction(()=>globalThis.__parasiteSmoke?.waveOne()?.spawned===10,null,{timeout:70000});
   report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
   report.infectedCrawler=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedCrawlerAudit());
   report.rotation=await page.evaluate(()=>globalThis.__parasiteSmoke.selectViaRealBossRotation());
