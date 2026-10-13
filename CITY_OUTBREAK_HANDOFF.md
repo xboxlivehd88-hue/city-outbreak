@@ -1,3 +1,14 @@
+# v647 — INFECTED STANDING WALK / ELBOWS (CRAWLER PRESERVED) — 2026-10-13
+
+- User video `2026-10-13 00-19-44.mp4` shows the replacement Infected `assets/zombie_animated.glb` wandering with both arms near a T-pose and stiff legs, **while the converted crawlers are visually approved and MUST NOT be redesigned**.
+- The uploaded original GLB is fully rigged (34 Mixamo bones) but has exactly **one** source animation, `jad` from `Zombie Agonizing.fbx`, 48 animated channels. It has **NO authored walk/run cycle**. v646 poses actual legs/arms itself but wrongly uses small local-X shoulder rotations against the model's outstretched authored pose, which leaves arms almost horizontal.
+- v647 edits only **upright** `syncInfectedGLB`: world-space two-bone IK targets original shoulder, elbow and wrist with arms lowered in front of the torso and alternating reaching. Retain native bone lengths and original bind twist, elbows bent naturally, mild body sway, stronger progressive knee flex/foot angle. Continue native `jad` clip on neck/head only; no T pose, no generic meshes.
+- The converted-crawler path `turnInfectedCrawlerWithoutSwap` now clears only upright sway from original Hips/Spine/Chest/UpperArm/LowerArm back to GLB bind quaternions **before capturing the crawling pose**, so v646 pelvis/chest/hand support/head tilt and limb clipping remain unchanged. Source-model identity, textures, raycasts, boss rotation, Wave 1 infected-only and protected recovery v324 are untouched.
+- Chromium Infected regression now measures real upright shoulder/elbow/wrist angles and travel in four gait phases before dual-leg conversion, and retains original skin/hitbox/crawler/head/chest/boss assertions. Sprinter and Hazmat regression versions updated.
+- Main loader `./src/game.js?v=647`, GLB source cache `?v=646` unchanged (same original asset). Live test https://xboxlivehd88-hue.github.io/city-outbreak/?v=647-infected-natural-walk . DO NOT claim passed or visually signed off until GitHub Actions v647 runs and user confirms.
+
+---
+
 # v646 — VERIFIED ORIGINAL INFECTED GLB / FRESH CACHE — 2026-10-12
 
 - Replaced Infected Wave-1's shared placeholder with the user's real `assets/zombie_animated.glb` (uploaded to `main` in commit `59538d3`). The uploaded model has 34 real Mixamo bones, one original textured skinned body, and one native `jad` / "Zombie Agonizing" clip; the native clip is not a run, so gameplay leg/arm locomotion is driven on those actual imported joints.
