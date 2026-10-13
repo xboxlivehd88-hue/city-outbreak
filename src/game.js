@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v648: downward Mixamo Infected upper arms and forward-reaching forearms; v646 crawler preserved.
+// v649: reaching Infected arms, distal foot removal and grounded gunshot collapse; approved crawler preserved.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -6566,6 +6566,10 @@ function bodyPbdPushOutsideCar(c,x,z,pad=.08){
 }
 function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,options=null){
  const rig=bodyPbdRig(z);if(!rig)return null;
+ // ONLY upright Infected gunshot deaths get a one-time forward balance loss.
+ // Their approved crawlers and all blast ragdolls retain their existing PBD.
+ const infectedGunshot=rig.kind==="infected"&&z.dead&&!z.infectedCrawler&&!isBlast;
+ const fallForward=new THREE.Vector3(0,0,-1).applyQuaternion(z.g.quaternion).normalize();
  z.g.updateMatrixWorld(true);rig.holder.updateMatrixWorld(true);
  const nodes=new Map();
  const centerY=z.g.position.y+1.0,bodyCenterD=isBlast&&blastOrigin?Math.hypot(z.g.position.x-blastOrigin.x,centerY-blastOrigin.y,z.g.position.z-blastOrigin.z):0;
@@ -6585,8 +6589,17 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,op
      vy=(6.2+power*2.15)*asym+Math.max(0,dy/nodeD)*1.6;
    }
    const distal=key.includes("Hand")||key.includes("Foot")||key.includes("Lower")||key==="Head";
-   const random=distal?(isBlast?2.35:1.18):(isBlast?1.25:.62);
+   const random=infectedGunshot?(distal?.34:.22):
+    distal?(isBlast?2.35:1.18):(isBlast?1.25:.62);
    vx+=(rnd()-.5)*random;vy+=(rnd()-.5)*random*.72;vz+=(rnd()-.5)*random;
+   if(infectedGunshot){
+    // Release the real chest/head ahead of the pelvis, instead of making the
+    // entire corpse spin around a planted origin. Gravity finishes the fall.
+    const forwardSpeed=key==="Head"?1.15:key==="Neck"?.99:
+     key==="Chest"?.78:key==="Spine"?.61:key.includes("Arm")?.58:.18;
+    vx+=fallForward.x*forwardSpeed;vz+=fallForward.z*forwardSpeed;
+    if(key==="Head"||key==="Chest")vy-=.20;
+   }
    const invMass=(key==="Hips"||key==="Chest")?.62:key==="Spine"?.72:1;
    // v549: modest skull/core contact clearance prevents the rendered head
    // and torso from dipping below ground while joints stay simulated.
@@ -6647,7 +6660,7 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,op
    const restDir=bodyPbdTmpB.sub(bodyPbdTmpA).applyQuaternion(bodyPbdInvQ).normalize().clone();
    links.push({a,b,bone,baseQuat:bone.quaternion.clone(),restDir});
  }
- return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999,followRoot:!!options?.followRoot};
+ return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999,followRoot:!!options?.followRoot||infectedGunshot};
 }
 function solveBodyPbdEdge(e){
  const d=bodyPbdTmpA.subVectors(e.b.pos,e.a.pos),dist=d.length();if(dist<1e-6)return;
@@ -6724,6 +6737,7 @@ function orientBodyPbd(z,pbd){
 }
 function updateBodyPbd(z,rag,dt){
  const p=rag.bodyPbd;if(!p)return false;
+ const infectedGunshot=p.rigKind==="infected"&&!rag.blast&&z.dead&&!z.infectedCrawler;
  const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60)))),h=dt/steps;
  for(let step=0;step<steps;step++){
    const touched=new Set();
@@ -6733,8 +6747,11 @@ function updateBodyPbd(z,rag,dt){
    for(let iter=0;iter<2;iter++)for(const e of p.edges)solveBodyPbdEdge(e);
    for(const n of p.nodes.values()){
      if(collideBodyPbdNode(n,rag))touched.add(n);
-     n.vel.subVectors(n.pos,n.old).multiplyScalar(.995/Math.max(h,.001));
-     if(touched.has(n)){n.vel.x*=.62;n.vel.z*=.62;if(n.vel.y<0)n.vel.y=-n.vel.y*.10}
+     n.vel.subVectors(n.pos,n.old).multiplyScalar((infectedGunshot?.982:.995)/Math.max(h,.001));
+     if(touched.has(n)){
+      n.vel.x*=infectedGunshot?.38:.62;n.vel.z*=infectedGunshot?.38:.62;
+      if(n.vel.y<0)n.vel.y=-n.vel.y*(infectedGunshot?.03:.10);
+     }
    }
  }
  let contacts=0,maxSpeed=0;
@@ -7221,7 +7238,19 @@ function clipInfectedGLBLimbs(z){
   if(z[word+"ArmDetached"])detachedKeys.push(side+"_UpperArm",side+"_LowerArm",side+"_Hand");
  }
  if(!detachedKeys.length)return null;
- const removedBones=new Set(detachedKeys.map(key=>z.infectedBones.get(key)).filter(Boolean));
+ // Include Mixamo toe/hand child joints: a foot often has its own weighted
+ // ToeBase even when the parent Foot has been severed.
+ const removedBones=new Set(),distalFootBones=new Set();
+ for(const key of detachedKeys){
+  const bone=z.infectedBones.get(key);
+  if(bone)bone.traverse(child=>{if(child.isBone)removedBones.add(child)});
+ }
+ for(const side of ["L","R"]){
+  if(!z[(side==="L"?"left":"right")+"LegDetached"])continue;
+  z.infectedBones.get(side+"_Foot")?.traverse(child=>{
+   if(child.isBone)distalFootBones.add(child);
+  });
+ }
  let changed=0,removed=0;
  z.infectedVisual.traverse(mesh=>{
   if(!mesh.isSkinnedMesh||!mesh.skeleton)return;
@@ -7230,15 +7259,20 @@ function clipInfectedGLBLimbs(z){
   const skin=base.getAttribute("skinIndex"),weights=base.getAttribute("skinWeight"),
     pos=base.getAttribute("position");
   if(!skin||!weights||!pos)return;
-  const boneIndices=new Set();
-  mesh.skeleton.bones.forEach((bone,i)=>{if(removedBones.has(bone))boneIndices.add(i)});
+  const boneIndices=new Set(),footIndices=new Set();
+  mesh.skeleton.bones.forEach((bone,i)=>{
+   if(removedBones.has(bone))boneIndices.add(i);
+   if(distalFootBones.has(bone))footIndices.add(i);
+  });
   if(!boneIndices.size)return;
-  const legWeight=new Float32Array(pos.count);
+  const legWeight=new Float32Array(pos.count),footWeight=new Float32Array(pos.count);
   for(let i=0;i<pos.count;i++){
    let total=0;
    for(let k=0;k<Math.min(4,skin.itemSize,weights.itemSize);k++)
     if(boneIndices.has(skin.getComponent(i,k)))total+=weights.getComponent(i,k);
    legWeight[i]=total;
+   if(footIndices.size)for(let k=0;k<Math.min(4,skin.itemSize,weights.itemSize);k++)
+    if(footIndices.has(skin.getComponent(i,k)))footWeight[i]+=weights.getComponent(i,k);
   }
   const index=base.index,count=index?.count||pos.count,read=i=>index?index.getX(i):i;
   const groups=base.groups?.length?base.groups:[{start:0,count,materialIndex:0}];
@@ -7248,7 +7282,11 @@ function clipInfectedGLBLimbs(z){
    for(let i=group.start;i+2<stop;i+=3){
     const a=read(i),b=read(i+1),d=read(i+2),
      wa=legWeight[a],wb=legWeight[b],wd=legWeight[d];
-    if(Number(wa>.55)+Number(wb>.55)+Number(wd>.55)>=2||(wa+wb+wd)/3>.72){
+    // Preserve the approved hip/torso seam clipping, but remove ANY triangle
+    // still influenced by a severed foot or toe. Otherwise a single weighted
+    // boot triangle can remain on the pavement as a detached-foot artifact.
+    if(Math.max(footWeight[a],footWeight[b],footWeight[d])>.12||
+       Number(wa>.55)+Number(wb>.55)+Number(wd>.55)>=2||(wa+wb+wd)/3>.72){
      clipped++;continue;
     }
     indices.push(a,b,d);
@@ -7351,10 +7389,9 @@ function poseInfectedWalkingArm(z,side,phase){
  if(!upper||!lower||!hand||!upper.parent||!lower.parent)return;
  const stride=Math.sin(phase+(side<0?Math.PI:0));
  z.g.getWorldQuaternion(infectedWalkQ);
- // v648: source shoulders point straight OUT in the only 'Agonizing' clip.
- // Aim the original upper-arm BONE down from the shoulder, rather than
- // targeting only the hand (which left elbows almost shoulder-high in v647).
- // Keep the upper arm close to the ribcage, and forearms bent toward the player.
+ // v649: raise and spread BOTH real upper arms forward, as if grasping the
+ // player, without returning to the source asset's near-horizontal T pose.
+ // Keep elbows below shoulders; alternate the reaching distance each step.
  const aim=(bone,child,key,localDirection)=>{
   const base=rest.get(key);
   if(!base||child.position.lengthSq()<1e-9)return;
@@ -7366,13 +7403,13 @@ function poseInfectedWalkingArm(z,side,phase){
   infectedWalkCorrectQ.setFromUnitVectors(infectedWalkRestDir,infectedWalkLocalDir);
   bone.quaternion.copy(infectedWalkCorrectQ).multiply(base);
  };
- // The elbow hangs DOWN near the ribs, never splayed in a T-pose.
- // Arms alternate a modest forward reach opposite the legs.
- infectedWalkAxis.set(side*.18,-.93,-.25-.22*stride);
+ // Reach outward and forward from shoulder height, elbow still naturally
+ // lower. More forward drive on the advancing arm, less on the trailing arm.
+ infectedWalkAxis.set(side*.36,-.64,-.55-.17*stride);
  aim(upper,lower,p+"_UpperArm",infectedWalkAxis);
  upper.updateWorldMatrix(true,true);
- // Bent forearms reach out at waist/chest height while elbows stay low.
- infectedWalkAxis.set(-side*.04,-.48,-.78-.15*stride);
+ // Raise the hands toward chest height and extend toward the player.
+ infectedWalkAxis.set(side*.12,-.21,-.91-.16*stride);
  aim(lower,hand,p+"_LowerArm",infectedWalkAxis);
  lower.updateWorldMatrix(true,true);
 }
