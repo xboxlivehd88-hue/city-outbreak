@@ -1,4 +1,4 @@
-name: v656 Hazmat and Green Guy regression
+name: v657 Hazmat and Green Guy regression
 on:
   push:
     paths:
@@ -30,5 +30,5 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hazmat-v656-audit
-          path: HAZMAT_V656_AUDIT.json
+          name: hazmat-v657-audit
+          path: HAZMAT_V657_AUDIT.json
