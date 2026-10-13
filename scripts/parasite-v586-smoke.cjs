@@ -249,8 +249,13 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    maxFrameTilt=Math.max(maxFrameTilt,Math.abs(fall.angle-lastAngle));
    lastAngle=fall.angle;
    const absoluteSkull=z.infectedBones.get("Head").getWorldPosition(new THREE.Vector3());
-   if(i===9||i===29||i===47||i===90)samples.push({frame:i,headY:absoluteSkull.y,tilt:fall.angle,
-    joints:fall.joints.map(j=>Math.abs(j.angle)),hipY:fall.hip.y});
+   if(i===9||i===29||i===47||i===90){
+    const boneHeight=key=>z.infectedBones.get(key)?.getWorldPosition(new THREE.Vector3()).y-rag.floorY;
+    samples.push({frame:i,headY:absoluteSkull.y,tilt:fall.angle,
+     joints:fall.joints.map(j=>Math.abs(j.angle)),hipY:fall.hip.y,
+     lowerBodyMinY:Math.min(...["L_LowerLeg","R_LowerLeg","L_Foot","R_Foot"].map(boneHeight)),
+     handsMinY:Math.min(...["L_Hand","R_Hand"].map(boneHeight))});
+   }
    if(fall.joints.some(j=>Math.abs(j.angle)>j.limit+.005))twistExceeded=true;
   }
   return{dead:z.dead,kind:z.kind,bodyPbd:!!rag.bodyPbd,custom:!!fall,
@@ -597,6 +602,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.peakBodyTilt>.43&&report.infectedDeath.peakBodyTilt<.78&&
    report.infectedDeath.peakSpineFlex>.45&&
    report.infectedDeath.maxKneeFold>.16&&
+   report.infectedDeath.samples[1].lowerBodyMinY>-.10&&
+   report.infectedDeath.samples[3].lowerBodyMinY>-.04&&
    Math.abs(report.infectedDeath.sideRoll)>.10&&
    report.infectedDeath.samples[0].tilt<.18&&
    Number.isFinite(report.infectedDeath.legGroundClearance)&&
