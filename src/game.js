@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v647: upright Infected original-bone IK gait, approved v646 crawler untouched.
+// v648: downward Mixamo Infected upper arms and forward-reaching forearms; v646 crawler preserved.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
