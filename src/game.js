@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v646 verified Infected GLB: fresh module and asset cache URLs; v645 gameplay unchanged.
+// v647: upright Infected original-bone IK gait, approved v646 crawler untouched.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
