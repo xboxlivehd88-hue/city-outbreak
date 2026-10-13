@@ -1,3 +1,12 @@
+# v656 VERIFIED BROWSER AND ORIGINAL MODEL RENDER — 2026-10-13
+
+- Test branch `toby-infected-v656-grounded-walk-collapse`; FINAL original Infected/Parasite Chromium run [38474787447](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38474787447) **SUCCESS**, no browser errors. Actual original textured GLB walk/early/death-half/settled front+side render frames inspected. The intermediate run originally showed leg skin buried below ground; v656 `poseInfectedFallenLegs` was added and final screenshot shows full original calves/feet visible above the street rather than cut/sunk.
+- Moved 1.472m during automated walk: planted left ankle changed **max .00437m** across 26 stance samples, right **.00296m** across 35 samples. Exact original GLB legs flex, pelvis and opposite chest sway. After death, root tilt ~.868 radians (not the v655 1.2rad board), source Mixamo **Spine flex .47rad**, chest .25, neck .10, no unbounded corkscrewing; final left/right original ankle worldY ~.216m and foot skin ground clearance **.1298m**; original death visual lands with legs extended. True ragdoll physics is still an approximation; user visual acceptance required.
+- Converted original Infected crawler checks remain within approved v646 pose: pelvis .095m, chest .295m, head .438m, leg triangles removed, NO severed foot residue. The standard independent Cop/Maniac Sprinter and Hazmat/Green GitHub workflows for final v656 source completed SUCCESS at runs [38474727030](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38474727030) and [38474727018](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38474727018). All checks from test branch, not yet main deployment at time of this note.
+- Final v656 screenshots and tests prove a real change, but do NOT equate a passing test with user's subjective approval; ask for footage only after user has tested this new link. Protected v324 recovery remains unchanged.
+
+---
+
 # v656 — WORLD-PLANTED INFECTED STEPS + SPINE-DRIVEN DEATH — 2026-10-13
 
 - User's NEW video `2026-10-13 17-47-22.mp4` (~29.45s, 1920x1080, 60fps) is definitive: living Infected at roughly 9–12 seconds still stride stiffly and lack natural weight transfer, and a shot-dead Infected around 13s drops as a rigid board. User asks whether video is actually viewed; inspect its actual frames before any more adjustments. v655 was NOT visually approved. Toby reviewed 29 one-second frames and zoomed at 10 and 13 seconds.
