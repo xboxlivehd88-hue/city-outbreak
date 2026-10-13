@@ -7486,6 +7486,7 @@ function poseInfectedWalkingLeg(z,side,swing){
  const maxD=base.thigh+base.shin-.035;
  const distance=THREE.MathUtils.clamp(infectedLegThighDir.length(),minD,maxD);
  infectedLegThighDir.normalize();
+ infectedLegGoal.copy(infectedLegHip).addScaledVector(infectedLegThighDir,distance);
  // Positive knee bend points toward the player, never behind the heel.
  infectedLegForward.set(0,0,-1).applyQuaternion(infectedLegActorQuat);
  infectedLegBend.copy(infectedLegForward)
