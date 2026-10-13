@@ -7537,7 +7537,12 @@ function syncInfectedGLB(z,dt){
  // Standing ONLY; crawler conversion restores the exact original GLB scale.
  if(z.infectedHolderRestScale)
   z.infectedVisual.scale.copy(z.infectedHolderRestScale).multiplyScalar(1.09);
- z.infectedVisual.position.y=z.infectedHolderStart.y-.12+
+ // Lift the hips 9cm relative to v653: the visual audit measured
+ // ~0.94m hips above ground against ~0.96m total real thigh+shin length,
+ // so a 0.13m stance ankle forced an unnatural 60-75 degree knee curl.
+ // With the full-scale original GLB, the stance ankle can still touch ground
+ // while the hip rises into a human walking posture.
+ z.infectedVisual.position.y=z.infectedHolderStart.y-.03+
   Math.cos(phase*2)*.005;
  // The uploaded 'jad' is an AGONY clip, not a walking clip. Old fixed Euler
  // negative knee angles never checked the Mixamo shin's REAL hinge direction
