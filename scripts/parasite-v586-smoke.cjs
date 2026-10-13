@@ -258,6 +258,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    bones:realBoneCount,movedXZ:Math.hypot(fall.hip.x-start.x,fall.hip.z-start.z),
    initialHeadY:firstHead.y,samples,contact:fall.contact,settled:rag.active===false,
    maxFrameTilt,twistExceeded,peakSpineFlex:fall.maxSpineFlex,
+   legGroundClearance:fall.legGroundClearance,
+   footHeights:["L_Foot","R_Foot"].map(k=>z.infectedBones.get(k)?.getWorldPosition(new THREE.Vector3()).y),
    peakJointAngle:fall.peakJointAngle,peakBodyTilt:fall.peakBodyTilt,
    finite:[...fall.hip.toArray(),fall.angle,fall.peakJointAngle,...fall.joints.map(j=>j.angle)].every(Number.isFinite)};
  },
@@ -592,6 +594,9 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.settled&&!report.infectedDeath.twistExceeded&&
    report.infectedDeath.peakBodyTilt>.82&&report.infectedDeath.peakBodyTilt<1.02&&
    report.infectedDeath.peakSpineFlex>.43&&
+   Number.isFinite(report.infectedDeath.legGroundClearance)&&
+   report.infectedDeath.legGroundClearance>-.04&&
+   report.infectedDeath.legGroundClearance<.38&&
    report.infectedDeath.peakJointAngle<.59&&report.infectedDeath.maxFrameTilt<.15&&
    report.infectedDeath.initialHeadY-report.infectedDeath.samples[0].headY>.20&&
    report.infectedDeath.movedXZ>.015&&report.infectedDeath.movedXZ<5,
