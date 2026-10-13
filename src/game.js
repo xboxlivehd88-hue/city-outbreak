@@ -8091,7 +8091,7 @@ function poseInfectedFallenLegs(z,rag,f,floor,t){
  behind.normalize();
  const right=new THREE.Vector3(0,1,0).cross(behind).normalize();
  const pole=new THREE.Vector3(0,1,0);
- const blend=THREE.MathUtils.smoothstep(t,.22,.83);
+ const blend=THREE.MathUtils.smoothstep(t,.095,.50);
  const aim=(bone,child,key,goal)=>{
   const base=rest.get(key);
   if(!base||!bone?.parent||!child||child.position.lengthSq()<1e-9)return;
@@ -8130,6 +8130,28 @@ function poseInfectedFallenLegs(z,rag,f,floor,t){
   const targetKnee=root.clone().addScaledVector(ray,along).addScaledVector(poleDir,bend);
   aim(thigh,shin,side+"_UpperLeg",targetKnee);
   aim(shin,ankle,side+"_LowerLeg",goal);
+ }
+ // Let BOTH original arms meet the road as separate weightless limbs, rather
+ // than hanging straight down while the body slides across the pavement.
+ // Respect removed-arm damage: never recreate or animate a detached limb.
+ if(t>.15){
+  for(const side of ["L","R"]){
+   if(!bodyPbdBoneAllowed(z,side+"_UpperArm")||
+      !bodyPbdBoneAllowed(z,side+"_LowerArm"))continue;
+   const upper=bones.get(side+"_UpperArm"),fore=bones.get(side+"_LowerArm"),
+    hand=bones.get(side+"_Hand");
+   if(!upper||!fore||!hand)continue;
+   const sideSign=side==="L"?-1:1;
+   const shoulder=upper.getWorldPosition(new THREE.Vector3());
+   const bend=shoulder.clone().addScaledVector(right,sideSign*.20)
+    .addScaledVector(behind,-.10);
+   bend.y=Math.max(floor+.15,shoulder.y-.16);
+   const palm=shoulder.clone().addScaledVector(right,sideSign*.40)
+    .addScaledVector(behind,-.24);
+   palm.y=floor+.065;
+   aim(upper,fore,side+"_UpperArm",bend);
+   aim(fore,hand,side+"_LowerArm",palm);
+  }
  }
  f.legGroundClearance=Math.min(...["L","R"].map(side=>{
   const foot=bones.get(side+"_Foot");
