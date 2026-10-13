@@ -35,7 +35,17 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const camera=new THREE.PerspectiveCamera(43,360/420,.1,60);
   const result=[];
   const snap=(name)=>{
-   const copy=SkeletonUtils.clone(z.infectedVisual);
+   // Hitbox userData.zombie is circular: sanitize only for clone, restore
+   // before game continues. This does not modify skinned geometry or gameplay.
+   const restored=[];
+   z.infectedVisual.traverse(o=>{
+    if(o.userData&&o.userData.zombie){
+     restored.push([o,o.userData]);o.userData={...o.userData,zombie:null};
+    }
+   });
+   let copy;
+   try{copy=SkeletonUtils.clone(z.infectedVisual)}
+   finally{for(const [o,data] of restored)o.userData=data}
    scene.add(copy);copy.updateMatrixWorld(true);
    camera.position.set(1.45,1.45,4.2);camera.lookAt(0,.77,0);
    rd.render(scene,camera);
