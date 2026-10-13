@@ -8073,6 +8073,62 @@ function createInfectedGunshotFall(z,rag,vx,vz){
   vz:THREE.MathUtils.clamp(vz,-3,3)*.72+(rnd()-.5)*.75,
   vy:0,joints,peakJointAngle:0,peakBodyTilt:0};
 }
+// v656: after the pelvis and flexible spine land, position the original
+// THIGH and SHIN chains above ground. The old hinge fall drove both legs
+// through the street because contact correction only checked head/chest/hips.
+// Use the REAL Mixamo thigh/shin lengths and bind quaternions; never swap skin.
+function poseInfectedFallenLegs(z,rag,f,floor,t){
+ const bones=z.infectedBones,rest=z.infectedRest;
+ const hip=bones.get("Hips"),head=bones.get("Head");
+ if(!hip||!head||t<.07)return;
+ hip.updateWorldMatrix(true,true);
+ const hipWorld=hip.getWorldPosition(new THREE.Vector3());
+ const headWorld=head.getWorldPosition(new THREE.Vector3());
+ const behind=hipWorld.clone().sub(headWorld);behind.y=0;
+ if(behind.lengthSq()<.002)behind.set(0,0,1).applyQuaternion(z.g.getWorldQuaternion(new THREE.Quaternion()));
+ behind.normalize();
+ const right=new THREE.Vector3(0,1,0).cross(behind).normalize();
+ const pole=new THREE.Vector3(0,1,0);
+ const blend=THREE.MathUtils.smoothstep(t,.08,.46);
+ const aim=(bone,child,key,goal)=>{
+  const base=rest.get(key);
+  if(!base||!bone?.parent||!child||child.position.lengthSq()<1e-9)return;
+  const bonePos=bone.getWorldPosition(new THREE.Vector3());
+  const dir=goal.clone().sub(bonePos).normalize();
+  const parentQ=bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+  dir.applyQuaternion(parentQ);
+  const restDir=child.position.clone().applyQuaternion(base).normalize();
+  const desired=new THREE.Quaternion().setFromUnitVectors(restDir,dir).multiply(base);
+  bone.quaternion.slerp(desired,blend);
+  bone.updateWorldMatrix(true,true);
+ };
+ for(const side of ["L","R"]){
+  if(!bodyPbdBoneAllowed(z,side+"_UpperLeg")||!bodyPbdBoneAllowed(z,side+"_LowerLeg"))continue;
+  const thigh=bones.get(side+"_UpperLeg"),shin=bones.get(side+"_LowerLeg"),ankle=bones.get(side+"_Foot");
+  if(!thigh||!shin||!ankle)continue;
+  const root=thigh.getWorldPosition(new THREE.Vector3());
+  const k=shin.getWorldPosition(new THREE.Vector3()),a=ankle.getWorldPosition(new THREE.Vector3());
+  const l1=root.distanceTo(k),l2=k.distanceTo(a);
+  if(l1<.05||l2<.05)continue;
+  const goal=root.clone().addScaledVector(behind,Math.min(l1+l2-.055,1.08))
+   .addScaledVector(right,side==="L"?-.11:.11);
+  goal.y=floor+.13;
+  const ray=goal.clone().sub(root),distance=THREE.MathUtils.clamp(ray.length(),
+   Math.abs(l1-l2)+.02,l1+l2-.028);
+  if(ray.lengthSq()<1e-8)continue;
+  ray.normalize();goal.copy(root).addScaledVector(ray,distance);
+  const poleDir=pole.clone().addScaledVector(ray,-pole.dot(ray)).normalize();
+  const along=(l1*l1-l2*l2+distance*distance)/(2*distance);
+  const bend=Math.sqrt(Math.max(0,l1*l1-along*along));
+  const targetKnee=root.clone().addScaledVector(ray,along).addScaledVector(poleDir,bend);
+  aim(thigh,shin,side+"_UpperLeg",targetKnee);
+  aim(shin,ankle,side+"_LowerLeg",goal);
+ }
+ f.legGroundClearance=Math.min(...["L","R"].map(side=>{
+  const foot=bones.get(side+"_Foot");
+  return foot?foot.getWorldPosition(new THREE.Vector3()).y-floor:Infinity;
+ }));
+}
 function updateInfectedGunshotFall(z,rag,dt){
  const f=rag.infectedFall;
  if(!f)return false;
@@ -8150,6 +8206,10 @@ function updateInfectedGunshotFall(z,rag,dt){
   }
   if(low<floor)f.holder.position.y+=Math.min(.20,floor-low);
  }
+ f.holder.updateWorldMatrix(true);
+ // Leg contact is separate from chest/head contact. Keep the original
+ // lower-body skin OUT of the street when the flexible torso reaches ground.
+ poseInfectedFallenLegs(z,rag,f,floor,t);
  f.holder.updateWorldMatrix(true);
  rag.contactCount=f.contact?7:0;
  rag.fullBodyDown=f.contact;
