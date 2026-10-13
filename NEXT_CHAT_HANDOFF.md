@@ -1,3 +1,15 @@
+# v649 — INFECTED REACHING WALK, FOOT DEBRIS, GUNSHOT DEATH — 2026-10-13
+
+- User video `2026-10-13 00-44-42.mp4` after testing v648: arms approved lower but need UP and OUT toward the player; after shooting off one leg a foot/boot artifact remains; gunshot corpses spin and seem magnetized/pinned to the pavement.
+- Infected ONLY upright `poseInfectedWalkingArm`: retain original Mixamo bones/texture and alternating stride, raise and spread real upper arms forward with bent elbows; forearms extend toward the player. Do not return to T-pose.
+- Infected GLB severing: recursively include descendant toe/hand bones in the removed skin-weight set. In addition to the existing approved majority-weight clipping for thigh/hip boundaries, remove ANY triangle influenced more than .12 by a severed Foot/Toe child, preventing a stray boot/foot polygon after one-leg destruction. Preserve the original actor and v646–648 approved dual-leg crawler movement, low pelvis, raised chest and hitboxes.
+- Upright Infected ordinary **gunshot deaths ONLY**: use the existing native 34-bone PBD ragdoll, but reduce random initial joint-spin, impart one initial upper-body forward fall imbalance, enable corpse-root translation to follow the simulated hips, and strengthen real ground-contact friction. No looping animation or magnetized floor target. Explosion ragdolls, converted Infected crawler deaths, and every other zombie type retain their existing physics.
+- `scripts/parasite-v586-smoke.cjs` v649 now measures severed-foot weighted triangles after first and second amputations (must be ZERO) and an original-GLB gunshot ragdoll's finite simulated nodes and freely translating hips; prior Wave 1 = 10 Infected, original texture, crawler hand-pull, hitboxes, 19-boss rotation checks remain.
+- Main loader after integration: `./src/game.js?v=649`. Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=649-infected-reaching-foot-ragdoll . Run real Chromium/PAGES checks and await USER visual approval; do not claim final movement/death signoff from CI alone.
+- **Protected recovery v324 untouched**. Do NOT alter approved Infected crawler pose/logic, other zombie classes, bosses, weapons, settings, or wave spawning.
+
+---
+
 # v648 — LOWER REAL INFECTED ARMS / NATURAL STANDING GAIT — 2026-10-13
 
 - User video `2026-10-13 00-19-44.mp4`: new textured `assets/zombie_animated.glb` crawlers accepted, but upright walkers had near-T-pose upper arms and stiff gait. Asset has 34 Mixamo bones but ONLY one authored `jad` / "Zombie Agonizing" animation, no authored walking/running clip.
