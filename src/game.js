@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v655: restore life-size Infected and living torso gait; articulated gunshot collapse rather than one rigid board.
+// v656: truly planted Mixamo feet and articulated falling spine instead of a rigid pivot; approved crawler protected.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -7384,6 +7384,7 @@ function attachInfectedGLB(z){
  }});
  z.infectedVisual=holder;z.infectedModel=model;z.infectedBones=bones;
  z.infectedRest=rest;z.infectedHolderStart=holder.position.clone();
+ z.infectedHipStart=bones.get("Hips")?.position.clone()||null;
  z.infectedHolderRestScale=holder.scale.clone();
  z.infectedGLBSource="assets/zombie_animated.glb";
  // The one authored "jad" clip is an agonizing upper-body performance,
@@ -7434,13 +7435,13 @@ function poseInfectedWalkingArm(z,side,phase){
   infectedWalkCorrectQ.setFromUnitVectors(infectedWalkRestDir,infectedWalkLocalDir);
   bone.quaternion.copy(infectedWalkCorrectQ).multiply(base);
  };
- // Reach outward and forward from shoulder height, elbow still naturally
- // lower. More forward drive on the advancing arm, less on the trailing arm.
- infectedWalkAxis.set(side*.36,-.64,-.55-.17*stride);
+ // Each shoulder genuinely alternates reach and recoil with the opposite
+ // stepping leg. v655's fixed symmetric forward aim looked like a mannequin
+ // even when hips moved. Elbows remain below shoulders and never T-pose.
+ infectedWalkAxis.set(side*(.32+.04*stride),-.67+.09*stride,-.57-.22*stride);
  aim(upper,lower,p+"_UpperArm",infectedWalkAxis);
  upper.updateWorldMatrix(true,true);
- // Raise the hands toward chest height and extend toward the player.
- infectedWalkAxis.set(side*.12,-.21,-.91-.16*stride);
+ infectedWalkAxis.set(side*(.13+.04*stride),-.26+.07*stride,-.88-.19*stride);
  aim(lower,hand,p+"_LowerArm",infectedWalkAxis);
  lower.updateWorldMatrix(true,true);
 }
@@ -7456,7 +7457,10 @@ const infectedLegHip=new THREE.Vector3(),infectedLegKnee=new THREE.Vector3(),
  infectedLegRestDir=new THREE.Vector3(),infectedLegParentQuat=new THREE.Quaternion(),
  infectedLegLocalDir=new THREE.Vector3(),infectedLegQuat=new THREE.Quaternion(),
  infectedLegActorQuat=new THREE.Quaternion(),infectedLegBaseOffset=new THREE.Vector3();
-function poseInfectedWalkingLeg(z,side,swing){
+// World-space foot plant persists while each leg bears weight. This is the
+// difference between a real step and the old leg IK that carried each foot
+// around with the zombie's moving body like a marching puppet.
+function poseInfectedWalkingLeg(z,side,swing,phase){
  const bones=z.infectedBones,rest=z.infectedRest;
  const upper=bones.get(side+"_UpperLeg"),lower=bones.get(side+"_LowerLeg"),
   foot=bones.get(side+"_Foot");
@@ -7476,25 +7480,47 @@ function poseInfectedWalkingLeg(z,side,swing){
   z.infectedLegGeometry[side]=base;
  }
  if(base.thigh<.06||base.shin<.06)return;
- // Original foot placement is retained. Move each ankle forward/back as
- // opposite feet step, and lift the moving foot to guarantee visible knee bend.
- infectedLegGoal.copy(base.offset);
- // Do not drive the ankle nearly half a metre every stride: that turned
- // the small Infected model into a high-knee marching/cycling gait.
- infectedLegGoal.z-=.215*swing;
- infectedLegGoal.applyQuaternion(infectedLegActorQuat).add(infectedLegHip);
- // Grounded stance ankle ~13cm above sampled floor (sole hangs below ankle).
- // The prior +.11 +.17*swing added height to an ALREADY raised ankle,
- // causing visible marching in mid-air even though the knees rotated.
- infectedLegGoal.y=(Number.isFinite(z.groundY)?z.groundY:z.g.position.y)+
-  .145+.085*Math.max(0,swing);
+ if(!z.infectedFootPlants)z.infectedFootPlants={};
+ const floor=(Number.isFinite(z.groundY)?z.groundY:z.g.position.y)+.135;
+ const state=z.infectedFootPlants[side]||(z.infectedFootPlants[side]={
+  plant:infectedLegAnkle.clone(),last:infectedLegAnkle.clone(),
+  swinging:false,begin:infectedLegAnkle.clone(),initialized:false});
+ const direction=new THREE.Vector3(0,0,-1).applyQuaternion(infectedLegActorQuat);
+ infectedLegGoal.copy(base.offset).applyQuaternion(infectedLegActorQuat)
+  .add(infectedLegHip).addScaledVector(direction,.25);
+ infectedLegGoal.y=floor;
+ // If actor teleported, respawned or direction abruptly changed, don't leave
+ // its support foot nailed to an unrelated patch of pavement.
+ if(!state.initialized||state.plant.distanceTo(infectedLegHip)>1.3){
+  state.plant.copy(infectedLegAnkle);state.plant.y=floor;
+  state.last.copy(state.plant);state.begin.copy(state.plant);
+  state.initialized=true;state.swinging=false;
+ }
+ const u=((phase+(side==="R"?Math.PI:0))%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+ const inSwing=u<Math.PI;
+ if(inSwing){
+  if(!state.swinging){state.begin.copy(state.plant);state.swinging=true;}
+  const progress=u/Math.PI,blend=progress*progress*(3-2*progress);
+  infectedLegGoal.lerpVectors(state.begin,infectedLegGoal,blend);
+  infectedLegGoal.y=floor+.135*Math.sin(progress*Math.PI);
+ }else{
+  if(state.swinging){
+   // The newly landed shoe stays in WORLD SPACE while the body travels over
+   // it until the next swing; foot doesn't skate over the concrete.
+   state.plant.copy(state.last);state.plant.y=floor;
+   state.swinging=false;
+  }
+  infectedLegGoal.copy(state.plant);
+  infectedLegGoal.y=floor;
+ }
+ state.last.copy(infectedLegGoal);
  infectedLegThighDir.subVectors(infectedLegGoal,infectedLegHip);
  const minD=Math.abs(base.thigh-base.shin)+.025;
- const maxD=base.thigh+base.shin-.014;
+ const maxD=base.thigh+base.shin-.018;
  const distance=THREE.MathUtils.clamp(infectedLegThighDir.length(),minD,maxD);
+ if(infectedLegThighDir.lengthSq()<1e-8)return;
  infectedLegThighDir.normalize();
  infectedLegGoal.copy(infectedLegHip).addScaledVector(infectedLegThighDir,distance);
- // Positive knee bend points toward the player, never behind the heel.
  infectedLegForward.set(0,0,-1).applyQuaternion(infectedLegActorQuat);
  infectedLegBend.copy(infectedLegForward)
   .addScaledVector(infectedLegThighDir,-infectedLegForward.dot(infectedLegThighDir));
@@ -7520,11 +7546,10 @@ function poseInfectedWalkingLeg(z,side,swing){
  };
  aim(upper,lower,side+"_UpperLeg",infectedLegKnee);
  aim(lower,foot,side+"_LowerLeg",infectedLegGoal);
- // Natural sole level follows stride; no massive backward foot rotation.
  const ankle=rest.get(side+"_Foot");
  if(ankle)foot.quaternion.copy(ankle).multiply(
   infectedGlbQ.setFromAxisAngle(new THREE.Vector3(1,0,0),
-   -.10*Math.max(0,swing)));
+   -.18*Math.max(0,swing)+.09*Math.max(0,-swing)));
 }
 function syncInfectedGLB(z,dt){
  if(!z?.infectedVisual||z.dead||z.infectedCrawler)return;
@@ -7560,12 +7585,19 @@ function syncInfectedGLB(z,dt){
  // body. Earlier static torso + robotic mirrored leg IK read as a stiff puppet.
  // Rotation amplitudes remain small enough not to disturb the skinned waist.
  const weightShift=Math.cos(phase),stepTurn=Math.sin(phase);
- setRot("Hips",-.025+.045*weightShift,.070*stepTurn,.040*weightShift);
- setRot("Spine",.055-.038*weightShift,-.038*stepTurn,-.028*weightShift);
- setRot("Chest",.045-.025*weightShift,-.022*stepTurn,.019*weightShift);
+ const hipBone=bones.get("Hips");
+ if(hipBone&&z.infectedHipStart){
+  hipBone.position.copy(z.infectedHipStart);
+  hipBone.position.x+=.024*weightShift;
+  hipBone.position.y+=.019*Math.cos(phase*2);
+  hipBone.position.z+=.014*stepTurn;
+ }
+ setRot("Hips",-.050+.070*weightShift,.080*stepTurn,.045*weightShift);
+ setRot("Spine",.080-.064*weightShift,-.057*stepTurn,-.040*weightShift);
+ setRot("Chest",.055-.045*weightShift,-.031*stepTurn,.025*weightShift);
  z.infectedVisual.updateWorldMatrix(true,true);
- poseInfectedWalkingLeg(z,"L",step);
- poseInfectedWalkingLeg(z,"R",-step);
+ poseInfectedWalkingLeg(z,"L",step,phase);
+ poseInfectedWalkingLeg(z,"R",-step,phase);
  // Start from native bind rotations before bending the two real arm chains.
  for(const key of ["L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm"]){
   const bone=bones.get(key),q=rest.get(key);if(bone&&q)bone.quaternion.copy(q);
@@ -7806,6 +7838,9 @@ function turnInfectedCrawlerWithoutSwap(z){
   // v646 approved low-pelvis original crawler capture.
   visual.position.copy(z.infectedHolderStart);
   if(z.infectedHolderRestScale)visual.scale.copy(z.infectedHolderRestScale);
+  if(z.infectedHipStart&&bones.get("Hips"))
+   bones.get("Hips").position.copy(z.infectedHipStart);
+  z.infectedFootPlants=null;
   for(const key of ["Hips","Spine","Chest","L_UpperArm","L_LowerArm",
    "R_UpperArm","R_LowerArm"]){
    const bone=bones.get(key),base=z.infectedRest.get(key);
@@ -7996,9 +8031,9 @@ function createInfectedGunshotFall(z,rag,vx,vz){
  // forward/back hinge rotation at spine/chest (not independent twist/yaw).
  // Limbs are loose but constrained to keep original skin from knotting.
  const profiles=[
-  ["Spine",.34,0,new THREE.Vector3(1,0,0)],
-  ["Chest",.15,0,new THREE.Vector3(1,0,0)],
-  ["Neck",.09,0,new THREE.Vector3(1,0,0)],
+  ["Spine",.52,0,new THREE.Vector3(1,0,0)],
+  ["Chest",.30,0,new THREE.Vector3(1,0,0)],
+  ["Neck",.14,0,new THREE.Vector3(1,0,0)],
   ["Head",.13,.50,new THREE.Vector3(1,0,0)],
   ["L_UpperArm",.52,1.7,new THREE.Vector3(1,0,.13)],
   ["R_UpperArm",.52,1.7,new THREE.Vector3(1,0,-.13)],
@@ -8032,7 +8067,7 @@ function createInfectedGunshotFall(z,rag,vx,vz){
  }
  return{holder,hips,baseHolderQuat:holder.quaternion.clone(),hip,
   originalHipY:hip.y,axis,angle:0,angularSpeed:.30+rnd()*.38,
-  finalAngle:1.17+rnd()*.10,falling:true,contact:false,
+  finalAngle:.84+rnd()*.12,falling:true,contact:false,
   maxSpineFlex:0,
   vx:THREE.MathUtils.clamp(vx,-3,3)*.72+(rnd()-.5)*.75,
   vz:THREE.MathUtils.clamp(vz,-3,3)*.72+(rnd()-.5)*.75,
@@ -8047,7 +8082,7 @@ function updateInfectedGunshotFall(z,rag,dt){
  if(f.falling){
   // Angular fall follows the collapsing hips rather than a fixed 90-degree
   // door hinge. Flexible spine finishes the upper body's path to the ground.
-  f.angularSpeed=Math.min(3.65,f.angularSpeed+7.6*h);
+  f.angularSpeed=Math.min(3.25,f.angularSpeed+6.8*h);
   f.angle=Math.min(f.finalAngle,f.angle+f.angularSpeed*h);
   if(f.angle>=f.finalAngle-1e-5){
    f.angle=f.finalAngle;f.falling=false;f.contact=true;
@@ -8077,8 +8112,11 @@ function updateInfectedGunshotFall(z,rag,dt){
   if(j.key==="Spine"||j.key==="Chest"||j.key==="Neck"){
    // Let the shoulders and head continue forward after the pelvis drops.
    // One flexion axis only: no wringing / twisting Mixamo vertebrae.
-   const magnitude=j.key==="Spine"?.27:j.key==="Chest"?.105:.045;
-   j.angle=f.axis.x*magnitude*folding;
+   // Torso bends AROUND its real spine; this, not the holder, carries the
+   // upper-body collapse. Stagger chest and neck behind lower spine motion.
+   const late=THREE.MathUtils.smoothstep(t,j.key==="Chest"?.16:.23,.78);
+   const magnitude=j.key==="Spine"?.47:j.key==="Chest"?.25:.10;
+   j.angle=Math.sign(f.axis.x)*magnitude*(j.key==="Spine"?folding:late);
    f.maxSpineFlex=Math.max(f.maxSpineFlex,Math.abs(j.angle));
   }else{
    j.angle=THREE.MathUtils.clamp(j.angle+j.vel*h,-j.limit,j.limit);
