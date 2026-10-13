@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v650: Infected death-only PBD release, anti-spin bone damping and natural fast gravity collapse; approved crawl preserved.
+// v651: Infected-only stable native-skeleton gunshot collapse; approved walk/crawl and explosion PBD preserved.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -7863,6 +7863,134 @@ function blastBoneProfile(role){
    default:return{lx:1.40,ly:1.00,lz:1.18,airA:.00050,airD:.060,groundA:.0055,groundD:.82,maxA:62,gust:1.30,inertia:1.12,couple:.40,root:.30,impact:1.00};
  }
 }
+// v651: Upright Infected gunshot death keeps the REAL skinned Mixamo skeleton,
+// but never orients its bones from crossing/unconstrained PBD position particles.
+// v649-650 used point-to-point aiming: when the hips moved through a planted
+// foot or an arm particle crossed its parent, the shortest-arc quaternion could
+// rotate a skinned joint toward the WRONG side of the body. Increasing damping
+// only slowed the twisting. This small corpse-only unpowered fall solver has a
+// physical gravity-driven center, one axis of global falling (not spinning),
+// joint inertia with soft anatomical limits, and ground contact. The approved
+// living crawl, standing gait, limb clipping and blast PBD are unaffected.
+const infectedDeathTmpQuat=new THREE.Quaternion(),
+ infectedDeathTarget=new THREE.Vector3(),infectedDeathCurrent=new THREE.Vector3(),
+ infectedDeathLocalTarget=new THREE.Vector3(),infectedDeathLocalCurrent=new THREE.Vector3(),
+ infectedDeathBonePoint=new THREE.Vector3();
+function createInfectedGunshotFall(z,rag,vx,vz){
+ const holder=z.infectedVisual,hips=z.infectedBones?.get("Hips");
+ if(!holder||!hips)return null;
+ holder.updateWorldMatrix(true,true);
+ const hip=hips.getWorldPosition(new THREE.Vector3());
+ // Rotate the entire genuine GLB around its hips, rather than twisting individual
+ // chest/hip joints to make the body seem to topple. Use a little side variety.
+ const side=rnd()<.7?1:-1,axis=new THREE.Vector3(side,0,(rnd()-.5)*.66).normalize();
+ const joints=[];
+ const profiles=[
+  ["Spine",.19,2.4,new THREE.Vector3(1,0,.20)],
+  ["Chest",.23,2.7,new THREE.Vector3(1,0,.18)],
+  ["Neck",.27,2.8,new THREE.Vector3(1,0,.16)],
+  ["Head",.30,3.0,new THREE.Vector3(1,0,.18)],
+  ["L_UpperArm",.86,5.2,new THREE.Vector3(.8,.15,.5)],
+  ["R_UpperArm",.86,5.2,new THREE.Vector3(.8,-.15,-.5)],
+  ["L_LowerArm",.85,5.0,new THREE.Vector3(1,0,.1)],
+  ["R_LowerArm",.85,5.0,new THREE.Vector3(1,0,-.1)],
+  ["L_UpperLeg",.50,3.5,new THREE.Vector3(1,0,.12)],
+  ["R_UpperLeg",.50,3.5,new THREE.Vector3(1,0,-.12)],
+  ["L_LowerLeg",.72,4.1,new THREE.Vector3(1,0,0)],
+  ["R_LowerLeg",.72,4.1,new THREE.Vector3(1,0,0)],
+  ["L_Foot",.34,3.2,new THREE.Vector3(1,0,0)],
+  ["R_Foot",.34,3.2,new THREE.Vector3(1,0,0)]
+ ];
+ for(const [key,limit,impulse,localAxis] of profiles){
+  if(!bodyPbdBoneAllowed(z,key))continue;
+  const bone=z.infectedBones.get(key);
+  if(!bone)continue;
+  // Local axis is authored once; quaternions never exceed the stated limit
+  // away from the captured live pose, so shoulders/knees cannot turn inside-out.
+  const sign=key.startsWith("R_")?-1:1;
+  joints.push({bone,base:bone.quaternion.clone(),axis:localAxis.normalize(),
+   angle:0,vel:(.45+rnd()*.55)*impulse*(rnd()<.45?-sign:sign),
+   limit,impactGiven:false});
+ }
+ return{holder,hips,baseHolderQuat:holder.quaternion.clone(),hip,
+  originalHipY:hip.y,axis,angle:0,angularSpeed:.85+rnd()*.55,
+  finalAngle:1.37+rnd()*.12,falling:true,contact:false,
+  vx:THREE.MathUtils.clamp(vx,-3,3)*.72+(rnd()-.5)*.75,
+  vz:THREE.MathUtils.clamp(vz,-3,3)*.72+(rnd()-.5)*.75,
+  vy:0,joints,peakJointAngle:0,peakBodyTilt:0};
+}
+function updateInfectedGunshotFall(z,rag,dt){
+ const f=rag.infectedFall;
+ if(!f)return false;
+ const h=Math.min(.042,Math.max(0,dt)),t=rag.t;
+ // There is no second death animation playing: genuine bone quaternions are
+ // released from the pose recorded at the kill. Gravity rapidly removes support.
+ if(f.falling){
+  f.angularSpeed=Math.min(5.7,f.angularSpeed+12.8*h);
+  f.angle=Math.min(f.finalAngle,f.angle+f.angularSpeed*h);
+  if(f.angle>=f.finalAngle-1e-5){
+   f.angle=f.finalAngle;f.falling=false;f.contact=true;
+  }
+ }
+ f.peakBodyTilt=Math.max(f.peakBodyTilt,f.angle);
+ f.vy-=11.8*h;
+ f.hip.x+=f.vx*h;f.hip.z+=f.vz*h;f.hip.y+=f.vy*h;
+ const floor=sampleRagdollGroundY(f.hip.x,f.hip.z,rag.floorY,Math.max(f.hip.y,f.originalHipY));
+ const hipFloor=floor+.20;
+ if(f.hip.y<hipFloor){
+  f.hip.y=hipFloor;f.vy=0;
+  // Once the hips touch, slide friction gradually stops their drift.
+  f.vx*=Math.exp(-h*5.5);f.vz*=Math.exp(-h*5.5);
+ }else{
+  f.vx*=Math.exp(-h*.55);f.vz*=Math.exp(-h*.55);
+ }
+ const impact=f.contact||f.hip.y<=hipFloor+.025;
+ for(const j of f.joints){
+  if(impact&&!j.impactGiven){
+   // A small contact release goes into the extremities, not full-body spin.
+   j.vel+=(rnd()-.5)*(j.limit>.4?1.6:.55);
+   j.impactGiven=true;
+  }
+  j.vel*=Math.exp(-h*(impact?5.0:2.0));
+  j.angle=THREE.MathUtils.clamp(j.angle+j.vel*h,-j.limit,j.limit);
+  if(Math.abs(j.angle)>=j.limit-.0001)j.vel*=.12;
+  j.bone.quaternion.copy(j.base).multiply(
+   infectedDeathTmpQuat.setFromAxisAngle(j.axis,j.angle));
+  f.peakJointAngle=Math.max(f.peakJointAngle,Math.abs(j.angle));
+ }
+ f.holder.quaternion.copy(f.baseHolderQuat).multiply(
+  infectedDeathTmpQuat.setFromAxisAngle(f.axis,f.angle));
+ // Fix the rotating root to the simulated HIP CENTER (not the feet and not
+ // the model's import origin) while the corpse falls and drifts horizontally.
+ z.g.updateWorldMatrix(true);f.holder.updateWorldMatrix(true);
+ f.hips.getWorldPosition(infectedDeathCurrent);
+ infectedDeathTarget.copy(f.hip);
+ z.g.worldToLocal(infectedDeathCurrent);
+ z.g.worldToLocal(infectedDeathTarget);
+ f.holder.position.add(infectedDeathLocalTarget.subVectors(infectedDeathTarget,infectedDeathCurrent));
+ f.holder.updateWorldMatrix(true);
+ // Only correct visible torso/head penetration, never pin feet to the floor.
+ // A gentle post-contact clearance keeps the face above the pavement.
+ if(t>.20){
+  let low=Infinity;
+  for(const [key,radius] of [["Head",.13],["Chest",.11],["Hips",.09]]){
+   const bone=z.infectedBones.get(key);
+   if(!bone)continue;
+   bone.getWorldPosition(infectedDeathBonePoint);
+   low=Math.min(low,infectedDeathBonePoint.y-radius);
+  }
+  if(low<floor)f.holder.position.y+=Math.min(.20,floor-low);
+ }
+ f.holder.updateWorldMatrix(true);
+ rag.contactCount=f.contact?7:0;
+ rag.fullBodyDown=f.contact;
+ rag.grounded=f.contact;
+ rag.rootGrounded=f.contact;
+ if(t>1.85){
+  rag.active=false;z.falling=false;
+ }
+ return true;
+}
 function beginRagdoll(z,force=1,blastOrigin=null){
  if(z.ragdoll)return;
  // v421: capture/release the exact live pose. Do not normalize the holder or
@@ -7921,6 +8049,13 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    hips:null,hipsStartY:0,hipsTargetY:0,
    bodyPbd:null
  };
+ // Ordinary upright Infected gunshots no longer enter the unconstrained
+ // per-particle orientation solver responsible for twisted skin/bone piles.
+ // Converted crawlers and ALL explosive deaths keep their original PBD.
+ if(!isBlast&&z.infectedVisual&&!z.infectedCrawler){
+  rag.infectedFall=createInfectedGunshotFall(z,rag,inheritedVX,inheritedVZ);
+  if(rag.infectedFall)return;
+ }
  rag.bodyPbd=buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX*.94,inheritedVZ*.94,power);
  if(rag.bodyPbd)return;
 
@@ -7982,6 +8117,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
 function updateRagdoll(z,dt){
  if(!z.ragdoll)beginRagdoll(z);
  const r=z.ragdoll;r.t+=dt;
+ if(r.infectedFall){updateInfectedGunshotFall(z,r,dt);return}
  if(r.bodyPbd){updateBodyPbd(z,r,dt);return}
 
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
