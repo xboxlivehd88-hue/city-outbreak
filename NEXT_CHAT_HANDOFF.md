@@ -1,3 +1,14 @@
+# v650 — INFECTED WEIGHTLESS GUNSHOT COLLAPSE / STOP GROUND SPIN — 2026-10-13
+
+- User's fresh video `2026-10-13 01-07-06.mp4` testing v649 confirms Infected gunshot-death corpses still spin in place and fall like they weigh five tons. The v649 simulated Hips-root tracking and .38 foot friction were not sufficient.
+- **Only ordinary upright Infected gunshot deaths**: remove PBD shoulder-to-shoulder and thigh-to-thigh cross-braces (retain every actual limb chain) so a corpse can lose support rather than tip against planted feet; give real head/chest/spine original-GLB joints a stronger initial forward imbalance, with small limb impulses for loose flailing. Preserve actual skinned source model and full PBD, not a fake new death mesh or scripted frozen pose.
+- On these deaths ONLY: allow shoe/toe sliding during first .53s to prevent a foot-anchored floor pivot; preserve gravity and hit collisions; cap pathological simulated velocity at 7m/s, damp contact after it lands. Critically, replace immediate per-frame full bone quaternion snaps with `rotateTowards` limited to 9.5rad/s for core and 15rad/s for limbs. This prevents the visible original Mixamo skeleton from making sudden 180-360 degree spins while aligning with real physics particles.
+- The approved v648-649 **upright reaching arms are unchanged**. Converted Infected crawlers (low pelvis/raised chest/pulling hands), amputation and boot artifact clipping, head/chest hitboxes, original GLB texture, explosions/blast physics, all other zombies, wave 1 ten Infected and nineteen bosses are intentionally untouched. v324 protected recovery untouched.
+- Chromium `scripts/parasite-v586-smoke.cjs` v650 measures actual ordinary-death initial head drop by 0.7s, joint angular limit per frame, cross-brace release and body root displacement, in addition to preexisting original Infected GLB crawler, severed toe skin, head/chest hitboxes, wave and boss rotation audits. Sprinter, Hazmat/Green and Parasite workflows have been aligned to `?v=650`; check real GitHub Actions runs before claiming passes.
+- Loader `./src/game.js?v=650`; play https://xboxlivehd88-hue.github.io/city-outbreak/?v=650-infected-death-unpinned . **User visual approval still needed.**
+
+---
+
 # v649 — INFECTED REACHING WALK, FOOT DEBRIS, GUNSHOT DEATH — 2026-10-13
 
 - User video `2026-10-13 00-44-42.mp4` after testing v648: arms approved lower but need UP and OUT toward the player; after shooting off one leg a foot/boot artifact remains; gunshot corpses spin and seem magnetized/pinned to the pavement.
