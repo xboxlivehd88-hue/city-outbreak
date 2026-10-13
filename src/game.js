@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v649: reaching Infected arms, distal foot removal and grounded gunshot collapse; approved crawler preserved.
+// v650: Infected death-only PBD release, anti-spin bone damping and natural fast gravity collapse; approved crawl preserved.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -6589,16 +6589,19 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,op
      vy=(6.2+power*2.15)*asym+Math.max(0,dy/nodeD)*1.6;
    }
    const distal=key.includes("Hand")||key.includes("Foot")||key.includes("Lower")||key==="Head";
-   const random=infectedGunshot?(distal?.34:.22):
+   const random=infectedGunshot?(distal?1.02:.34):
     distal?(isBlast?2.35:1.18):(isBlast?1.25:.62);
    vx+=(rnd()-.5)*random;vy+=(rnd()-.5)*random*.72;vz+=(rnd()-.5)*random;
    if(infectedGunshot){
     // Release the real chest/head ahead of the pelvis, instead of making the
     // entire corpse spin around a planted origin. Gravity finishes the fall.
-    const forwardSpeed=key==="Head"?1.15:key==="Neck"?.99:
-     key==="Chest"?.78:key==="Spine"?.61:key.includes("Arm")?.58:.18;
+    // A head/chest-heavy balance loss sends the unsupported torso down in
+    // about half a second. The legs move too: there is no floor anchor.
+    const forwardSpeed=key==="Head"?3.10:key==="Neck"?2.75:
+     key==="Chest"?2.35:key==="Spine"?1.95:
+     key==="Hips"?.90:key.includes("Arm")?1.55:1.00;
     vx+=fallForward.x*forwardSpeed;vz+=fallForward.z*forwardSpeed;
-    if(key==="Head"||key==="Chest")vy-=.20;
+    if(key==="Head"||key==="Chest")vy-=.55;
    }
    const invMass=(key==="Hips"||key==="Chest")?.62:key==="Spine"?.72:1;
    // v549: modest skull/core contact clearance prevents the rendered head
@@ -6625,6 +6628,13 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,op
  if(!nodes.has("Hips")||!nodes.has("Chest")||!nodes.has("Head")||nodes.size<7)return null;
  const edges=[];
  for(const [a,b] of BODY_PBD_EDGES){
+   // The shoulder-to-shoulder and thigh-to-thigh cross-braces kept the torso
+   // balancing upright against two planted feet during a gunshot fall.
+   // Ordinary Infected deaths need articulated free limbs, not a wide rigid
+   // A-frame. Only remove the two cross-braces; retain every bone chain.
+   if(infectedGunshot&&
+      ((a==="L_UpperArm"&&b==="R_UpperArm")||
+       (a==="L_UpperLeg"&&b==="R_UpperLeg")))continue;
    const na=nodes.get(a),nb=nodes.get(b);if(na&&nb)edges.push({a:na,b:nb,len:na.pos.distanceTo(nb.pos)});
  }
  // Procedural/crawler fallbacks may have no explicit Spine/Neck bones.
@@ -6660,7 +6670,7 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,op
    const restDir=bodyPbdTmpB.sub(bodyPbdTmpA).applyQuaternion(bodyPbdInvQ).normalize().clone();
    links.push({a,b,bone,baseQuat:bone.quaternion.clone(),restDir});
  }
- return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999,followRoot:!!options?.followRoot||infectedGunshot};
+ return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999,followRoot:!!options?.followRoot||infectedGunshot,infectedGunshot};
 }
 function solveBodyPbdEdge(e){
  const d=bodyPbdTmpA.subVectors(e.b.pos,e.a.pos),dist=d.length();if(dist<1e-6)return;
@@ -6709,7 +6719,7 @@ function collideBodyPbdNode(n,rag){
  n.lastGroundY=gy;
  return touched;
 }
-function orientBodyPbd(z,pbd){
+function orientBodyPbd(z,pbd,dt=1/60){
  const hips=pbd.nodes.get("Hips"),holder=pbd.holder,hipsBone=pbd.bones.get("Hips");
  if(!hips||!holder||!hipsBone)return;
  if(pbd.followRoot&&holder!==z.g){
@@ -6731,7 +6741,16 @@ function orientBodyPbd(z,pbd){
    parent.getWorldQuaternion(bodyPbdParentQ);bodyPbdInvQ.copy(bodyPbdParentQ).invert();
    bodyPbdTmpB.applyQuaternion(bodyPbdInvQ).normalize();
    bodyPbdDeltaQ.setFromUnitVectors(link.restDir,bodyPbdTmpB);
-   bone.quaternion.copy(bodyPbdDeltaQ.multiply(link.baseQuat));bone.updateMatrixWorld(true);
+   bodyPbdDeltaQ.multiply(link.baseQuat);
+   if(pbd.infectedGunshot){
+    // Critical: 'copy' snapped the live Mixamo skeleton to a sometimes
+    // reversed PBD particle direction EVERY FRAME, producing the observed
+    // 360-degree pinwheeling. Limit ONLY ordinary Infected corpse joint
+    // angular speed; keep actual loose particle motion and death pose.
+    const core=link.a==="Hips"||link.a==="Spine"||link.a==="Chest"||link.a==="Neck";
+    bone.quaternion.rotateTowards(bodyPbdDeltaQ,dt*(core?9.5:15.0));
+   }else bone.quaternion.copy(bodyPbdDeltaQ);
+   bone.updateWorldMatrix(true,false);
  }
  holder.updateMatrixWorld(true);
 }
@@ -6741,16 +6760,27 @@ function updateBodyPbd(z,rag,dt){
  const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60)))),h=dt/steps;
  for(let step=0;step<steps;step++){
    const touched=new Set();
-   for(const n of p.nodes.values()){n.old.copy(n.pos);n.vel.y-=9.81*h;n.pos.addScaledVector(n.vel,h)}
+   for(const n of p.nodes.values()){
+    n.old.copy(n.pos);
+    n.vel.y-=9.81*h;
+    if(infectedGunshot&&n.vel.lengthSq()>49)n.vel.setLength(7);
+    n.pos.addScaledVector(n.vel,h);
+   }
    for(let iter=0;iter<5;iter++)for(const e of p.edges)solveBodyPbdEdge(e);
    for(const n of p.nodes.values())if(collideBodyPbdNode(n,rag))touched.add(n);
    for(let iter=0;iter<2;iter++)for(const e of p.edges)solveBodyPbdEdge(e);
    for(const n of p.nodes.values()){
      if(collideBodyPbdNode(n,rag))touched.add(n);
-     n.vel.subVectors(n.pos,n.old).multiplyScalar((infectedGunshot?.982:.995)/Math.max(h,.001));
+     n.vel.subVectors(n.pos,n.old).multiplyScalar((infectedGunshot?.980:.995)/Math.max(h,.001));
      if(touched.has(n)){
-      n.vel.x*=infectedGunshot?.38:.62;n.vel.z*=infectedGunshot?.38:.62;
-      if(n.vel.y<0)n.vel.y=-n.vel.y*(infectedGunshot?.03:.10);
+      // During the first ~0.5s a newly-dead Infected's shoes must SLIDE.
+      // Strong friction on frame-one foot contact had pinned the hips to
+      // an immovable base. Once the chest falls, friction settles the corpse.
+      const foot=n.key.includes("Foot")||n.key.includes("Toe");
+      const slip=infectedGunshot&&foot&&rag.t<.53;
+      const friction=slip?.90:infectedGunshot?.30:.62;
+      n.vel.x*=friction;n.vel.z*=friction;
+      if(n.vel.y<0)n.vel.y=-n.vel.y*(infectedGunshot?.04:.10);
      }
    }
  }
@@ -6764,7 +6794,7 @@ function updateBodyPbd(z,rag,dt){
  const needContacts=Math.max(4,Math.min(7,Math.ceil(p.nodes.size*.46)));
  p.allDown=down("Hips")&&down("Chest")&&down("Head")&&contacts>=needContacts;
  p.maxSpeed=maxSpeed;p.settleT=p.allDown&&maxSpeed<.22?p.settleT+dt:0;
- orientBodyPbd(z,p);
+ orientBodyPbd(z,p,dt);
  rag.contactCount=contacts;rag.fullBodyDown=p.allDown;rag.grounded=p.allDown;
  if(p.settleT>1.10){rag.active=false;z.falling=false}else z.falling=true;
  return true;
