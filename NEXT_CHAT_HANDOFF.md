@@ -1,3 +1,14 @@
+# v651 — INFECTED GUNSHOT TWISTING ROOT-CAUSE REPLACEMENT — 2026-10-13
+
+- User tested v650 and says "they are stil twisting up." Prior v649/650 attempts reducing random spin/foot friction did NOT resolve the main deformation. Avoid repeating those adjustments.
+- **Root cause:** an ordinary dying Infected was driven by generic PBD point-to-point anatomical IK. Separate simulated limb nodes can cross/invert; the renderer repeatedly aims the ORIGINAL Mixamo bone chains at those invalid directions, folding / corkscrewing the skinned torso and limbs even when frame rotation is capped.
+- v651 uses the *original attached textured* `assets/zombie_animated.glb` and 34-bone rig but routes **ONLY upright Infected non-explosive gunshot deaths** into `createInfectedGunshotFall` / `updateInfectedGunshotFall`: gravity accelerates the hips downward, a one-axis physical fall tilts the whole original GLB about the real hip position, the body drifts/slides, the head/chest get pavement clearance, and individual original arms, knees and head have independently damped inertial rotations with limits. NO per-frame PBD point-to-bone aiming; NO new or generic corpse model, static death pose or 360-degree yaw spin. Keep natural non-identical forward/back/side falls.
+- Preserved without changes: standing reaching arms/walking, leg/foot clipping from v649, approved original Infected skinned crawling (low pelvis, raised chest, pulling arms), hitboxes, 10 Infected in Wave 1, every-10-wave bosses, source textures and 19 boss roster. Infected **explosion ragdolls** and **crawler deaths**, as well as ALL other zombie types, still use the prior PBD physics. Do not modify protected recovery v324.
+- New original-Infected Chromium smoke asserts ordinary death does NOT enter PBD; instead it preserves original visual/GLB and 15+ original rig mapped bones, has fast head drop and hip drift, stays below 1.5 radians whole-body tilt and below 0.91 radians per individual joint, makes contact and settles, with finite physics. Existing Infected walker/crawler/limb/GLB texture/shot-hit/boss regression preserved. Independent Hazmat/Green and Cop/Maniac smoke aligned to v651.
+- Loader `./src/game.js?v=651`. Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=651-infected-stable-deaths . **User must visually approve**; do not call this visually fixed from code/tests alone. Check Actions/Pages results.
+
+---
+
 # v650 — INFECTED WEIGHTLESS GUNSHOT COLLAPSE / STOP GROUND SPIN — 2026-10-13
 
 - User's fresh video `2026-10-13 01-07-06.mp4` testing v649 confirms Infected gunshot-death corpses still spin in place and fall like they weigh five tons. The v649 simulated Hips-root tracking and .38 foot friction were not sufficient.
