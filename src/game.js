@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v654: restore Infected height; compact natural hip-knee-ankle gait, preserved crawler and death.
+// v655: restore life-size Infected and living torso gait; articulated gunshot collapse rather than one rigid board.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -7481,13 +7481,13 @@ function poseInfectedWalkingLeg(z,side,swing){
  infectedLegGoal.copy(base.offset);
  // Do not drive the ankle nearly half a metre every stride: that turned
  // the small Infected model into a high-knee marching/cycling gait.
- infectedLegGoal.z-=.17*swing;
+ infectedLegGoal.z-=.215*swing;
  infectedLegGoal.applyQuaternion(infectedLegActorQuat).add(infectedLegHip);
  // Grounded stance ankle ~13cm above sampled floor (sole hangs below ankle).
  // The prior +.11 +.17*swing added height to an ALREADY raised ankle,
  // causing visible marching in mid-air even though the knees rotated.
  infectedLegGoal.y=(Number.isFinite(z.groundY)?z.groundY:z.g.position.y)+
-  .135+.065*Math.max(0,swing);
+  .145+.085*Math.max(0,swing);
  infectedLegThighDir.subVectors(infectedLegGoal,infectedLegHip);
  const minD=Math.abs(base.thigh-base.shin)+.025;
  const maxD=base.thigh+base.shin-.014;
@@ -7536,7 +7536,7 @@ function syncInfectedGLB(z,dt){
  // the improved ankle-ground targets and forward-moving knee bones.
  // Standing ONLY; crawler conversion restores the exact original GLB scale.
  if(z.infectedHolderRestScale)
-  z.infectedVisual.scale.copy(z.infectedHolderRestScale).multiplyScalar(1.09);
+  z.infectedVisual.scale.copy(z.infectedHolderRestScale).multiplyScalar(1.23);
  // Lift the hips 9cm relative to v653: the visual audit measured
  // ~0.94m hips above ground against ~0.96m total real thigh+shin length,
  // so a 0.13m stance ankle forced an unnatural 60-75 degree knee curl.
@@ -7556,9 +7556,13 @@ function syncInfectedGLB(z,dt){
                    "R_UpperLeg","R_LowerLeg","R_Foot"]) {
   const bone=bones.get(key),q=rest.get(key);if(bone&&q)bone.quaternion.copy(q);
  }
- setRot("Hips",.025,Math.sin(phase)*.025,Math.sin(phase)*.013);
- setRot("Spine",.055,-Math.sin(phase)*.035,0);
- setRot("Chest",.045,Math.sin(phase)*.024,0);
+ // v655: let pelvis, ribs and shoulders move against each other like a living
+ // body. Earlier static torso + robotic mirrored leg IK read as a stiff puppet.
+ // Rotation amplitudes remain small enough not to disturb the skinned waist.
+ const weightShift=Math.cos(phase),stepTurn=Math.sin(phase);
+ setRot("Hips",-.025+.045*weightShift,.070*stepTurn,.040*weightShift);
+ setRot("Spine",.055-.038*weightShift,-.038*stepTurn,-.028*weightShift);
+ setRot("Chest",.045-.025*weightShift,-.022*stepTurn,.019*weightShift);
  z.infectedVisual.updateWorldMatrix(true,true);
  poseInfectedWalkingLeg(z,"L",step);
  poseInfectedWalkingLeg(z,"R",-step);
@@ -7987,16 +7991,19 @@ function createInfectedGunshotFall(z,rag,vx,vz){
  // chest/hip joints to make the body seem to topple. Use a little side variety.
  const side=rnd()<.7?1:-1,axis=new THREE.Vector3(side,0,(rnd()-.5)*.66).normalize();
  const joints=[];
- // No twisting SPINE/CHEST/NECK chain: their combined rotations were
- // winding the skin through itself even after the v651 solver replacement.
- // The whole original torso falls as ONE, while extremities flex in small,
- // anatomically limited hinges. A knee cannot bend backward or wrap the hip.
+ // Real unpowered deaths NEED a flexible torso. v651-v654 rotated the entire
+ // skinned model as one plank, which users could plainly see. Use only local
+ // forward/back hinge rotation at spine/chest (not independent twist/yaw).
+ // Limbs are loose but constrained to keep original skin from knotting.
  const profiles=[
-  ["Head",.10,.42,new THREE.Vector3(1,0,0)],
-  ["L_UpperArm",.28,1.02,new THREE.Vector3(1,0,.13)],
-  ["R_UpperArm",.28,1.02,new THREE.Vector3(1,0,-.13)],
-  ["L_LowerArm",.29,.98,new THREE.Vector3(1,0,0)],
-  ["R_LowerArm",.29,.98,new THREE.Vector3(1,0,0)],
+  ["Spine",.34,0,new THREE.Vector3(1,0,0)],
+  ["Chest",.15,0,new THREE.Vector3(1,0,0)],
+  ["Neck",.09,0,new THREE.Vector3(1,0,0)],
+  ["Head",.13,.50,new THREE.Vector3(1,0,0)],
+  ["L_UpperArm",.52,1.7,new THREE.Vector3(1,0,.13)],
+  ["R_UpperArm",.52,1.7,new THREE.Vector3(1,0,-.13)],
+  ["L_LowerArm",.56,1.55,new THREE.Vector3(1,0,0)],
+  ["R_LowerArm",.56,1.55,new THREE.Vector3(1,0,0)],
   ["L_UpperLeg",.18,.55,new THREE.Vector3(1,0,0)],
   ["R_UpperLeg",.18,.55,new THREE.Vector3(1,0,0)],
   ["L_LowerLeg",.30,.78,new THREE.Vector3(1,0,0)],
@@ -8018,14 +8025,15 @@ function createInfectedGunshotFall(z,rag,vx,vz){
   // The v651-v652 corpses retained the LIVE running IK knee curl during the
   // entire 90 degree fall. Relax to the REAL source neutral bones on release;
   // don't rotate the spine or chest to disguise bent legs.
-  joints.push({bone,base:bone.quaternion.clone(),neutral:rest?.clone()||bone.quaternion.clone(),
+  joints.push({key,bone,base:bone.quaternion.clone(),neutral:rest?.clone()||bone.quaternion.clone(),
    relax,axis:localAxis.normalize(),angle:0,
-   vel:(.42+rnd()*.28)*impulse*(rnd()<.45?-sign:sign),
+   vel:(.40+rnd()*.28)*impulse*(rnd()<.45?-sign:sign),
    limit,impactGiven:false});
  }
  return{holder,hips,baseHolderQuat:holder.quaternion.clone(),hip,
-  originalHipY:hip.y,axis,angle:0,angularSpeed:.85+rnd()*.55,
-  finalAngle:1.37+rnd()*.12,falling:true,contact:false,
+  originalHipY:hip.y,axis,angle:0,angularSpeed:.30+rnd()*.38,
+  finalAngle:1.17+rnd()*.10,falling:true,contact:false,
+  maxSpineFlex:0,
   vx:THREE.MathUtils.clamp(vx,-3,3)*.72+(rnd()-.5)*.75,
   vz:THREE.MathUtils.clamp(vz,-3,3)*.72+(rnd()-.5)*.75,
   vy:0,joints,peakJointAngle:0,peakBodyTilt:0};
@@ -8037,7 +8045,9 @@ function updateInfectedGunshotFall(z,rag,dt){
  // There is no second death animation playing: genuine bone quaternions are
  // released from the pose recorded at the kill. Gravity rapidly removes support.
  if(f.falling){
-  f.angularSpeed=Math.min(5.7,f.angularSpeed+12.8*h);
+  // Angular fall follows the collapsing hips rather than a fixed 90-degree
+  // door hinge. Flexible spine finishes the upper body's path to the ground.
+  f.angularSpeed=Math.min(3.65,f.angularSpeed+7.6*h);
   f.angle=Math.min(f.finalAngle,f.angle+f.angularSpeed*h);
   if(f.angle>=f.finalAngle-1e-5){
    f.angle=f.finalAngle;f.falling=false;f.contact=true;
@@ -8062,9 +8072,18 @@ function updateInfectedGunshotFall(z,rag,dt){
    j.vel+=(rnd()-.5)*.28;
    j.impactGiven=true;
   }
-  j.vel*=Math.exp(-h*(impact?5.0:2.0));
-  j.angle=THREE.MathUtils.clamp(j.angle+j.vel*h,-j.limit,j.limit);
-  if(Math.abs(j.angle)>=j.limit-.0001)j.vel*=.12;
+  j.vel*=Math.exp(-h*(impact?5.5:2.0));
+  const folding=THREE.MathUtils.smoothstep(t,.08,.61);
+  if(j.key==="Spine"||j.key==="Chest"||j.key==="Neck"){
+   // Let the shoulders and head continue forward after the pelvis drops.
+   // One flexion axis only: no wringing / twisting Mixamo vertebrae.
+   const magnitude=j.key==="Spine"?.27:j.key==="Chest"?.105:.045;
+   j.angle=f.axis.x*magnitude*folding;
+   f.maxSpineFlex=Math.max(f.maxSpineFlex,Math.abs(j.angle));
+  }else{
+   j.angle=THREE.MathUtils.clamp(j.angle+j.vel*h,-j.limit,j.limit);
+   if(Math.abs(j.angle)>=j.limit-.0001)j.vel*=.12;
+  }
   const released=THREE.MathUtils.smoothstep(t,.05,.67)*j.relax;
   j.bone.quaternion.copy(j.base).slerp(j.neutral,released).multiply(
    infectedDeathTmpQuat.setFromAxisAngle(j.axis,j.angle));
@@ -9532,7 +9551,7 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
 let stepX=(nx+sx*zig)*navSpeed*motionScale*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*motionScale*stun*limpSlow*dt;
 let moveLen=Math.hypot(stepX,stepZ);
 // v654: the Infected should walk, not pedal at Sprinter/acidic cadence.
-const strideRate=kind==="infected"?5.3:(kind==="sprinter"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
+const strideRate=kind==="infected"?4.15:(kind==="sprinter"||kind==="acidic")?8.8:kind==="boss"?5.0:kind==="crawler"?6.2:6.8;
 z.phase += moveLen*strideRate;
 let zp=moveZombieSmart(z,ox,oz,stepX,stepZ,movementClearance);z.g.position.x=zp.x;z.g.position.z=zp.z;
 resolveZombiePlayerContact(z,ox,oz);
