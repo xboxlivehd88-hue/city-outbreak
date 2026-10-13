@@ -7653,6 +7653,17 @@ function turnInfectedCrawlerWithoutSwap(z){
  if(!visual)return false;
  const bones=originalInfectedBones(z,visual);
  if(!bones.has("Hips")||!bones.has("Chest")||!bones.has("Head"))return false;
+ // v647 walking uses extra body/arm sway. Restore the GLB's authored bind
+ // upper pose BEFORE capturing the crawler basis; v646's approved pelvis/chest,
+ // head tilt, hand plant and crawl hitboxes must not inherit random stride poses.
+ if(z.infectedVisual&&z.infectedRest){
+  for(const key of ["Hips","Spine","Chest","L_UpperArm","L_LowerArm",
+   "R_UpperArm","R_LowerArm"]){
+   const bone=bones.get(key),base=z.infectedRest.get(key);
+   if(bone&&base)bone.quaternion.copy(base);
+  }
+  visual.updateWorldMatrix(true,true);
+ }
  z.crawlerUpperPose=captureCrawlerUpperPose(visual,bones,"infected");
  z.crawlerUpperVisual=visual;z.crawlerUpperBones=bones;
  z.infectedCrawler=true;z.crawlerSourceKind="infected";z.kind="crawler";
