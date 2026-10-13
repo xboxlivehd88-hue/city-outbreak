@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v651: Infected-only stable native-skeleton gunshot collapse; approved walk/crawl and explosion PBD preserved.
+// v652: anatomical two-link Mixamo knees and bounded loose Infected deaths; approved crawler preserved.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -7444,26 +7444,103 @@ function poseInfectedWalkingArm(z,side,phase){
  lower.updateWorldMatrix(true,true);
 }
 
+// v652: two-link IK on the imported 34-bone Mixamo legs.
+// Hip->knee->ankle length comes from the REAL loaded skeleton, not a guessed
+// Blender axis. The knee always bows forward in the gait plane, and the ankle
+// reaches ahead/lifts during swing. No effect on the approved infectedCrawler.
+const infectedLegHip=new THREE.Vector3(),infectedLegKnee=new THREE.Vector3(),
+ infectedLegAnkle=new THREE.Vector3(),infectedLegGoal=new THREE.Vector3(),
+ infectedLegForward=new THREE.Vector3(),infectedLegBend=new THREE.Vector3(),
+ infectedLegThighDir=new THREE.Vector3(),infectedLegAim=new THREE.Vector3(),
+ infectedLegRestDir=new THREE.Vector3(),infectedLegParentQuat=new THREE.Quaternion(),
+ infectedLegLocalDir=new THREE.Vector3(),infectedLegQuat=new THREE.Quaternion(),
+ infectedLegActorQuat=new THREE.Quaternion(),infectedLegBaseOffset=new THREE.Vector3();
+function poseInfectedWalkingLeg(z,side,swing){
+ const bones=z.infectedBones,rest=z.infectedRest;
+ const upper=bones.get(side+"_UpperLeg"),lower=bones.get(side+"_LowerLeg"),
+  foot=bones.get(side+"_Foot");
+ if(!upper||!lower||!foot||!upper.parent||!lower.parent)return;
+ upper.getWorldPosition(infectedLegHip);
+ lower.getWorldPosition(infectedLegKnee);
+ foot.getWorldPosition(infectedLegAnkle);
+ z.g.getWorldQuaternion(infectedLegActorQuat);
+ if(!z.infectedLegGeometry)z.infectedLegGeometry={};
+ let base=z.infectedLegGeometry[side];
+ if(!base){
+  infectedLegBaseOffset.subVectors(infectedLegAnkle,infectedLegHip)
+   .applyQuaternion(infectedLegActorQuat.clone().invert());
+  base={offset:infectedLegBaseOffset.clone(),
+   thigh:infectedLegHip.distanceTo(infectedLegKnee),
+   shin:infectedLegKnee.distanceTo(infectedLegAnkle)};
+  z.infectedLegGeometry[side]=base;
+ }
+ if(base.thigh<.06||base.shin<.06)return;
+ // Original foot placement is retained. Move each ankle forward/back as
+ // opposite feet step, and lift the moving foot to guarantee visible knee bend.
+ infectedLegGoal.copy(base.offset);
+ infectedLegGoal.z-=.24*swing;
+ infectedLegGoal.y+=.11+.17*Math.max(0,swing);
+ infectedLegGoal.applyQuaternion(infectedLegActorQuat).add(infectedLegHip);
+ infectedLegThighDir.subVectors(infectedLegGoal,infectedLegHip);
+ const minD=Math.abs(base.thigh-base.shin)+.025;
+ const maxD=base.thigh+base.shin-.035;
+ const distance=THREE.MathUtils.clamp(infectedLegThighDir.length(),minD,maxD);
+ infectedLegThighDir.normalize();
+ // Positive knee bend points toward the player, never behind the heel.
+ infectedLegForward.set(0,0,-1).applyQuaternion(infectedLegActorQuat);
+ infectedLegBend.copy(infectedLegForward)
+  .addScaledVector(infectedLegThighDir,-infectedLegForward.dot(infectedLegThighDir));
+ if(infectedLegBend.lengthSq()<.0001)
+  infectedLegBend.set(0,1,0).addScaledVector(infectedLegThighDir,-infectedLegThighDir.y);
+ infectedLegBend.normalize();
+ const along=(base.thigh*base.thigh-base.shin*base.shin+distance*distance)/(2*distance);
+ const height=Math.sqrt(Math.max(0,base.thigh*base.thigh-along*along));
+ infectedLegKnee.copy(infectedLegHip)
+  .addScaledVector(infectedLegThighDir,along)
+  .addScaledVector(infectedLegBend,height);
+ const aim=(bone,child,key,target)=>{
+  const q=rest.get(key);
+  if(!q||child.position.lengthSq()<1e-9)return;
+  bone.getWorldPosition(infectedLegAim);
+  infectedLegLocalDir.subVectors(target,infectedLegAim).normalize();
+  bone.parent.getWorldQuaternion(infectedLegParentQuat);
+  infectedLegLocalDir.applyQuaternion(infectedLegParentQuat.invert());
+  infectedLegRestDir.copy(child.position).applyQuaternion(q).normalize();
+  infectedLegQuat.setFromUnitVectors(infectedLegRestDir,infectedLegLocalDir);
+  bone.quaternion.copy(infectedLegQuat).multiply(q);
+  bone.updateWorldMatrix(true,true);
+ };
+ aim(upper,lower,side+"_UpperLeg",infectedLegKnee);
+ aim(lower,foot,side+"_LowerLeg",infectedLegGoal);
+ // Natural sole level follows stride; no massive backward foot rotation.
+ const ankle=rest.get(side+"_Foot");
+ if(ankle)foot.quaternion.copy(ankle).multiply(
+  infectedGlbQ.setFromAxisAngle(new THREE.Vector3(1,0,0),
+   -.10*Math.max(0,swing)));
+}
 function syncInfectedGLB(z,dt){
  if(!z?.infectedVisual||z.dead||z.infectedCrawler)return;
  if(z.infectedMixer)z.infectedMixer.update(dt);
  const bones=z.infectedBones,rest=z.infectedRest,phase=z.phase||0,
-  step=Math.sin(phase),other=-step;
- // Real 34-bone Mixamo mesh, but the sole 'jad' clip is Agonizing, not Walk.
- // v647 reduces locked-knee marching and supports each step with ankle motion.
+  step=Math.sin(phase);
+ // The uploaded 'jad' is an AGONY clip, not a walking clip. Old fixed Euler
+ // negative knee angles never checked the Mixamo shin's REAL hinge direction
+ // and made the legs look straight even with a moving thigh.
  const setRot=(key,x,y=0,zAngle=0)=>{
   const b=bones.get(key),q=rest.get(key);if(!b||!q)return;
   b.quaternion.copy(q).multiply(infectedGlbQ.setFromEuler(new THREE.Euler(x,y,zAngle,"XYZ")));
  };
- setRot("L_UpperLeg",step*.39);setRot("R_UpperLeg",other*.39);
- const lf=Math.max(0,-step),rf=Math.max(0,step);
- setRot("L_LowerLeg",-(.11+lf*.86));
- setRot("R_LowerLeg",-(.11+rf*.86));
- setRot("L_Foot",(.11+lf*.86)*.55);
- setRot("R_Foot",(.11+rf*.86)*.55);
+ // Reset actual joint chain before solving target feet; no accumulating IK.
+ for(const key of ["L_UpperLeg","L_LowerLeg","L_Foot",
+                   "R_UpperLeg","R_LowerLeg","R_Foot"]) {
+  const bone=bones.get(key),q=rest.get(key);if(bone&&q)bone.quaternion.copy(q);
+ }
  setRot("Hips",.025,Math.sin(phase)*.025,Math.sin(phase)*.013);
  setRot("Spine",.055,-Math.sin(phase)*.035,0);
  setRot("Chest",.045,Math.sin(phase)*.024,0);
+ z.infectedVisual.updateWorldMatrix(true,true);
+ poseInfectedWalkingLeg(z,"L",step);
+ poseInfectedWalkingLeg(z,"R",-step);
  // Start from native bind rotations before bending the two real arm chains.
  for(const key of ["L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm"]){
   const bone=bones.get(key),q=rest.get(key);if(bone&&q)bone.quaternion.copy(q);
@@ -7885,21 +7962,22 @@ function createInfectedGunshotFall(z,rag,vx,vz){
  // chest/hip joints to make the body seem to topple. Use a little side variety.
  const side=rnd()<.7?1:-1,axis=new THREE.Vector3(side,0,(rnd()-.5)*.66).normalize();
  const joints=[];
+ // No twisting SPINE/CHEST/NECK chain: their combined rotations were
+ // winding the skin through itself even after the v651 solver replacement.
+ // The whole original torso falls as ONE, while extremities flex in small,
+ // anatomically limited hinges. A knee cannot bend backward or wrap the hip.
  const profiles=[
-  ["Spine",.19,2.4,new THREE.Vector3(1,0,.20)],
-  ["Chest",.23,2.7,new THREE.Vector3(1,0,.18)],
-  ["Neck",.27,2.8,new THREE.Vector3(1,0,.16)],
-  ["Head",.30,3.0,new THREE.Vector3(1,0,.18)],
-  ["L_UpperArm",.86,5.2,new THREE.Vector3(.8,.15,.5)],
-  ["R_UpperArm",.86,5.2,new THREE.Vector3(.8,-.15,-.5)],
-  ["L_LowerArm",.85,5.0,new THREE.Vector3(1,0,.1)],
-  ["R_LowerArm",.85,5.0,new THREE.Vector3(1,0,-.1)],
-  ["L_UpperLeg",.50,3.5,new THREE.Vector3(1,0,.12)],
-  ["R_UpperLeg",.50,3.5,new THREE.Vector3(1,0,-.12)],
-  ["L_LowerLeg",.72,4.1,new THREE.Vector3(1,0,0)],
-  ["R_LowerLeg",.72,4.1,new THREE.Vector3(1,0,0)],
-  ["L_Foot",.34,3.2,new THREE.Vector3(1,0,0)],
-  ["R_Foot",.34,3.2,new THREE.Vector3(1,0,0)]
+  ["Head",.10,.42,new THREE.Vector3(1,0,0)],
+  ["L_UpperArm",.28,1.02,new THREE.Vector3(1,0,.13)],
+  ["R_UpperArm",.28,1.02,new THREE.Vector3(1,0,-.13)],
+  ["L_LowerArm",.29,.98,new THREE.Vector3(1,0,0)],
+  ["R_LowerArm",.29,.98,new THREE.Vector3(1,0,0)],
+  ["L_UpperLeg",.18,.55,new THREE.Vector3(1,0,0)],
+  ["R_UpperLeg",.18,.55,new THREE.Vector3(1,0,0)],
+  ["L_LowerLeg",.30,.78,new THREE.Vector3(1,0,0)],
+  ["R_LowerLeg",.30,.78,new THREE.Vector3(1,0,0)],
+  ["L_Foot",.10,.32,new THREE.Vector3(1,0,0)],
+  ["R_Foot",.10,.32,new THREE.Vector3(1,0,0)]
  ];
  for(const [key,limit,impulse,localAxis] of profiles){
   if(!bodyPbdBoneAllowed(z,key))continue;
@@ -7909,7 +7987,7 @@ function createInfectedGunshotFall(z,rag,vx,vz){
   // away from the captured live pose, so shoulders/knees cannot turn inside-out.
   const sign=key.startsWith("R_")?-1:1;
   joints.push({bone,base:bone.quaternion.clone(),axis:localAxis.normalize(),
-   angle:0,vel:(.45+rnd()*.55)*impulse*(rnd()<.45?-sign:sign),
+   angle:0,vel:(.45+rnd()*.35)*impulse*(rnd()<.45?-sign:sign),
    limit,impactGiven:false});
  }
  return{holder,hips,baseHolderQuat:holder.quaternion.clone(),hip,
@@ -7948,7 +8026,7 @@ function updateInfectedGunshotFall(z,rag,dt){
  for(const j of f.joints){
   if(impact&&!j.impactGiven){
    // A small contact release goes into the extremities, not full-body spin.
-   j.vel+=(rnd()-.5)*(j.limit>.4?1.6:.55);
+   j.vel+=(rnd()-.5)*.28;
    j.impactGiven=true;
   }
   j.vel*=Math.exp(-h*(impact?5.0:2.0));
