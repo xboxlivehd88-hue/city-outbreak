@@ -7201,6 +7201,15 @@ const INFECTED_GLB_KEYS={
 const infectedGlbQ=new THREE.Quaternion(),infectedGlbAxis=new THREE.Vector3(),
  infectedGlbParentQ=new THREE.Quaternion(),infectedGlbDir=new THREE.Vector3(),
  infectedGlbBoneRestX=new THREE.Quaternion(),infectedGlbTmp=new THREE.Vector3();
+// v647: scratch IK vectors reuse allocations; original Mixamo arm bones keep
+// their authentic bind orientation/twist, not the near-T-pose from v646.
+const infectedWalkQ=new THREE.Quaternion(),infectedWalkParentQ=new THREE.Quaternion(),
+ infectedWalkCorrectQ=new THREE.Quaternion(),infectedWalkRestDir=new THREE.Vector3(),
+ infectedWalkLocalDir=new THREE.Vector3(),infectedWalkShoulder=new THREE.Vector3(),
+ infectedWalkElbow=new THREE.Vector3(),infectedWalkWrist=new THREE.Vector3(),
+ infectedWalkHandTarget=new THREE.Vector3(),infectedWalkAxis=new THREE.Vector3(),
+ infectedWalkBend=new THREE.Vector3(),infectedWalkElbowTarget=new THREE.Vector3(),
+ infectedWalkOffset=new THREE.Vector3();
 function infectedGlbBoneLabel(n){
  return (n||"").toLowerCase().replace(/^mixamorig[:_]?/,"").replace(/_[0-9]+$/,"");
 }
@@ -7335,27 +7344,91 @@ function attachInfectedGLB(z){
   String(Number(document.documentElement.dataset.infectedGlbAttached||0)+1);
  return true;
 }
+function poseInfectedWalkingArm(z,side,phase){
+ const bones=z.infectedBones,rest=z.infectedRest,p=side<0?"L":"R";
+ const upper=bones.get(p+"_UpperArm"),lower=bones.get(p+"_LowerArm"),
+  hand=bones.get(p+"_Hand");
+ if(!upper||!lower||!hand||!upper.parent||!lower.parent)return;
+ upper.getWorldPosition(infectedWalkShoulder);
+ lower.getWorldPosition(infectedWalkElbow);
+ hand.getWorldPosition(infectedWalkWrist);
+ const upperLen=infectedWalkShoulder.distanceTo(infectedWalkElbow),
+  lowerLen=infectedWalkElbow.distanceTo(infectedWalkWrist),
+  fullReach=upperLen+lowerLen;
+ if(fullReach<.10)return;
+ // Opposing arm phase follows the legs. Keep forearms hanging in FRONT of the
+ // ribcage, hands BELOW shoulders, with a small shambling reach instead of
+ // leaving the authored arms extended horizontally like a T-pose.
+ const stride=Math.sin(phase+(side<0?Math.PI:0));
+ const recovery=Math.max(0,stride);
+ z.g.getWorldQuaternion(infectedWalkQ);
+ infectedWalkOffset.set(side*fullReach*.12,
+  -fullReach*(.67-.045*recovery),-fullReach*(.33+.17*stride));
+ infectedWalkHandTarget.copy(infectedWalkOffset)
+  .applyQuaternion(infectedWalkQ).add(infectedWalkShoulder);
+ infectedWalkAxis.subVectors(infectedWalkHandTarget,infectedWalkShoulder);
+ const rawDistance=infectedWalkAxis.length();if(rawDistance<.001)return;
+ const distance=THREE.MathUtils.clamp(rawDistance,
+  Math.abs(upperLen-lowerLen)+.006,fullReach-.013);
+ infectedWalkAxis.multiplyScalar(1/rawDistance);
+ infectedWalkHandTarget.copy(infectedWalkShoulder)
+  .addScaledVector(infectedWalkAxis,distance);
+ const along=(upperLen*upperLen-lowerLen*lowerLen+distance*distance)/(2*distance),
+  bendRadius=Math.sqrt(Math.max(0,upperLen*upperLen-along*along));
+ // Elbows hang a little OUT and FORWARD below the shoulders. Their bend is
+ // explicitly solved, so native Mixamo forearms no longer point sideways.
+ infectedWalkBend.set(side*.66,-.09,-.64).applyQuaternion(infectedWalkQ);
+ infectedWalkBend.addScaledVector(infectedWalkAxis,
+  -infectedWalkBend.dot(infectedWalkAxis)).normalize();
+ infectedWalkElbowTarget.copy(infectedWalkShoulder)
+  .addScaledVector(infectedWalkAxis,along)
+  .addScaledVector(infectedWalkBend,bendRadius);
+ // Rotate actual upper/lower bone axes toward joint targets, preserving
+ // original authored twist/roll instead of forcing identity quaternions.
+ const aim=(bone,child,key,vector)=>{
+  const original=rest.get(key);if(!original||child.position.lengthSq()<1e-9)return;
+  bone.parent.getWorldQuaternion(infectedWalkParentQ);
+  infectedWalkLocalDir.copy(vector).applyQuaternion(infectedWalkParentQ.invert()).normalize();
+  infectedWalkRestDir.copy(child.position).applyQuaternion(original).normalize();
+  infectedWalkCorrectQ.setFromUnitVectors(infectedWalkRestDir,infectedWalkLocalDir);
+  bone.quaternion.copy(infectedWalkCorrectQ).multiply(original);
+ };
+ infectedWalkOffset.subVectors(infectedWalkElbowTarget,infectedWalkShoulder);
+ aim(upper,lower,p+"_UpperArm",infectedWalkOffset);
+ upper.updateWorldMatrix(true,true);
+ lower.getWorldPosition(infectedWalkElbow);
+ infectedWalkOffset.subVectors(infectedWalkHandTarget,infectedWalkElbow);
+ aim(lower,hand,p+"_LowerArm",infectedWalkOffset);
+ lower.updateWorldMatrix(true,true);
+}
 function syncInfectedGLB(z,dt){
  if(!z?.infectedVisual||z.dead||z.infectedCrawler)return;
  if(z.infectedMixer)z.infectedMixer.update(dt);
- const bones=z.infectedBones,rest=z.infectedRest,phase=z.phase||0;
- const step=Math.sin(phase),other=-step;
- // The authored clip is agonizing, not a run clip. Animate this SAME genuine
- // Mixamo skin in place: alternating hip/knee flex plus opposing arm swings.
+ const bones=z.infectedBones,rest=z.infectedRest,phase=z.phase||0,
+  step=Math.sin(phase),other=-step;
+ // Real 34-bone Mixamo mesh, but the sole 'jad' clip is Agonizing, not Walk.
+ // v647 reduces locked-knee marching and supports each step with ankle motion.
  const setRot=(key,x,y=0,zAngle=0)=>{
   const b=bones.get(key),q=rest.get(key);if(!b||!q)return;
   b.quaternion.copy(q).multiply(infectedGlbQ.setFromEuler(new THREE.Euler(x,y,zAngle,"XYZ")));
  };
- setRot("L_UpperLeg",step*.46);setRot("R_UpperLeg",other*.46);
- setRot("L_LowerLeg",-Math.max(0,-step)*.70-.07);
- setRot("R_LowerLeg",-Math.max(0,step)*.70-.07);
- setRot("L_Foot",Math.max(0,-step)*.25);
- setRot("R_Foot",Math.max(0,step)*.25);
- setRot("L_UpperArm",-.18-other*.29);
- setRot("R_UpperArm",-.18-step*.29);
- setRot("L_LowerArm",-.30-Math.max(0,step)*.20);
- setRot("R_LowerArm",-.30-Math.max(0,other)*.20);
- // Keep baked animation's real head/neck distress while standing.
+ setRot("L_UpperLeg",step*.39);setRot("R_UpperLeg",other*.39);
+ const lf=Math.max(0,-step),rf=Math.max(0,step);
+ setRot("L_LowerLeg",-(.11+lf*.86));
+ setRot("R_LowerLeg",-(.11+rf*.86));
+ setRot("L_Foot",(.11+lf*.86)*.55);
+ setRot("R_Foot",(.11+rf*.86)*.55);
+ setRot("Hips",.025,Math.sin(phase)*.025,Math.sin(phase)*.013);
+ setRot("Spine",.055,-Math.sin(phase)*.035,0);
+ setRot("Chest",.045,Math.sin(phase)*.024,0);
+ // Start from native bind rotations before bending the two real arm chains.
+ for(const key of ["L_UpperArm","L_LowerArm","R_UpperArm","R_LowerArm"]){
+  const bone=bones.get(key),q=rest.get(key);if(bone&&q)bone.quaternion.copy(q);
+ }
+ z.infectedVisual.updateWorldMatrix(true,true);
+ poseInfectedWalkingArm(z,-1,phase);
+ poseInfectedWalkingArm(z, 1,phase);
+ // Keep the source GLB's original head/neck distress animation.
  z.infectedVisual.updateWorldMatrix(true,true);
 }
 
