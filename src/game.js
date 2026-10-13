@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v656: truly planted Mixamo feet and articulated falling spine instead of a rigid pivot; approved crawler protected.
+// v657: buckling Mixamo knees and asymmetrical unpowered fall; approved crawler preserved.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -8039,10 +8039,10 @@ function createInfectedGunshotFall(z,rag,vx,vz){
   ["R_UpperArm",.52,1.7,new THREE.Vector3(1,0,-.13)],
   ["L_LowerArm",.56,1.55,new THREE.Vector3(1,0,0)],
   ["R_LowerArm",.56,1.55,new THREE.Vector3(1,0,0)],
-  ["L_UpperLeg",.18,.55,new THREE.Vector3(1,0,0)],
-  ["R_UpperLeg",.18,.55,new THREE.Vector3(1,0,0)],
-  ["L_LowerLeg",.30,.78,new THREE.Vector3(1,0,0)],
-  ["R_LowerLeg",.30,.78,new THREE.Vector3(1,0,0)],
+  ["L_UpperLeg",.43,.72,new THREE.Vector3(1,0,0)],
+  ["R_UpperLeg",.43,.72,new THREE.Vector3(1,0,0)],
+  ["L_LowerLeg",.58,1.03,new THREE.Vector3(1,0,0)],
+  ["R_LowerLeg",.58,1.03,new THREE.Vector3(1,0,0)],
   ["L_Foot",.10,.32,new THREE.Vector3(1,0,0)],
   ["R_Foot",.10,.32,new THREE.Vector3(1,0,0)]
  ];
@@ -8055,8 +8055,8 @@ function createInfectedGunshotFall(z,rag,vx,vz){
   const sign=key.startsWith("R_")?-1:1;
   const rest=z.infectedRest?.get(key);
   const relax=key.endsWith("_LowerLeg")?.97:
-   key.endsWith("_UpperLeg")?.83:key.endsWith("_Foot")?.75:
-   key.endsWith("_UpperArm")?.47:key.endsWith("_LowerArm")?.46:.12;
+   key.endsWith("_UpperLeg")?.86:key.endsWith("_Foot")?.75:
+   key.endsWith("_UpperArm")?.82:key.endsWith("_LowerArm")?.78:.10;
   // The v651-v652 corpses retained the LIVE running IK knee curl during the
   // entire 90 degree fall. Relax to the REAL source neutral bones on release;
   // don't rotate the spine or chest to disguise bent legs.
@@ -8066,8 +8066,10 @@ function createInfectedGunshotFall(z,rag,vx,vz){
    limit,impactGiven:false});
  }
  return{holder,hips,baseHolderQuat:holder.quaternion.clone(),hip,
-  originalHipY:hip.y,axis,angle:0,angularSpeed:.30+rnd()*.38,
-  finalAngle:.84+rnd()*.12,falling:true,contact:false,
+  originalHipY:hip.y,axis,angle:0,angularSpeed:.12+rnd()*.30,
+  finalAngle:.61+rnd()*.12,falling:true,contact:false,
+  kneeFold:0,maxKneeFold:0,rolled:0,
+  sprawlSide:rnd()<.5?-1:1,sprawlOffset:.17+rnd()*.16,
   maxSpineFlex:0,
   vx:THREE.MathUtils.clamp(vx,-3,3)*.72+(rnd()-.5)*.75,
   vz:THREE.MathUtils.clamp(vz,-3,3)*.72+(rnd()-.5)*.75,
@@ -8089,7 +8091,7 @@ function poseInfectedFallenLegs(z,rag,f,floor,t){
  behind.normalize();
  const right=new THREE.Vector3(0,1,0).cross(behind).normalize();
  const pole=new THREE.Vector3(0,1,0);
- const blend=THREE.MathUtils.smoothstep(t,.08,.46);
+ const blend=THREE.MathUtils.smoothstep(t,.22,.83);
  const aim=(bone,child,key,goal)=>{
   const base=rest.get(key);
   if(!base||!bone?.parent||!child||child.position.lengthSq()<1e-9)return;
@@ -8110,9 +8112,14 @@ function poseInfectedFallenLegs(z,rag,f,floor,t){
   const k=shin.getWorldPosition(new THREE.Vector3()),a=ankle.getWorldPosition(new THREE.Vector3());
   const l1=root.distanceTo(k),l2=k.distanceTo(a);
   if(l1<.05||l2<.05)continue;
-  const goal=root.clone().addScaledVector(behind,Math.min(l1+l2-.055,1.08))
-   .addScaledVector(right,side==="L"?-.11:.11);
-  goal.y=floor+.13;
+  // Each Mixamo leg ends in its own position. One folds outward, the other
+  // drags behind, rather than stretching together into a rigid board.
+  const folded=(side==="L")===(f.sprawlSide<0);
+  const reach=(folded?.60:.94)*(l1+l2);
+  const spread=(folded?.30:.20)*(side==="L"?-1:1);
+  const goal=root.clone().addScaledVector(behind,reach)
+   .addScaledVector(right,spread);
+  goal.y=floor+(folded?.17:.13);
   const ray=goal.clone().sub(root),distance=THREE.MathUtils.clamp(ray.length(),
    Math.abs(l1-l2)+.02,l1+l2-.028);
   if(ray.lengthSq()<1e-8)continue;
@@ -8138,8 +8145,10 @@ function updateInfectedGunshotFall(z,rag,dt){
  if(f.falling){
   // Angular fall follows the collapsing hips rather than a fixed 90-degree
   // door hinge. Flexible spine finishes the upper body's path to the ground.
-  f.angularSpeed=Math.min(3.25,f.angularSpeed+6.8*h);
-  f.angle=Math.min(f.finalAngle,f.angle+f.angularSpeed*h);
+  // The knees lose support first, then hips and shoulders follow.
+  const release=THREE.MathUtils.smoothstep(t,.11,.59);
+  f.angularSpeed=Math.min(2.2,f.angularSpeed+3.0*h);
+  f.angle=Math.min(f.finalAngle,f.angle+f.angularSpeed*h*release);
   if(f.angle>=f.finalAngle-1e-5){
    f.angle=f.finalAngle;f.falling=false;f.contact=true;
   }
@@ -8164,14 +8173,22 @@ function updateInfectedGunshotFall(z,rag,dt){
    j.impactGiven=true;
   }
   j.vel*=Math.exp(-h*(impact?5.5:2.0));
-  const folding=THREE.MathUtils.smoothstep(t,.08,.61);
-  if(j.key==="Spine"||j.key==="Chest"||j.key==="Neck"){
+  const folding=THREE.MathUtils.smoothstep(t,.04,.62);
+  const kneeCollapse=THREE.MathUtils.smoothstep(t,.025,.22)*
+   (1-THREE.MathUtils.smoothstep(t,.28,.67));
+  if(j.key.endsWith("_UpperLeg")||j.key.endsWith("_LowerLeg")){
+   const knee=j.key.endsWith("_LowerLeg");
+   const sideSign=j.key.startsWith("L_")?-1:1;
+   const target=(knee?.49:.20)*kneeCollapse*(sideSign===f.sprawlSide?1:.63);
+   j.angle=THREE.MathUtils.clamp(j.angle*.73+target*.27,-j.limit,j.limit);
+   f.maxKneeFold=Math.max(f.maxKneeFold,Math.abs(j.angle));
+  }else if(j.key==="Spine"||j.key==="Chest"||j.key==="Neck"){
    // Let the shoulders and head continue forward after the pelvis drops.
    // One flexion axis only: no wringing / twisting Mixamo vertebrae.
    // Torso bends AROUND its real spine; this, not the holder, carries the
    // upper-body collapse. Stagger chest and neck behind lower spine motion.
    const late=THREE.MathUtils.smoothstep(t,j.key==="Chest"?.16:.23,.78);
-   const magnitude=j.key==="Spine"?.47:j.key==="Chest"?.25:.10;
+   const magnitude=j.key==="Spine"?.50:j.key==="Chest"?.27:.11;
    j.angle=Math.sign(f.axis.x)*magnitude*(j.key==="Spine"?folding:late);
    f.maxSpineFlex=Math.max(f.maxSpineFlex,Math.abs(j.angle));
   }else{
@@ -8185,6 +8202,10 @@ function updateInfectedGunshotFall(z,rag,dt){
  }
  f.holder.quaternion.copy(f.baseHolderQuat).multiply(
   infectedDeathTmpQuat.setFromAxisAngle(f.axis,f.angle));
+ // Slight uneven side collapse; cannot complete a full barrel roll.
+ f.rolled=f.sprawlSide*.14*THREE.MathUtils.smoothstep(t,.31,.87);
+ f.holder.quaternion.multiply(
+  infectedDeathTmpQuat.setFromAxisAngle(new THREE.Vector3(0,0,1),f.rolled));
  // Fix the rotating root to the simulated HIP CENTER (not the feet and not
  // the model's import origin) while the corpse falls and drifts horizontally.
  z.g.updateWorldMatrix(true);f.holder.updateWorldMatrix(true);
