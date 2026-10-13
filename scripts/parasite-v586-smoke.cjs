@@ -21,6 +21,36 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    rig:!!z.rigVisual,newVisual:!!z.infectedVisual,
    bones:z.infectedBones?.size||0,source:z.infectedGLBSource||null}))
  }),
+ infectedVisualQA:()=>{
+  const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual);
+  if(!z)throw Error("No live original Infected for render audit");
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0x283038);
+  scene.add(new THREE.HemisphereLight(0xd9e6f4,0x474a3a,2.5));
+  const sun=new THREE.DirectionalLight(0xffffff,2.6);sun.position.set(-2,6,5);scene.add(sun);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(14,14),
+   new THREE.MeshLambertMaterial({color:0x62686b}));
+  ground.rotation.x=-Math.PI/2;ground.position.y=-.04;scene.add(ground);
+  const rd=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});
+  rd.setSize(360,420);rd.setPixelRatio(1);rd.outputColorSpace=THREE.SRGBColorSpace;
+  const camera=new THREE.PerspectiveCamera(43,360/420,.1,60);
+  const result=[];
+  const snap=(name)=>{
+   const copy=SkeletonUtils.clone(z.infectedVisual);
+   scene.add(copy);copy.updateMatrixWorld(true);
+   camera.position.set(1.45,1.45,4.2);camera.lookAt(0,.77,0);
+   rd.render(scene,camera);
+   result.push({name,jpeg:rd.domElement.toDataURL("image/jpeg",.75)});
+   scene.remove(copy);
+  };
+  z.phase=.30;syncInfectedGLB(z,0);snap("walk_a");
+  z.phase=Math.PI*.5;syncInfectedGLB(z,0);snap("walk_b");
+  killZ(z,false,z.g.position.clone());
+  for(let i=0;i<29;i++)updateRagdoll(z,1/60);
+  snap("death_half");
+  for(let i=0;i<62;i++)updateRagdoll(z,1/60);
+  snap("death_settled");
+  rd.dispose();return result;
+ },
  infectedCrawlerAudit:()=>{
   const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual);
   if(!z)throw Error("New Infected GLB not attached: "+JSON.stringify({
@@ -443,6 +473,9 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   await page.locator("#start").click({noWaitAfter:true});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.waveOne()?.spawned===10,null,{timeout:70000});
   report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
+  const infectedImages=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedVisualQA());
+  report.infectedRenderFrames=infectedImages.map(f=>({name:f.name,bytes:f.jpeg.length}));
+  for(const f of infectedImages)console.log("INFECTED_DIAGNOSTIC_"+f.name+"="+f.jpeg);
   report.infectedCrawler=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedCrawlerAudit());
   report.infectedDeath=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedDeathAudit());
   report.rotation=await page.evaluate(()=>globalThis.__parasiteSmoke.selectViaRealBossRotation());
