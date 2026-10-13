@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v652: anatomical two-link Mixamo knees and bounded loose Infected deaths; approved crawler preserved.
+// v653: real grounded Infected steps and relaxed original-GLB corpse legs; approved crawler preserved.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -7478,9 +7478,13 @@ function poseInfectedWalkingLeg(z,side,swing){
  // Original foot placement is retained. Move each ankle forward/back as
  // opposite feet step, and lift the moving foot to guarantee visible knee bend.
  infectedLegGoal.copy(base.offset);
- infectedLegGoal.z-=.24*swing;
- infectedLegGoal.y+=.11+.17*Math.max(0,swing);
+ infectedLegGoal.z-=.28*swing;
  infectedLegGoal.applyQuaternion(infectedLegActorQuat).add(infectedLegHip);
+ // Grounded stance ankle ~13cm above sampled floor (sole hangs below ankle).
+ // The prior +.11 +.17*swing added height to an ALREADY raised ankle,
+ // causing visible marching in mid-air even though the knees rotated.
+ infectedLegGoal.y=(Number.isFinite(z.groundY)?z.groundY:z.g.position.y)+
+  .135+.105*Math.max(0,swing);
  infectedLegThighDir.subVectors(infectedLegGoal,infectedLegHip);
  const minD=Math.abs(base.thigh-base.shin)+.025;
  const maxD=base.thigh+base.shin-.035;
@@ -7524,6 +7528,11 @@ function syncInfectedGLB(z,dt){
  if(z.infectedMixer)z.infectedMixer.update(dt);
  const bones=z.infectedBones,rest=z.infectedRest,phase=z.phase||0,
   step=Math.sin(phase);
+ // The source Mixamo leg chains terminate above the street. Lower the
+ // standing GLB itself, not its hips/thighs, so both shoes can physically
+ // touch the map floor. Restore exact unshifted bind holder for crawlers.
+ z.infectedVisual.position.y=z.infectedHolderStart.y-.12+
+  Math.cos(phase*2)*.007;
  // The uploaded 'jad' is an AGONY clip, not a walking clip. Old fixed Euler
  // negative knee angles never checked the Mixamo shin's REAL hinge direction
  // and made the legs look straight even with a moving thigh.
@@ -7778,6 +7787,9 @@ function turnInfectedCrawlerWithoutSwap(z){
  // upper pose BEFORE capturing the crawler basis; v646's approved pelvis/chest,
  // head tilt, hand plant and crawl hitboxes must not inherit random stride poses.
  if(z.infectedVisual&&z.infectedRest){
+  // Standing-only 12cm shoe-ground correction must NEVER alter the
+  // v646 approved low-pelvis original crawler capture.
+  visual.position.copy(z.infectedHolderStart);
   for(const key of ["Hips","Spine","Chest","L_UpperArm","L_LowerArm",
    "R_UpperArm","R_LowerArm"]){
    const bone=bones.get(key),base=z.infectedRest.get(key);
@@ -7987,8 +7999,16 @@ function createInfectedGunshotFall(z,rag,vx,vz){
   // Local axis is authored once; quaternions never exceed the stated limit
   // away from the captured live pose, so shoulders/knees cannot turn inside-out.
   const sign=key.startsWith("R_")?-1:1;
-  joints.push({bone,base:bone.quaternion.clone(),axis:localAxis.normalize(),
-   angle:0,vel:(.45+rnd()*.35)*impulse*(rnd()<.45?-sign:sign),
+  const rest=z.infectedRest?.get(key);
+  const relax=key.endsWith("_LowerLeg")?.97:
+   key.endsWith("_UpperLeg")?.83:key.endsWith("_Foot")?.75:
+   key.endsWith("_UpperArm")?.47:key.endsWith("_LowerArm")?.46:.12;
+  // The v651-v652 corpses retained the LIVE running IK knee curl during the
+  // entire 90 degree fall. Relax to the REAL source neutral bones on release;
+  // don't rotate the spine or chest to disguise bent legs.
+  joints.push({bone,base:bone.quaternion.clone(),neutral:rest?.clone()||bone.quaternion.clone(),
+   relax,axis:localAxis.normalize(),angle:0,
+   vel:(.42+rnd()*.28)*impulse*(rnd()<.45?-sign:sign),
    limit,impactGiven:false});
  }
  return{holder,hips,baseHolderQuat:holder.quaternion.clone(),hip,
@@ -8033,7 +8053,8 @@ function updateInfectedGunshotFall(z,rag,dt){
   j.vel*=Math.exp(-h*(impact?5.0:2.0));
   j.angle=THREE.MathUtils.clamp(j.angle+j.vel*h,-j.limit,j.limit);
   if(Math.abs(j.angle)>=j.limit-.0001)j.vel*=.12;
-  j.bone.quaternion.copy(j.base).multiply(
+  const released=THREE.MathUtils.smoothstep(t,.05,.67)*j.relax;
+  j.bone.quaternion.copy(j.base).slerp(j.neutral,released).multiply(
    infectedDeathTmpQuat.setFromAxisAngle(j.axis,j.angle));
   f.peakJointAngle=Math.max(f.peakJointAngle,Math.abs(j.angle));
  }
