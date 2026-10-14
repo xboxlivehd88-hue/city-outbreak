@@ -285,6 +285,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    samples,settled:!rag.active,contact:rag.contactCount,
    finalChestPhysicsError:samples.at(-1)?.chestError,
    finalFootGroundMin:Math.min(...["L_Foot","R_Foot"].map(k=>bonePos(k).y-rag.floorY)),
+   finalHandGroundMin:Math.min(...["L_Hand","R_Hand"].map(k=>bonePos(k).y-rag.floorY)),
    movedXZ:Math.hypot(z.g.position.x-start.x,z.g.position.z-start.z),
    finalHeadY:finalHead.y-rag.floorY,finalChestY:finalChest.y-rag.floorY,
    finite:[...p.nodes.values()].every(n=>[...n.pos.toArray(),...n.vel.toArray()].every(Number.isFinite)),
@@ -626,6 +627,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.minChestDrop>.38&&
    report.infectedDeath.finalChestPhysicsError<.52&&
    report.infectedDeath.finalFootGroundMin>-.26&&
+   report.infectedDeath.finalHandGroundMin>-.12&&
    report.infectedDeath.movedXZ<10,
    "Original Infected must lose support via real bounded articulated physics, not a rigid scripted fall: "+
     JSON.stringify(report.infectedDeath));
