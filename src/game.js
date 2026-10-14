@@ -8336,8 +8336,8 @@ function createInfectedArticulatedFall(z,vx,vz){
  // Whole-chain compression limits prevent an articulated body from
  // folding into a tiny ball even when every pairwise rod retains its length.
  const spanLimits=[];
- for(const [a,c,m] of [["Hips","Head",.81],["Hips","L_Foot",.51],
-  ["Hips","R_Foot",.51],["Chest","L_Hand",.45],["Chest","R_Hand",.45]]){
+ for(const [a,c,m] of [["Hips","Head",.91],["Hips","L_Foot",.73],
+  ["Hips","R_Foot",.73],["Chest","L_Hand",.58],["Chest","R_Hand",.58]]){
   if(!nodes.has(a)||!nodes.has(c))continue;
   const distance=nodes.get(a).p.distanceTo(nodes.get(c).p);
   if(distance>.05)spanLimits.push({a,c,min:distance*m});
@@ -8357,6 +8357,9 @@ function updateInfectedArticulatedFall(z,rag,dt){
    // removes residual jiggle without pinning the whole skinned model.
    n.p.addScaledVector(velocity,Math.exp(-step*(1.4+Math.max(0,f.contactCount-3)*.44)));
    n.p.y-=9.81*step*step;
+   // Sample terrain ONCE per mass per substep, not nine times per constraint
+   // iteration. This avoids ~90% of the new corpse's collision raycasts.
+   n.ground=sampleRagdollGroundY(n.p.x,n.p.z,f.groundY,n.p.y);
   }
   for(let it=0;it<9;it++){
    for(const e of f.edges){
@@ -8397,7 +8400,7 @@ function updateInfectedArticulatedFall(z,rag,dt){
     }
    }
    for(const n of f.nodes.values()){
-    const ground=sampleRagdollGroundY(n.p.x,n.p.z,f.groundY,n.p.y);
+    const ground=n.ground;
     if(n.p.y<ground+n.radius){
      n.p.y=ground+n.radius;
      // Contact dissipates tangential momentum; no artificial pinned feet.
