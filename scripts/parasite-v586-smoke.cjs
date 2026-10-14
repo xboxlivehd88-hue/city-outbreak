@@ -598,9 +598,12 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.bodyPbd&&report.infectedDeath.originalVisual&&
    report.infectedDeath.originalModel&&report.infectedDeath.finite&&
    report.infectedDeath.nodeCount>=16&&
-   report.infectedDeath.peakRootTilt<=1.22&&
-   report.infectedDeath.peakBoneSwing<=1.90&&
-   report.infectedDeath.knee>.08&&report.infectedDeath.spine>.10&&
+   report.infectedDeath.peakRootTilt<=.79&&
+   report.infectedDeath.peakBoneSwing<=2.13&&
+   report.infectedDeath.knee>.10&&report.infectedDeath.spine>.20&&
+   report.infectedDeath.lowest>-.12&&
+   report.infectedDeath.samples[1].feet.every(y=>y>-.06&&y<.52)&&
+   report.infectedDeath.samples[3].feet.every(y=>y>-.06&&y<.42)&&
    report.infectedDeath.samples.some(s=>s.contacts>=4)&&
    report.infectedDeath.samples.some(s=>s.headY<
     report.infectedDeath.samples[0].headY-.35),
