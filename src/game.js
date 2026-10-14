@@ -6790,30 +6790,52 @@ function orientBodyPbd(z,pbd,dt=1/60){
  }
  holder.updateMatrixWorld(true);
  if(pbd.infectedGunshot){
-  // PBD joint-particle collision keeps the *simulated* hands out of the
-  // pavement. Align each original skinned forearm toward that legal hand
-  // position if the skinned hand is lagging below the floor. Without this
-  // mapping the body looks submerged despite valid joint simulation.
+  // The shoulder/elbow bone chains have to FOLLOW the physically collided
+  // hand particle. Cone-limiting a single forearm left the original skinned
+  // wrists 30-40 cm UNDER the road even though PBD hands were grounded.
+  // Solve a bounded 2-link anatomical arm chain to the real PBD hand node.
+  const shoulder=new THREE.Vector3(),forePos=new THREE.Vector3(),wrist=new THREE.Vector3();
+  const toward=new THREE.Vector3(),pole=new THREE.Vector3(),kneeGoal=new THREE.Vector3();
+  const up=new THREE.Vector3(0,1,0),dir=new THREE.Vector3(),restDir=new THREE.Vector3();
+  const local=new THREE.Vector3(),parentQ=new THREE.Quaternion(),targetQ=new THREE.Quaternion();
+  const rootQ=z.g.getWorldQuaternion(new THREE.Quaternion());
+  const aim=(bone,child,target)=>{
+   if(!bone?.parent||!child||child.position.lengthSq()<1e-8)return;
+   bone.getWorldPosition(local);
+   dir.subVectors(target,local);
+   if(dir.lengthSq()<1e-8)return;
+   bone.parent.getWorldQuaternion(parentQ);
+   dir.applyQuaternion(parentQ.invert()).normalize();
+   restDir.copy(child.position).applyQuaternion(bone.quaternion).normalize();
+   targetQ.setFromUnitVectors(restDir,dir).multiply(bone.quaternion);
+   bone.quaternion.rotateTowards(targetQ,Math.min(.22,dt*13));
+   bone.updateWorldMatrix(true,true);
+  };
   for(const side of ["L","R"]){
-   const key=side+"_LowerArm",fore=pbd.bones.get(key),hand=pbd.bones.get(side+"_Hand");
-   const handNode=pbd.nodes.get(side+"_Hand"),link=pbd.links.find(l=>l.a===key);
-   if(!fore||!hand||!fore.parent||!handNode||!link)continue;
-   hand.getWorldPosition(bodyPbdTmpB);
-   if(hand.getWorldPosition(bodyPbdTmpB).y>=handNode.pos.y-.075)continue;
-   fore.getWorldPosition(bodyPbdTmpA);
-   bodyPbdTmpB.subVectors(handNode.pos,bodyPbdTmpA);
-   if(bodyPbdTmpB.lengthSq()<1e-7)continue;
-   fore.parent.getWorldQuaternion(bodyPbdParentQ);
-   bodyPbdInvQ.copy(bodyPbdParentQ).invert();
-   bodyPbdTmpB.applyQuaternion(bodyPbdInvQ).normalize();
-   bodyPbdTmpC.copy(hand.position).applyQuaternion(fore.quaternion).normalize();
-   bodyPbdDeltaQ.setFromUnitVectors(bodyPbdTmpC,bodyPbdTmpB);
-   bodyPbdDeltaQ.multiply(fore.quaternion);
-   const allowed=link.baseQuat.angleTo(bodyPbdDeltaQ);
-   if(allowed>1.56)bodyPbdDeltaQ.copy(link.baseQuat)
-     .slerp(bodyPbdDeltaQ,1.56/Math.max(allowed,1e-6));
-   fore.quaternion.rotateTowards(bodyPbdDeltaQ,Math.min(.68,dt*28));
-   fore.updateWorldMatrix(true,false);
+   if(!bodyPbdBoneAllowed(z,side+"_UpperArm")||
+      !bodyPbdBoneAllowed(z,side+"_LowerArm"))continue;
+   const upper=pbd.bones.get(side+"_UpperArm"),fore=pbd.bones.get(side+"_LowerArm"),
+     hand=pbd.bones.get(side+"_Hand"),node=pbd.nodes.get(side+"_Hand");
+   if(!upper||!fore||!hand||!node)continue;
+   upper.getWorldPosition(shoulder);fore.getWorldPosition(forePos);
+   hand.getWorldPosition(wrist);
+   const l1=shoulder.distanceTo(forePos),l2=forePos.distanceTo(wrist);
+   if(l1<.07||l2<.06)continue;
+   toward.subVectors(node.pos,shoulder);
+   const dist=Math.min(l1+l2-.013,Math.max(Math.abs(l1-l2)+.013,toward.length()));
+   if(toward.lengthSq()<1e-9)continue;
+   toward.normalize();
+   // Outward-bending elbows are stable even if the actual ragdoll hand
+   // swings past the shoulder; no cross-body fold or frozen reaching pose.
+   pole.set(side==="L"?-1:1,.20,-.14).applyQuaternion(rootQ);
+   pole.addScaledVector(toward,-pole.dot(toward));
+   if(pole.lengthSq()<.00001)pole.copy(up).addScaledVector(toward,-up.dot(toward));
+   pole.normalize();
+   const along=(l1*l1-l2*l2+dist*dist)/(2*dist);
+   const height=Math.sqrt(Math.max(0,l1*l1-along*along));
+   kneeGoal.copy(shoulder).addScaledVector(toward,along).addScaledVector(pole,height);
+   aim(upper,fore,kneeGoal);
+   aim(fore,hand,node.pos);
   }
   holder.updateMatrixWorld(true);
  }
