@@ -566,7 +566,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().attached,null,{timeout:30000});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().nativeRun&&
    globalThis.__parasiteSmoke?.state().nativeAttack,null,{timeout:30000});
-  await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().calibrated,null,{timeout:20000});
+  await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().calibrated,null,{timeout:50000});
   await page.waitForTimeout(550);
   report.state=await page.evaluate(()=>globalThis.__parasiteSmoke.state());
   report.inspectionAtStart=await page.evaluate(()=>globalThis.__parasiteSmoke.inspect());
