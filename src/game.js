@@ -8117,11 +8117,21 @@ function poseInfectedFallenLegs(z,rag,f,floor,t){
   // Persistent contact means ground friction holds the position reached by this
   // particular foot at release; no fixed left/right death-pose target.
   const key=side+"FootContact";
-  if(!f[key])f[key]={x:ankle.x,z:ankle.z};
+  if(!f[key])f[key]={x:ankle.x,z:ankle.z,vx:0,vz:0};
   const contact=f[key];
-  const friction=1-Math.exp(-Math.max(.001,Math.min(.042,rag.t-(f.lastContactTime||0)))*2.3);
-  contact.x+=(ankle.x-contact.x)*friction;
-  contact.z+=(ankle.z-contact.z)*friction;
+  // The shins must NOT remain nailed to the ground as the hips slide.
+  // Retain each ankle's inertial motion, soften the contact as the hip drops,
+  // and let the foot skid once the knee folds. Never advance a rigid foot pin.
+  const h=Math.max(.008,Math.min(.042,rag.t-(f.lastContactTime||0)));
+  const kneeDrop=THREE.MathUtils.smoothstep(t,.08,.65);
+  contact.vx+=(ankle.x-contact.x)*h*(7+3*kneeDrop);
+  contact.vz+=(ankle.z-contact.z)*h*(7+3*kneeDrop);
+  contact.vx+=(f.vx-contact.vx)*h*(1.2+2.8*kneeDrop);
+  contact.vz+=(f.vz-contact.vz)*h*(1.2+2.8*kneeDrop);
+  contact.vx*=Math.exp(-h*(2.4+2.6*kneeDrop));
+  contact.vz*=Math.exp(-h*(2.4+2.6*kneeDrop));
+  contact.x+=contact.vx*h+(ankle.x-contact.x)*Math.min(.35,h*(1.6+5*kneeDrop));
+  contact.z+=contact.vz*h+(ankle.z-contact.z)*Math.min(.35,h*(1.6+5*kneeDrop));
   const target=new THREE.Vector3(contact.x,floor+.13,contact.z);
   const horizontal=target.clone().sub(hip);horizontal.y=0;
   const maxReach=l1+l2-.025;
@@ -8325,6 +8335,21 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    hips:null,hipsStartY:0,hipsTargetY:0,
    bodyPbd:null
  };
+ // Converted original Infected crawlers have already lost both legs. Their
+ // horizontal source skeleton must never enter upright PBD (crossing chains
+ // make the wrists, shoulders and neck coil into the pelvis on death).
+ // Keep exact original crawl source pose and remove muscle support gradually.
+ if(!isBlast&&z.infectedVisual&&z.infectedCrawler){
+  const chest=z.infectedBones?.get("Chest"),neck=z.infectedBones?.get("Neck");
+  rag.infectedCrawlerCollapse={
+   holder:z.infectedVisual,
+   startY:z.infectedVisual.position.y,
+   chest,neck,
+   chestQ:chest?.quaternion.clone(),neckQ:neck?.quaternion.clone(),
+   elapsed:0
+  };
+  if(rag.infectedCrawlerCollapse)return;
+ }
  // Ordinary upright Infected gunshots no longer enter the unconstrained
  // per-particle orientation solver responsible for twisted skin/bone piles.
  // Converted crawlers and ALL explosive deaths keep their original PBD.
@@ -8394,6 +8419,25 @@ function updateRagdoll(z,dt){
  if(!z.ragdoll)beginRagdoll(z);
  const r=z.ragdoll;r.t+=dt;
  if(r.infectedFall){updateInfectedGunshotFall(z,r,dt);return}
+ if(r.infectedCrawlerCollapse){
+  const c=r.infectedCrawlerCollapse;
+  c.elapsed+=Math.max(0,Math.min(.042,dt));
+  const q=THREE.MathUtils.smoothstep(c.elapsed,0,.62);
+  // Already a prone, hand-supported crawler: lose that support and lower the
+  // original chest/head without tilting the entire imported GLB or spinning it.
+  c.holder.position.y=c.startY-.105*q;
+  if(c.chest&&c.chestQ)c.chest.quaternion.copy(c.chestQ).slerp(
+   infectedDeathTmpQuat.setFromAxisAngle(new THREE.Vector3(1,0,0),-.12)
+    .multiply(c.chestQ),q*.55);
+  if(c.neck&&c.neckQ)c.neck.quaternion.copy(c.neckQ).slerp(
+   infectedDeathTmpQuat.setFromAxisAngle(new THREE.Vector3(1,0,0),.10)
+    .multiply(c.neckQ),q*.50);
+  c.holder.updateWorldMatrix(true,true);
+  r.fullBodyDown=q>.95;r.grounded=r.fullBodyDown;
+  if(c.elapsed>1.1){r.active=false;z.falling=false}
+  return;
+ }
+
  if(r.bodyPbd){updateBodyPbd(z,r,dt);return}
 
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
