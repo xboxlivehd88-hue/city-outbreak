@@ -8307,7 +8307,7 @@ function createInfectedArticulatedFall(z,vx,vz){
   const lever=Math.max(0,height-.18);
   // Torso receives more initial rearward angular momentum than feet; the
   // shared articulated solver then decides the fall from gravity and contact.
-  const impulse=.34+.64*lever;
+  const impulse=.22+.43*lever;
   const drift=new THREE.Vector3(
    vx*.34+away.x*impulse+sideAxis.x*sideNoise*lever+(rnd()-.5)*.07,
    0,
