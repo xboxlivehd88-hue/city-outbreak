@@ -8093,7 +8093,10 @@ function poseInfectedFallenLegs(z,rag,f,floor,t){
  const pole=new THREE.Vector3(0,1,0);
  // Ground IK starts after knees buckle and the body actually strikes.
  // During the initial fall, free joints are not forced into a stock pose.
- const blend=THREE.MathUtils.smoothstep(t,.30,.84);
+ // Real contact begins as soon as knees fail. The first v658 test showed
+ // a torso-only fall with shins half a metre BELOW the road at .5s because
+ // leg clearance arrived too late. Keep continuous, separate foot support.
+ const blend=THREE.MathUtils.smoothstep(t,.065,.34);
  const aim=(bone,child,key,goal)=>{
   const base=rest.get(key);
   if(!base||!bone?.parent||!child||child.position.lengthSq()<1e-9)return;
