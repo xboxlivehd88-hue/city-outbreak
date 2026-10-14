@@ -6802,8 +6802,7 @@ function orientBodyPbd(z,pbd,dt=1/60){
       key.includes("LowerLeg")?1.96:key.includes("Foot")?.72:1.0;
     const arc=link.baseQuat.angleTo(bodyPbdDeltaQ);
     if(arc>cap)bodyPbdDeltaQ.copy(link.baseQuat).slerp(bodyPbdDeltaQ,cap/arc);
-    bone.quaternion.rotateTowards(bodyPbdDeltaQ,Math.max(0,dt)*
-     (key.includes("Leg")||key.includes("Foot")?17:12));
+    bone.quaternion.rotateTowards(bodyPbdDeltaQ,Math.max(0,dt)*12);
    }else bone.quaternion.copy(bodyPbdDeltaQ);
    bone.updateWorldMatrix(true,false);
  }
