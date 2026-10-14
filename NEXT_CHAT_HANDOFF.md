@@ -1,3 +1,12 @@
+# v663 — ORIGINAL INFECTED RETURN TO MIXED ZOMBIE ROSTER — 2026-10-14
+
+- User approved the original Infected's current v662 look and requests removing their temporary all-Infected Wave 1 test spawn, and placing them back into normal zombie rotation.
+- Narrow gameplay edit in `src/game.js`: `rolledZombieKind(1,roll)` now returns `"shambler"` instead of `"infected"`. Wave 1 stays **10 regular shamblers** under existing `diff(wave).count`. Existing normal Infected rates are preserved unchanged: eligible from **Wave 5 (~5%)**, **Wave 6+ (~5%)**, alongside other types. No new boss, no adjustment to the 19-boss every-10-round no-repeat rotation. Sprinter test override remains opt-in. GLB, walking, death ragdoll, converted crawler, hitboxes, other zombies, weapons and graphics remain untouched.
+- Chromium `scripts/parasite-v586-smoke.cjs` now audits actual ten Wave 1 shamblers, the selected normal Wave 2/5/6 roll categories, and **test-only** creates three real original Infected GLBs AFTER verifying Wave 1. Thus standing rig, walking, limb removal, converted crawler death, frontal gunshot articulated ragdoll, and boss rotation still get end-to-end regression coverage without forcing Infected into player's Wave 1. Independent Sprinter and Hazmat scripts and all Chromium loader interceptors now use `?v=663`.
+- Protected v324 recovery checkpoint unchanged. Candidate branch `toby-v663-infected-normal-rotation`. Require all Chromium regressions SUCCESS, then fast-forward tested branch to `main`, verify GitHub Pages deployment and provide `?v=663-infected-normal-rotation` playable link.
+
+---
+
 # v662 VERIFIED — ORIGINAL INFECTED GUNSHOT HIT DIRECTION — 2026-10-14
 
 - Final original skinned Infected Chromium run [38650731816](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38650731816) **SUCCESS**. Real original-GLB front/side early/middle/settled death screenshots inspected, including camera-centered settled frame. Frontal gunshot now gives chest a positive rearward release impulse relative to hips along shooter-to-Infected axis (latest audit +.00345 metres/frame), with small sideways variance; joints/ground contact determine actual fall rather than a scripted rotation. Initial excessive rearward impulse was reduced at gameplay commit `eacfe4e1f6dae6ad81938a8dd595bf4438a80196` to prevent launch-like response.

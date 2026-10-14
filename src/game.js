@@ -5530,13 +5530,15 @@ function releaseZombieVisual(z){
 // v143: introduce special infected gradually instead of jumping from 0% on wave 1
 // straight to 42% on wave 2. Each new threat gets a wave to become readable before
 // the full mixed roster settles back near the old late-wave intensity.
-// v639: Wave 1 previews only the INFECTED while its GLB is sourced.
-// Wave 2+ retains the original mixed roster and 10-round boss rotation.
+// v663: The original Infected GLB is approved for normal zombie rotation.
+// Wave 1 returns to its ten regular Shamblers; Infected remain eligible
+// in the existing mixed roster from Wave 5 onward. Bosses still rotate
+// separately every ten waves. The Sprinter-only regression is opt-in.
 // The existing two-Sprinter crawler regression is now explicitly opt-in.
 let sprinterOnlyTest=new URLSearchParams(window.location.search).get("sprinterTest")==="1";
 function rolledZombieKind(w,roll){
  if(sprinterOnlyTest)return "sprinter";
- if(w===1)return "infected";
+ if(w===1)return "shambler";
  if(w===2)return roll<.18?"sprinter":"shambler";
  if(w===3){
    if(roll<.08)return "crawler";

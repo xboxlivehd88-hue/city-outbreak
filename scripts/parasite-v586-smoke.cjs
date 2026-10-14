@@ -1,17 +1,32 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"658",pass:false},errors=[];let browser,page;
+ const report={version:"663",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=662$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=663$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
  ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&!!infectedGlbAsset&&newCityCollisionReady,
  waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],preview:!sprinterOnlyTest}),
+ normalRotation:()=>({
+  first:[0,.08,.5,.99].map(roll=>rolledZombieKind(1,roll)),
+  second:[.05,.7].map(roll=>rolledZombieKind(2,roll)),
+  fifth:[.025,.8].map(roll=>rolledZombieKind(5,roll)),
+  sixth:[.055,.8].map(roll=>rolledZombieKind(6,roll))
+ }),
+ // Test-only: exercise the actual original GLB without changing normal Wave 1.
+ // These actors are added AFTER confirming the player's real first ten spawns.
+ seedInfectedAudit:()=>{
+  const slots=zombies.filter(z=>!z.dead&&z.kind==="shambler").slice(0,3);
+  if(slots.length!==3)throw Error("Missing ordinary Wave 1 spawn positions");
+  for(let i=0;i<3;i++)makeZombie(slots[i].g.position.x,slots[i].g.position.z,
+   waveSpawned+i,"infected");
+  return zombies.filter(z=>!z.dead&&z.kind==="infected"&&z.infectedVisual).length;
+ },
  infectedDebug:()=>({
   wave,waveSpawned,waveTarget,ready:!!infectedGlbAsset,assetError:String(infectedGlbError||""),
   attached:document.documentElement.dataset.infectedGlbAttached,
@@ -556,12 +571,14 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=662-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=663-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.waveOne()?.spawned===10,null,{timeout:70000});
   report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
+  report.normalRotation=await page.evaluate(()=>globalThis.__parasiteSmoke.normalRotation());
+  report.infectedTestActors=await page.evaluate(()=>globalThis.__parasiteSmoke.seedInfectedAudit());
   const infectedImages=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedVisualQA());
   report.infectedRenderFrames=infectedImages.map(f=>({name:f.name,bytes:f.jpeg.length}));
   for(const f of infectedImages)console.log("INFECTED_DIAGNOSTIC_"+f.name+"="+f.jpeg);
@@ -600,7 +617,17 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   assert.equal(report.waveOne.spawned,10);
   assert.equal(report.waveOne.bosses,0,"Wave 1 must contain only normal zombies");
   assert.equal(report.waveOne.preview,true,"Normal game must not force Sprinter-only test mode");
-  assert.deepEqual(report.waveOne.kinds,["infected"],"Normal Wave 1 must spawn only Infected");
+  assert.deepEqual(report.waveOne.kinds,["shambler"],"Wave 1 must be ten standard Shamblers, not Infected");
+  assert.deepEqual(report.normalRotation.first,["shambler","shambler","shambler","shambler"],
+   "Infected must not remain in normal Wave 1 rolls");
+  assert.deepEqual(report.normalRotation.second,["sprinter","shambler"],
+   "Preserve Wave 2 mixed roster");
+  assert.deepEqual(report.normalRotation.fifth,["infected","shambler"],
+   "Original Infected must remain in normal Wave 5 rotation");
+  assert.deepEqual(report.normalRotation.sixth,["infected","shambler"],
+   "Original Infected must stay in later mixed waves");
+  assert.equal(report.infectedTestActors,3,
+   "Original Infected GLB must still spawn and attach for crawler/death regression");
   assert(report.infectedCrawler.originalActor&&report.infectedCrawler.noReplacement&&
    report.infectedCrawler.sameRoot&&report.infectedCrawler.sameVisibleRig&&
    report.infectedCrawler.flag&&report.infectedCrawler.source==="infected"&&
