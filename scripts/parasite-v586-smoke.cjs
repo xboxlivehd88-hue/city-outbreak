@@ -235,40 +235,40 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  },
  infectedDeathAudit:()=>{
   const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual&&!a.infectedCrawler);
-  if(!z)throw Error("Upright Infected missing for gunshot death");
-  const start=z.g.position.clone(),firstHead=z.infectedBones.get("Head").getWorldPosition(new THREE.Vector3());
-  const visual=z.infectedVisual,model=z.infectedModel,realBoneCount=z.infectedBones.size;
+  if(!z)throw Error("Original standing Infected missing for articulated death test");
+  const visual=z.infectedVisual,model=z.infectedModel,bones=z.infectedBones;
+  const start=z.g.position.clone(),initialHeadY=bones.get("Head").getWorldPosition(new THREE.Vector3()).y;
   killZ(z,false,z.g.position.clone());
-  const rag=z.ragdoll,fall=rag?.infectedFall;
-  if(!fall)throw Error("Normal Infected gunshot death still entered twisting PBD instead of original-GLB collapse");
-  const samples=[];
-  let lastAngle=0,maxFrameTilt=0,twistExceeded=false;
-  for(let i=0;i<120;i++){
+  const rag=z.ragdoll,f=rag?.infectedPhysical;
+  if(!f)throw Error("Original infected did not enter articulated ragdoll");
+  const samples=[],segmentErrors=[];
+  let worstPenetration=0,peakMotion=0;
+  for(let i=0;i<240;i++){
    if(!rag.active)break;
    updateRagdoll(z,1/60);
-   maxFrameTilt=Math.max(maxFrameTilt,Math.abs(fall.angle-lastAngle));
-   lastAngle=fall.angle;
-   const absoluteSkull=z.infectedBones.get("Head").getWorldPosition(new THREE.Vector3());
-   if(i===9||i===29||i===47||i===90){
-    const boneHeight=key=>z.infectedBones.get(key)?.getWorldPosition(new THREE.Vector3()).y-rag.floorY;
-    samples.push({frame:i,headY:absoluteSkull.y,tilt:fall.angle,
-     joints:fall.joints.map(j=>Math.abs(j.angle)),hipY:fall.hip.y,
-     lowerBodyMinY:Math.min(...["L_LowerLeg","R_LowerLeg","L_Foot","R_Foot"].map(boneHeight)),
-     handsMinY:Math.min(...["L_Hand","R_Hand"].map(boneHeight))});
+   for(const e of f.edges){
+    const a=f.nodes.get(e.a),b=f.nodes.get(e.b);
+    segmentErrors.push(Math.abs(a.p.distanceTo(b.p)-e.l)/e.l);
    }
-   if(fall.joints.some(j=>Math.abs(j.angle)>j.limit+.005))twistExceeded=true;
+   for(const n of f.nodes.values()){
+    const floor=sampleRagdollGroundY(n.p.x,n.p.z,f.groundY,n.p.y);
+    worstPenetration=Math.max(worstPenetration,floor+n.radius-n.p.y);
+   }
+   peakMotion=Math.max(peakMotion,f.maxMotion);
+   if([9,29,47,90,150,210].includes(i)){
+    samples.push({frame:i,headY:bones.get("Head").getWorldPosition(new THREE.Vector3()).y,
+     hipY:bones.get("Hips").getWorldPosition(new THREE.Vector3()).y,
+     minLowerBodyY:Math.min(...["L_LowerLeg","R_LowerLeg","L_Foot","R_Foot"].map(key=>
+      bones.get(key)?.getWorldPosition(new THREE.Vector3()).y-rag.floorY??0)),
+     contacts:f.contactCount});
+   }
   }
-  return{dead:z.dead,kind:z.kind,bodyPbd:!!rag.bodyPbd,custom:!!fall,
+  return{dead:z.dead,bodyPbd:!!rag.bodyPbd,physical:!!f,
    sameOriginalVisual:z.infectedVisual===visual,sameOriginalGLB:z.infectedModel===model,
-   bones:realBoneCount,movedXZ:Math.hypot(fall.hip.x-start.x,fall.hip.z-start.z),
-   initialHeadY:firstHead.y,samples,contact:fall.contact,settled:rag.active===false,
-   maxFrameTilt,twistExceeded,peakSpineFlex:fall.maxSpineFlex,
-   maxKneeFold:fall.maxKneeFold,sideRoll:fall.rolled,
-   sprawlSide:fall.sprawlSide,
-   legGroundClearance:fall.legGroundClearance,
-   footHeights:["L_Foot","R_Foot"].map(k=>z.infectedBones.get(k)?.getWorldPosition(new THREE.Vector3()).y),
-   peakJointAngle:fall.peakJointAngle,peakBodyTilt:fall.peakBodyTilt,
-   finite:[...fall.hip.toArray(),fall.angle,fall.peakJointAngle,...fall.joints.map(j=>j.angle)].every(Number.isFinite)};
+   initialHeadY,samples,contacts:f.contactCount,settled:!rag.active,
+   maxSegmentError:Math.max(...segmentErrors),worstPenetration,peakMotion,
+   originalBones:bones.size,nodes:f.nodes.size,edges:f.edges.length,
+   finite:[...f.nodes.values()].every(n=>[...n.p.toArray(),...n.previous.toArray()].every(Number.isFinite))};
  },
  selectViaRealBossRotation:()=>{
   // Force the final available name in the existing no-repeat bag, NOT the
@@ -594,26 +594,17 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    "Leg skin clipping failed; zero-scaled thighs pull torso into ball: "+JSON.stringify(infected));
   assert(infected.firstFootResidue===0&&infected.finalFootResidue?.every(n=>n===0),
    "Severed Infected still displays skinned boot/toe faces: "+JSON.stringify([infected.firstFootResidue,infected.finalFootResidue]));
-  assert(report.infectedDeath?.dead&&report.infectedDeath.custom&&
+  assert(report.infectedDeath?.dead&&report.infectedDeath.physical&&
    !report.infectedDeath.bodyPbd&&report.infectedDeath.sameOriginalVisual&&
-   report.infectedDeath.sameOriginalGLB&&report.infectedDeath.bones>=15&&
-   report.infectedDeath.finite&&report.infectedDeath.contact&&
-   report.infectedDeath.settled&&!report.infectedDeath.twistExceeded&&
-   report.infectedDeath.peakBodyTilt>.28&&report.infectedDeath.peakBodyTilt<.50&&
-   report.infectedDeath.peakSpineFlex>.62&&
-   report.infectedDeath.peakSpineFlex>report.infectedDeath.peakBodyTilt+.20&&
-   report.infectedDeath.maxKneeFold>.16&&
-   report.infectedDeath.samples[1].lowerBodyMinY>-.10&&
-   report.infectedDeath.samples[3].lowerBodyMinY>-.04&&
-   Math.abs(report.infectedDeath.sideRoll)>.10&&
-   report.infectedDeath.samples[0].tilt<.18&&
-   Number.isFinite(report.infectedDeath.legGroundClearance)&&
-   report.infectedDeath.legGroundClearance>-.04&&
-   report.infectedDeath.legGroundClearance<.38&&
-   report.infectedDeath.peakJointAngle<.89&&report.infectedDeath.maxFrameTilt<.15&&
-   report.infectedDeath.initialHeadY-report.infectedDeath.samples[1].headY>.20&&
-   report.infectedDeath.movedXZ>.015&&report.infectedDeath.movedXZ<5,
-   "Infected gunshot corpse must collapse promptly with bounded Mixamo joints, never twist through particle IK: "+JSON.stringify(report.infectedDeath));
+   report.infectedDeath.sameOriginalGLB&&report.infectedDeath.originalBones>=15&&
+   report.infectedDeath.nodes>=14&&report.infectedDeath.edges>=13&&
+   report.infectedDeath.finite&&report.infectedDeath.maxSegmentError<.15&&
+   report.infectedDeath.worstPenetration<.08&&
+   report.infectedDeath.samples.length>=3&&
+   report.infectedDeath.initialHeadY-report.infectedDeath.samples[2].headY>.35&&
+   report.infectedDeath.peakMotion>.1,
+   "Infected articulated physics must preserve segment lengths and ground contact while falling: "+
+   JSON.stringify(report.infectedDeath));
   assert(ip&&ip.hipY>.025&&ip.hipY<.16&&ip.chestY>ip.hipY+.16&&
    ip.chestY>.27&&ip.chestY<.47&&ip.headY>.16&&ip.headForward>.14&&ip.handsApart>.22,
    "Infected still folded into a compact ball instead of dragging on its pelvis: "+JSON.stringify(ip));
