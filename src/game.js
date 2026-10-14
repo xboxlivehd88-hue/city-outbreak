@@ -8267,6 +8267,138 @@ function updateInfectedGunshotFall(z,rag,dt){
  }
  return true;
 }
+// v661: position-constrained articulated original Mixamo skeleton. Each joint
+// owns a world-space mass point; rods keep anatomy connected, gravity acts on
+// all masses, and floor contact occurs on EVERY limb (not only the pelvis).
+// No keyframe fall, planted ankle target, or whole-model topple rotation.
+function createInfectedArticulatedFall(z,vx,vz){
+ const holder=z.infectedVisual,bones=z.infectedBones;
+ if(!holder||!bones?.has("Hips"))return null;
+ holder.updateWorldMatrix(true,true);
+ const links=[
+  ["Hips","Spine"],["Spine","Chest"],["Chest","Neck"],["Neck","Head"],
+  ["Chest","L_UpperArm"],["L_UpperArm","L_LowerArm"],["L_LowerArm","L_Hand"],
+  ["Chest","R_UpperArm"],["R_UpperArm","R_LowerArm"],["R_LowerArm","R_Hand"],
+  ["Hips","L_UpperLeg"],["L_UpperLeg","L_LowerLeg"],["L_LowerLeg","L_Foot"],
+  ["Hips","R_UpperLeg"],["R_UpperLeg","R_LowerLeg"],["R_LowerLeg","R_Foot"]
+ ];
+ const keys=[...new Set(links.flat())].filter(k=>bones.has(k)&&bodyPbdBoneAllowed(z,k));
+ if(!keys.includes("Head")||!keys.includes("Hips"))return null;
+ const nodes=new Map(),edges=[];
+ const floor=Number.isFinite(z.groundY)?z.groundY:z.g.position.y;
+ const lean=(rnd()<.5?-1:1);
+ for(const key of keys){
+  const bone=bones.get(key),p=bone.getWorldPosition(new THREE.Vector3());
+  const part=key.includes("Foot")?".08":key.includes("Hand")?".065":
+   key.includes("Lower")?".085":key==="Head"?".13":".12";
+  const radius=+part;
+  const height=Math.max(0,p.y-floor);
+  const drift=new THREE.Vector3(vx*.65+(rnd()-.5)*.18,0,
+   vz*.65+lean*(.28+.16*height)+(rnd()-.5)*.16);
+  nodes.set(key,{bone,p,previous:p.clone().sub(drift.multiplyScalar(1/60)),radius,
+   original:p.clone(),base:bone.quaternion.clone()});
+ }
+ for(const [a,b] of links){
+  if(!nodes.has(a)||!nodes.has(b))continue;
+  const l=nodes.get(a).p.distanceTo(nodes.get(b).p);
+  if(l>.015)edges.push({a,b,l});
+ }
+ // Keep a joint's grandchild from folding through its parent. For knees and
+ // elbows allow wide flex, but disallow the inside-out / inverted fold.
+ const bends=[];
+ for(const side of ["L","R"]){
+  for(const [a,b,c,min] of [
+   ["Hips",side+"_UpperLeg",side+"_LowerLeg",.52],
+   [side+"_UpperLeg",side+"_LowerLeg",side+"_Foot",.42],
+   ["Chest",side+"_UpperArm",side+"_LowerArm",.42],
+   [side+"_UpperArm",side+"_LowerArm",side+"_Hand",.35]]){
+   if(!nodes.has(a)||!nodes.has(b)||!nodes.has(c))continue;
+   const span=nodes.get(a).p.distanceTo(nodes.get(b).p)+nodes.get(b).p.distanceTo(nodes.get(c).p);
+   bends.push({a,c,min:span*min});
+  }
+ }
+ return{holder,nodes,edges,bends,initialHolder:holder.position.clone(),
+  initialHip:nodes.get("Hips").p.clone(),time:0,settle:0,contactCount:0,
+  maxMotion:0,side:lean,groundY:floor,limitAngle:0};
+}
+function updateInfectedArticulatedFall(z,rag,dt){
+ const f=rag.infectedPhysical;if(!f)return;
+ const h=Math.max(0,Math.min(.033,dt)),parts=Math.max(1,Math.ceil(h/(1/90))),step=h/parts;
+ for(let sub=0;sub<parts;sub++){
+  for(const n of f.nodes.values()){
+   const velocity=n.p.clone().sub(n.previous);
+   n.previous.copy(n.p);
+   n.p.addScaledVector(velocity,Math.exp(-step*1.4));
+   n.p.y-=9.81*step*step;
+  }
+  for(let it=0;it<9;it++){
+   for(const e of f.edges){
+    const a=f.nodes.get(e.a),b=f.nodes.get(e.b),d=b.p.clone().sub(a.p),len=d.length();
+    if(len<1e-7)continue;
+    d.multiplyScalar((len-e.l)/(len*2));
+    a.p.add(d);b.p.sub(d);
+   }
+   for(const b of f.bends){
+    const a=f.nodes.get(b.a),c=f.nodes.get(b.c),delta=c.p.clone().sub(a.p);
+    const dist=delta.length();
+    if(dist>=b.min||dist<1e-7)continue;
+    delta.multiplyScalar((b.min-dist)/(dist*2));
+    a.p.sub(delta);c.p.add(delta);
+   }
+   for(const n of f.nodes.values()){
+    const ground=sampleRagdollGroundY(n.p.x,n.p.z,f.groundY,n.p.y);
+    if(n.p.y<ground+n.radius){
+     n.p.y=ground+n.radius;
+     // Contact dissipates tangential momentum; no artificial pinned feet.
+     n.previous.x=THREE.MathUtils.lerp(n.previous.x,n.p.x,.22);
+     n.previous.z=THREE.MathUtils.lerp(n.previous.z,n.p.z,.22);
+    }
+   }
+  }
+ }
+ f.time+=h;
+ // Position the original GLB at its simulated hip. The holder keeps its
+ // original rotation: all visible falling is driven by articulated joints.
+ z.g.updateWorldMatrix(true);
+ f.holder.updateWorldMatrix(true,true);
+ const hip=f.nodes.get("Hips");
+ const current=hip.bone.getWorldPosition(new THREE.Vector3());
+ const target=hip.p.clone();
+ z.g.worldToLocal(current);z.g.worldToLocal(target);
+ f.holder.position.add(target.sub(current));
+ // Solve bone directions hierarchically. Use original local bind directions
+ // and the parent world basis; clamp angular change per joint to prevent flips.
+ f.holder.updateWorldMatrix(true,true);
+ const rest=z.infectedRest;
+ for(const e of f.edges){
+  const a=f.nodes.get(e.a),b=f.nodes.get(e.b),bone=a.bone,child=b.bone;
+  const base=rest?.get(e.a)||a.base;
+  if(!bone.parent||child.position.lengthSq()<1e-8)continue;
+  const desiredWorld=b.p.clone().sub(a.p);
+  if(desiredWorld.lengthSq()<1e-7)continue;
+  desiredWorld.normalize().applyQuaternion(bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+  const authored=child.position.clone().applyQuaternion(base).normalize();
+  const aim=new THREE.Quaternion().setFromUnitVectors(authored,desiredWorld).multiply(base);
+  const range=e.a.includes("LowerLeg")?1.55:e.a.includes("UpperLeg")?1.4:
+   e.a.includes("LowerArm")?1.65:e.a.includes("UpperArm")?1.65:1.25;
+  const distance=base.angleTo(aim);
+  bone.quaternion.copy(base).slerp(aim,Math.min(1,range/Math.max(distance,.00001)));
+  bone.updateWorldMatrix(true,true);
+ }
+ f.holder.updateWorldMatrix(true,true);
+ let motion=0,contacts=0;
+ for(const n of f.nodes.values()){
+  motion=Math.max(motion,n.p.distanceTo(n.previous)/Math.max(.001,h));
+  if(n.p.y<=sampleRagdollGroundY(n.p.x,n.p.z,f.groundY,n.p.y)+n.radius+.03)contacts++;
+ }
+ f.contactCount=contacts;f.maxMotion=motion;
+ f.settle=contacts>=8&&motion<.16?f.settle+h:0;
+ rag.contactCount=contacts;rag.grounded=contacts>=7;
+ rag.fullBodyDown=contacts>=8;rag.rootGrounded=rag.grounded;
+ if(f.settle>.55||f.time>6){
+  rag.active=false;z.falling=false;
+ }
+}
 function beginRagdoll(z,force=1,blastOrigin=null){
  if(z.ragdoll)return;
  // v421: capture/release the exact live pose. Do not normalize the holder or
@@ -8329,8 +8461,8 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  // per-particle orientation solver responsible for twisted skin/bone piles.
  // Converted crawlers and ALL explosive deaths keep their original PBD.
  if(!isBlast&&z.infectedVisual&&!z.infectedCrawler){
-  rag.infectedFall=createInfectedGunshotFall(z,rag,inheritedVX,inheritedVZ);
-  if(rag.infectedFall)return;
+  rag.infectedPhysical=createInfectedArticulatedFall(z,inheritedVX,inheritedVZ);
+  if(rag.infectedPhysical)return;
  }
  rag.bodyPbd=buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX*.94,inheritedVZ*.94,power);
  if(rag.bodyPbd)return;
@@ -8394,6 +8526,7 @@ function updateRagdoll(z,dt){
  if(!z.ragdoll)beginRagdoll(z);
  const r=z.ragdoll;r.t+=dt;
  if(r.infectedFall){updateInfectedGunshotFall(z,r,dt);return}
+ if(r.infectedPhysical){updateInfectedArticulatedFall(z,r,dt);return}
  if(r.bodyPbd){updateBodyPbd(z,r,dt);return}
 
  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
