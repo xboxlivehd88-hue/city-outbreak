@@ -8420,10 +8420,19 @@ function updateInfectedArticulatedFall(z,rag,dt){
  f.holder.updateWorldMatrix(true,true);
  const rest=z.infectedRest;
  for(const e of f.edges){
+  // Hips and Chest each own THREE children. They have only one quaternion,
+  // so aiming them separately at the spine + two thighs, or neck + two arms,
+  // overwrites the earlier aim and twists the whole skinned body into a ball.
+  // Their primary axial child controls their frame; shoulders and hip sockets
+  // remain attached through the ORIGINAL Mixamo parent hierarchy.
+  if(e.a==="Hips"&&e.b!=="Spine")continue;
+  if(e.a==="Chest"&&e.b!=="Neck")continue;
   const a=f.nodes.get(e.a),b=f.nodes.get(e.b),bone=a.bone,child=b.bone;
   const base=rest?.get(e.a)||a.base;
   if(!bone.parent||child.position.lengthSq()<1e-8)continue;
-  const desiredWorld=b.p.clone().sub(a.p);
+  const attached=["L_UpperLeg","R_UpperLeg","L_UpperArm","R_UpperArm"].includes(e.a);
+  const actualOrigin=attached?bone.getWorldPosition(new THREE.Vector3()):a.p;
+  const desiredWorld=b.p.clone().sub(actualOrigin);
   if(desiredWorld.lengthSq()<1e-7)continue;
   desiredWorld.normalize().applyQuaternion(bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
   const authored=child.position.clone().applyQuaternion(base).normalize();
