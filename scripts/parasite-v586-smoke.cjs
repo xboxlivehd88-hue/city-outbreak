@@ -271,6 +271,11 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   killZ(z,false,z.g.position.clone());
   const rag=z.ragdoll,f=rag?.infectedPhysical;
   if(!f)throw Error("Original infected did not enter articulated ragdoll");
+  const away=new THREE.Vector3(z.g.position.x-px,0,z.g.position.z-pz).normalize();
+  const chestNode=f.nodes.get("Chest"),hipNode=f.nodes.get("Hips");
+  const releaseChest=chestNode.p.clone().sub(chestNode.previous);
+  const releaseHip=hipNode.p.clone().sub(hipNode.previous);
+  const backwardImpulse=releaseChest.clone().sub(releaseHip).dot(away);
   const samples=[],segmentErrors=[];
   let worstPenetration=0,peakMotion=0;
   for(let i=0;i<240;i++){
@@ -295,7 +300,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   }
   return{dead:z.dead,bodyPbd:!!rag.bodyPbd,physical:!!f,
    sameOriginalVisual:z.infectedVisual===visual,sameOriginalGLB:z.infectedModel===model,
-   initialHeadY,samples,contacts:f.contactCount,settled:!rag.active,
+   initialHeadY,samples,contacts:f.contactCount,settled:!rag.active,backwardImpulse,
    maxSegmentError:Math.max(...segmentErrors),worstPenetration,peakMotion,
    originalBones:bones.size,nodes:f.nodes.size,edges:f.edges.length,
    finite:[...f.nodes.values()].every(n=>[...n.p.toArray(),...n.previous.toArray()].every(Number.isFinite))};
@@ -642,7 +647,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.worstPenetration<.08&&
    report.infectedDeath.samples.length>=3&&
    report.infectedDeath.initialHeadY-report.infectedDeath.samples[2].headY>.35&&
-   report.infectedDeath.peakMotion>.1&&
+   report.infectedDeath.peakMotion>.1&&report.infectedDeath.backwardImpulse>.002&&
    report.infectedDeath.samples[1].minLowerBodyY>-.10&&
    report.infectedDeath.samples[2].minLowerBodyY>-.08&&
    (report.infectedDeath.samples[3]?.minLowerBodyY??-10)>-.10,
