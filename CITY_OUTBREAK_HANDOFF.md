@@ -1,3 +1,11 @@
+# v661 VERIFIED PHYSICS-BRANCH CHROMIUM AUDIT — 2026-10-14
+
+- Final candidate original GLB browser test **SUCCESS**, run [38647499273](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38647499273), gameplay commit `6981a84124344b8e8ec085c22cecf99618df920e`. Actual original skinned early/half/settled side screenshots manually inspected. The Infected drops with separately bending original legs and a grounded torso; no prior frozen vertical shins or huge whole-body plank. Final posture remains fairly compact; user visual acceptance **PENDING**. Real original-model mid-fall+settled foot heights pass strict tests; no joint-length, physics floor collision, numerical spin or skin source violations.
+- Converted crawler gunshot death independently tested by NEW original-model crawler death audit: 11 original-bone nodes, 10 linked constraints, original GLB retained, amputated legs absent, old twist-prone PBD absent; spatial spread >.6m, tiny segment-length error, no simulated ground penetration. Approved living crawl and hitboxes unchanged.
+- Independent latest branch Sprinter browser [38647499703](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38647499703) **SUCCESS** and Hazmat/Green [38647499157](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38647499157) **SUCCESS**. Loader `./src/game.js?v=661`. Protected v324 recovery untouched. Verify main and Pages deployment separately after fast-forward before giving playable link.
+
+---
+
 # v661 — ORIGINAL INFECTED ARTICULATED PHYSICS DEATH REPLACEMENT — 2026-10-14
 
 - Focus: user reports v659 normal Infected lower legs freeze while body melts onto them, and converted original Infected crawler corpses knot themselves. This is a real replacement for ordinary original-GLB non-blast gunshot deaths, not another update to v658's scripted torso/pelvis hinge. **Living walking and approved original crawler locomotion untouched.**
