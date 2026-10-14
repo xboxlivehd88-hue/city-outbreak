@@ -6761,6 +6761,11 @@ function orientBodyPbd(z,pbd,dt=1/60){
  }
  holder.position.add(bodyPbdTmpC);holder.updateMatrixWorld(true);
  for(const link of pbd.links){
+   // The native Infected arms are aimed by the physically bounded TWO-BONE
+   // solver below. A second per-bone aim here compounded .18rad and .22rad
+   // every frame and allowed a shoulder to wrap 175 degrees behind the ribs.
+   if(pbd.infectedGunshot&&
+      (link.a.endsWith("_UpperArm")||link.a.endsWith("_LowerArm")))continue;
    const target=pbd.nodes.get(link.b),bone=link.bone,parent=bone.parent;if(!target||!parent)continue;
    bone.getWorldPosition(bodyPbdTmpA);bodyPbdTmpB.subVectors(target.pos,bodyPbdTmpA);
    if(bodyPbdTmpB.lengthSq()<1e-8)continue;
@@ -6808,15 +6813,23 @@ function orientBodyPbd(z,pbd,dt=1/60){
    dir.applyQuaternion(parentQ.invert()).normalize();
    restDir.copy(child.position).applyQuaternion(bone.quaternion).normalize();
    targetQ.setFromUnitVectors(restDir,dir).multiply(bone.quaternion);
-   bone.quaternion.rotateTowards(targetQ,Math.min(.22,dt*13));
+   const link=pbd.links.find(l=>l.bone===bone);
+   if(link){
+    const limit=link.a.endsWith("_UpperArm")?1.30:1.40;
+    const turn=link.baseQuat.angleTo(targetQ);
+    if(turn>limit)targetQ.copy(link.baseQuat)
+     .slerp(targetQ,limit/Math.max(turn,1e-6));
+   }
+   bone.quaternion.rotateTowards(targetQ,Math.min(.19,dt*11.4));
    bone.updateWorldMatrix(true,true);
   };
   for(const side of ["L","R"]){
    if(!bodyPbdBoneAllowed(z,side+"_UpperArm")||
       !bodyPbdBoneAllowed(z,side+"_LowerArm"))continue;
    const upper=pbd.bones.get(side+"_UpperArm"),fore=pbd.bones.get(side+"_LowerArm"),
-     hand=pbd.bones.get(side+"_Hand"),node=pbd.nodes.get(side+"_Hand");
-   if(!upper||!fore||!hand||!node)continue;
+     hand=pbd.bones.get(side+"_Hand"),node=pbd.nodes.get(side+"_Hand"),
+     elbowNode=pbd.nodes.get(side+"_LowerArm");
+   if(!upper||!fore||!hand||!node||!elbowNode)continue;
    upper.getWorldPosition(shoulder);fore.getWorldPosition(forePos);
    hand.getWorldPosition(wrist);
    const l1=shoulder.distanceTo(forePos),l2=forePos.distanceTo(wrist);
@@ -6825,10 +6838,14 @@ function orientBodyPbd(z,pbd,dt=1/60){
    const dist=Math.min(l1+l2-.013,Math.max(Math.abs(l1-l2)+.013,toward.length()));
    if(toward.lengthSq()<1e-9)continue;
    toward.normalize();
-   // Outward-bending elbows are stable even if the actual ragdoll hand
-   // swings past the shoulder; no cross-body fold or frozen reaching pose.
-   pole.set(side==="L"?-1:1,.20,-.14).applyQuaternion(rootQ);
+   // Use the SIMULATED elbow particle as the bending pole, instead of
+   // inventing an elbow position pointing out of the original source rig.
+   pole.subVectors(elbowNode.pos,shoulder);
    pole.addScaledVector(toward,-pole.dot(toward));
+   if(pole.lengthSq()<.00001){
+    pole.set(side==="L"?-1:1,.20,-.14).applyQuaternion(rootQ);
+    pole.addScaledVector(toward,-pole.dot(toward));
+   }
    if(pole.lengthSq()<.00001)pole.copy(up).addScaledVector(toward,-up.dot(toward));
    pole.normalize();
    const along=(l1*l1-l2*l2+dist*dist)/(2*dist);
