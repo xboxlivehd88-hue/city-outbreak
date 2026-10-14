@@ -1,3 +1,10 @@
+# v663 VERIFIED — INFECTED IN NORMAL MIXED ROSTER — 2026-10-14
+
+- Chromium original-Infected/mixed-roster + boss smoke [38652984178](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38652984178) **SUCCESS**. Browser produced actual Wave 1 `target=10`, `spawned=10`, `live=10`, `kinds=["shambler"]`, `bosses=0`. Probabilistic roster probes preserved Wave 2 Sprinter/Shambler and Wave 5/6 Infected/Shambler. Test-only 3 original Infected GLB actors verified walking, crawling, limb destruction, skinned gunshot deaths, and converted crawler death without appearing as real Wave 1 spawns. 19-boss no-repeat rotation unchanged/passed.
+- Independent Sprinter browser [38652984061](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38652984061) **SUCCESS**, Hazmat/Green browser [38652984172](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38652984172) **SUCCESS**. Loader is `./src/game.js?v=663`. No original GLB/ragdoll/living crawl edits; ONLY restore Wave 1 shamblers while original Infected remain in normal waves 5+ at prior spawn weights. Protected recovery v324 unchanged. Check Pages deployment after pushing main.
+
+---
+
 # v663 — ORIGINAL INFECTED RETURN TO MIXED ZOMBIE ROSTER — 2026-10-14
 
 - User approved the original Infected's current v662 look and requests removing their temporary all-Infected Wave 1 test spawn, and placing them back into normal zombie rotation.
