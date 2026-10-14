@@ -6794,11 +6794,12 @@ function orientBodyPbd(z,pbd,dt=1/60){
     const key=link.a;
     const cap=key==="Spine"?.93:key==="Chest"?.67:key==="Neck"?.48:
       key==="Hips"?.62:key.includes("UpperArm")?1.25:
-      key.includes("LowerArm")?1.20:key.includes("UpperLeg")?.95:
-      key.includes("LowerLeg")?1.08:key.includes("Foot")?.48:1.0;
+      key.includes("LowerArm")?1.20:key.includes("UpperLeg")?1.82:
+      key.includes("LowerLeg")?1.96:key.includes("Foot")?.72:1.0;
     const arc=link.baseQuat.angleTo(bodyPbdDeltaQ);
     if(arc>cap)bodyPbdDeltaQ.copy(link.baseQuat).slerp(bodyPbdDeltaQ,cap/arc);
-    bone.quaternion.rotateTowards(bodyPbdDeltaQ,Math.max(0,dt)*12);
+    bone.quaternion.rotateTowards(bodyPbdDeltaQ,Math.max(0,dt)*
+     (key.includes("Leg")||key.includes("Foot")?17:12));
    }else bone.quaternion.copy(bodyPbdDeltaQ);
    bone.updateWorldMatrix(true,false);
  }
