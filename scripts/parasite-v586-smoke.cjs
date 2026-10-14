@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"657",pass:false},errors=[];let browser,page;
+ const report={version:"658",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=657$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=658$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -76,7 +76,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const beforeCount=zombies.length,root=z.g,visual=z.infectedVisual,meshCount=[];
   const glb=z.infectedModel,source=z.infectedGLBSource,hadTexture=!!glb?.getObjectByProperty;
   visual.traverse(o=>{if(o.isSkinnedMesh)meshCount.push(o.name)});
-  // v657: verify actual source Mixamo shoulder/elbow/wrist chains while
+  // v658: verify actual source Mixamo shoulder/elbow/wrist chains while
   // STANDING, before amputating. A screenshot alone can hide T-pose regression.
   const prevPhase=z.phase,standingFrames=[];
   for(const p of [.3,Math.PI*.5,Math.PI*1.2,Math.PI*1.65]){
@@ -96,7 +96,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    });
   }
   z.phase=prevPhase;syncInfectedGLB(z,0);
-  // v657: measure shoes in WORLD SPACE while a REAL actor advances.
+  // v658: measure shoes in WORLD SPACE while a REAL actor advances.
   // Previous tests rotated knees in place and missed ice-skating planted feet.
   const initialActor=z.g.position.clone(),initialPhase=z.phase;
   z.infectedFootPlants=null;
@@ -182,7 +182,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const local=key=>{const q=jp(key);return q?z.g.worldToLocal(q):null;};
   const h=local("Hips"),c=local("Chest"),head=local("Head"),
    left=local("L_Hand"),right=local("R_Hand");
-  // v657: inspect ORIGINAL joints at forward plant, backward pull, and
+  // v658: inspect ORIGINAL joints at forward plant, backward pull, and
   // recovered hand lift. Also ensure elbow bends below the shoulder toward
   // the ground and neither elbow folds behind its shoulder.
   const originalPhase=z.phase,armFrames=[];
@@ -235,40 +235,55 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  },
  infectedDeathAudit:()=>{
   const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual&&!a.infectedCrawler);
-  if(!z)throw Error("Upright Infected missing for gunshot death");
-  const start=z.g.position.clone(),firstHead=z.infectedBones.get("Head").getWorldPosition(new THREE.Vector3());
+  if(!z)throw Error("Original skinned Infected missing");
   const visual=z.infectedVisual,model=z.infectedModel,realBoneCount=z.infectedBones.size;
+  const start=z.g.position.clone();
+  const bonePos=key=>z.infectedBones.get(key)?.getWorldPosition(new THREE.Vector3());
+  const headStart=bonePos("Head").y,chestStart=bonePos("Chest").y;
   killZ(z,false,z.g.position.clone());
-  const rag=z.ragdoll,fall=rag?.infectedFall;
-  if(!fall)throw Error("Normal Infected gunshot death still entered twisting PBD instead of original-GLB collapse");
-  const samples=[];
-  let lastAngle=0,maxFrameTilt=0,twistExceeded=false;
-  for(let i=0;i<120;i++){
+  const rag=z.ragdoll,p=rag?.bodyPbd;
+  if(!p||p.rigKind!=="infected"||!p.infectedGunshot)
+   throw Error("Original Infected still uses scripted board tip instead of unpowered anatomical PBD");
+  const watched=["Hips","Spine","Chest","Neck","L_UpperArm","R_UpperArm",
+   "L_LowerArm","R_LowerArm","L_UpperLeg","R_UpperLeg","L_LowerLeg","R_LowerLeg"];
+  let maxFrameJointTurn=0,maxSingleJointDrift=0,maxNodeSpeed=0;
+  let initialNodeHeight=[...p.nodes.values()].map(n=>n.pos.y),samples=[];
+  for(let i=0;i<225;i++){
    if(!rag.active)break;
+   const last=watched.map(k=>z.infectedBones.get(k)?.quaternion.clone());
    updateRagdoll(z,1/60);
-   maxFrameTilt=Math.max(maxFrameTilt,Math.abs(fall.angle-lastAngle));
-   lastAngle=fall.angle;
-   const absoluteSkull=z.infectedBones.get("Head").getWorldPosition(new THREE.Vector3());
-   if(i===9||i===29||i===47||i===90){
-    const boneHeight=key=>z.infectedBones.get(key)?.getWorldPosition(new THREE.Vector3()).y-rag.floorY;
-    samples.push({frame:i,headY:absoluteSkull.y,tilt:fall.angle,
-     joints:fall.joints.map(j=>Math.abs(j.angle)),hipY:fall.hip.y,
-     lowerBodyMinY:Math.min(...["L_LowerLeg","R_LowerLeg","L_Foot","R_Foot"].map(boneHeight)),
-     handsMinY:Math.min(...["L_Hand","R_Hand"].map(boneHeight))});
+   for(let j=0;j<watched.length;j++){
+    const bone=z.infectedBones.get(watched[j]),first=last[j];
+    if(!bone||!first)continue;
+    maxFrameJointTurn=Math.max(maxFrameJointTurn,first.angleTo(bone.quaternion));
+    const link=p.links.find(l=>l.a===watched[j]);
+    if(link)maxSingleJointDrift=Math.max(maxSingleJointDrift,link.baseQuat.angleTo(bone.quaternion));
    }
-   if(fall.joints.some(j=>Math.abs(j.angle)>j.limit+.005))twistExceeded=true;
+   maxNodeSpeed=Math.max(maxNodeSpeed,...[...p.nodes.values()].map(n=>n.vel.length()));
+   if([9,29,47,90,165,208].includes(i)){
+    const get=key=>{const pt=bonePos(key);return pt?.toArray().map(x=>+x.toFixed(4))};
+    const pelvis=get("Hips"),chest=get("Chest"),head=get("Head");
+    const floor=rag.floorY;
+    samples.push({frame:i,hip:pelvis,chest,head,root:z.g.position.toArray(),
+     nodeContacts:rag.contactCount,allDown:rag.fullBodyDown,
+     feet:["L_Foot","R_Foot"].map(get),hands:["L_Hand","R_Hand"].map(get),
+     minNodeY:Math.min(...[...p.nodes.values()].map(n=>n.pos.y-floor-n.radius)),
+     numNodes:p.nodes.size});
+   }
   }
-  return{dead:z.dead,kind:z.kind,bodyPbd:!!rag.bodyPbd,custom:!!fall,
-   sameOriginalVisual:z.infectedVisual===visual,sameOriginalGLB:z.infectedModel===model,
-   bones:realBoneCount,movedXZ:Math.hypot(fall.hip.x-start.x,fall.hip.z-start.z),
-   initialHeadY:firstHead.y,samples,contact:fall.contact,settled:rag.active===false,
-   maxFrameTilt,twistExceeded,peakSpineFlex:fall.maxSpineFlex,
-   maxKneeFold:fall.maxKneeFold,sideRoll:fall.rolled,
-   sprawlSide:fall.sprawlSide,
-   legGroundClearance:fall.legGroundClearance,
-   footHeights:["L_Foot","R_Foot"].map(k=>z.infectedBones.get(k)?.getWorldPosition(new THREE.Vector3()).y),
-   peakJointAngle:fall.peakJointAngle,peakBodyTilt:fall.peakBodyTilt,
-   finite:[...fall.hip.toArray(),fall.angle,fall.peakJointAngle,...fall.joints.map(j=>j.angle)].every(Number.isFinite)};
+  const finalHead=bonePos("Head"),finalChest=bonePos("Chest");
+  return{kind:z.kind,dead:z.dead,physics:!!p,scripted:!!rag.infectedFall,
+   rigKind:p.rigKind,originalVisual:z.infectedVisual===visual,
+   originalGLB:z.infectedModel===model,bones:realBoneCount,
+   nodeCount:p.nodes.size,edgeCount:p.edges.length,
+   minHeadDrop:headStart-Math.min(...samples.map(v=>v.head[1])),
+   minChestDrop:chestStart-Math.min(...samples.map(v=>v.chest[1])),
+   maxFrameJointTurn,maxSingleJointDrift,maxNodeSpeed,
+   samples,settled:!rag.active,contact:rag.contactCount,
+   movedXZ:Math.hypot(z.g.position.x-start.x,z.g.position.z-start.z),
+   finalHeadY:finalHead.y-rag.floorY,finalChestY:finalChest.y-rag.floorY,
+   finite:[...p.nodes.values()].every(n=>[...n.pos.toArray(),...n.vel.toArray()].every(Number.isFinite)),
+   bounded:p.links.every(l=>l.bone.quaternion.angleTo(l.baseQuat)<1.42)};
  },
  selectViaRealBossRotation:()=>{
   // Force the final available name in the existing no-repeat bag, NOT the
@@ -515,7 +530,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=657-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=658-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -540,7 +555,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V657_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V658_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -577,7 +592,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    stand.metrics.every(frame=>frame.every(arm=>
     arm.handDrop>.16&&arm.elbowDrop>.12&&arm.handForward>.055&&
     arm.elbowForward>-.035&&arm.elbowFlex>.20)),
-   "Original Infected standing arms remain T-posed or straight despite v657 IK: "+
+   "Original Infected standing arms remain T-posed or straight despite v658 IK: "+
     JSON.stringify(stand?.metrics));
 
   assert(stand.skinnedHeight>1.90&&stand.skinnedHeight<2.85,
@@ -594,25 +609,19 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    "Leg skin clipping failed; zero-scaled thighs pull torso into ball: "+JSON.stringify(infected));
   assert(infected.firstFootResidue===0&&infected.finalFootResidue?.every(n=>n===0),
    "Severed Infected still displays skinned boot/toe faces: "+JSON.stringify([infected.firstFootResidue,infected.finalFootResidue]));
-  assert(report.infectedDeath?.dead&&report.infectedDeath.custom&&
-   !report.infectedDeath.bodyPbd&&report.infectedDeath.sameOriginalVisual&&
-   report.infectedDeath.sameOriginalGLB&&report.infectedDeath.bones>=15&&
-   report.infectedDeath.finite&&report.infectedDeath.contact&&
-   report.infectedDeath.settled&&!report.infectedDeath.twistExceeded&&
-   report.infectedDeath.peakBodyTilt>.43&&report.infectedDeath.peakBodyTilt<.78&&
-   report.infectedDeath.peakSpineFlex>.45&&
-   report.infectedDeath.maxKneeFold>.16&&
-   report.infectedDeath.samples[1].lowerBodyMinY>-.10&&
-   report.infectedDeath.samples[3].lowerBodyMinY>-.04&&
-   Math.abs(report.infectedDeath.sideRoll)>.10&&
-   report.infectedDeath.samples[0].tilt<.18&&
-   Number.isFinite(report.infectedDeath.legGroundClearance)&&
-   report.infectedDeath.legGroundClearance>-.04&&
-   report.infectedDeath.legGroundClearance<.38&&
-   report.infectedDeath.peakJointAngle<.59&&report.infectedDeath.maxFrameTilt<.15&&
-   report.infectedDeath.initialHeadY-report.infectedDeath.samples[1].headY>.20&&
-   report.infectedDeath.movedXZ>.015&&report.infectedDeath.movedXZ<5,
-   "Infected gunshot corpse must collapse promptly with bounded Mixamo joints, never twist through particle IK: "+JSON.stringify(report.infectedDeath));
+  assert(report.infectedDeath?.dead&&report.infectedDeath.physics&&
+   !report.infectedDeath.scripted&&report.infectedDeath.rigKind==="infected"&&
+   report.infectedDeath.originalVisual&&report.infectedDeath.originalGLB&&
+   report.infectedDeath.bones>=15&&report.infectedDeath.nodeCount>=15&&
+   report.infectedDeath.edgeCount>=12&&report.infectedDeath.finite&&
+   report.infectedDeath.bounded&&
+   report.infectedDeath.maxFrameJointTurn<.30&&
+   report.infectedDeath.maxSingleJointDrift<1.42&&
+   report.infectedDeath.minHeadDrop>.65&&
+   report.infectedDeath.minChestDrop>.38&&
+   report.infectedDeath.movedXZ<10,
+   "Original Infected must lose support via real bounded articulated physics, not a rigid scripted fall: "+
+    JSON.stringify(report.infectedDeath));
   assert(ip&&ip.hipY>.025&&ip.hipY<.16&&ip.chestY>ip.hipY+.16&&
    ip.chestY>.27&&ip.chestY<.47&&ip.headY>.16&&ip.headForward>.14&&ip.handsApart>.22,
    "Infected still folded into a compact ball instead of dragging on its pelvis: "+JSON.stringify(ip));
@@ -690,7 +699,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V657_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V658_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
