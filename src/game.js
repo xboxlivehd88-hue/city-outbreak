@@ -8379,10 +8379,11 @@ function updateInfectedArticulatedFall(z,rag,dt){
   desiredWorld.normalize().applyQuaternion(bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
   const authored=child.position.clone().applyQuaternion(base).normalize();
   const aim=new THREE.Quaternion().setFromUnitVectors(authored,desiredWorld).multiply(base);
-  const range=e.a.includes("LowerLeg")?1.55:e.a.includes("UpperLeg")?1.4:
-   e.a.includes("LowerArm")?1.65:e.a.includes("UpperArm")?1.65:1.25;
-  const distance=base.angleTo(aim);
-  bone.quaternion.copy(base).slerp(aim,Math.min(1,range/Math.max(distance,.00001)));
+  // All particle constraints were solved before bone mapping. Clamping the
+  // visible quaternion after that breaks those exact distances and buries the
+  // skinned shins despite positive simulated foot heights. Follow the
+  // constrained mass-to-mass direction EXACTLY; joint limits belong in PBD.
+  bone.quaternion.copy(aim);
   bone.updateWorldMatrix(true,true);
  }
  f.holder.updateWorldMatrix(true,true);
