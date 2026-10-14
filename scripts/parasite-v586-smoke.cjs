@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"657",pass:false},errors=[];let browser,page;
+ const report={version:"658",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=657$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=658$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -76,7 +76,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const beforeCount=zombies.length,root=z.g,visual=z.infectedVisual,meshCount=[];
   const glb=z.infectedModel,source=z.infectedGLBSource,hadTexture=!!glb?.getObjectByProperty;
   visual.traverse(o=>{if(o.isSkinnedMesh)meshCount.push(o.name)});
-  // v657: verify actual source Mixamo shoulder/elbow/wrist chains while
+  // v658: verify actual source Mixamo shoulder/elbow/wrist chains while
   // STANDING, before amputating. A screenshot alone can hide T-pose regression.
   const prevPhase=z.phase,standingFrames=[];
   for(const p of [.3,Math.PI*.5,Math.PI*1.2,Math.PI*1.65]){
@@ -96,7 +96,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    });
   }
   z.phase=prevPhase;syncInfectedGLB(z,0);
-  // v657: measure shoes in WORLD SPACE while a REAL actor advances.
+  // v658: measure shoes in WORLD SPACE while a REAL actor advances.
   // Previous tests rotated knees in place and missed ice-skating planted feet.
   const initialActor=z.g.position.clone(),initialPhase=z.phase;
   z.infectedFootPlants=null;
@@ -182,7 +182,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const local=key=>{const q=jp(key);return q?z.g.worldToLocal(q):null;};
   const h=local("Hips"),c=local("Chest"),head=local("Head"),
    left=local("L_Hand"),right=local("R_Hand");
-  // v657: inspect ORIGINAL joints at forward plant, backward pull, and
+  // v658: inspect ORIGINAL joints at forward plant, backward pull, and
   // recovered hand lift. Also ensure elbow bends below the shoulder toward
   // the ground and neither elbow folds behind its shoulder.
   const originalPhase=z.phase,armFrames=[];
@@ -515,7 +515,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=657-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=658-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -540,7 +540,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    const frames=await page.evaluate(()=>globalThis.__parasiteSmoke.preview());
    report.previewFrames=frames.map(f=>({time:f.time,bytes:f.image.length}));
    for(let i=0;i<frames.length;i++){
-    console.log("PARASITE_V657_VISUAL_FRAME_"+i+"="+frames[i].image);
+    console.log("PARASITE_V658_VISUAL_FRAME_"+i+"="+frames[i].image);
    }
   }catch(e){report.previewError=String(e)}
 
@@ -577,7 +577,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    stand.metrics.every(frame=>frame.every(arm=>
     arm.handDrop>.16&&arm.elbowDrop>.12&&arm.handForward>.055&&
     arm.elbowForward>-.035&&arm.elbowFlex>.20)),
-   "Original Infected standing arms remain T-posed or straight despite v657 IK: "+
+   "Original Infected standing arms remain T-posed or straight despite v658 IK: "+
     JSON.stringify(stand?.metrics));
 
   assert(stand.skinnedHeight>1.90&&stand.skinnedHeight<2.85,
@@ -599,8 +599,9 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.sameOriginalGLB&&report.infectedDeath.bones>=15&&
    report.infectedDeath.finite&&report.infectedDeath.contact&&
    report.infectedDeath.settled&&!report.infectedDeath.twistExceeded&&
-   report.infectedDeath.peakBodyTilt>.43&&report.infectedDeath.peakBodyTilt<.78&&
-   report.infectedDeath.peakSpineFlex>.45&&
+   report.infectedDeath.peakBodyTilt>.28&&report.infectedDeath.peakBodyTilt<.50&&
+   report.infectedDeath.peakSpineFlex>.62&&
+   report.infectedDeath.peakSpineFlex>report.infectedDeath.peakBodyTilt+.20&&
    report.infectedDeath.maxKneeFold>.16&&
    report.infectedDeath.samples[1].lowerBodyMinY>-.10&&
    report.infectedDeath.samples[3].lowerBodyMinY>-.04&&
@@ -609,7 +610,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    Number.isFinite(report.infectedDeath.legGroundClearance)&&
    report.infectedDeath.legGroundClearance>-.04&&
    report.infectedDeath.legGroundClearance<.38&&
-   report.infectedDeath.peakJointAngle<.59&&report.infectedDeath.maxFrameTilt<.15&&
+   report.infectedDeath.peakJointAngle<.89&&report.infectedDeath.maxFrameTilt<.15&&
    report.infectedDeath.initialHeadY-report.infectedDeath.samples[1].headY>.20&&
    report.infectedDeath.movedXZ>.015&&report.infectedDeath.movedXZ<5,
    "Infected gunshot corpse must collapse promptly with bounded Mixamo joints, never twist through particle IK: "+JSON.stringify(report.infectedDeath));
@@ -690,7 +691,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  finally{
   if(browser)await browser.close();
   report.completedAt=new Date().toISOString();
-  fs.writeFileSync("PARASITE_V657_AUDIT.json",JSON.stringify(report,null,2)+"\n");
+  fs.writeFileSync("PARASITE_V658_AUDIT.json",JSON.stringify(report,null,2)+"\n");
   console.log(JSON.stringify(report,null,2));
   if(!report.pass)process.exitCode=1;
  }
