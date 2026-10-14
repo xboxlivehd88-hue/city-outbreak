@@ -6743,12 +6743,19 @@ function orientBodyPbd(z,pbd,dt=1/60){
    bodyPbdDeltaQ.setFromUnitVectors(link.restDir,bodyPbdTmpB);
    bodyPbdDeltaQ.multiply(link.baseQuat);
    if(pbd.infectedGunshot){
-    // Critical: 'copy' snapped the live Mixamo skeleton to a sometimes
-    // reversed PBD particle direction EVERY FRAME, producing the observed
-    // 360-degree pinwheeling. Limit ONLY ordinary Infected corpse joint
-    // angular speed; keep actual loose particle motion and death pose.
-    const core=link.a==="Hips"||link.a==="Spine"||link.a==="Chest"||link.a==="Neck";
-    bone.quaternion.rotateTowards(bodyPbdDeltaQ,dt*(core?9.5:15.0));
+    // PBD particles can pass each other under impact. An unrestricted
+    // shortest-arc "aim" could turn a real Mixamo knee/shoulder 180 degrees,
+    // causing the pre-v651 twisted corpse. Swing-limit each original bone
+    // around its CAPTURED live pose, then move toward it at a finite rate.
+    // Physical nodes are free to fall, but the render skin never knots.
+    const key=link.a;
+    const cap=key==="Spine"?.93:key==="Chest"?.67:key==="Neck"?.48:
+      key==="Hips"?.62:key.includes("UpperArm")?1.25:
+      key.includes("LowerArm")?1.20:key.includes("UpperLeg")?.95:
+      key.includes("LowerLeg")?1.08:key.includes("Foot")?.48:1.0;
+    const arc=link.baseQuat.angleTo(bodyPbdDeltaQ);
+    if(arc>cap)bodyPbdDeltaQ.copy(link.baseQuat).slerp(bodyPbdDeltaQ,cap/arc);
+    bone.quaternion.rotateTowards(bodyPbdDeltaQ,Math.max(0,dt)*12);
    }else bone.quaternion.copy(bodyPbdDeltaQ);
    bone.updateWorldMatrix(true,false);
  }
@@ -6796,7 +6803,9 @@ function updateBodyPbd(z,rag,dt){
  p.maxSpeed=maxSpeed;p.settleT=p.allDown&&maxSpeed<.22?p.settleT+dt:0;
  orientBodyPbd(z,p,dt);
  rag.contactCount=contacts;rag.fullBodyDown=p.allDown;rag.grounded=p.allDown;
- if(p.settleT>1.10){rag.active=false;z.falling=false}else z.falling=true;
+ if(p.settleT>1.10||(p.infectedGunshot&&rag.t>3.2)){
+  rag.active=false;z.falling=false;
+ }else z.falling=true;
  return true;
 }
 function hideRigLimb(z,name){
@@ -8336,12 +8345,14 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    hips:null,hipsStartY:0,hipsTargetY:0,
    bodyPbd:null
  };
- // Ordinary upright Infected gunshots no longer enter the unconstrained
- // per-particle orientation solver responsible for twisted skin/bone piles.
- // Converted crawlers and ALL explosive deaths keep their original PBD.
+ // v659: Ordinary Infected gunshot deaths use the REAL articulated particle
+ // body, not v651-658's scripted whole-model hinge. Every original joint has
+ // independent gravity, collision and momentum; the render retargeter below
+ // enforces local anatomical swing caps so limbs cannot wrap into knots.
+ // Crawler, blast and every other enemy keep their approved existing route.
  if(!isBlast&&z.infectedVisual&&!z.infectedCrawler){
-  rag.infectedFall=createInfectedGunshotFall(z,rag,inheritedVX,inheritedVZ);
-  if(rag.infectedFall)return;
+  rag.bodyPbd=buildBodyPbd(z,rag,false,null,inheritedVX*.94,inheritedVZ*.94,power,{followRoot:true});
+  if(rag.bodyPbd){rag.unpoweredInfectedPbd=true;return;}
  }
  rag.bodyPbd=buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX*.94,inheritedVZ*.94,power);
  if(rag.bodyPbd)return;
