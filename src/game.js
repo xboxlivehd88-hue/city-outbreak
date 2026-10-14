@@ -8353,7 +8353,9 @@ function updateInfectedArticulatedFall(z,rag,dt){
   for(const n of f.nodes.values()){
    const velocity=n.p.clone().sub(n.previous);
    n.previous.copy(n.p);
-   n.p.addScaledVector(velocity,Math.exp(-step*1.4));
+   // Once multiple limbs are in real floor contact, passive surface drag
+   // removes residual jiggle without pinning the whole skinned model.
+   n.p.addScaledVector(velocity,Math.exp(-step*(1.4+Math.max(0,f.contactCount-3)*.44)));
    n.p.y-=9.81*step*step;
   }
   for(let it=0;it<9;it++){
