@@ -8293,8 +8293,12 @@ function createInfectedArticulatedFall(z,vx,vz){
    key.includes("Lower")?".085":key==="Head"?".13":".12";
   const radius=+part;
   const height=Math.max(0,p.y-floor);
-  const drift=new THREE.Vector3(vx*.65+(rnd()-.5)*.18,0,
-   vz*.65+lean*(.28+.16*height)+(rnd()-.5)*.16);
+  // Gravity alone drops a vertical chain into a compact heap. An unpowered
+  // upright person has a release imbalance: upper-body inertia carries them
+  // outward while feet briefly keep frictional contact with the road.
+  const lever=Math.max(0,height-.18);
+  const drift=new THREE.Vector3(vx*.65+(rnd()-.5)*.16,0,
+   vz*.65+lean*(.28+.80*lever)+(rnd()-.5)*.12);
   nodes.set(key,{bone,p,previous:p.clone().sub(drift.multiplyScalar(1/60)),radius,
    original:p.clone(),base:bone.quaternion.clone()});
  }
@@ -8329,7 +8333,16 @@ function createInfectedArticulatedFall(z,vx,vz){
   const start=nodes.get(a).p,mid=nodes.get(b).p,end=nodes.get(c).p;
   bends.push({a,b,c,min:(start.distanceTo(mid)+mid.distanceTo(end))*min,pole:null});
  }
- return{holder,nodes,edges,bends,initialHolder:holder.position.clone(),
+ // Whole-chain compression limits prevent an articulated body from
+ // folding into a tiny ball even when every pairwise rod retains its length.
+ const spanLimits=[];
+ for(const [a,c,m] of [["Hips","Head",.81],["Hips","L_Foot",.51],
+  ["Hips","R_Foot",.51],["Chest","L_Hand",.45],["Chest","R_Hand",.45]]){
+  if(!nodes.has(a)||!nodes.has(c))continue;
+  const distance=nodes.get(a).p.distanceTo(nodes.get(c).p);
+  if(distance>.05)spanLimits.push({a,c,min:distance*m});
+ }
+ return{holder,nodes,edges,bends,spanLimits,initialHolder:holder.position.clone(),
   initialHip:nodes.get("Hips").p.clone(),time:0,settle:0,contactCount:0,
   maxMotion:0,side:lean,groundY:floor,limitAngle:0};
 }
@@ -8349,6 +8362,14 @@ function updateInfectedArticulatedFall(z,rag,dt){
     if(len<1e-7)continue;
     d.multiplyScalar((len-e.l)/(len*2));
     a.p.add(d);b.p.sub(d);
+   }
+   for(const b of f.spanLimits){
+    const a=f.nodes.get(b.a),c=f.nodes.get(b.c),delta=c.p.clone().sub(a.p);
+    const dist=delta.length();
+    if(dist>.00001&&dist<b.min){
+     delta.multiplyScalar((b.min-dist)/(dist*2));
+     a.p.sub(delta);c.p.add(delta);
+    }
    }
    for(const b of f.bends){
     const a=f.nodes.get(b.a),middle=f.nodes.get(b.b),c=f.nodes.get(b.c);
