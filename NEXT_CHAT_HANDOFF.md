@@ -1,3 +1,12 @@
+# v662 VERIFIED — ORIGINAL INFECTED GUNSHOT HIT DIRECTION — 2026-10-14
+
+- Final original skinned Infected Chromium run [38650731816](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38650731816) **SUCCESS**. Real original-GLB front/side early/middle/settled death screenshots inspected, including camera-centered settled frame. Frontal gunshot now gives chest a positive rearward release impulse relative to hips along shooter-to-Infected axis (latest audit +.00345 metres/frame), with small sideways variance; joints/ground contact determine actual fall rather than a scripted rotation. Initial excessive rearward impulse was reduced at gameplay commit `eacfe4e1f6dae6ad81938a8dd595bf4438a80196` to prevent launch-like response.
+- Exact cause: v661 original Infected gunshot used randomly signed WORLD Z-axis lean regardless of shooter location, which allowed shot-from-front actors to fall toward the shooter. Fixed in `createInfectedArticulatedFall` only. Converted original Infected crawlers preserve approved physics and walking/crawl remains unchanged.
+- Independent final-gameplay Sprinter browser [38650325858](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38650325858) SUCCESS, Hazmat/Green [38650325889](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38650325889) SUCCESS and original Infected browser [38650325926](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38650325926) SUCCESS. Newer Infected visual camera-centering and frontal directional assertions passed in run 38650731816.
+- Loader `./src/game.js?v=662`; protected v324 recovery untouched. Confirm main Pages deployment and main regression before sharing v662 playable URL. User visual acceptance still pending.
+
+---
+
 # v662 — INFECTED FRONTAL HIT REARWARD COLLAPSE — 2026-10-14
 
 - User visually approved substantial v661 ragdoll improvement ("we are super close") but reports Infected shot from directly in front often fall FORWARD toward the player instead of collapsing rearward. Narrow scope: preserve v661 17-mass physics, constraints, crawler death, walks, hitboxes, size, every other zombie, waves, weapons, performance and protected recovery v324.
