@@ -8460,7 +8460,7 @@ function beginRagdoll(z,force=1,blastOrigin=null){
  // Ordinary upright Infected gunshots no longer enter the unconstrained
  // per-particle orientation solver responsible for twisted skin/bone piles.
  // Converted crawlers and ALL explosive deaths keep their original PBD.
- if(!isBlast&&z.infectedVisual&&!z.infectedCrawler){
+ if(!isBlast&&z.infectedVisual){
   rag.infectedPhysical=createInfectedArticulatedFall(z,inheritedVX,inheritedVZ);
   if(rag.infectedPhysical)return;
  }
