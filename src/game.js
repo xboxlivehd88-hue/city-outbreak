@@ -6793,8 +6793,8 @@ function fitInfectedPhysicsChain(z,pbd,side,arm,dt){
   joint.quaternion.rotateTowards(bodyPbdDeltaQ,Math.min(.35,dt*20));
   joint.updateWorldMatrix(true,true);
  };
- aim(up,mid,a,targetKnee,arm?2.05:1.82);
- aim(mid,end,b,goal,arm?2.12:2.10);
+ aim(up,mid,a,targetKnee,arm?2.05:2.12);
+ aim(mid,end,b,goal,arm?2.12:2.42);
  pbd.maxBoneSwing=Math.max(pbd.maxBoneSwing,
   pbd.neutral.get(a)?.angleTo(up.quaternion)||0,pbd.neutral.get(b)?.angleTo(mid.quaternion)||0);
 }
@@ -6817,7 +6817,7 @@ function orientBodyPbd(z,pbd,dt=1/60){
     const change=bodyPbdInvQ.clone().multiply(bodyPbdDeltaQ).multiply(bodyPbdParentQ);
     holder.quaternion.rotateTowards(change.multiply(holder.quaternion.clone()),Math.min(.16,dt*8.4));
     const arc=holder.quaternion.angleTo(pbd.holderStartQuat);
-    if(arc>.76)holder.quaternion.slerp(pbd.holderStartQuat,(arc-.76)/arc);
+    if(arc>1.14)holder.quaternion.slerp(pbd.holderStartQuat,(arc-1.14)/arc);
     pbd.peakRootTilt=Math.max(pbd.peakRootTilt,holder.quaternion.angleTo(pbd.holderStartQuat));
    }
   }
@@ -6879,11 +6879,11 @@ function orientBodyPbd(z,pbd,dt=1/60){
    const gy=sampleRagdollGroundY(bodyPbdTmpA.x,bodyPbdTmpA.z,z.ragdoll.floorY,bodyPbdTmpA.y);
    lowest=Math.min(lowest,bodyPbdTmpA.y-radius-gy);
   }
+  // The previously applied .16m lift EACH FRAME separated the visible
+  // pelvic joint from its constrained particle by up to half a metre.
+  // Do not fake contact by levitating the whole model; allow the physics
+  // constraints and original weighted joint fitting to determine contact.
   pbd.skinFloorPenetration=Number.isFinite(lowest)?lowest:0;
-  if(lowest<-.04){
-   holder.position.y+=Math.min(.16,-lowest-.04);
-   holder.updateWorldMatrix(true);
-  }
  }
 }
 function updateBodyPbd(z,rag,dt){
