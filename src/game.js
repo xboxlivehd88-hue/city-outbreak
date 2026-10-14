@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v657: buckling Mixamo knees and asymmetrical unpowered fall; approved crawler preserved.
+// v658: independent-joint PBD Infected gunshot ragdoll, no scripted rigid-body tip-over; approved crawler protected.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -6743,12 +6743,22 @@ function orientBodyPbd(z,pbd,dt=1/60){
    bodyPbdDeltaQ.setFromUnitVectors(link.restDir,bodyPbdTmpB);
    bodyPbdDeltaQ.multiply(link.baseQuat);
    if(pbd.infectedGunshot){
-    // Critical: 'copy' snapped the live Mixamo skeleton to a sometimes
-    // reversed PBD particle direction EVERY FRAME, producing the observed
-    // 360-degree pinwheeling. Limit ONLY ordinary Infected corpse joint
-    // angular speed; keep actual loose particle motion and death pose.
-    const core=link.a==="Hips"||link.a==="Spine"||link.a==="Chest"||link.a==="Neck";
-    bone.quaternion.rotateTowards(bodyPbdDeltaQ,dt*(core?9.5:15.0));
+    // Particle constraints can briefly cross on impact. Each native
+    // Mixamo joint can flex, but not corkscrew 180 degrees against its
+    // captured source pose. This is a cone limit, not animation steering.
+    const maxTurn=link.a==="Hips"?1.30:
+     link.a==="Spine"?.83:link.a==="Chest"?.60:
+     link.a==="Neck"?.48:
+     link.a==="L_UpperArm"||link.a==="R_UpperArm"?1.28:
+     link.a==="L_LowerArm"||link.a==="R_LowerArm"?1.20:
+     link.a==="L_UpperLeg"||link.a==="R_UpperLeg"?1.10:
+     link.a==="L_LowerLeg"||link.a==="R_LowerLeg"?1.18:
+     link.a==="L_Foot"||link.a==="R_Foot"?.55:1.1;
+    const swing=link.baseQuat.angleTo(bodyPbdDeltaQ);
+    if(swing>maxTurn)bodyPbdDeltaQ.copy(link.baseQuat)
+     .slerp(bodyPbdDeltaQ,maxTurn/Math.max(swing,1e-6));
+    bone.quaternion.rotateTowards(bodyPbdDeltaQ,dt*(
+     link.a==="Hips"||link.a==="Spine"||link.a==="Chest"?7.2:11.0));
    }else bone.quaternion.copy(bodyPbdDeltaQ);
    bone.updateWorldMatrix(true,false);
  }
@@ -6796,7 +6806,9 @@ function updateBodyPbd(z,rag,dt){
  p.maxSpeed=maxSpeed;p.settleT=p.allDown&&maxSpeed<.22?p.settleT+dt:0;
  orientBodyPbd(z,p,dt);
  rag.contactCount=contacts;rag.fullBodyDown=p.allDown;rag.grounded=p.allDown;
- if(p.settleT>1.10){rag.active=false;z.falling=false}else z.falling=true;
+ if(p.settleT>.75||(infectedGunshot&&rag.t>3.4)){
+  rag.active=false;z.falling=false;
+ }else z.falling=true;
  return true;
 }
 function hideRigLimb(z,name){
@@ -8321,13 +8333,11 @@ function beginRagdoll(z,force=1,blastOrigin=null){
    hips:null,hipsStartY:0,hipsTargetY:0,
    bodyPbd:null
  };
- // Ordinary upright Infected gunshots no longer enter the unconstrained
- // per-particle orientation solver responsible for twisted skin/bone piles.
- // Converted crawlers and ALL explosive deaths keep their original PBD.
- if(!isBlast&&z.infectedVisual&&!z.infectedCrawler){
-  rag.infectedFall=createInfectedGunshotFall(z,rag,inheritedVX,inheritedVZ);
-  if(rag.infectedFall)return;
- }
+ // v658: normal standing Infected gunshots use FREE articulated PBD.
+ // The previous scripted root-angle fall made every zombie tip like a board.
+ // This has a freely falling joint per limb segment, bone-length constraints,
+ // real street contact and bounded anatomical Mixamo bone rotations. Existing
+ // converted crawlers, blasted zombies and all other types stay unchanged.
  rag.bodyPbd=buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX*.94,inheritedVZ*.94,power);
  if(rag.bodyPbd)return;
 
