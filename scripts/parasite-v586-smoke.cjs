@@ -283,7 +283,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    activeFrames,settled:!rag.active,contact:rag.contactCount,allDown:rag.fullBodyDown,
    movedXZ:Math.hypot(z.g.position.x-before.x,z.g.position.z-before.z),
    initialHeadY:firstHead.y,samples,maxFrameTurn,maxSpineBend,maxCoreMotion,
-   minSkinFeet,maxFootClearance,finite};
+   minSkinFeet,maxFootClearance,rootTilt:p.maxRootTilt,finite};
  },
  selectViaRealBossRotation:()=>{
   // Force the final available name in the existing no-repeat bag, NOT the
@@ -615,7 +615,10 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.nodes>=12&&report.infectedDeath.edges>=10&&
    report.infectedDeath.finite&&report.infectedDeath.settled&&
    report.infectedDeath.maxFrameTurn<.24&&
-   report.infectedDeath.maxSpineBend>.12&&
+   report.infectedDeath.maxSpineBend>.12&&report.infectedDeath.rootTilt>.62&&
+   report.infectedDeath.samples[1].footMinY>-.12&&
+   report.infectedDeath.samples[2].footMinY>-.10&&
+   report.infectedDeath.samples[2].headAboveFloor<.65&&
    report.infectedDeath.initialHeadY-report.infectedDeath.samples[1].headY>.25&&
    report.infectedDeath.movedXZ>.025&&report.infectedDeath.movedXZ<6,
    "Independent original Infected joint gravity must fall, bend and settle WITHOUT knotting the skeleton: "+JSON.stringify(report.infectedDeath));
