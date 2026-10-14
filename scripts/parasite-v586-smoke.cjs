@@ -264,7 +264,10 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
     const get=key=>{const pt=bonePos(key);return pt?.toArray().map(x=>+x.toFixed(4))};
     const pelvis=get("Hips"),chest=get("Chest"),head=get("Head");
     const floor=rag.floorY;
+    const physicalChest=p.nodes.get("Chest")?.pos.toArray();
+    const chestError=physicalChest?Math.hypot(...chest.map((v,k)=>v-physicalChest[k])):99;
     samples.push({frame:i,hip:pelvis,chest,head,root:z.g.position.toArray(),
+     physicalChest,chestError,
      nodeContacts:rag.contactCount,allDown:rag.fullBodyDown,
      feet:["L_Foot","R_Foot"].map(get),hands:["L_Hand","R_Hand"].map(get),
      minNodeY:Math.min(...[...p.nodes.values()].map(n=>n.pos.y-floor-n.radius)),
@@ -280,6 +283,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    minChestDrop:chestStart-Math.min(...samples.map(v=>v.chest[1])),
    maxFrameJointTurn,maxSingleJointDrift,maxNodeSpeed,
    samples,settled:!rag.active,contact:rag.contactCount,
+   finalChestPhysicsError:samples.at(-1)?.chestError,
+   finalFootGroundMin:Math.min(...["L_Foot","R_Foot"].map(k=>bonePos(k).y-rag.floorY)),
    movedXZ:Math.hypot(z.g.position.x-start.x,z.g.position.z-start.z),
    finalHeadY:finalHead.y-rag.floorY,finalChestY:finalChest.y-rag.floorY,
    finite:[...p.nodes.values()].every(n=>[...n.pos.toArray(),...n.vel.toArray()].every(Number.isFinite)),
@@ -619,6 +624,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.maxSingleJointDrift<1.42&&
    report.infectedDeath.minHeadDrop>.65&&
    report.infectedDeath.minChestDrop>.38&&
+   report.infectedDeath.finalChestPhysicsError<.52&&
+   report.infectedDeath.finalFootGroundMin>-.26&&
    report.infectedDeath.movedXZ<10,
    "Original Infected must lose support via real bounded articulated physics, not a rigid scripted fall: "+
     JSON.stringify(report.infectedDeath));
