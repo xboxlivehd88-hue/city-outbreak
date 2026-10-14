@@ -8079,83 +8079,47 @@ function createInfectedGunshotFall(z,rag,vx,vz){
 // THIGH and SHIN chains above ground. The old hinge fall drove both legs
 // through the street because contact correction only checked head/chest/hips.
 // Use the REAL Mixamo thigh/shin lengths and bind quaternions; never swap skin.
+// v659 experimental contact-only projection for the ORIGINAL skinned Infected.
+// No pre-authored foot, knee, elbow or hand landing points: the surface only
+// responds to penetrations. Each original Mixamo segment retains its own
+// live-release quaternion and finite anatomical angular range.
 function poseInfectedFallenLegs(z,rag,f,floor,t){
  const bones=z.infectedBones,rest=z.infectedRest;
- const hip=bones.get("Hips"),head=bones.get("Head");
- if(!hip||!head||t<.07)return;
- hip.updateWorldMatrix(true,true);
- const hipWorld=hip.getWorldPosition(new THREE.Vector3());
- const headWorld=head.getWorldPosition(new THREE.Vector3());
- const behind=hipWorld.clone().sub(headWorld);behind.y=0;
- if(behind.lengthSq()<.002)behind.set(0,0,1).applyQuaternion(z.g.getWorldQuaternion(new THREE.Quaternion()));
- behind.normalize();
- const right=new THREE.Vector3(0,1,0).cross(behind).normalize();
- const pole=new THREE.Vector3(0,1,0);
- // Ground IK starts after knees buckle and the body actually strikes.
- // During the initial fall, free joints are not forced into a stock pose.
- // Real contact begins as soon as knees fail. The first v658 test showed
- // a torso-only fall with shins half a metre BELOW the road at .5s because
- // leg clearance arrived too late. Keep continuous, separate foot support.
- const blend=THREE.MathUtils.smoothstep(t,.065,.34);
- const aim=(bone,child,key,goal)=>{
-  const base=rest.get(key);
-  if(!base||!bone?.parent||!child||child.position.lengthSq()<1e-9)return;
-  const bonePos=bone.getWorldPosition(new THREE.Vector3());
-  const dir=goal.clone().sub(bonePos).normalize();
-  const parentQ=bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
-  dir.applyQuaternion(parentQ);
-  const restDir=child.position.clone().applyQuaternion(base).normalize();
-  const desired=new THREE.Quaternion().setFromUnitVectors(restDir,dir).multiply(base);
-  bone.quaternion.slerp(desired,blend);
+ if(!bones||t<.06)return;
+ const aimClearance=(key,tipKey,radius,maxAngle)=>{
+  if(!bodyPbdBoneAllowed(z,key))return;
+  const bone=bones.get(key),tip=bones.get(tipKey),base=rest?.get(key);
+  if(!bone||!tip||!bone.parent||!base)return;
+  bone.updateWorldMatrix(true,true);
+  const a=bone.getWorldPosition(new THREE.Vector3());
+  const p=tip.getWorldPosition(new THREE.Vector3());
+  const surface=sampleRagdollGroundY(p.x,p.z,floor,p.y)+radius;
+  if(p.y>=surface)return;
+  // Project only the *penetrating endpoint*. Never chase a death-pose target.
+  const end=p.clone();end.y=surface+.008;
+  const local=bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+  const from=p.sub(a).applyQuaternion(local).normalize();
+  const to=end.sub(a).applyQuaternion(local).normalize();
+  if(from.lengthSq()<.01||to.lengthSq()<.01)return;
+  const correction=new THREE.Quaternion().setFromUnitVectors(from,to);
+  const angle=2*Math.acos(THREE.MathUtils.clamp(correction.w,-1,1));
+  if(!Number.isFinite(angle)||angle<.0001)return;
+  // Anatomical contact impulse, bounded per timestep to avoid joint flips.
+  const partial=THREE.MathUtils.clamp(Math.min(maxAngle,angle)/angle,0,1);
+  const projected=new THREE.Quaternion().copy(correction).slerp(new THREE.Quaternion(),1-partial)
+   .multiply(bone.quaternion);
+  bone.quaternion.slerp(projected,Math.min(.8,.25+Math.max(0,t)*.30));
   bone.updateWorldMatrix(true,true);
  };
+ // A distal contact moves a knee/elbow first, then the proximal joint if the
+ // limb still intersects ground. Each limb is solved separately, not posed.
  for(const side of ["L","R"]){
-  if(!bodyPbdBoneAllowed(z,side+"_UpperLeg")||!bodyPbdBoneAllowed(z,side+"_LowerLeg"))continue;
-  const thigh=bones.get(side+"_UpperLeg"),shin=bones.get(side+"_LowerLeg"),ankle=bones.get(side+"_Foot");
-  if(!thigh||!shin||!ankle)continue;
-  const root=thigh.getWorldPosition(new THREE.Vector3());
-  const k=shin.getWorldPosition(new THREE.Vector3()),a=ankle.getWorldPosition(new THREE.Vector3());
-  const l1=root.distanceTo(k),l2=k.distanceTo(a);
-  if(l1<.05||l2<.05)continue;
-  // Each Mixamo leg ends in its own position. One folds outward, the other
-  // drags behind, rather than stretching together into a rigid board.
-  const folded=(side==="L")===(f.sprawlSide<0);
-  const reach=(folded?.60:.94)*(l1+l2);
-  const spread=(folded?.30:.20)*(side==="L"?-1:1);
-  const goal=root.clone().addScaledVector(behind,reach)
-   .addScaledVector(right,spread);
-  goal.y=floor+(folded?.17:.13);
-  const ray=goal.clone().sub(root),distance=THREE.MathUtils.clamp(ray.length(),
-   Math.abs(l1-l2)+.02,l1+l2-.028);
-  if(ray.lengthSq()<1e-8)continue;
-  ray.normalize();goal.copy(root).addScaledVector(ray,distance);
-  const poleDir=pole.clone().addScaledVector(ray,-pole.dot(ray)).normalize();
-  const along=(l1*l1-l2*l2+distance*distance)/(2*distance);
-  const bend=Math.sqrt(Math.max(0,l1*l1-along*along));
-  const targetKnee=root.clone().addScaledVector(ray,along).addScaledVector(poleDir,bend);
-  aim(thigh,shin,side+"_UpperLeg",targetKnee);
-  aim(shin,ankle,side+"_LowerLeg",goal);
- }
- // Let BOTH original arms meet the road as separate weightless limbs, rather
- // than hanging straight down while the body slides across the pavement.
- // Respect removed-arm damage: never recreate or animate a detached limb.
- if(t>.15){
-  for(const side of ["L","R"]){
-   if(!bodyPbdBoneAllowed(z,side+"_UpperArm")||
-      !bodyPbdBoneAllowed(z,side+"_LowerArm"))continue;
-   const upper=bones.get(side+"_UpperArm"),fore=bones.get(side+"_LowerArm"),
-    hand=bones.get(side+"_Hand");
-   if(!upper||!fore||!hand)continue;
-   const sideSign=side==="L"?-1:1;
-   const shoulder=upper.getWorldPosition(new THREE.Vector3());
-   const bend=shoulder.clone().addScaledVector(right,sideSign*.20)
-    .addScaledVector(behind,-.10);
-   bend.y=Math.max(floor+.15,shoulder.y-.16);
-   const palm=shoulder.clone().addScaledVector(right,sideSign*.40)
-    .addScaledVector(behind,-.24);
-   palm.y=floor+.065;
-   aim(upper,fore,side+"_UpperArm",bend);
-   aim(fore,hand,side+"_LowerArm",palm);
+  if(bodyPbdBoneAllowed(z,side+"_LowerLeg"))
+   aimClearance(side+"_LowerLeg",side+"_Foot",.09,.45);
+  aimClearance(side+"_UpperLeg",side+"_LowerLeg",.12,.30);
+  if(t>.12){
+   aimClearance(side+"_LowerArm",side+"_Hand",.065,.55);
+   aimClearance(side+"_UpperArm",side+"_LowerArm",.095,.32);
   }
  }
  f.legGroundClearance=Math.min(...["L","R"].map(side=>{
