@@ -6734,6 +6734,70 @@ function collideBodyPbdNode(n,rag){
  n.lastGroundY=gy;
  return touched;
 }
+// v659 visual correction: the PBD solver has grounded knee/ankle/wrist
+// PARTICLES, but the previous skin mapping did not reach them. That was why
+// the photographs still showed legs raised behind a horizontal corpse. Solve
+// BOTH original weighted Mixamo links toward each physically simulated foot
+// or hand, with a constrained bend-pole coming from the independent particle.
+// There are NO authored resting positions or stopwatch-based death poses.
+function fitInfectedPhysicsChain(z,pbd,side,arm,dt){
+ const pre=side==="L"?"L_":"R_";
+ const a=pre+(arm?"UpperArm":"UpperLeg");
+ const b=pre+(arm?"LowerArm":"LowerLeg");
+ const c=pre+(arm?"Hand":"Foot");
+ if(!bodyPbdBoneAllowed(z,a)||!bodyPbdBoneAllowed(z,b)||!bodyPbdBoneAllowed(z,c))return;
+ const up=pbd.bones.get(a),mid=pbd.bones.get(b),end=pbd.bones.get(c);
+ const upNode=pbd.nodes.get(a),midNode=pbd.nodes.get(b),endNode=pbd.nodes.get(c);
+ if(!up||!mid||!end||!upNode||!midNode||!endNode||!up.parent||!mid.parent)return;
+ up.updateWorldMatrix(true,true);
+ const start=up.getWorldPosition(new THREE.Vector3()),knee=mid.getWorldPosition(new THREE.Vector3()),
+  ankle=end.getWorldPosition(new THREE.Vector3());
+ const l1=start.distanceTo(knee),l2=knee.distanceTo(ankle);
+ if(l1<.04||l2<.04)return;
+ const goal=endNode.pos.clone();
+ const floor=Number.isFinite(endNode.lastGroundY)?endNode.lastGroundY:z.ragdoll.floorY;
+ goal.y=Math.max(goal.y,floor+(arm?.07:.10));
+ const axis=goal.clone().sub(start),reach=axis.length();
+ if(reach<1e-6)return;
+ const d=THREE.MathUtils.clamp(reach,Math.abs(l1-l2)+.008,l1+l2-.013);
+ axis.normalize();goal.copy(start).addScaledVector(axis,d);
+ const project=(v)=>v.addScaledVector(axis,-v.dot(axis));
+ // The simulated elbow/knee specifies the bend plane, rather than a generic
+ // corpse pose. Its pole is stopped from reversing through the kneecap.
+ const bendPole=project(midNode.pos.clone().sub(start));
+ const defaultPole=new THREE.Vector3(0,arm?-.45:.80,0);
+ const facing=new THREE.Vector3(0,0,-1);
+ z.g.getWorldQuaternion(bodyPbdParentQ);
+ facing.applyQuaternion(bodyPbdParentQ);
+ defaultPole.addScaledVector(facing,arm?.52:.47);
+ if(arm)defaultPole.x+=(side==="L"?-1:1)*.30;
+ project(defaultPole).normalize();
+ if(bendPole.lengthSq()<.012||bendPole.dot(defaultPole)<-.04)
+  bendPole.copy(defaultPole);
+ else bendPole.normalize().addScaledVector(defaultPole,.50).normalize();
+ const along=(l1*l1-l2*l2+d*d)/(2*d);
+ const elevation=Math.sqrt(Math.max(0,l1*l1-along*along));
+ const targetKnee=start.clone().addScaledVector(axis,along).addScaledVector(bendPole,elevation);
+ if(!arm)targetKnee.y=Math.max(targetKnee.y,floor+.10);
+ const aim=(joint,child,name,target,maxAngle)=>{
+  const neutral=pbd.neutral?.get(name);if(!neutral||child.position.lengthSq()<1e-8)return;
+  const from=joint.getWorldPosition(new THREE.Vector3()),
+   direction=target.clone().sub(from);
+  if(direction.lengthSq()<1e-9)return;
+  joint.parent.getWorldQuaternion(bodyPbdParentQ);
+  direction.normalize().applyQuaternion(bodyPbdInvQ.copy(bodyPbdParentQ).invert());
+  const fromRest=child.position.clone().applyQuaternion(neutral).normalize();
+  bodyPbdDeltaQ.setFromUnitVectors(fromRest,direction).multiply(neutral);
+  const arc=neutral.angleTo(bodyPbdDeltaQ);
+  if(arc>maxAngle)bodyPbdDeltaQ.copy(neutral).slerp(bodyPbdDeltaQ,maxAngle/arc);
+  joint.quaternion.rotateTowards(bodyPbdDeltaQ,Math.min(.35,dt*20));
+  joint.updateWorldMatrix(true,true);
+ };
+ aim(up,mid,a,targetKnee,arm?2.05:1.82);
+ aim(mid,end,b,goal,arm?2.12:2.10);
+ pbd.maxBoneSwing=Math.max(pbd.maxBoneSwing,
+  pbd.neutral.get(a)?.angleTo(up.quaternion)||0,pbd.neutral.get(b)?.angleTo(mid.quaternion)||0);
+}
 function orientBodyPbd(z,pbd,dt=1/60){
  const hips=pbd.nodes.get("Hips"),holder=pbd.holder,hipsBone=pbd.bones.get("Hips");
  if(!hips||!holder||!hipsBone)return;
@@ -6753,7 +6817,7 @@ function orientBodyPbd(z,pbd,dt=1/60){
     const change=bodyPbdInvQ.clone().multiply(bodyPbdDeltaQ).multiply(bodyPbdParentQ);
     holder.quaternion.rotateTowards(change.multiply(holder.quaternion.clone()),Math.min(.16,dt*8.4));
     const arc=holder.quaternion.angleTo(pbd.holderStartQuat);
-    if(arc>1.20)holder.quaternion.slerp(pbd.holderStartQuat,(arc-1.20)/arc);
+    if(arc>.76)holder.quaternion.slerp(pbd.holderStartQuat,(arc-.76)/arc);
     pbd.peakRootTilt=Math.max(pbd.peakRootTilt,holder.quaternion.angleTo(pbd.holderStartQuat));
    }
   }
@@ -6782,7 +6846,7 @@ function orientBodyPbd(z,pbd,dt=1/60){
     // Anatomical cones around the ORIGINAL Mixamo rest. Free particles may
     // cross, but skinned knees/shoulders cannot flip 180 or corkscrew.
     const key=link.a,rest=pbd.neutral?.get(key)||link.baseQuat;
-    const limit=key==="Spine"?.95:key==="Chest"?.81:key==="Neck"?.48:
+    const limit=key==="Spine"?1.04:key==="Chest"?.88:key==="Neck"?.48:
      key==="Head"?.58:key.includes("UpperLeg")?1.16:
      key.includes("LowerLeg")?1.54:key.includes("Foot")?.53:
      key.includes("UpperArm")?1.88:key.includes("LowerArm")?1.73:1.15;
@@ -6797,6 +6861,13 @@ function orientBodyPbd(z,pbd,dt=1/60){
  }
  holder.updateMatrixWorld(true);
  if(pbd.constrainedInfected){
+  // No fixed ground-target leg poses: use the current simulated ankle and
+  // wrist particles to solve source GLB knees/elbows every physics frame.
+  for(const side of ["L","R"]){
+   fitInfectedPhysicsChain(z,pbd,side,false,dt);
+   fitInfectedPhysicsChain(z,pbd,side,true,dt);
+  }
+  holder.updateWorldMatrix(true);
   // Keep the actual animated skin's main contact joints above the pavement;
   // joint particles already collide with buildings/cars/stairs and terrain.
   let lowest=Infinity;
