@@ -626,7 +626,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.minHeadDrop>.65&&
    report.infectedDeath.minChestDrop>.38&&
    report.infectedDeath.finalChestPhysicsError<.52&&
-   report.infectedDeath.finalFootGroundMin>-.26&&
+   report.infectedDeath.finalFootGroundMin>-.09&&
    report.infectedDeath.finalHandGroundMin>-.12&&
    report.infectedDeath.movedXZ<10,
    "Original Infected must lose support via real bounded articulated physics, not a rigid scripted fall: "+
