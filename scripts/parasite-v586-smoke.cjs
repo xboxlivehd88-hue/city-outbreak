@@ -47,6 +47,12 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    try{copy=SkeletonUtils.clone(z.infectedVisual)}
    finally{for(const [o,data] of restored)o.userData=data}
    scene.add(copy);copy.updateMatrixWorld(true);
+   // The articulated body can skid during collapse. Keep the diagnostic
+   // camera aimed at the corpse rather than losing it outside a fixed crop.
+   const bounds=new THREE.Box3().setFromObject(copy,true);
+   const center=bounds.getCenter(new THREE.Vector3());
+   copy.position.x-=center.x;copy.position.z-=center.z;
+   copy.updateMatrixWorld(true);
    if(name.includes("side"))camera.position.set(4.1,1.55,1.0);
    else camera.position.set(1.45,1.45,4.2);
    camera.lookAt(0,.77,0);
