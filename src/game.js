@@ -6519,6 +6519,8 @@ const BODY_PBD_EDGES=Object.freeze([
 ]);
 const bodyPbdTmpA=new THREE.Vector3(),bodyPbdTmpB=new THREE.Vector3(),bodyPbdTmpC=new THREE.Vector3(),bodyPbdScale=new THREE.Vector3();
 const bodyPbdParentQ=new THREE.Quaternion(),bodyPbdInvQ=new THREE.Quaternion(),bodyPbdDeltaQ=new THREE.Quaternion();
+const bodyPbdTorsoDir=new THREE.Vector3(),bodyPbdTorsoWorldQ=new THREE.Quaternion(),
+ bodyPbdTorsoTargetQ=new THREE.Quaternion(),bodyPbdTorsoInvParentQ=new THREE.Quaternion();
 
 function bodyPbdRig(z){
  // Native weighted Hazmat bones receive unpowered corpse and knockdown physics.
@@ -6670,7 +6672,10 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,op
    const restDir=bodyPbdTmpB.sub(bodyPbdTmpA).applyQuaternion(bodyPbdInvQ).normalize().clone();
    links.push({a,b,bone,baseQuat:bone.quaternion.clone(),restDir});
  }
- return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999,followRoot:!!options?.followRoot||infectedGunshot,infectedGunshot};
+ return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999,
+  initialTorsoDir:nodes.get("Chest").pos.clone().sub(nodes.get("Hips").pos).normalize(),
+  initialHolderQuat:rig.holder.quaternion.clone(),maxRootTilt:0,
+  followRoot:!!options?.followRoot||infectedGunshot,infectedGunshot};
 }
 function solveBodyPbdEdge(e){
  const d=bodyPbdTmpA.subVectors(e.b.pos,e.a.pos),dist=d.length();if(dist<1e-6)return;
@@ -6734,6 +6739,44 @@ function orientBodyPbd(z,pbd,dt=1/60){
    bodyPbdTmpC.x/=Math.max(.0001,bodyPbdScale.x);bodyPbdTmpC.y/=Math.max(.0001,bodyPbdScale.y);bodyPbdTmpC.z/=Math.max(.0001,bodyPbdScale.z);
  }
  holder.position.add(bodyPbdTmpC);holder.updateMatrixWorld(true);
+ if(pbd.infectedGunshot){
+   // v659: unlike the first particle attempt, orient the WHOLE import root
+   // from the simulated hips-to-chest segment before posing individual bones.
+   // If only the hips follow gravity, a visibly upright torso will hover
+   // over buried shins while the real physics nodes already lie flat.
+   const chest=pbd.nodes.get("Chest");
+   if(chest&&pbd.initialTorsoDir){
+     bodyPbdTorsoDir.subVectors(chest.pos,hips.pos);
+     if(bodyPbdTorsoDir.lengthSq()>.008){
+       bodyPbdTorsoDir.normalize();
+       bodyPbdTorsoWorldQ.setFromUnitVectors(pbd.initialTorsoDir,bodyPbdTorsoDir);
+       // No upside-down corkscrew; a fallen torso can lay on its front,
+       // back or side, but must never complete a 360-degree spin.
+       const turn=2*Math.acos(Math.min(1,Math.abs(bodyPbdTorsoWorldQ.w)));
+       if(turn>1.62)bodyPbdTorsoWorldQ.slerpQuaternions(
+        new THREE.Quaternion(),bodyPbdTorsoWorldQ,1.62/turn);
+       holder.parent.getWorldQuaternion(bodyPbdParentQ);
+       bodyPbdTorsoInvParentQ.copy(bodyPbdParentQ).invert();
+       bodyPbdTorsoTargetQ.copy(bodyPbdTorsoInvParentQ)
+        .multiply(bodyPbdTorsoWorldQ).multiply(bodyPbdParentQ)
+        .multiply(pbd.initialHolderQuat);
+       holder.quaternion.rotateTowards(bodyPbdTorsoTargetQ,Math.max(0,dt)*9.2);
+       pbd.maxRootTilt=Math.max(pbd.maxRootTilt,
+        pbd.initialHolderQuat.angleTo(holder.quaternion));
+       // Re-anchor hips after rotating the GLB about its import origin.
+       holder.updateWorldMatrix(true);hipsBone.getWorldPosition(bodyPbdTmpA);
+       bodyPbdTmpC.subVectors(hips.pos,bodyPbdTmpA);
+       holder.parent.getWorldQuaternion(bodyPbdParentQ);
+       bodyPbdInvQ.copy(bodyPbdParentQ).invert();
+       bodyPbdTmpC.applyQuaternion(bodyPbdInvQ);
+       holder.parent.getWorldScale(bodyPbdScale);
+       bodyPbdTmpC.x/=Math.max(.0001,bodyPbdScale.x);
+       bodyPbdTmpC.y/=Math.max(.0001,bodyPbdScale.y);
+       bodyPbdTmpC.z/=Math.max(.0001,bodyPbdScale.z);
+       holder.position.add(bodyPbdTmpC);holder.updateWorldMatrix(true);
+     }
+   }
+ }
  for(const link of pbd.links){
    const target=pbd.nodes.get(link.b),bone=link.bone,parent=bone.parent;if(!target||!parent)continue;
    bone.getWorldPosition(bodyPbdTmpA);bodyPbdTmpB.subVectors(target.pos,bodyPbdTmpA);
