@@ -8308,14 +8308,26 @@ function createInfectedArticulatedFall(z,vx,vz){
  const bends=[];
  for(const side of ["L","R"]){
   for(const [a,b,c,min] of [
-   ["Hips",side+"_UpperLeg",side+"_LowerLeg",.52],
-   [side+"_UpperLeg",side+"_LowerLeg",side+"_Foot",.42],
-   ["Chest",side+"_UpperArm",side+"_LowerArm",.42],
-   [side+"_UpperArm",side+"_LowerArm",side+"_Hand",.35]]){
+   ["Hips",side+"_UpperLeg",side+"_LowerLeg",.66],
+   [side+"_UpperLeg",side+"_LowerLeg",side+"_Foot",.70],
+   ["Chest",side+"_UpperArm",side+"_LowerArm",.63],
+   [side+"_UpperArm",side+"_LowerArm",side+"_Hand",.67]]){
    if(!nodes.has(a)||!nodes.has(b)||!nodes.has(c))continue;
-   const span=nodes.get(a).p.distanceTo(nodes.get(b).p)+nodes.get(b).p.distanceTo(nodes.get(c).p);
-   bends.push({a,c,min:span*min});
+   const start=nodes.get(a).p,mid=nodes.get(b).p,end=nodes.get(c).p;
+   const span=start.distanceTo(mid)+mid.distanceTo(end);
+   const pole=mid.clone().sub(start);
+   const along=end.clone().sub(start).normalize();
+   pole.addScaledVector(along,-pole.dot(along));
+   if(pole.lengthSq()<.005)pole.set(0,1,0);
+   pole.normalize();
+   bends.push({a,b,c,min:span*min,pole});
   }
+ }
+ for(const [a,b,c,min] of [["Hips","Spine","Chest",.86],
+  ["Spine","Chest","Neck",.87],["Chest","Neck","Head",.85]]){
+  if(!nodes.has(a)||!nodes.has(b)||!nodes.has(c))continue;
+  const start=nodes.get(a).p,mid=nodes.get(b).p,end=nodes.get(c).p;
+  bends.push({a,b,c,min:(start.distanceTo(mid)+mid.distanceTo(end))*min,pole:null});
  }
  return{holder,nodes,edges,bends,initialHolder:holder.position.clone(),
   initialHip:nodes.get("Hips").p.clone(),time:0,settle:0,contactCount:0,
@@ -8339,11 +8351,27 @@ function updateInfectedArticulatedFall(z,rag,dt){
     a.p.add(d);b.p.sub(d);
    }
    for(const b of f.bends){
-    const a=f.nodes.get(b.a),c=f.nodes.get(b.c),delta=c.p.clone().sub(a.p);
-    const dist=delta.length();
-    if(dist>=b.min||dist<1e-7)continue;
-    delta.multiplyScalar((b.min-dist)/(dist*2));
-    a.p.sub(delta);c.p.add(delta);
+    const a=f.nodes.get(b.a),middle=f.nodes.get(b.b),c=f.nodes.get(b.c);
+    const delta=c.p.clone().sub(a.p),dist=delta.length();
+    if(dist<1e-7)continue;
+    if(dist<b.min){
+     const correction=delta.multiplyScalar((b.min-dist)/(dist*2));
+     a.p.sub(correction);c.p.add(correction);
+    }
+    if(b.pole){
+     const axis=c.p.clone().sub(a.p).normalize();
+     const projection=middle.p.clone().sub(a.p);
+     const along=projection.dot(axis);
+     const radial=projection.addScaledVector(axis,-along);
+     const pole=b.pole.clone().addScaledVector(axis,-b.pole.dot(axis)).normalize();
+     const wrong=radial.dot(pole);
+     if(wrong<-.012){
+      const correction=pole.multiplyScalar(Math.min(.16,-wrong*.46));
+      middle.p.add(correction);
+      a.p.addScaledVector(correction,-.18);
+      c.p.addScaledVector(correction,-.18);
+     }
+    }
    }
    for(const n of f.nodes.values()){
     const ground=sampleRagdollGroundY(n.p.x,n.p.z,f.groundY,n.p.y);
