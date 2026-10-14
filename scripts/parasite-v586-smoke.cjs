@@ -233,6 +233,36 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    body:hitboxes.some(x=>x.userData.part==="torso"),hitHead:shoot("Head"),hitChest:shoot("Chest"),
    leftLegGone:z.leftLegDetached,rightLegGone:z.rightLegDetached,flag:z.infectedCrawler};
  },
+ infectedCrawlerDeathAudit:()=>{
+  const z=zombies.find(a=>a.infectedCrawler&&!a.dead&&a.infectedVisual);
+  if(!z)throw Error("Converted original Infected crawler unavailable");
+  const visual=z.infectedVisual,model=z.infectedModel;
+  killZ(z,false,z.g.position.clone());
+  const r=z.ragdoll,f=r?.infectedPhysical;
+  if(!f)throw Error("Converted crawler entered the old knotting particle solver");
+  let worstJointError=0,penetration=0;
+  const original=new Map([...f.nodes].map(([k,n])=>[k,n.p.clone()]));
+  for(let i=0;i<165;i++){
+   if(!r.active)break;
+   updateRagdoll(z,1/60);
+   for(const edge of f.edges){
+    const a=f.nodes.get(edge.a),b=f.nodes.get(edge.b);
+    worstJointError=Math.max(worstJointError,Math.abs(a.p.distanceTo(b.p)-edge.l)/edge.l);
+   }
+   for(const node of f.nodes.values()){
+    const floor=sampleRagdollGroundY(node.p.x,node.p.z,f.groundY,node.p.y);
+    penetration=Math.max(penetration,floor+node.radius-node.p.y);
+   }
+  }
+  const nonLeg=[...f.nodes].filter(([k])=>!k.includes("Leg")&&!k.includes("Foot"));
+  const spread=Math.max(...nonLeg.map(([k,n])=>n.p.distanceTo(f.nodes.get("Hips").p)));
+  return{dead:z.dead,source:z.infectedGLBSource,originalVisual:z.infectedVisual===visual,
+   originalModel:z.infectedModel===model,physical:!!f,oldPbd:!!r.bodyPbd,
+   nodes:f.nodes.size,edges:f.edges.length,spread,
+   worstJointError,penetration,
+   legsMissing:!f.nodes.has("L_Foot")&&!f.nodes.has("R_Foot"),
+   finite:[...f.nodes.values()].every(n=>[...n.p.toArray(),...n.previous.toArray()].every(Number.isFinite))};
+ },
  infectedDeathAudit:()=>{
   const z=zombies.find(a=>a.kind==="infected"&&!a.dead&&a.infectedVisual&&!a.infectedCrawler);
   if(!z)throw Error("Original standing Infected missing for articulated death test");
@@ -525,6 +555,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   report.infectedRenderFrames=infectedImages.map(f=>({name:f.name,bytes:f.jpeg.length}));
   for(const f of infectedImages)console.log("INFECTED_DIAGNOSTIC_"+f.name+"="+f.jpeg);
   report.infectedCrawler=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedCrawlerAudit());
+  report.infectedCrawlerDeath=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedCrawlerDeathAudit());
   report.infectedDeath=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedDeathAudit());
   report.rotation=await page.evaluate(()=>globalThis.__parasiteSmoke.selectViaRealBossRotation());
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.state().attached,null,{timeout:30000});
@@ -571,6 +602,15 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedCrawler.colliders>=8&&report.infectedCrawler.hitHead&&
    report.infectedCrawler.hitChest,
    "Preserved Infected crawler missing legs/shot hitboxes: "+JSON.stringify(report.infectedCrawler));
+  assert(report.infectedCrawlerDeath?.dead&&report.infectedCrawlerDeath.physical&&
+   !report.infectedCrawlerDeath.oldPbd&&report.infectedCrawlerDeath.originalVisual&&
+   report.infectedCrawlerDeath.originalModel&&report.infectedCrawlerDeath.legsMissing&&
+   report.infectedCrawlerDeath.nodes>=9&&report.infectedCrawlerDeath.edges>=8&&
+   report.infectedCrawlerDeath.worstJointError<.16&&
+   report.infectedCrawlerDeath.penetration<.08&&report.infectedCrawlerDeath.spread>.25&&
+   report.infectedCrawlerDeath.finite,
+   "Original converted crawler death must not use tangled PBD or invert arms: "+
+    JSON.stringify(report.infectedCrawlerDeath));
   const infected=report.infectedCrawler,ip=infected.pose;
   const stand=infected.standingAudit;
   assert(stand?.wristTravel?.every(x=>x>.05)&&
