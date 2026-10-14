@@ -6778,6 +6778,10 @@ function orientBodyPbd(z,pbd,dt=1/60){
    }
  }
  for(const link of pbd.links){
+   // v659: native infected legs have their own CONTACT-accurate pass below.
+   // Doing both here and in that pass rotated knees 33deg in one frame.
+   if(pbd.infectedGunshot&&(link.a.includes("UpperLeg")||
+      link.a.includes("LowerLeg")))continue;
    const target=pbd.nodes.get(link.b),bone=link.bone,parent=bone.parent;if(!target||!parent)continue;
    bone.getWorldPosition(bodyPbdTmpA);bodyPbdTmpB.subVectors(target.pos,bodyPbdTmpA);
    if(bodyPbdTmpB.lengthSq()<1e-8)continue;
@@ -6825,7 +6829,7 @@ function orientBodyPbd(z,pbd,dt=1/60){
     const delta=link.baseQuat.angleTo(bodyPbdDeltaQ);
     if(delta>limit)bodyPbdDeltaQ.copy(link.baseQuat)
      .slerp(bodyPbdDeltaQ,limit/delta);
-    bone.quaternion.rotateTowards(bodyPbdDeltaQ,Math.max(0,dt)*17.5);
+    bone.quaternion.rotateTowards(bodyPbdDeltaQ,Math.max(0,dt)*12);
     bone.updateWorldMatrix(true,true);
    }
   }
