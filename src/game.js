@@ -6519,6 +6519,9 @@ const BODY_PBD_EDGES=Object.freeze([
 ]);
 const bodyPbdTmpA=new THREE.Vector3(),bodyPbdTmpB=new THREE.Vector3(),bodyPbdTmpC=new THREE.Vector3(),bodyPbdScale=new THREE.Vector3();
 const bodyPbdParentQ=new THREE.Quaternion(),bodyPbdInvQ=new THREE.Quaternion(),bodyPbdDeltaQ=new THREE.Quaternion();
+// Constrained PBD physical trunk orientation (ordinary standing Infected death only).
+const infectedPbdAxis=new THREE.Vector3(),infectedPbdRootDelta=new THREE.Quaternion(),
+ infectedPbdTargetWorld=new THREE.Quaternion(),infectedPbdTargetLocal=new THREE.Quaternion();
 
 function bodyPbdRig(z){
  // Native weighted Hazmat bones receive unpowered corpse and knockdown physics.
@@ -6670,7 +6673,14 @@ function buildBodyPbd(z,rag,isBlast,blastOrigin,inheritedVX,inheritedVZ,power,op
    const restDir=bodyPbdTmpB.sub(bodyPbdTmpA).applyQuaternion(bodyPbdInvQ).normalize().clone();
    links.push({a,b,bone,baseQuat:bone.quaternion.clone(),restDir});
  }
- return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,settleT:0,allDown:false,maxSpeed:999,followRoot:!!options?.followRoot||infectedGunshot,infectedGunshot};
+ // Capture the ORIGINAL world-space torso axis at death. A physical corpse
+ // MUST orient its visible weighted torso with the freely falling simulated
+ // torso, otherwise legs/hands move but the skin stays seated upright.
+ const rootAxis=new THREE.Vector3().subVectors(nodes.get("Chest").pos,nodes.get("Hips").pos).normalize();
+ const rootWorldQ=rig.holder.getWorldQuaternion(new THREE.Quaternion());
+ return{holder:rig.holder,bones:rig.bones,rigKind:rig.kind,nodes,edges,links,
+  rootAxis,rootWorldQ,settleT:0,allDown:false,maxSpeed:999,
+  followRoot:!!options?.followRoot||infectedGunshot,infectedGunshot};
 }
 function solveBodyPbdEdge(e){
  const d=bodyPbdTmpA.subVectors(e.b.pos,e.a.pos),dist=d.length();if(dist<1e-6)return;
@@ -6725,6 +6735,22 @@ function orientBodyPbd(z,pbd,dt=1/60){
  if(pbd.followRoot&&holder!==z.g){
    z.g.position.x=hips.pos.x;z.g.position.z=hips.pos.z;
  }
+ if(pbd.infectedGunshot&&pbd.rootAxis&&pbd.rootWorldQ&&holder.parent){
+   // PHYSICS-LED, not an authored fall angle: map the simulated Hips->Chest
+   // direction back onto the skinned body's whole torso. This is the missing
+   // orientation coupling from the first v658 render, which left corpses
+   // sitting upright while their physical chest particle had landed.
+   const chest=pbd.nodes.get("Chest");
+   infectedPbdAxis.subVectors(chest.pos,hips.pos);
+   if(infectedPbdAxis.lengthSq()>.002){
+    infectedPbdAxis.normalize();
+    infectedPbdRootDelta.setFromUnitVectors(pbd.rootAxis,infectedPbdAxis);
+    infectedPbdTargetWorld.copy(infectedPbdRootDelta).multiply(pbd.rootWorldQ);
+    holder.parent.getWorldQuaternion(bodyPbdParentQ);
+    infectedPbdTargetLocal.copy(bodyPbdParentQ).invert().multiply(infectedPbdTargetWorld);
+    holder.quaternion.slerp(infectedPbdTargetLocal,Math.min(1,dt*12));
+   }
+ }
  z.g.updateMatrixWorld(true);holder.updateMatrixWorld(true);hipsBone.getWorldPosition(bodyPbdTmpA);
  bodyPbdTmpC.subVectors(hips.pos,bodyPbdTmpA);
  if(holder.parent){
@@ -6746,8 +6772,8 @@ function orientBodyPbd(z,pbd,dt=1/60){
     // Particle constraints can briefly cross on impact. Each native
     // Mixamo joint can flex, but not corkscrew 180 degrees against its
     // captured source pose. This is a cone limit, not animation steering.
-    const maxTurn=link.a==="Hips"?1.30:
-     link.a==="Spine"?.83:link.a==="Chest"?.60:
+    const maxTurn=link.a==="Hips"?.48:
+     link.a==="Spine"?.62:link.a==="Chest"?.55:
      link.a==="Neck"?.48:
      link.a==="L_UpperArm"||link.a==="R_UpperArm"?1.28:
      link.a==="L_LowerArm"||link.a==="R_LowerArm"?1.20:
