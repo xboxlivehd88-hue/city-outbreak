@@ -8083,48 +8083,73 @@ function createInfectedGunshotFall(z,rag,vx,vz){
 // No pre-authored foot, knee, elbow or hand landing points: the surface only
 // responds to penetrations. Each original Mixamo segment retains its own
 // live-release quaternion and finite anatomical angular range.
+// Ground-aware two-link contact solver for original Mixamo Infected limbs.
+// The knee's anatomical pole and segment lengths are constrained, while each
+// foot's horizontal contact is inherited from its current pose, not a corpse
+// animation keyed to an arbitrary position behind the body.
 function poseInfectedFallenLegs(z,rag,f,floor,t){
  const bones=z.infectedBones,rest=z.infectedRest;
- if(!bones||t<.06)return;
- const aimClearance=(key,tipKey,radius,maxAngle)=>{
-  if(!bodyPbdBoneAllowed(z,key))return;
-  const bone=bones.get(key),tip=bones.get(tipKey),base=rest?.get(key);
-  if(!bone||!tip||!bone.parent||!base)return;
-  bone.updateWorldMatrix(true,true);
-  const a=bone.getWorldPosition(new THREE.Vector3());
-  const p=tip.getWorldPosition(new THREE.Vector3());
-  const surface=sampleRagdollGroundY(p.x,p.z,floor,p.y)+radius;
-  if(p.y>=surface)return;
-  // Project only the *penetrating endpoint*. Never chase a death-pose target.
-  const end=p.clone();end.y=surface+.008;
-  const local=bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
-  const from=p.sub(a).applyQuaternion(local).normalize();
-  const to=end.sub(a).applyQuaternion(local).normalize();
-  if(from.lengthSq()<.01||to.lengthSq()<.01)return;
-  const correction=new THREE.Quaternion().setFromUnitVectors(from,to);
-  const angle=2*Math.acos(THREE.MathUtils.clamp(correction.w,-1,1));
-  if(!Number.isFinite(angle)||angle<.0001)return;
-  // Anatomical contact impulse, bounded per timestep to avoid joint flips.
-  const partial=THREE.MathUtils.clamp(Math.min(maxAngle,angle)/angle,0,1);
-  const projected=new THREE.Quaternion().copy(correction).slerp(new THREE.Quaternion(),1-partial)
-   .multiply(bone.quaternion);
-  bone.quaternion.slerp(projected,Math.min(.8,.25+Math.max(0,t)*.30));
+ if(!bones||t<.035)return;
+ const aim=(bone,child,key,goal,weight)=>{
+  const base=rest?.get(key);
+  if(!base||!bone?.parent||!child||child.position.lengthSq()<1e-9)return;
+  const start=bone.getWorldPosition(new THREE.Vector3());
+  const vector=goal.clone().sub(start);
+  if(vector.lengthSq()<.00001)return;
+  const parentQ=bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+  vector.normalize().applyQuaternion(parentQ);
+  const authored=child.position.clone().applyQuaternion(base).normalize();
+  const desired=new THREE.Quaternion().setFromUnitVectors(authored,vector).multiply(base);
+  bone.quaternion.slerp(desired,weight);
   bone.updateWorldMatrix(true,true);
  };
- // A distal contact moves a knee/elbow first, then the proximal joint if the
- // limb still intersects ground. Each limb is solved separately, not posed.
+ const blend=THREE.MathUtils.smoothstep(t,.045,.27);
  for(const side of ["L","R"]){
-  if(bodyPbdBoneAllowed(z,side+"_LowerLeg"))
-   aimClearance(side+"_LowerLeg",side+"_Foot",.09,.45);
-  aimClearance(side+"_UpperLeg",side+"_LowerLeg",.12,.30);
-  if(t>.12){
-   aimClearance(side+"_LowerArm",side+"_Hand",.065,.55);
-   aimClearance(side+"_UpperArm",side+"_LowerArm",.095,.32);
-  }
+  if(!bodyPbdBoneAllowed(z,side+"_UpperLeg")||!bodyPbdBoneAllowed(z,side+"_LowerLeg"))continue;
+  const upper=bones.get(side+"_UpperLeg"),lower=bones.get(side+"_LowerLeg"),foot=bones.get(side+"_Foot");
+  if(!upper||!lower||!foot)continue;
+  upper.updateWorldMatrix(true,true);
+  const hip=upper.getWorldPosition(new THREE.Vector3());
+  const knee=lower.getWorldPosition(new THREE.Vector3());
+  const ankle=foot.getWorldPosition(new THREE.Vector3());
+  const l1=hip.distanceTo(knee),l2=knee.distanceTo(ankle);
+  if(l1<.05||l2<.05)continue;
+  // Persistent contact means ground friction holds the position reached by this
+  // particular foot at release; no fixed left/right death-pose target.
+  const key=side+"FootContact";
+  if(!f[key])f[key]={x:ankle.x,z:ankle.z};
+  const contact=f[key];
+  const friction=1-Math.exp(-Math.max(.001,Math.min(.042,rag.t-(f.lastContactTime||0)))*2.3);
+  contact.x+=(ankle.x-contact.x)*friction;
+  contact.z+=(ankle.z-contact.z)*friction;
+  const target=new THREE.Vector3(contact.x,floor+.13,contact.z);
+  const horizontal=target.clone().sub(hip);horizontal.y=0;
+  const maxReach=l1+l2-.025;
+  if(horizontal.length()>maxReach*.91){horizontal.setLength(maxReach*.91);target.x=hip.x+horizontal.x;target.z=hip.z+horizontal.z;}
+  let delta=target.clone().sub(hip);
+  const distance=THREE.MathUtils.clamp(delta.length(),Math.abs(l1-l2)+.025,maxReach);
+  if(delta.lengthSq()<1e-9)continue;
+  delta.normalize();target.copy(hip).addScaledVector(delta,distance);
+  // Positive-world-up pole ensures an actual bending knee above the pavement.
+  const pole=new THREE.Vector3(0,1,0).addScaledVector(delta,-delta.y).normalize();
+  if(pole.lengthSq()<.01)pole.set(1,0,0);
+  const along=(l1*l1-l2*l2+distance*distance)/(2*distance);
+  const bend=Math.sqrt(Math.max(0,l1*l1-along*along));
+  const kneeGoal=hip.clone().addScaledVector(delta,along).addScaledVector(pole,bend);
+  aim(upper,lower,side+"_UpperLeg",kneeGoal,blend);
+  aim(lower,foot,side+"_LowerLeg",target,blend);
+ }
+ f.lastContactTime=rag.t;
+ // Hands retain their released momentum, but floor contact prevents penetration.
+ for(const side of ["L","R"]){
+  if(!bodyPbdBoneAllowed(z,side+"_LowerArm"))continue;
+  const fore=bones.get(side+"_LowerArm"),hand=bones.get(side+"_Hand");
+  if(!fore||!hand||t<.12)continue;
+  const at=hand.getWorldPosition(new THREE.Vector3());
+  if(at.y<floor+.075){at.y=floor+.075;aim(fore,hand,side+"_LowerArm",at,Math.min(.6,blend*.65));}
  }
  f.legGroundClearance=Math.min(...["L","R"].map(side=>{
-  const foot=bones.get(side+"_Foot");
-  return foot?foot.getWorldPosition(new THREE.Vector3()).y-floor:Infinity;
+  const foot=bones.get(side+"_Foot");return foot?foot.getWorldPosition(new THREE.Vector3()).y-floor:Infinity;
  }));
 }
 function updateInfectedGunshotFall(z,rag,dt){
