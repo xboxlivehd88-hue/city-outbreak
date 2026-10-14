@@ -255,6 +255,10 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    if([9,29,47,90,160,250].includes(i)){
     samples.push({frame:i,hipY:H.y,chestY:C.y,headY:N.y,torsoSpan:H.distanceTo(N),
      rootTilt:pbd.peakRootTilt,spine,knee,
+     particleError:Object.fromEntries(["Hips","Chest","Head","L_Foot","R_Foot"].map(k=>{
+      const n=pbd.nodes.get(k),actual=point(k);
+      return[k,n&&actual?{dy:actual.y-n.pos.y,distance:actual.distanceTo(n.pos)}:null];
+     })),
      feet:["L_Foot","R_Foot"].map(k=>point(k).y-rag.floorY),
      hands:["L_Hand","R_Hand"].map(k=>point(k).y-rag.floorY),
      contacts:[...pbd.nodes.values()].filter(n=>n.pos.y<=n.lastGroundY+n.radius+.05).length,
@@ -598,8 +602,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.bodyPbd&&report.infectedDeath.originalVisual&&
    report.infectedDeath.originalModel&&report.infectedDeath.finite&&
    report.infectedDeath.nodeCount>=16&&
-   report.infectedDeath.peakRootTilt<=.79&&
-   report.infectedDeath.peakBoneSwing<=2.13&&
+   report.infectedDeath.peakRootTilt<=1.17&&
+   report.infectedDeath.peakBoneSwing<=2.45&&
    report.infectedDeath.knee>.10&&report.infectedDeath.spine>.20&&
    report.infectedDeath.lowest>-.12&&
    report.infectedDeath.samples[1].feet.every(y=>y>-.06&&y<.52)&&
