@@ -6778,8 +6778,8 @@ function orientBodyPbd(z,pbd,dt=1/60){
      link.a==="L_UpperArm"||link.a==="R_UpperArm"?1.28:
      link.a==="L_LowerArm"||link.a==="R_LowerArm"?1.20:
      link.a==="L_UpperLeg"||link.a==="R_UpperLeg"?1.10:
-     link.a==="L_LowerLeg"||link.a==="R_LowerLeg"?1.18:
-     link.a==="L_Foot"||link.a==="R_Foot"?.55:1.1;
+     link.a==="L_LowerLeg"||link.a==="R_LowerLeg"?1.00:
+     link.a==="L_Foot"||link.a==="R_Foot"?.32:1.1;
     const swing=link.baseQuat.angleTo(bodyPbdDeltaQ);
     if(swing>maxTurn)bodyPbdDeltaQ.copy(link.baseQuat)
      .slerp(bodyPbdDeltaQ,maxTurn/Math.max(swing,1e-6));
@@ -6789,6 +6789,34 @@ function orientBodyPbd(z,pbd,dt=1/60){
    bone.updateWorldMatrix(true,false);
  }
  holder.updateMatrixWorld(true);
+ if(pbd.infectedGunshot){
+  // PBD joint-particle collision keeps the *simulated* hands out of the
+  // pavement. Align each original skinned forearm toward that legal hand
+  // position if the skinned hand is lagging below the floor. Without this
+  // mapping the body looks submerged despite valid joint simulation.
+  for(const side of ["L","R"]){
+   const key=side+"_LowerArm",fore=pbd.bones.get(key),hand=pbd.bones.get(side+"_Hand");
+   const handNode=pbd.nodes.get(side+"_Hand"),link=pbd.links.find(l=>l.a===key);
+   if(!fore||!hand||!fore.parent||!handNode||!link)continue;
+   hand.getWorldPosition(bodyPbdTmpB);
+   if(hand.getWorldPosition(bodyPbdTmpB).y>=handNode.pos.y-.075)continue;
+   fore.getWorldPosition(bodyPbdTmpA);
+   bodyPbdTmpB.subVectors(handNode.pos,bodyPbdTmpA);
+   if(bodyPbdTmpB.lengthSq()<1e-7)continue;
+   fore.parent.getWorldQuaternion(bodyPbdParentQ);
+   bodyPbdInvQ.copy(bodyPbdParentQ).invert();
+   bodyPbdTmpB.applyQuaternion(bodyPbdInvQ).normalize();
+   bodyPbdTmpC.copy(hand.position).applyQuaternion(fore.quaternion).normalize();
+   bodyPbdDeltaQ.setFromUnitVectors(bodyPbdTmpC,bodyPbdTmpB);
+   bodyPbdDeltaQ.multiply(fore.quaternion);
+   const allowed=link.baseQuat.angleTo(bodyPbdDeltaQ);
+   if(allowed>1.56)bodyPbdDeltaQ.copy(link.baseQuat)
+     .slerp(bodyPbdDeltaQ,1.56/Math.max(allowed,1e-6));
+   fore.quaternion.rotateTowards(bodyPbdDeltaQ,Math.min(.68,dt*28));
+   fore.updateWorldMatrix(true,false);
+  }
+  holder.updateMatrixWorld(true);
+ }
 }
 function updateBodyPbd(z,rag,dt){
  const p=rag.bodyPbd;if(!p)return false;
