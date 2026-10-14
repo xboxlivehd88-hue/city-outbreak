@@ -1,3 +1,12 @@
+# v662 — INFECTED FRONTAL HIT REARWARD COLLAPSE — 2026-10-14
+
+- User visually approved substantial v661 ragdoll improvement ("we are super close") but reports Infected shot from directly in front often fall FORWARD toward the player instead of collapsing rearward. Narrow scope: preserve v661 17-mass physics, constraints, crawler death, walks, hitboxes, size, every other zombie, waves, weapons, performance and protected recovery v324.
+- Root cause: v661 `createInfectedArticulatedFall` gave every joint random world Z initial lean `lean*(.28+.80*lever)`, independent of player/shooter direction. v662 replaces it with an away-from-shooter XZ unit vector computed from zombie minus player position at gunshot release, applies stronger rearward momentum to higher bones (chest/head) than pelvis/feet, and keeps small sideways variation. The physically unconstrained collapse and ground contacts continue; no predetermined falling keyframe.
+- Original test suite `scripts/parasite-v586-smoke.cjs` now checks positive rearward Chest-Hips release impulse along the shooter-to-zombie vector, in addition to prior skinned death, crawler, Wave 1, 19-boss checks. Browser scripts and loader aligned to `./src/game.js?v=662`. Independent Sprinter and Hazmat/Green regression workflows must pass on latest gameplay. Candidate branch `toby-v662-infected-hit-direction`; gameplay commit cf24229fced0cb7893eee58c04ea2070e688e9a2. **User visual acceptance not yet known**; do not claim fixed solely from automation.
+- Release: After latest branch Infected browser + Sprinter + Hazmat/Green all pass, commit updated handoffs, fast-forward GitHub main, verify deployment & main tests, share cache-busted `https://xboxlivehd88-hue.github.io/city-outbreak/?v=662-infected-hit-response`. Recovery file must remain unchanged.
+
+---
+
 # v661 VERIFIED PHYSICS-BRANCH CHROMIUM AUDIT — 2026-10-14
 
 - Final candidate original GLB browser test **SUCCESS**, run [38647499273](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38647499273), gameplay commit `6981a84124344b8e8ec085c22cecf99618df920e`. Actual original skinned early/half/settled side screenshots manually inspected. The Infected drops with separately bending original legs and a grounded torso; no prior frozen vertical shins or huge whole-body plank. Final posture remains fairly compact; user visual acceptance **PENDING**. Real original-model mid-fall+settled foot heights pass strict tests; no joint-length, physics floor collision, numerical spin or skin source violations.
