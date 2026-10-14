@@ -1,3 +1,11 @@
+# v659 — ORIGINAL INFECTED CONTACT-CONSTRAINED FALL TEST — 2026-10-14
+
+- Ordinary upright Infected gunshot-only death: replaced hardcoded left/right leg sprawl and hand landing positions with per-limb contact IK for original Mixamo skinned GLB; thigh/shin lengths, upward knee poles and grounded ankle targets prevent buried limbs. Original breathing/walking, converted Infected crawler, explosions and all other enemy visuals untouched.
+- First test commit f2033ecc failed original rendered Infected browser smoke: original feet under road (~-0.6m). REJECTED. Corrected candidate commit 1de5313bbc0ccccc2933be6b63e81b8d506d2c69 PASSED Infected original-GLB browser run 38638516132 (ground clearance ~+.13m, foot heights ~+.216m, bounded angles, wave 1 ten Infected, boss rotation). Independent Sprinter run 38638516142 SUCCESS and Hazmat/Green run 38638516133 SUCCESS. These confirm machine constraints, NOT subjective natural-looking collapse; user visual approval pending.
+- v659 loader ./src/game.js?v=659. Original standing size, living locomotion, limb damage, crawler and hitboxes preserved. Protected v324 recovery unchanged. Do not claim a full rigid-body ragdoll: death root/spine still use v658 limited angular simulation; contact targets are no longer predefined corpse pose.
+
+---
+
 # v658 VERIFIED TEST-BRANCH VISUAL COLLAPSE — 2026-10-14
 
 - Actual final v658 original skinned Infected test run [38532055047](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38532055047) **SUCCESS**, latest death gameplay source commit `9ccd7b9aa3b2aa5724b4436fe6932f884a05abfe`. Toby opened original GLB screenshots `death_early_side`, `death_half_side`, `death_side`, and front views from the GitHub job log. Unlike first FAILED v658 run 38531577434, thighs/shins now visibly remain above the road at 0.5 seconds, with knees buckling and chest bending over hips; no plank-sized whole-body hinge. Machine audit `pass:true`, browser errors none, peak global tilt **.371 rad** vs actual source Spine angular flex **.84 rad**, foot lower-body min height **+.137m** at mid-fall, both original feet clearance ~+.13m, peak knee buckle **.471 rad**, fall settles, finite physics, no spin violation. Original converted Infected crawler unchanged (pelvis ~.095, chest ~.295, head ~.438); no severed foot/toe faces; wave 1 ten Infected and all 19 bosses test passed.
