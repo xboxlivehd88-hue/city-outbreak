@@ -6803,6 +6803,33 @@ function orientBodyPbd(z,pbd,dt=1/60){
    }else bone.quaternion.copy(bodyPbdDeltaQ);
    bone.updateWorldMatrix(true,false);
  }
+ // Bring the actual original skinned leg chains to the simulated contact
+ // particles. The PBD ankles were above road while visible feet were .42m
+ // BELOW it, because the old standing-pose caps blocked the leg rotations.
+ if(pbd.infectedGunshot){
+  for(const side of ["L","R"]){
+   for(const [parentKey,childKey] of [[side+"_UpperLeg",side+"_LowerLeg"],
+    [side+"_LowerLeg",side+"_Foot"]]){
+    const link=pbd.links.find(k=>k.a===parentKey&&k.b===childKey);
+    const target=pbd.nodes.get(childKey),bone=link?.bone;
+    if(!link||!target||!bone?.parent)continue;
+    bone.getWorldPosition(bodyPbdTmpA);
+    bodyPbdTmpB.subVectors(target.pos,bodyPbdTmpA);
+    if(bodyPbdTmpB.lengthSq()<.0001)continue;
+    bone.parent.getWorldQuaternion(bodyPbdParentQ);
+    bodyPbdInvQ.copy(bodyPbdParentQ).invert();
+    bodyPbdTmpB.applyQuaternion(bodyPbdInvQ).normalize();
+    bodyPbdDeltaQ.setFromUnitVectors(link.restDir,bodyPbdTmpB)
+     .multiply(link.baseQuat);
+    const limit=parentKey.includes("UpperLeg")?2.10:2.25;
+    const delta=link.baseQuat.angleTo(bodyPbdDeltaQ);
+    if(delta>limit)bodyPbdDeltaQ.copy(link.baseQuat)
+     .slerp(bodyPbdDeltaQ,limit/delta);
+    bone.quaternion.rotateTowards(bodyPbdDeltaQ,Math.max(0,dt)*17.5);
+    bone.updateWorldMatrix(true,true);
+   }
+  }
+ }
  holder.updateMatrixWorld(true);
 }
 function updateBodyPbd(z,rag,dt){
