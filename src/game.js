@@ -8286,7 +8286,15 @@ function createInfectedArticulatedFall(z,vx,vz){
  if(!keys.includes("Head")||!keys.includes("Hips"))return null;
  const nodes=new Map(),edges=[];
  const floor=Number.isFinite(z.groundY)?z.groundY:z.g.position.y;
- const lean=(rnd()<.5?-1:1);
+ // Gunshot response is biased AWAY from the shooter. A death can still
+ // buckle sideways depending on gait and collision, but a frontal hit should
+ // not get an arbitrary forward impulse from the old random Z-axis lean.
+ const away=new THREE.Vector3(z.g.position.x-px,0,z.g.position.z-pz);
+ if(away.lengthSq()<.0001)away.set(Math.sin(z.g.rotation.y),0,Math.cos(z.g.rotation.y));
+ away.normalize();
+ const sideAxis=new THREE.Vector3(-away.z,0,away.x);
+ const sideNoise=(rnd()-.5)*.38;
+ const lean=rnd()<.5?-1:1;
  for(const key of keys){
   const bone=bones.get(key),p=bone.getWorldPosition(new THREE.Vector3());
   const part=key.includes("Foot")?".08":key.includes("Hand")?".065":
@@ -8297,8 +8305,13 @@ function createInfectedArticulatedFall(z,vx,vz){
   // upright person has a release imbalance: upper-body inertia carries them
   // outward while feet briefly keep frictional contact with the road.
   const lever=Math.max(0,height-.18);
-  const drift=new THREE.Vector3(vx*.65+(rnd()-.5)*.16,0,
-   vz*.65+lean*(.28+.80*lever)+(rnd()-.5)*.12);
+  // Torso receives more initial rearward angular momentum than feet; the
+  // shared articulated solver then decides the fall from gravity and contact.
+  const impulse=.34+.64*lever;
+  const drift=new THREE.Vector3(
+   vx*.34+away.x*impulse+sideAxis.x*sideNoise*lever+(rnd()-.5)*.07,
+   0,
+   vz*.34+away.z*impulse+sideAxis.z*sideNoise*lever+(rnd()-.5)*.07);
   nodes.set(key,{bone,p,previous:p.clone().sub(drift.multiplyScalar(1/60)),radius,
    original:p.clone(),base:bone.quaternion.clone()});
  }
