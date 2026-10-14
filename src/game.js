@@ -6765,7 +6765,8 @@ function orientBodyPbd(z,pbd,dt=1/60){
    // solver below. A second per-bone aim here compounded .18rad and .22rad
    // every frame and allowed a shoulder to wrap 175 degrees behind the ribs.
    if(pbd.infectedGunshot&&
-      (link.a.endsWith("_UpperArm")||link.a.endsWith("_LowerArm")))continue;
+      (link.a.endsWith("_UpperArm")||link.a.endsWith("_LowerArm")||
+       link.a.endsWith("_UpperLeg")||link.a.endsWith("_LowerLeg")))continue;
    const target=pbd.nodes.get(link.b),bone=link.bone,parent=bone.parent;if(!target||!parent)continue;
    bone.getWorldPosition(bodyPbdTmpA);bodyPbdTmpB.subVectors(target.pos,bodyPbdTmpA);
    if(bodyPbdTmpB.lengthSq()<1e-8)continue;
@@ -6815,7 +6816,9 @@ function orientBodyPbd(z,pbd,dt=1/60){
    targetQ.setFromUnitVectors(restDir,dir).multiply(bone.quaternion);
    const link=pbd.links.find(l=>l.bone===bone);
    if(link){
-    const limit=link.a.endsWith("_UpperArm")?1.30:1.40;
+    const limit=link.a.endsWith("_UpperArm")?1.30:
+     link.a.endsWith("_LowerArm")?1.40:
+     link.a.endsWith("_UpperLeg")?1.33:1.42;
     const turn=link.baseQuat.angleTo(targetQ);
     if(turn>limit)targetQ.copy(link.baseQuat)
      .slerp(targetQ,limit/Math.max(turn,1e-6));
@@ -6853,6 +6856,39 @@ function orientBodyPbd(z,pbd,dt=1/60){
    kneeGoal.copy(shoulder).addScaledVector(toward,along).addScaledVector(pole,height);
    aim(upper,fore,kneeGoal);
    aim(fore,hand,node.pos);
+  }
+  // Grounded physical THIGH->KNEE->ANKLE chains. Before v658, the PBD
+  // foot particle was above the asphalt but the weighted original Mixamo
+  // foot bone could still be 15cm UNDER it or appear disconnected. Solve
+  // BOTH original thigh/shin links toward the simulated foot, with the real
+  // simulated knee as the bend pole. No fixed death pose or foot teleport.
+  for(const side of ["L","R"]){
+   if(!bodyPbdBoneAllowed(z,side+"_UpperLeg")||
+      !bodyPbdBoneAllowed(z,side+"_LowerLeg"))continue;
+   const thigh=pbd.bones.get(side+"_UpperLeg"),shin=pbd.bones.get(side+"_LowerLeg"),
+    foot=pbd.bones.get(side+"_Foot"),ankleNode=pbd.nodes.get(side+"_Foot"),
+    kneeNode=pbd.nodes.get(side+"_LowerLeg");
+   if(!thigh||!shin||!foot||!ankleNode||!kneeNode)continue;
+   thigh.getWorldPosition(shoulder);shin.getWorldPosition(forePos);
+   foot.getWorldPosition(wrist);
+   const l1=shoulder.distanceTo(forePos),l2=forePos.distanceTo(wrist);
+   if(l1<.09||l2<.08)continue;
+   toward.subVectors(ankleNode.pos,shoulder);
+   const dist=Math.min(l1+l2-.018,Math.max(Math.abs(l1-l2)+.02,toward.length()));
+   if(toward.lengthSq()<1e-8)continue;
+   toward.normalize();
+   pole.subVectors(kneeNode.pos,shoulder);
+   pole.addScaledVector(toward,-pole.dot(toward));
+   if(pole.lengthSq()<.0001){
+    pole.set(0,1,0);
+    pole.addScaledVector(toward,-pole.dot(toward));
+   }
+   pole.normalize();
+   const along=(l1*l1-l2*l2+dist*dist)/(2*dist);
+   const bend=Math.sqrt(Math.max(0,l1*l1-along*along));
+   kneeGoal.copy(shoulder).addScaledVector(toward,along).addScaledVector(pole,bend);
+   aim(thigh,shin,kneeGoal);
+   aim(shin,foot,ankleNode.pos);
   }
   holder.updateMatrixWorld(true);
  }
