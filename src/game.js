@@ -1,5 +1,5 @@
 import * as THREE from "three";
-// v657: buckling Mixamo knees and asymmetrical unpowered fall; approved crawler preserved.
+// v658: gravity-integrated Infected joints and unpowered collapse; approved crawler untouched.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
@@ -8031,9 +8031,9 @@ function createInfectedGunshotFall(z,rag,vx,vz){
  // forward/back hinge rotation at spine/chest (not independent twist/yaw).
  // Limbs are loose but constrained to keep original skin from knotting.
  const profiles=[
-  ["Spine",.52,0,new THREE.Vector3(1,0,0)],
-  ["Chest",.30,0,new THREE.Vector3(1,0,0)],
-  ["Neck",.14,0,new THREE.Vector3(1,0,0)],
+  ["Spine",.84,0,new THREE.Vector3(1,0,0)],
+  ["Chest",.46,0,new THREE.Vector3(1,0,0)],
+  ["Neck",.19,0,new THREE.Vector3(1,0,0)],
   ["Head",.13,.50,new THREE.Vector3(1,0,0)],
   ["L_UpperArm",.52,1.7,new THREE.Vector3(1,0,.13)],
   ["R_UpperArm",.52,1.7,new THREE.Vector3(1,0,-.13)],
@@ -8066,8 +8066,8 @@ function createInfectedGunshotFall(z,rag,vx,vz){
    limit,impactGiven:false});
  }
  return{holder,hips,baseHolderQuat:holder.quaternion.clone(),hip,
-  originalHipY:hip.y,axis,angle:0,angularSpeed:.12+rnd()*.30,
-  finalAngle:.61+rnd()*.12,falling:true,contact:false,
+  originalHipY:hip.y,axis,angle:0,angularSpeed:.05+rnd()*.19,
+  finalAngle:.31+rnd()*.14,falling:true,contact:false,
   kneeFold:0,maxKneeFold:0,rolled:0,
   sprawlSide:rnd()<.5?-1:1,sprawlOffset:.17+rnd()*.16,
   maxSpineFlex:0,
@@ -8091,7 +8091,9 @@ function poseInfectedFallenLegs(z,rag,f,floor,t){
  behind.normalize();
  const right=new THREE.Vector3(0,1,0).cross(behind).normalize();
  const pole=new THREE.Vector3(0,1,0);
- const blend=THREE.MathUtils.smoothstep(t,.095,.50);
+ // Ground IK starts after knees buckle and the body actually strikes.
+ // During the initial fall, free joints are not forced into a stock pose.
+ const blend=THREE.MathUtils.smoothstep(t,.30,.84);
  const aim=(bone,child,key,goal)=>{
   const base=rest.get(key);
   if(!base||!bone?.parent||!child||child.position.lengthSq()<1e-9)return;
@@ -8165,14 +8167,17 @@ function updateInfectedGunshotFall(z,rag,dt){
  // There is no second death animation playing: genuine bone quaternions are
  // released from the pose recorded at the kill. Gravity rapidly removes support.
  if(f.falling){
-  // Angular fall follows the collapsing hips rather than a fixed 90-degree
-  // door hinge. Flexible spine finishes the upper body's path to the ground.
-  // The knees lose support first, then hips and shoulders follow.
-  const release=THREE.MathUtils.smoothstep(t,.11,.59);
-  f.angularSpeed=Math.min(2.2,f.angularSpeed+3.0*h);
-  f.angle=Math.min(f.finalAngle,f.angle+f.angularSpeed*h*release);
+  // Gravity torque about the unstable pelvis, not a fixed "tip over" tween.
+  // Most of the upper-body motion is independent vertebrae below.
+  const spine=f.joints.find(j=>j.key==="Spine");
+  const lean=f.angle+Math.abs(spine?.angle||0)*.23+.17;
+  const gravityTorque=9.81*.88*Math.sin(lean);
+  f.angularSpeed=Math.min(2.6,Math.max(0,f.angularSpeed+
+   (gravityTorque-.8*f.angularSpeed)*h));
+  f.angle=Math.min(f.finalAngle,f.angle+f.angularSpeed*h);
   if(f.angle>=f.finalAngle-1e-5){
    f.angle=f.finalAngle;f.falling=false;f.contact=true;
+   f.angularSpeed=0;
   }
  }
  f.peakBodyTilt=Math.max(f.peakBodyTilt,f.angle);
@@ -8205,13 +8210,18 @@ function updateInfectedGunshotFall(z,rag,dt){
    j.angle=THREE.MathUtils.clamp(j.angle*.73+target*.27,-j.limit,j.limit);
    f.maxKneeFold=Math.max(f.maxKneeFold,Math.abs(j.angle));
   }else if(j.key==="Spine"||j.key==="Chest"||j.key==="Neck"){
-   // Let the shoulders and head continue forward after the pelvis drops.
-   // One flexion axis only: no wringing / twisting Mixamo vertebrae.
-   // Torso bends AROUND its real spine; this, not the holder, carries the
-   // upper-body collapse. Stagger chest and neck behind lower spine motion.
-   const late=THREE.MathUtils.smoothstep(t,j.key==="Chest"?.16:.23,.78);
-   const magnitude=j.key==="Spine"?.50:j.key==="Chest"?.27:.11;
-   j.angle=Math.sign(f.axis.x)*magnitude*(j.key==="Spine"?folding:late);
+   // Unpowered hinge dynamics: gravity produces torque on each unsupported
+   // body segment. Actual angular velocity carries into the next frame;
+   // do not drive real Mixamo bones to keyframed/smoothstep death poses.
+   const parent=j.key==="Spine"?f.angle:j.key==="Chest"?
+    (f.joints.find(k=>k.key==="Spine")?.angle||0):
+    (f.joints.find(k=>k.key==="Chest")?.angle||0);
+   const gravityLever=j.key==="Spine"?24:j.key==="Chest"?18:13;
+   const torque=gravityLever*Math.sin(.13+Math.abs(parent)*1.14)-
+    (impact?4.9:1.15)*j.vel;
+   j.vel=THREE.MathUtils.clamp(j.vel+torque*h,0,j.key==="Spine"?3.9:3.3);
+   j.angle=THREE.MathUtils.clamp(j.angle+j.vel*h,0,j.limit);
+   if(j.angle>=j.limit-.0001)j.vel=0;
    f.maxSpineFlex=Math.max(f.maxSpineFlex,Math.abs(j.angle));
   }else{
    j.angle=THREE.MathUtils.clamp(j.angle+j.vel*h,-j.limit,j.limit);
@@ -8219,13 +8229,15 @@ function updateInfectedGunshotFall(z,rag,dt){
   }
   const released=THREE.MathUtils.smoothstep(t,.05,.67)*j.relax;
   j.bone.quaternion.copy(j.base).slerp(j.neutral,released).multiply(
-   infectedDeathTmpQuat.setFromAxisAngle(j.axis,j.angle));
+   infectedDeathTmpQuat.setFromAxisAngle(j.axis,
+    (j.key==="Spine"||j.key==="Chest"||j.key==="Neck")?
+     Math.sign(f.axis.x)*j.angle:j.angle));
   f.peakJointAngle=Math.max(f.peakJointAngle,Math.abs(j.angle));
  }
  f.holder.quaternion.copy(f.baseHolderQuat).multiply(
   infectedDeathTmpQuat.setFromAxisAngle(f.axis,f.angle));
  // Slight uneven side collapse; cannot complete a full barrel roll.
- f.rolled=f.sprawlSide*.14*THREE.MathUtils.smoothstep(t,.31,.87);
+ f.rolled=f.sprawlSide*.11*THREE.MathUtils.smoothstep(t,.38,1.05);
  f.holder.quaternion.multiply(
   infectedDeathTmpQuat.setFromAxisAngle(new THREE.Vector3(0,0,1),f.rolled));
  // Fix the rotating root to the simulated HIP CENTER (not the feet and not
