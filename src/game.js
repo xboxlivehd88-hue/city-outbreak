@@ -2900,7 +2900,7 @@ new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
 // A SINGLE textured SkinnedMesh carries both arms, with 47 skeleton joints
 // (each wrist/elbow plus individually articulated fingers). Keep the authored
 // materials/skin bindings; do not redraw old capsule arms over this mesh.
-let fpsArmsTemplate=null,fpsArmsLoadError="",fpsArmsTemplateLength=0;
+let fpsArmsTemplate=null,fpsArmsGripClip=null,fpsArmsLoadError="",fpsArmsTemplateLength=0;
 new GLTFLoader().load("assets/cartoon_fps_arms.glb?v=684",gltf=>{
  const src=gltf.scene;
  src.updateMatrixWorld(true);
@@ -2930,6 +2930,9 @@ new GLTFLoader().load("assets/cartoon_fps_arms.glb?v=684",gltf=>{
   }
  });
  fpsArmsTemplate=src;
+ fpsArmsGripClip=gltf.animations.find(c=>c.name==="CINEMA_4D_Main")||gltf.animations[0]||null;
+ document.documentElement.dataset.fpsArmsSourceGripAnimation=String(fpsArmsGripClip?.name||"none");
+ document.documentElement.dataset.fpsArmsSourceGripDuration=String(fpsArmsGripClip?.duration||0);
  document.documentElement.dataset.fpsArmsGlbReady="true";
  document.documentElement.dataset.fpsArmsSkinBones=String(skinned[0].skeleton.bones.length);
  document.documentElement.dataset.fpsArmsAnimationClips=String(gltf.animations.length);
@@ -3706,10 +3709,25 @@ function updateDMRRightTriggerGrip(dt){
 // The 47-bone source rig is a single SKINNED mesh, not static prop arms.
 // Retarget its original shoulder/elbow/wrist chains onto the existing hidden
 // hand controllers; preserves M4/MP5/shotgun/M17/DMR/M240/launcher paths.
-let fpsNativeArms=null,fpsNativeBoneChains=null,fpsNativePoseFrames=0;
+let fpsNativeArms=null,fpsNativeBoneChains=null,fpsNativePoseFrames=0,fpsNativeMixer=null;
+// v687: the original GLB fingers ARE animated (64 channels / 2.167 seconds).
+// Native wrist aim was never solved in v684-v686: only the wrist POSITIONS were
+// targeted, while each hand retained its camera-incompatible bind rotation.
+// A distinct palm-facing orientation and small actual wrist-grip offset per gun
+// gives the real finger bones a chance to wrap the real gun, without translating
+// the imported weapons, their red-dot sights, reload mags or camera.
+const FPS_NATIVE_GRIPS={
+ rifle:{left:{delta:[.09,-.08,.03],roll:1.53},right:{delta:[-.04,-.07,.06],roll:3.14}},
+ smg:{left:{delta:[.06,-.09,.06],roll:1.54},right:{delta:[-.05,-.09,.04],roll:3.14}},
+ shotgun:{left:{delta:[.07,-.08,.07],roll:1.52},right:{delta:[-.04,-.07,.04],roll:3.14}},
+ pistol:{left:{delta:[-.12,-.065,.07],roll:.16},right:{delta:[-.025,-.06,.03],roll:3.02}},
+ dmr:{left:{delta:[.08,-.095,.045],roll:1.54},right:{delta:[-.035,-.07,.045],roll:3.14}},
+ grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:1.55},right:{delta:[-.04,-.085,.04],roll:3.14}},
+ m240:{left:{delta:[.09,-.08,.06],roll:1.51},right:{delta:[-.04,-.085,.05],roll:3.14}}
+};
 const fpsJointAxis=new THREE.Vector3(0,1,0);
 function attachOriginalFpsArms(){
- fpsNativeArms=null;fpsNativeBoneChains=null;
+ fpsNativeArms=null;fpsNativeBoneChains=null;fpsNativeMixer=null;
  if(!fpsArmsTemplate||!playerHandRig)return;
  const rig=cloneSkeleton(fpsArmsTemplate);
  rig.name="OriginalCartoonFPSArmsGLB";
@@ -3720,7 +3738,10 @@ function attachOriginalFpsArms(){
  // world quaternion, so both wrists still reach their approved positions.
  rig.rotation.x=Math.PI;
  const nativeLength=Math.max(.001,fpsArmsTemplateLength);
- rig.scale.multiplyScalar(1.48/nativeLength);
+ // Source palms were ~35cm across in v686. Shrink the original proportionally
+ // so the cartoon fingers fit actual gun receivers rather than engulfing them.
+ // The arm-chain IK recomputes elbow/forearm span against existing hand targets.
+ rig.scale.multiplyScalar(1.20/nativeLength);
  rig.traverse(o=>{
   o.userData.externalWeaponAsset=true;
   if(o.isSkinnedMesh){o.castShadow=false;o.receiveShadow=false;o.frustumCulled=false;}
@@ -3733,11 +3754,20 @@ function attachOriginalFpsArms(){
   if(b.some(j=>!j))return null;
   return{arm:b[0],elbow:b[1],wrist:b[2],index:b[3],indexMid:b[4],
    armRest:b[0].quaternion.clone(),elbowRest:b[1].quaternion.clone(),
+   elbowTranslation:b[1].position.clone(),wristTranslation:b[2].position.clone(),
    indexRest:b[3].quaternion.clone(),indexMidRest:b[4].quaternion.clone()};
  };
  const left=chain("L"),right=chain("R");
  if(!left||!right){fpsArmsLoadError="Clone lost original wrist/elbow/finger bones";document.documentElement.dataset.fpsArmsError=fpsArmsLoadError;gun.remove(rig);return}
  fpsNativeArms=rig;fpsNativeBoneChains={left,right};
+ if(fpsArmsGripClip){
+  fpsNativeMixer=new THREE.AnimationMixer(rig);
+  const authored=fpsNativeMixer.clipAction(fpsArmsGripClip);
+  authored.play();authored.setLoop(THREE.LoopOnce,1);authored.clampWhenFinished=true;
+ }
+ document.documentElement.dataset.fpsArmsNativeGripProfile=weapon;
+ document.documentElement.dataset.fpsArmsRealAnimation=String(!!fpsNativeMixer);
+ document.documentElement.dataset.fpsArmsHandScale="1.20";
  fpsNativeArms.visible=false;  // first IK frame initializes final weapon grips
  document.documentElement.dataset.fpsArmsSource="cartoon_fps_arms.glb";
  document.documentElement.dataset.fpsArmsRootRotationX=rig.rotation.x.toFixed(6);
@@ -3768,37 +3798,58 @@ function rotateNativeBoneToward(bone,child,goalGun,restQuat){
 }
 function poseOriginalFpsArms(){
  if(!fpsNativeArms||!fpsNativeBoneChains||!playerHandRig)return;
- // The controller rig is INVISIBLE and retains the exact original per-gun
- // hand targets. Its current transforms already account for reload and ADS.
+ // Sample ORIGINAL authored 2.167s animation before retargeting the arms.
+ // It contains 64 independently keyed wrist/finger/joint tracks; don't play
+ // its filmed camera arm motion on top of CITY OUTBREAK weapon transformations.
+ // Wrist, shoulder and elbow are reattached to the actual gun targets below.
+ const rp=reloadPoseProgress();
+ const fingerTime=reloading
+   ?THREE.MathUtils.lerp(.12,Math.min(fpsArmsGripClip?.duration||2.167,2.0),rp.p)
+   :recoil>.03?.88:.56;
+ if(fpsNativeMixer)fpsNativeMixer.setTime(fingerTime);
  gun.updateMatrixWorld(true);
+ const grip=FPS_NATIVE_GRIPS[weapon]||FPS_NATIVE_GRIPS.rifle;
+ const gunWorldQuat=gun.getWorldQuaternion(new THREE.Quaternion());
  const poseSide=(side,controller)=>{
   const chain=fpsNativeBoneChains[side];
-  const rigGroup=side==="left"?playerHandRig.left:playerHandRig.right;
-  const upper=fpsJointEnds(controller.upper,rigGroup);
-  const lower=fpsJointEnds(controller.fore,rigGroup);
-  const s=upper.a,e=lower.a,w=lower.b;
-  const desiredUpper=e.clone().sub(s).length();
-  const desiredFore=w.clone().sub(e).length();
+  const group=side==="left"?playerHandRig.left:playerHandRig.right;
+  const upper=fpsJointEnds(controller.upper,group);
+  const lower=fpsJointEnds(controller.fore,group);
+  const s=upper.a,e=lower.a;
+  const preset=grip[side];
+  const w=lower.b.clone().add(new THREE.Vector3(...preset.delta));
   const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
+  // Animating translations is fine for fingers, but keep elbow and wrist
+  // lengths from the asset bind rig to maintain valid skinned segment spans.
+  elbow.position.copy(chain.elbowTranslation);
+  wrist.position.copy(chain.wristTranslation);
   arm.parent.updateMatrixWorld(true);
   arm.position.copy(arm.parent.worldToLocal(gun.localToWorld(s.clone())));
   arm.scale.set(1,1,1);elbow.scale.set(1,1,1);
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(arm,elbow,e,chain.armRest);
-  const rawE=arm.getWorldPosition(new THREE.Vector3()).distanceTo(elbow.getWorldPosition(new THREE.Vector3()));
-  arm.scale.z=Math.max(.30,Math.min(2.9,desiredUpper/Math.max(.001,rawE)));
+  const upperLength=arm.getWorldPosition(new THREE.Vector3()).distanceTo(elbow.getWorldPosition(new THREE.Vector3()));
+  arm.scale.z=THREE.MathUtils.clamp(s.distanceTo(e)/Math.max(.001,upperLength),.3,3.2);
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(elbow,wrist,w,chain.elbowRest);
-  const rawW=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
-  elbow.scale.z=Math.max(.30,Math.min(2.9,desiredFore/Math.max(.001,rawW)));
+  const lowerLength=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
+  elbow.scale.z=THREE.MathUtils.clamp(e.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
   elbow.updateMatrixWorld(true);
-  // Natural glove/index pose from the GLB; one small trigger curl applies
-  // ONLY on the DMR, not to rifle receivers or their camera ray.
-  chain.index.quaternion.copy(chain.indexRest);
-  chain.indexMid.quaternion.copy(chain.indexMidRest);
+  // SOURCE finger bases run down wrist-local -Z. Aim them FORWARD along the
+  // barrel, then rotate each native palm toward its weapon grip. Previously
+  // the original arbitrary bind wrist rotation pointed hands out of the gun.
+  const desiredInGun=new THREE.Quaternion().setFromEuler(
+   new THREE.Euler(side==="left"?.08:-.08,side==="left"?-.12:.02,preset.roll,"XYZ")
+  );
+  const desiredWorld=gunWorldQuat.clone().multiply(desiredInGun);
+  const parentWorld=elbow.getWorldQuaternion(new THREE.Quaternion());
+  wrist.quaternion.copy(parentWorld.invert().multiply(desiredWorld));
+  wrist.updateMatrixWorld(true);
+  // Retain genuine animation on all finger roots and phalanges; only the
+  // firing index bends an extra few degrees at the Norinco's trigger.
   if(side==="right"&&weapon==="dmr"&&!reloading){
-   chain.index.rotateX(-.20);
-   chain.indexMid.rotateX(-.12);
+   chain.index.rotateX(-.11);
+   chain.indexMid.rotateX(-.09);
   }
  };
  poseSide("left",{upper:playerHandRig.leftUpper,fore:playerHandRig.leftFore});
@@ -3806,6 +3857,7 @@ function poseOriginalFpsArms(){
  fpsNativeArms.visible=true;
  fpsNativePoseFrames++;
  document.documentElement.dataset.fpsArmsPoseFrames=String(fpsNativePoseFrames);
+ document.documentElement.dataset.fpsArmsAnimatedFingerTime=fingerTime.toFixed(3);
 }
 
 function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
@@ -4434,7 +4486,7 @@ function rebuildGun(){
  clearReloadMagazineFX(true);
  shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();fpsNativeArms=null;fpsNativeBoneChains=null;dmrShoulderBlend=0;dmrRightGripBlend=0;
+ gun.clear();fpsNativeArms=null;fpsNativeBoneChains=null;fpsNativeMixer=null;dmrShoulderBlend=0;dmrRightGripBlend=0;
  dmrViewRoot=null;dmrViewHome=null;dmrViewQuat=null;dmrOpticPose=null;dmrOpticAimPoint=null;dmrMagazineGrip=null;dmrRecoilVisual=0;playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141620,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
