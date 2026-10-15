@@ -5636,7 +5636,7 @@ const NATURAL_CRAWLER_BONE_NAMES=Object.freeze({
  // NO hip/leg keyframes (only a toe joint). Preserve recorded upper motion,
  // add shallow ground-hugging thigh/shin pulls on the SAME original GLB rig.
 const injuredCrawlWorldQuat=new THREE.Quaternion(),injuredCrawlParentQuat=new THREE.Quaternion();
-const injuredCrawlAim=new THREE.Vector3(),injuredCrawlProbe=new THREE.Vector3();
+const injuredCrawlAim=new THREE.Vector3(),injuredCrawlAxis=new THREE.Vector3(),injuredCrawlProbe=new THREE.Vector3();
 const injuredCrawlMinProbeParts=Object.freeze([
  ["L_Foot",.09],["R_Foot",.09],["L_LowerLeg",.115],["R_LowerLeg",.115],
  ["L_Hand",.045],["R_Hand",.045],["Head",.16],["Hips",.065]
@@ -5647,7 +5647,7 @@ function aimInjuredCrawlerSegment(root,bone,child,x,y,z){
  bone.parent?.getWorldQuaternion(injuredCrawlParentQuat);
  injuredCrawlAim.set(x,y,z).normalize().applyQuaternion(injuredCrawlWorldQuat);
  injuredCrawlAim.applyQuaternion(injuredCrawlParentQuat.invert());
- bone.quaternion.setFromUnitVectors(child.position.clone().normalize(),injuredCrawlAim.normalize());
+ bone.quaternion.setFromUnitVectors(injuredCrawlAxis.copy(child.position).normalize(),injuredCrawlAim.normalize());
  bone.updateWorldMatrix(true,false);
 }
 function poseInjuredCrawlerDraggingLegs(z){
