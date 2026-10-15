@@ -249,6 +249,23 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    });
   }
   z.phase=prevPhase;syncInfectedGLB(z,0);
+  // v672: sample an entire authored gait instead of only four sparse upper
+  // body checkpoints. One real Mixamo ankle's forward maximum can fall
+  // between those four phases despite its full cycle articulating correctly.
+  // Reset foot-plant bookkeeping for these static rig samples; the separate
+  // 64-frame MOVING actor test below still asserts truly planted feet.
+  const gaitFootFrames=[];
+  for(let i=0;i<24;i++){
+   z.infectedFootPlants=null;
+   z.phase=i*Math.PI*2/24;
+   syncInfectedGLB(z,0);
+   gaitFootFrames.push(["L","R"].map(side=>{
+    const foot=z.infectedBones.get(side+"_Foot");
+    return z.g.worldToLocal(foot.getWorldPosition(new THREE.Vector3())).toArray();
+   }));
+  }
+  z.infectedFootPlants=null;
+  z.phase=prevPhase;syncInfectedGLB(z,0);
   // v658: measure shoes in WORLD SPACE while a REAL actor advances.
   // Previous tests rotated knees in place and missed ice-skating planted feet.
   const initialActor=z.g.position.clone(),initialPhase=z.phase;
@@ -285,7 +302,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    return angle(K.map((n,k)=>n-H[k]),F.map((n,k)=>n-K[k]));
   }));
   const legTravel=[0,1].map(i=>{
-   const a=standingFrames.map(f=>f.knees[i*3+2]);
+   const a=gaitFootFrames.map(f=>f[i]);
    return{forward:Math.max(...a.map(p=>p[2]))-Math.min(...a.map(p=>p[2])),
     lift:Math.max(...a.map(p=>p[1]))-Math.min(...a.map(p=>p[1]))};
   });
