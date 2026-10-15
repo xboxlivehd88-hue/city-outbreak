@@ -400,9 +400,17 @@ try{
     report.m17Grip.pistolGrips?.right?.delta?.[2]===.03&&
     report.m17Grip.hip.separation>.04&&report.m17Grip.hip.separation<.6&&
     report.m17Grip.ads.separation>.04&&report.m17Grip.ads.separation<.6&&
-    ["left","right","leftElbow","rightElbow"].every(k=>
+    // Restore v687's *authored* aiming transition, which legitimately
+    // shifts skinned wrists by ~0.08-0.16 and elbows by ~0.07-0.10 units.
+    // v688 forced these bones to remain still and stretched the sleeves.
+    ["left","right"].every(k=>
        report.m17Grip.hip[k]?.length===3&&report.m17Grip.ads[k]?.length===3&&
-       report.m17Grip.hip[k].every((v,i)=>Math.abs(v-report.m17Grip.ads[k][i])<.065)),
+       report.m17Grip.hip[k].every((v,i)=>Math.abs(v-report.m17Grip.ads[k][i])<.19))&&
+    ["leftElbow","rightElbow"].every(k=>
+       report.m17Grip.hip[k]?.length===3&&report.m17Grip.ads[k]?.length===3&&
+       report.m17Grip.hip[k].every((v,i)=>Math.abs(v-report.m17Grip.ads[k][i])<.13))&&
+    report.m17Grip.hip.left[0]<report.m17Grip.hip.right[0]&&
+    report.m17Grip.ads.left[0]<report.m17Grip.ads.right[0],
     "v689 M17 should restore closer v687 authored hand rig with no v689 ADS sleeve spread or wrist teleport: "+
     JSON.stringify(report.m17Grip));
   assert(report.nativeArms?.source==="cartoon_fps_arms.glb"&&
