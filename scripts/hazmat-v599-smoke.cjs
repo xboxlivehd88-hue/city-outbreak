@@ -1,4 +1,4 @@
-// v675 final synchronized loader: run against committed index.html game.js?v=675 and approved two-natural-crawler rotation.
+// v676 final synchronized loader: run against committed index.html game.js?v=676 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
  let browser,page;const report={build:658,passed:false},errors=[];
@@ -11,7 +11,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
     errors.push("SHADER: "+msg.text().slice(0,500));
   });
   page.on("response",r=>{if(r.url().includes("/assets/zombie_hazmat.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=675$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=676$/,async route=>{
    const rsp=await route.fetch(),src=await rsp.text();
    const extraAudit="\n;globalThis.__hazmatLifecycleAudit=()=>{\n const all=zombies.filter(z=>z.kind===\"acidic\"&&!z.dead&&z.hazmatVisual);\n if(all.length<3)throw Error(\"Not enough Hazmat test actors\");\n const normal=all[0],crawler=all[1];\n // Release the first actor directly into the game PBD, never a canned pose.\n const origin=normal.g.position.clone().add(new THREE.Vector3(0,1,1));\n const initial=normal.hazmatVisual.position.clone();\n killZ(normal,false,origin,1.5);\n const isNative=normal.ragdoll?.bodyPbd?.holder===normal.hazmatVisual;\n const originalBones=normal.hazmatBones?.size||0;\n for(let i=0;i<24;i++)updateRagdoll(normal,1/60);\n const ragTravel=normal.hazmatVisual.position.distanceTo(initial);\n // Detaching each leg must not spawn the hidden generic leg debris.\n crawler.hp=Math.max(40,crawler.hp);const sameRoot=crawler.g,originalModel=crawler.hazmatModel;\n const beforeParts=parts.filter(p=>p.limb).length;\n detachLeg(crawler,\"left\");\n const afterOne={left:crawler.leftLegDetached,right:crawler.rightLegDetached,\n  nativeHidden:crawler.hazmatBones.get(\"L_UpperLeg\").scale.x<.001,\n  parts:parts.filter(p=>p.limb).length-beforeParts,modelSame:crawler.hazmatModel===originalModel};\n detachLeg(crawler,\"right\");\n hazmatZombie.sync(crawler,.016);\n const afterTwo={kind:crawler.kind,ownerStillPresent:zombies.includes(crawler),\n  sameRoot:crawler.g===sameRoot,modelSame:crawler.hazmatModel===originalModel,\n  crawler:crawler.hazmatCrawler,visual:crawler.hazmatVisual?.name,\n  bothHidden:crawler.hazmatBones.get(\"L_UpperLeg\").scale.x<.001&&\n   crawler.hazmatBones.get(\"R_UpperLeg\").scale.x<.001,\n  headHitbox:crawler.hitMeshes.some(o=>o.userData.isHead),\n  bodyHitbox:crawler.hitMeshes.some(o=>o.userData.part===\"torso\")};\n // Native user grenade GLB, no fake explosion geometry or extra damage code.\n const grenade=grenadeModelTemplate?.clone(true);\n let explosionMs=null;\n if(grenade){grenade.position.copy(crawler.g.position).add(new THREE.Vector3(0,1,.35));\n  scene.add(grenade);\n  const before=performance.now();\n  explodeGrenade({q:grenade});\n  explosionMs=performance.now()-before;\n }\n return {isNative,originalBones,ragTravel,afterOne,afterTwo,\n  explosionMs,reportedExplosionMs:document.documentElement.dataset.lastGrenadeLogicMs};\n};\n";
    const injected="\n;globalThis.__hazmatSmoke={\n ready:()=>newCityCollisionReady&&hazmatZombie.status().loaded,\n forceHazmats:()=>{for(let i=0;i<10;i++)makeZombie(px+8+i*.25,pz+8+i*.25,300+i,'acidic')},\n snapshot:()=>{\n  const live=zombies.filter(z=>!z.dead&&z.kind==='acidic'),hz=live.filter(z=>z.hazmatVisual),z=hz[0],meshes=[],bones=[];\n  z?.hazmatModel?.traverse(o=>{\n   if(o.isBone)bones.push(o.name);\n   if(o.isSkinnedMesh)meshes.push({name:o.name,map:!!o.material?.map,vertices:o.geometry?.getAttribute(\"position\")?.count||0});\n  });\n  const box=z?.hazmatVisual?new THREE.Box3().setFromObject(z.hazmatVisual,true):null;\n  return {\n   build:document.documentElement.dataset.cityOutbreakBuild,wave,waveTarget,waveSpawned,\n   live:live.length,kinds:[...new Set(live.map(z=>z.kind))],\n   acidic:live.filter(z=>z.kind===\"acidic\").length,boss:live.filter(z=>z.kind===\"boss\").length,\n   attached:hz.length,original:z?.hazmatModel?.name,meshes,bones:bones.length,\n   leftLeg:bones.some(n=>/leftleg/i.test(n)),rightLeg:bones.some(n=>/rightleg/i.test(n)),\n   height:box?.getSize(new THREE.Vector3()).y,scale:z?.hazmatVisual?.scale.x,\n   clips:Object.keys(z?.hazmatActions||{}),mist:hz.some(a=>a.hazardMist?.visible===true),mistObjects:hz.filter(a=>!!a.hazardMist).length,\n   hidden:z?.rigVisual?(()=>{let seen=0;z.rigVisual.traverse(o=>{if(o.isMesh&&o.visible)seen++});return seen===0})():false,\n   headHits:z?.hitMeshes?.filter(o=>o.userData?.part===\"head\").length,\n   torsoHits:z?.hitMeshes?.filter(o=>o.userData?.part===\"torso\").length,\n   pool:BOSS_NAME_POOL.length,armTuning:hazmatZombie.status().armTuning,attachStatus:hazmatZombie.status()\n  };\n },\n motion:()=>{\n  const z=zombies.find(z=>!z.dead&&z.kind===\"acidic\"&&z.hazmatMixer);\n  if(!z)return null;\n  const mixer=z.hazmatMixer,walk=z.hazmatActions.Zombie_Walk_Root,bones=[];\n  z.hazmatModel.traverse(o=>{if(o.isBone&&/leftleg|rightleg|leftupleg|rightupleg/i.test(o.name))bones.push(o)});\n  for(const action of Object.values(z.hazmatActions))action.stop();\n  walk.reset().play();walk.timeScale=1;\n  const pose=t=>{mixer.setTime(t);return bones.map(b=>b.quaternion.clone())};\n  const a=pose(.21),b=pose(1.35);\n  return {clip:walk.getClip().name,angles:a.map((q,i)=>q.angleTo(b[i]))};\n }\n};";
@@ -43,7 +43,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   return {modelReady,modelError,standing,converted};
  }
 };`;
-   // v675 inspect real first-person gun world bounds at level and max-look-down.
+   // v676 inspect real first-person gun world bounds at level and max-look-down.
    const eyeAudit=`
 ;globalThis.__eyeHeightAudit=()=>{
  const prior=pitch,ground=playerGroundY;
@@ -59,7 +59,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
     worldScale:PLAYER_WORLD_SCALE,samples};
 };`;
    const profileAudit=`
-;globalThis.__city675PerfAudit=()=>{
+;globalThis.__city676PerfAudit=()=>{
  const now=performance.now(),prior={
   check:rainCoverCheckAt,x:rainCoverLastX,y:rainCoverLastY,z:rainCoverLastZ,
   count:perfRainCoverChecks
@@ -79,7 +79,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  };
 };`;
    const staticAudit=`
-;globalThis.__city675StaticMapAudit=()=>{
+;globalThis.__city676StaticMapAudit=()=>{
  const imported=newCityRoot,meshes=[];
  imported?.traverse(o=>{if(o.isMesh&&meshes.length<12)meshes.push(o)});
  const before=meshes.map(o=>o.matrixWorld.elements.slice());
@@ -97,16 +97,24 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
 };`;
    await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+profileAudit+staticAudit,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=675-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=676-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.ready(),null,{timeout:110000});
+  // Shaders, textures and actual pooled instance buffers must be initialized
+  // by the idle menu, BEFORE the first live grenade impacts gameplay frames.
+  await page.waitForFunction(()=>document.documentElement.dataset.explosionGpuWarmup==="ready",null,{timeout:30000});
+  report.grenadeGpuPrewarm=await page.evaluate(()=>({
+   status:document.documentElement.dataset.explosionGpuWarmup,
+   timeMs:Number(document.documentElement.dataset.explosionGpuWarmupMs||0),
+   error:document.documentElement.dataset.explosionGpuWarmupError||""
+  }));
   await page.locator("#start").click({noWaitAfter:true});
   await page.evaluate(()=>globalThis.__hazmatSmoke.forceHazmats());
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.snapshot()?.attached===10,null,{timeout:45000});
   await page.waitForTimeout(700);
   await page.waitForFunction(()=>!!document.documentElement.dataset.cityPerformanceBreakdown,null,{timeout:45000});
-  report.performance=await page.evaluate(()=>globalThis.__city675PerfAudit());
-  report.staticMap=await page.evaluate(()=>globalThis.__city675StaticMapAudit());
+  report.performance=await page.evaluate(()=>globalThis.__city676PerfAudit());
+  report.staticMap=await page.evaluate(()=>globalThis.__city676StaticMapAudit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
   report.motion=await page.evaluate(()=>globalThis.__hazmatSmoke.motion());
@@ -157,7 +165,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    Number.isFinite(report.performance.hudStats?.rainMs)&&
    Number.isFinite(report.performance.hudStats?.navWorstMs)&&
    Number.isFinite(report.performance.hudStats?.roofWorstMs),
-   "v675 navigation frame budget and stationary rain raycast profiling failed: "+
+   "v676 navigation frame budget and stationary rain raycast profiling failed: "+
    JSON.stringify(report.performance));
   assert.equal(s.armTuning.reference,"Zombie_Idle");
   assert(s.armTuning.tracks>=4&&s.armTuning.upperArms>=2&&
@@ -192,6 +200,10 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert(life.afterTwo.headHitbox&&life.afterTwo.bodyHitbox);
   assert(life.explosionMs!==null&&Number.isFinite(life.explosionMs));
   assert(life.explosionMs<4500,"Main-thread grenade blast stalls >4.5 seconds");
+  assert(report.grenadeGpuPrewarm?.status==="ready"&&
+   report.grenadeGpuPrewarm?.timeMs>0&&
+   !report.grenadeGpuPrewarm.error,
+   "v676 explosion shader/texture/particle buffers weren't prewarmed: "+JSON.stringify(report.grenadeGpuPrewarm));
   assert(report.grenadeFx.prepared>=3&&report.grenadeFx.fragmentCount>0&&
    report.grenadeFx.particles>=100&&report.grenadeFx.batchDraws===2&&
    report.grenadeFx.batches==="2"&&
