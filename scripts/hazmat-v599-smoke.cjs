@@ -327,7 +327,11 @@ try{
    report.dmrTest.importedMag&&
    report.dmrTest.magMaterial==="mag_bakelite"&&report.dmrTest.magOriginalTexture&&
    report.dmrTest.realTextures.some(Boolean)&&
-   report.dmrTest.worldSize?.[2]>2.5&&report.dmrTest.worldSize?.[2]<5.5&&
+   // The source model's authored 3.8-unit local barrel length does not depend
+   // on world-facing direction. A world-axis Z AABB check incorrectly fails
+   // when the player is facing sideways during browser pointer lock.
+   Math.abs(Number(report.dmrTest.sourceLength)*Number(report.dmrTest.viewScale)-3.8)<.035&&
+   report.dmrTest.worldSize?.some(dim=>dim>2.5&&dim<5.5)&&
    report.dmrTest.retired&&report.dmrTest.cycle.includes("dmr")&&
    !report.dmrTest.cycle.includes("awm"),
    "v680 must equip test DMR and remove retired sniper: "+JSON.stringify(report.dmrTest));
