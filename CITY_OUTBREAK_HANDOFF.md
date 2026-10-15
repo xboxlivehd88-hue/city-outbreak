@@ -1,3 +1,12 @@
+# v685 — VERIFIED 180° X-ROTATED ORIGINAL FPS ARMS (2026-10-15)
+
+- Real Chromium GitHub Actions run **[38801016125](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38801016125) SUCCEEDED** with `passed: true`, no JavaScript errors.
+- All **seven** weapons tested with original `cartoon_fps_arms.glb`: **one textured SkinnedMesh / 47 joints**, **no procedural arm meshes**, and native rig `rotationX=3.141592653589793` (exact 180° X). Both wrists retain weapon target alignment, maximum error DMR right wrist **0.00518 world units**. Preserved Norinco ADS sight screen zero and approved hip, headless Hazmat and grenade regression.
+- **GitHub Pages deployment SUCCEEDED** for the then-current v685 main via Pages run **[38801098153](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38801098153)**. Loader `./src/game.js?v=685`; playable https://xboxlivehd88-hue.github.io/city-outbreak/?v=685-arms-180x . User's visual approval of the rotated hands remains pending.
+- Protected v324 recovery checkpoint unchanged. **Only correct arm orientation, not weapon, sight, ammo, reload or zombie systems.**
+
+---
+
 # v685 — CORRECT ORIGINAL FPS ARMS UPSIDE-DOWN ORIENTATION — 2026-10-15
 
 - **User video / instruction:** Uploaded `2026-10-15 16-11-51.mp4` shows the newly introduced GLB player arms oriented incorrectly. The user explicitly requests a **180° rotation around X**. This is a rotation/orientation task only, not a request to rework any approved weapon, ADS, reload, scale, performance or zombie system.
