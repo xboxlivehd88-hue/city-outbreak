@@ -1,3 +1,13 @@
+# v671 VERIFIED — TWO APPROVED NATURALLY SPAWNING CRAWLERS — 2026-10-15
+
+- **User visual approval:** after testing v670, user said "they seem fine." The new animated injured crawler is APPROVED alongside the existing natural crawler. Leave their approved GLB animation, original textures, hitboxes, floor contact, and limb destruction untouched.
+- **Gameplay:** Wave 1 restored to ten normal Shamblers. From Wave 3 onward the PRE-EXISTING crawler roll now chooses between two genuine natural GLB models at 50/50, with no change to overall crawler probability. Forced leg-loss/converted crawlers keep their separate identities and original models.
+- **Successful full Chromium regression using synchronized v671 index loader:** [Wave 1 / both real natural GLBs / original crawler Crawl and Running_Crawl / new injured 51-track animation / both rig attachments / accurate hitboxes and dismemberment / native leg-ground contact / converted crawler identity / original Infected / 19-boss rotation](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38684089568) **PASS**. The first attempt ran at the earlier script commit with an older index loader and timed out before injection; corrected by retriggering only after the synced index v671 was committed.
+- [Original Sprinter regression](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38684093086) **PASS**, [Hazmat/Green Guy regression](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38684096663) **PASS**; [GitHub Pages deployment at complete v671 script commit](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38684096809) **SUCCESS**. Later doc-only commits need a final Pages success check.
+- **Loader** `./src/game.js?v=671`. **Playable** https://xboxlivehd88-hue.github.io/city-outbreak/?v=671-two-approved-natural-crawlers . Original Infected, Sprinters, Green Guy, Hazmat, Panzer, Suit Guy, Parasite, other bosses, and protected recovery v324 remain untouched.
+
+---
+
 # v671 — APPROVED BOTH NATURAL CRAWLERS IN NORMAL ROTATION — 2026-10-15
 
 - User tested v670 and confirmed the new injured crawler **"they seem fine"**. This is the requested visual approval after multiple walking/leg-ground corrections; do not reopen or alter either approved native crawler animation, grounding, skins, original model hitboxes or dismemberment.
