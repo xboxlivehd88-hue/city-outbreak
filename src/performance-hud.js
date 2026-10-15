@@ -1,4 +1,4 @@
-// CITY OUTBREAK performance HUD module.
+// CITY OUTBREAK performance HUD module. v677: separate asynchronous GPU execution from CPU and vsync frame pacing.
 // Measures and displays runtime performance without owning gameplay behavior.
 export function createPerformanceGuard({
  renderer,
@@ -35,6 +35,10 @@ export function createPerformanceGuard({
     "\nPIXEL RATIO "+renderer.getPixelRatio().toFixed(2)+
     (p?"\nCPU GAME "+fmt(p.updateMs)+"ms | LIGHTS "+fmt(p.lightsMs)+
      " | RAIN "+fmt(p.rainMs)+" | RENDER SUBMIT "+fmt(p.renderSubmitMs)+
+     "\nFRAME P50 "+fmt(p.frameMedianMs)+"ms | P95 "+fmt(p.frameP95Ms)+"ms | MAX "+fmt(p.frameMaxMs)+"ms"+
+     "\nGPU RENDER "+(p.gpu?.status==="ready"
+       ?fmt(p.gpu.avgMs)+"ms AVG | "+fmt(p.gpu.p95Ms)+"ms P95 | "+fmt(p.gpu.worstMs)+"ms WORST"
+       :p.gpu?.status==="unavailable"?"NOT EXPOSED BY BROWSER":String(p.gpu?.status||"collecting"))+
      "\nCPU WORST "+fmt(p.worstCpuMs)+"ms  HITCHES >50ms "+p.hitches+
      "\nAI REPATHS "+p.navBuilds+" / DEFERRED "+p.navDeferred+
      "  MAX "+fmt(p.navWorstMs)+"ms"+
