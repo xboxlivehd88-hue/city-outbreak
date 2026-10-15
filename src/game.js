@@ -6,7 +6,7 @@ import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
-import {createPerformanceGuard} from "./performance-hud.js?v=672";
+import {createPerformanceGuard} from "./performance-hud.js?v=674";
 import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=464";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
