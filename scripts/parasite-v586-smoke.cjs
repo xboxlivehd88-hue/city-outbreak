@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"665",pass:false},errors=[];let browser,page;
+ const report={version:"666",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=665$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=666$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -41,6 +41,42 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
      mats.push({name:mat.name,diffuse:!!mat.map?.image,normal:!!mat.normalMap?.image,
       width:mat.map?.image?.width||0,colorSpace:mat.map?.colorSpace});
    });return mats})()};
+ },
+ injuredGaitAudit:()=>{
+  const z=zombies.find(a=>a.injuredCrawlerVisual&&!a.dead);
+  if(!z)throw Error("New injured crawler missing for movement check");
+  const before={x:z.g.position.x,z:z.g.position.z,clipTime:z.injuredCrawlerAction.time};
+  const knees=[],leftFeet=[],rightFeet=[],floorGaps=[],rates=[];
+  // Exercise the exact live update used on road/sidewalk, advancing the root
+  // by 0.015m/frame (0.9m/s). Compare original GLB limb travel in actor space.
+  for(let i=0;i<96;i++){
+   z.g.position.x+=.015;
+   updateInjuredCrawlerVisual(z,1/60);
+   const get=key=>{
+    const p=z.injuredCrawlerBones.get(key).getWorldPosition(new THREE.Vector3());
+    const w=p.clone();z.g.worldToLocal(p);
+    return{pos:p.toArray(),worldY:w.y};
+   };
+   const kl=get("L_LowerLeg"),kr=get("R_LowerLeg");
+   const fl=get("L_Foot"),fr=get("R_Foot");
+   knees.push([kl.pos[2],kr.pos[2]]);
+   leftFeet.push(fl.pos[2]);rightFeet.push(fr.pos[2]);
+   floorGaps.push(Math.min(kl.worldY,kr.worldY,fl.worldY,fr.worldY)-(z.groundY||0));
+   rates.push(z.injuredCrawlerAction.getEffectiveTimeScale());
+  }
+  z.g.position.x=before.x;z.g.position.z=before.z;
+  z.injuredCrawlerPrevX=before.x;z.injuredCrawlerPrevZ=before.z;
+  updateInjuredCrawlerHitboxes(z);
+  const span=a=>Math.max(...a)-Math.min(...a);
+  return {clipTimeBefore:before.clipTime,clipTimeAfter:z.injuredCrawlerAction.time,
+   clipDuration:injuredCrawlerAsset.clip.duration,
+   travel:z.injuredCrawlerTravel,
+   kneeTravel:[span(knees.map(f=>f[0])),span(knees.map(f=>f[1]))],
+   footTravel:[span(leftFeet),span(rightFeet)],
+   lowestJoint:Math.min(...floorGaps),highestJoint:Math.max(...floorGaps),
+   groundCorrection:z.injuredCrawlerGroundAdjustment,
+   speedRate:rates.reduce((a,b)=>a+b,0)/rates.length,
+   originalTexture:!!z.injuredCrawlerModel?.getObjectByProperty("isSkinnedMesh",true)?.material?.map};
  },
  injuredDamageAudit:()=>{
   const z=zombies.find(a=>a.injuredCrawlerVisual&&!a.dead);
@@ -612,7 +648,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=665-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=666-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -620,6 +656,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
   report.normalRotation=await page.evaluate(()=>globalThis.__parasiteSmoke.normalRotation());
   report.injuredCrawler=await page.evaluate(()=>globalThis.__parasiteSmoke.injuredCrawlerAudit());
+  report.injuredGait=await page.evaluate(()=>globalThis.__parasiteSmoke.injuredGaitAudit());
   report.injuredDamage=await page.evaluate(()=>globalThis.__parasiteSmoke.injuredDamageAudit());
   report.infectedTestActors=await page.evaluate(()=>globalThis.__parasiteSmoke.seedInfectedAudit());
   const infectedImages=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedVisualQA());
@@ -670,6 +707,13 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.injuredCrawler.height>.15&&report.injuredCrawler.height<3&&
    Math.abs(report.injuredCrawler.floor-report.injuredCrawler.ground)<.30,
    "New injured crawler not animated/grounded: "+JSON.stringify(report.injuredCrawler));
+  assert(report.injuredGait.clipDuration>9&&report.injuredGait.clipDuration<11&&
+   report.injuredGait.travel>1&&
+   report.injuredGait.kneeTravel.every(x=>x>.07)&&
+   report.injuredGait.footTravel.every(x=>x>.09)&&
+   report.injuredGait.lowestJoint>-.095&&
+   report.injuredGait.speedRate>1.1&&report.injuredGait.originalTexture,
+   "Injured crawler still sliding on fixed/buried legs: "+JSON.stringify(report.injuredGait));
   assert(report.injuredCrawler.hitboxes>=14&&report.injuredCrawler.oldHitboxesReplaced&&
    report.injuredCrawler.materials.length>=3&&
    report.injuredCrawler.materials.every(m=>m.diffuse&&m.normal&&m.width>0&&m.colorSpace==="srgb"),
