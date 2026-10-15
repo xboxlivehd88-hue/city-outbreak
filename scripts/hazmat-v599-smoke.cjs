@@ -192,7 +192,7 @@ try{
    const m17GripAudit=`
 ;globalThis.__m17V688GripAudit=()=>{
  const prev=weapon,prevAim=aiming,prevPitch=pitch;
- weapon="pistol";aiming=false;aimBlend=0;pitch=0;rebuilding=false;reloading=false;reloadWeapon="";
+ weapon="pistol";aiming=false;aimBlend=0;pitch=0;reloading=false;reloadWeapon="";
  rebuildGun();move(.25);
  const sample=()=>{
   gun.updateMatrixWorld(true);
