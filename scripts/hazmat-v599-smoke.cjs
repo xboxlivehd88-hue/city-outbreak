@@ -226,6 +226,11 @@ try{
 globalThis.__m17V691Preview=(ads)=>{
  weapon="pistol";aiming=!!ads;aimBlend=ads?1:0;pitch=0;
  reloading=false;reloadWeapon="";rebuildGun();move(.25);
+ // Capture the actual WebGL canvas directly immediately after a native frame.
+ // Full-page Playwright screenshot waits on compositing and can time out.
+ ren.render(scene,cam);
+ const jpeg=document.querySelector("#cv")?.toDataURL("image/jpeg",.35);
+ return jpeg?.startsWith("data:image/jpeg;base64,")?jpeg.slice(23):null;
 };`;
    const dmrShoulderAudit=`
 ;globalThis.__dmrV683ShoulderAudit=()=>{
@@ -358,12 +363,17 @@ globalThis.__m17V691Preview=(ads)=>{
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:65000});
   report.nativeArms=await page.evaluate(()=>globalThis.__fpsArmsV687Audit());
   report.m17Grip=await page.evaluate(()=>globalThis.__m17V691GripAudit());
-  await page.evaluate(()=>globalThis.__m17V691Preview(false));
-  await page.waitForTimeout(90);
-  console.log("M17_V691_HIP_JPEG="+(await page.screenshot({type:"jpeg",quality:42})).toString("base64"));
-  await page.evaluate(()=>globalThis.__m17V691Preview(true));
-  await page.waitForTimeout(90);
-  console.log("M17_V691_ADS_JPEG="+(await page.screenshot({type:"jpeg",quality:42})).toString("base64"));
+  // Visual capture is diagnostic, NOT allowed to make otherwise-correct
+  // gameplay regression fail on headless SwiftShader screenshot stalls.
+  report.m17Preview={};
+  for(const ads of [false,true]){
+   const key=ads?"ads":"hip";
+   try{
+    const jpeg=await page.evaluate(a=>globalThis.__m17V691Preview(a),ads);
+    report.m17Preview[key]=jpeg?.length||0;
+    if(jpeg?.length>6000)console.log("M17_V691_"+key.toUpperCase()+"_JPEG="+jpeg);
+   }catch(captureError){report.m17Preview[key]=String(captureError).slice(0,220)}
+  }
   report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
   report.dmrShoulder=await page.evaluate(()=>globalThis.__dmrV683ShoulderAudit());
