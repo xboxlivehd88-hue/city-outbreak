@@ -3709,6 +3709,12 @@ function attachOriginalFpsArms(){
  if(!fpsArmsTemplate||!playerHandRig)return;
  const rig=cloneSkeleton(fpsArmsTemplate);
  rig.name="OriginalCartoonFPSArmsGLB";
+ // v685: the source Sketchfab/Cinema4D arm mesh is upside down relative to
+ // Three.js gun-local hand grips. Correct the ORIGINAL skinned rig itself,
+ // not any gun, hand target, magazine animation or the player's camera.
+ // Existing IK converts controller goals through the rotated rig's parent
+ // world quaternion, so both wrists still reach their approved positions.
+ rig.rotation.x=Math.PI;
  const nativeLength=Math.max(.001,fpsArmsTemplateLength);
  rig.scale.multiplyScalar(1.48/nativeLength);
  rig.traverse(o=>{
@@ -3730,6 +3736,7 @@ function attachOriginalFpsArms(){
  fpsNativeArms=rig;fpsNativeBoneChains={left,right};
  fpsNativeArms.visible=false;  // first IK frame initializes final weapon grips
  document.documentElement.dataset.fpsArmsSource="cartoon_fps_arms.glb";
+ document.documentElement.dataset.fpsArmsRootRotationX=rig.rotation.x.toFixed(6);
  document.documentElement.dataset.fpsArmsRenderedMeshCount="1";
 }
 function fpsJointEnds(segment,parent){
