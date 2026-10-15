@@ -1,3 +1,13 @@
+# v666 CANDIDATE — NEW INJURED CRAWLER LEGS ABOVE ROAD + REAL DISTANCE-DRIVEN CRAWLING — 2026-10-14
+
+- User supplied `2026-10-14 21-56-26.mp4` (58.38 seconds; 1920×1080/60FPS). Reviewed across the full timeline and zoomed representative active crawler frames. Some legs sink below road/sidewalk and the crawlers visibly glide instead of pulling themselves forward.
+- Actual GLB animation inspection succeeded, workflow [38669291775](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38669291775): new model `animated_injured_zombie_crawling_loop.glb` has a **10.2667s** recording with arm, hand and torso channels but **no Hips or leg rotation animation**, except LeftToeBase. Native GLB cannot physically crawl by itself with legs as originally implemented. v665 ran the full ten-second action at .48–1.2 timescale independently of actual distance, giving skating/dragging feet.
+- **v666 candidate**: preserve native upper-body `Animation`, speed that action based on actual horizontal distance and its 10.27s duration; animate native leg and shin bones alternately in backward-trailing ground-hugging poses driven by distance traveled (not a free-running idle clock); dynamic frame-by-frame native foot/knee/hand ground clearance adjustment to avoid submerged legs; keep original textures, 16 animated head/chest/limb hitboxes and detached native skin clip geometry. No generic crawler swap, no change to approved natural GLB.
+- Still deliberately 10 new crawlers in Wave 1 only. Preserve original natural crawler Wave 3+, mixed original Infected Wave 5+, Hazmat/Green/Sprinter, boss pool, performance-sensitive systems and v324 recovery pointer.
+- Browser validation must confirm original skin, 10 Wave 1 new crawlers, measured knee/foot travel, reasonable floor clearance during distance-driven animation, limb/hitbox regression and full independent original Infected/boss/Sprinter/Hazmat tests. This header is candidate, **not yet deployed**, until tests prove it.
+
+---
+
 # v665 VERIFIED — ORIGINAL INJURED CRAWLER TEXTURES + CORRECT HITS — 2026-10-14
 
 - User-submitted 45.98-second v664 video was inspected across the whole recording, with close frame review at repeated shooting/legacy arm detach. The video exposed white/washed-out materials, wrong hitboxes and flying old procedural limbs/gore.
