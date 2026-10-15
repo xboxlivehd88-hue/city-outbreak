@@ -186,13 +186,15 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ["ready","collecting","unavailable","disjoint"].includes(report.gpuFrame.live.status),
    "Nonblocking actual GPU timer failed synthetic asynchronous query/unsupported case: "+
    JSON.stringify(report.gpuFrame));
-  assert(Number.isFinite(report.performance.hudStats?.frameMedianMs)&&
-   Number.isFinite(report.performance.hudStats?.frameP95Ms)&&
-   Number.isFinite(report.performance.hudStats?.frameMaxMs)&&
-   report.performance.hudStats.frameP95Ms>=report.performance.hudStats.frameMedianMs&&
-   report.performance.hudStats.frameMaxMs>=report.performance.hudStats.frameP95Ms&&
-   report.performance.hudStats.gpu?.status,
-   "v677 median/p95 and GPU status absent from recorded FPS diagnostics");
+  const frame=report.performance.hudStats;
+  assert(frame&&Number.isFinite(frame.frameSamples)&&frame.frameSamples>=1&&
+   frame.gpu?.status&&
+   (frame.frameSamples<5
+    ?frame.frameMedianMs===null&&frame.frameP95Ms===null
+    :Number.isFinite(frame.frameMedianMs)&&Number.isFinite(frame.frameP95Ms)&&
+      Number.isFinite(frame.frameMaxMs)&&
+      frame.frameP95Ms>=frame.frameMedianMs&&frame.frameMaxMs>=frame.frameP95Ms),
+   "v677 steady-state frame pacing must exclude too-few startup samples: "+JSON.stringify(frame));
   assert(report.performance.navBuildBudget===1&&
    report.performance.stationarySkipped&&report.performance.movedChecked&&
    Number.isFinite(report.performance.hudStats?.updateMs)&&
