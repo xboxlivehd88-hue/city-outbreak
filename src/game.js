@@ -9789,6 +9789,18 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  const weaponContact=reloading?0:weaponZombieContactAmount(),contactSpec=weaponContactSpec();
  gun.position.z+=weaponContact*contactSpec.retract;
  gun.rotation.x+=weaponContact*contactSpec.tilt;
+ // v673: physically tuck the held weapon toward the player when inspecting
+ // the ground at steep angles. The 12cm eye raise alone did not stop the
+ // shotgun's long barrel piercing the map (-0.92m at max pitch in Chromium).
+ // Ease the gun/attached hands upward and inward with a small muzzle-up hold
+ // ONLY below -0.48rad; looking normally, ADS zero, reload choreography, and
+ // the actual camera firing ray stay entirely unchanged.
+ const lookDownT=THREE.MathUtils.smoothstep(-pitch,.48,1.05);
+ if(lookDownT>0){
+  gun.rotation.x+=.45*lookDownT;
+  gun.position.z+=.22*lookDownT;
+  gun.position.y+=.07*lookDownT;
+ }
  if(weapon==="rifle"&&m4ViewRoot){
    // Replacement M4 gets its own first-person pose instead of inheriting the old
    // classic_m4 geometry placement. Hip-fire sits lower/right with a mild downward
