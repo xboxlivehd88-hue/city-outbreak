@@ -11,7 +11,7 @@
 <div id="game">
 <canvas id="cv" tabindex="0"></canvas>
 <div class="hud"><div id="healthLabel"><span>HEALTH</span><span id="healthText">100</span></div><div class="track"><div id="healthBar"></div></div><div id="sprintHUD"><div id="sprintLabel"><span>SPRINT</span><span id="sprintState">READY</span></div><div id="sprintTrack"><div id="sprintFill"></div></div></div></div>
-<div class="stats"><span id="ammo">8 / 30</span><br><span id="kills">KILLS 0</span><br><span id="heads">HEADSHOTS 0</span><br><span id="wave">WAVE 1</span><br><span id="remaining">ZOMBIES 6</span><br><span id="cash">CASH $0</span><br><span id="weaponName">SHOTGUN</span><br><span id="grenadeCount">GRENADES 2</span><br><span id="nukeCount">NUKES 0</span></div><button id="pauseBtn" type="button">PAUSE [P]</button><div id="bossHUD"><div id="bossName"></div><div id="bossSub">BOSS THREAT</div><div id="bossTrack"><div id="bossFill"></div></div></div>
+<div class="stats"><span id="ammo">10 / 30</span><br><span id="kills">KILLS 0</span><br><span id="heads">HEADSHOTS 0</span><br><span id="wave">WAVE 1</span><br><span id="remaining">ZOMBIES 6</span><br><span id="cash">CASH $0</span><br><span id="weaponName">DMR</span><br><span id="grenadeCount">GRENADES 2</span><br><span id="nukeCount">NUKES 0</span></div><button id="pauseBtn" type="button">PAUSE [P]</button><div id="bossHUD"><div id="bossName"></div><div id="bossSub">BOSS THREAT</div><div id="bossTrack"><div id="bossFill"></div></div></div>
 <div id="crosshair"></div><div id="scopeOverlay"><div id="scopeReticle"></div></div><div id="hitmarker">×</div><div id="damage"></div><div id="nukeFlash"></div><div id="nukeShock"></div>
 <div id="announce"><b id="big"></b><span id="small"></span></div>
 <div id="pauseOverlay"><div id="pausePanel"><h2>PAUSED</h2><p>The outbreak is frozen exactly where you left it.<br>Press P or choose Resume when you are ready.</p><div class="graphicsOptions graphicsPauseOptions"><label for="graphicsQualityPause">GRAPHICS QUALITY</label><select id="graphicsQualityPause" class="graphicsQualitySelect" aria-label="Graphics quality while paused"><option value="veryLow">VERY LOW — MAX FPS</option><option value="low">LOW — PERFORMANCE</option><option value="medium">MEDIUM — BALANCED</option><option value="high">HIGH — ORIGINAL</option><option value="custom">CUSTOM — MANUAL</option></select><button type="button" class="openAdvancedGraphics graphicsAdvancedButton">ADVANCED GRAPHICS...</button><span>Changes apply immediately and are saved on this device.</span></div><button id="resumeGame" type="button">RESUME GAME</button></div></div>
@@ -27,7 +27,6 @@
     <button data-buy="dmrAmmo">DMR +24<br>$160</button>
     <button data-buy="grenadeLauncherAmmo">Launcher +3<br>$225</button>
     <button data-buy="m240Ammo">M240 +100<br>$275</button>
-    <button data-buy="awmAmmo">AWM +10<br>$300</button>
   </div></section>
   <section class="shopSection"><h3>Upgrades</h3><div class="shopItems">
     <button data-buy="mag">Magazine +5<br>$250</button>
@@ -38,10 +37,9 @@
     <button data-buy="rifle">Unlock M4 Carbine<br>$1 TEST</button>
     <button data-buy="smg">Unlock MP5<br>$1 TEST</button>
     <button data-buy="shotgun">Unlock Shotgun<br>$1 TEST</button>
-    <button data-buy="dmr">Unlock DMR<br>$1 TEST</button>
+    <button data-buy="dmr">DMR — IN TESTING</button>
     <button data-buy="grenadeLauncher">Unlock Grenade Launcher<br>$1 TEST</button>
     <button data-buy="m240">Unlock M240 LMG<br>$1 TEST</button>
-    <button data-buy="awm">Unlock AWM Ultimate<br>$1 TEST</button>
   </div></section>
   <section class="shopSection"><h3>Equipment</h3><div class="shopItems">
     <button data-buy="grenade">Grenade<br>$175</button>
@@ -76,7 +74,7 @@
         <div class="controlRow"><span>Aim Down Sights</span><span class="key">RIGHT CLICK</span></div>
         <div class="controlRow"><span>Reload</span><span class="key">R</span></div>
         <div class="controlRow"><span>Pause</span><span class="key">P / ESC</span></div>
-        <div class="controlRow"><span>Weapons</span><span class="key">1 — 8</span></div>
+        <div class="controlRow"><span>Weapons</span><span class="key">1 — 7</span></div>
         <div class="controlRow"><span>Grenade</span><span class="key">G</span></div>
         <div class="controlRow"><span>Tactical Nuke</span><span class="key">N</span></div>
       </div>
@@ -122,6 +120,7 @@
 <!-- v673: subtle 12cm eye-height increase, approved weapon and collision unchanged -->
 <!-- v676: profile video-confirmed first-grenade hitch; prewarm shader/textures and pool FX buffers -->
 <!-- v677: asynchronous GPU profiling and precise frame pacing; approved player height intact -->
-<script type="module" src="./src/game.js?v=677"></script>
+<!-- v678: DMR-focused weapon test -->
+<script type="module" src="./src/game.js?v=678"></script>
 </body>
 </html>
