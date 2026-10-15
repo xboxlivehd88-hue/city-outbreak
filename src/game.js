@@ -2902,7 +2902,7 @@ new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
 // v682: the original Leisure GLB includes its own loose live-cartridge prop.
 // Prepare one textured instance template; use it only for DMR ejections.
 let dmrModelTemplate=null,dmrCartridgeTemplate=null,dmrLoadError="",dmrSourceNodeCount=0;
-let dmrViewRoot=null,dmrViewHome=null,dmrViewQuat=null,dmrOpticPose=null,dmrMagazineGrip=null,dmrRecoilVisual=0;
+let dmrViewRoot=null,dmrViewHome=null,dmrViewQuat=null,dmrOpticPose=null,dmrOpticAimPoint=null,dmrMagazineGrip=null,dmrRecoilVisual=0;
 // v683: calibrated from 1920x1080 user's 2026-10-15 ADS video. The native
 // red-dot's aiming window sits ~67 screen pixels ABOVE the true center hit
 // marker. At FOV 48 and a .66-unit lens distance, this is ~.044 units in
@@ -4272,7 +4272,7 @@ function rebuildGun(){
  shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
  gun.clear();dmrShoulderBlend=0;dmrRightGripBlend=0;
- dmrViewRoot=null;dmrViewHome=null;dmrViewQuat=null;dmrOpticPose=null;dmrMagazineGrip=null;dmrRecoilVisual=0;playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ dmrViewRoot=null;dmrViewHome=null;dmrViewQuat=null;dmrOpticPose=null;dmrOpticAimPoint=null;dmrMagazineGrip=null;dmrRecoilVisual=0;playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141620,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -4687,6 +4687,13 @@ function rebuildGun(){
       y:-eyeHeight*adsScale,
       z:-.66-opticMiddle.z*adsScale
     };
+    // True camera-centered aim point through the original optic, retained
+    // for a browser projection test (no extra overlay or reticle geometry).
+    dmrOpticAimPoint=new THREE.Vector3(
+      opticMiddle.x-DMR_ADS_LENS_HORIZONTAL_ZERO,
+      eyeHeight,
+      opticMiddle.z
+    );
     document.documentElement.dataset.dmrSightPose=JSON.stringify(dmrOpticPose);
     document.documentElement.dataset.dmrSightZeroCorrection=JSON.stringify({
      verticalModelUnits:DMR_ADS_LENS_VERTICAL_ZERO,
