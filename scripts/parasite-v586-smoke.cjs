@@ -46,7 +46,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const z=zombies.find(a=>a.injuredCrawlerVisual&&!a.dead);
   if(!z)throw Error("New injured crawler missing for movement check");
   const before={x:z.g.position.x,z:z.g.position.z,clipTime:z.injuredCrawlerAction.time};
-  const knees=[],leftFeet=[],rightFeet=[],floorGaps=[],rates=[];
+  const knees=[],leftFeet=[],rightFeet=[],floorGaps=[],skinFloors=[],rates=[];
   // Exercise the exact live update used on road/sidewalk, advancing the root
   // by 0.015m/frame (0.9m/s). Compare original GLB limb travel in actor space.
   for(let i=0;i<96;i++){
@@ -62,6 +62,8 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    knees.push([kl.pos[2],kr.pos[2]]);
    leftFeet.push(fl.pos[2]);rightFeet.push(fr.pos[2]);
    floorGaps.push(Math.min(kl.worldY,kr.worldY,fl.worldY,fr.worldY)-(z.groundY||0));
+   if(i%12===0){const box=new THREE.Box3().setFromObject(z.injuredCrawlerVisual,true);
+    skinFloors.push(box.min.y-(z.groundY||0));}
    rates.push(z.injuredCrawlerAction.getEffectiveTimeScale());
   }
   z.g.position.x=before.x;z.g.position.z=before.z;
@@ -74,6 +76,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    kneeTravel:[span(knees.map(f=>f[0])),span(knees.map(f=>f[1]))],
    footTravel:[span(leftFeet),span(rightFeet)],
    lowestJoint:Math.min(...floorGaps),highestJoint:Math.max(...floorGaps),
+   skinGroundClearance:Math.min(...skinFloors),skinAllowance:z.injuredCrawlerSkinAllowance,
    groundCorrection:z.injuredCrawlerGroundAdjustment,
    speedRate:rates.reduce((a,b)=>a+b,0)/rates.length,
    originalTexture:!!z.injuredCrawlerModel?.getObjectByProperty("isSkinnedMesh",true)?.material?.map};
@@ -718,13 +721,15 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.injuredCrawler.actionPlaying&&report.injuredCrawler.clipTracks>=25&&
    report.injuredCrawler.length>.8&&report.injuredCrawler.length<4&&
    report.injuredCrawler.height>.15&&report.injuredCrawler.height<3&&
-   Math.abs(report.injuredCrawler.floor-report.injuredCrawler.ground)<.30,
+   Math.abs(report.injuredCrawler.floor-report.injuredCrawler.ground)<.30&&
+   report.injuredCrawler.floor>=report.injuredCrawler.ground-.06,
    "New injured crawler not animated/grounded: "+JSON.stringify(report.injuredCrawler));
   assert(report.injuredGait.clipDuration>9&&report.injuredGait.clipDuration<11&&
    report.injuredGait.travel>1&&
    report.injuredGait.kneeTravel.every(x=>x>.07)&&
    report.injuredGait.footTravel.every(x=>x>.09)&&
    report.injuredGait.lowestJoint>-.095&&
+   report.injuredGait.skinGroundClearance>-.047&&
    report.injuredGait.speedRate>1.1&&report.injuredGait.originalTexture,
    "Injured crawler still sliding on fixed/buried legs: "+JSON.stringify(report.injuredGait));
   assert(report.injuredCrawler.hitboxes>=14&&report.injuredCrawler.oldHitboxesReplaced&&
