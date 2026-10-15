@@ -3775,6 +3775,70 @@ function spawnFreshReloadMagazine(){
  }
  reloadFreshMag=fresh;reloadFreshAttached=false;
 }
+// v682: DMR-only reload. Rifle/optic, trigger grip and shoulder stay planted;
+// ONLY the genuine curved Bakelite GLB mag and the left support hand move.
+function updateDMRReloadMagazineFX(rp,home,targetQ){
+ if(!playerReloadPart||!home)return;
+ const p=rp.p,disengage=smoothReload01(THREE.MathUtils.clamp((p-.11)/.21,0,1));
+ const beneath=new THREE.Vector3(0,-.32,.035),pouch=new THREE.Vector3(.09,-.76,.18);
+ if(!reloadOldMagDropped){
+  playerReloadPart.position.copy(home).addScaledVector(beneath,disengage*.88);
+  playerReloadPart.quaternion.copy(targetQ);
+  playerReloadPart.visible=true;
+  if(p>=.33)tossOldReloadMagazine();
+ }
+ if(reloadOldMagDropped&&!reloadMagInserted){
+  playerReloadPart.visible=false;
+  playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});
+ }
+ if(p>=.51&&!reloadFreshMag&&!reloadMagInserted){
+  const fresh=playerReloadPart.clone(true);
+  fresh.name="NorincoOriginalFreshBakeliteMagazine";
+  fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+  gun.add(fresh);
+  fresh.scale.copy(playerReloadPart.scale);
+  fresh.position.copy(home).add(pouch);
+  fresh.quaternion.copy(targetQ);
+  reloadFreshMag=fresh;
+ }
+ if(reloadFreshMag&&!reloadMagInserted){
+  const fresh=reloadFreshMag;
+  if(p<.75){
+   const t=smoothReload01(THREE.MathUtils.clamp((p-.51)/.24,0,1));
+   fresh.position.copy(home).add(pouch.clone().lerp(beneath,t));
+  }else{
+   const t=smoothReload01(THREE.MathUtils.clamp((p-.75)/.12,0,1));
+   fresh.position.copy(home).addScaledVector(beneath,1-t);
+  }
+  fresh.quaternion.copy(targetQ);
+  if(p>=.87){
+   fresh.parent?.remove(fresh);reloadFreshMag=null;
+   playerReloadPart.position.copy(home);
+   playerReloadPart.quaternion.copy(targetQ);
+   playerReloadPart.visible=true;
+   playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
+   reloadMagInserted=true;
+  }
+ }
+}
+// Hold the original magazine, first withdrawing it into the left hand,
+// then raising a fresh GLB copy back to the magwell. No full-gun translation.
+function poseDMRReloadLeftArm(rp){
+ if(!playerHandRig||!dmrMagazineGrip)return;
+ const home=playerHandRig.leftHandBase,hold=dmrMagazineGrip.clone();
+ const below=hold.clone().add(new THREE.Vector3(0,-.28,.03));
+ const align=hold.clone().add(new THREE.Vector3(0,-.32,.035));
+ const pouch=hold.clone().add(new THREE.Vector3(.09,-.76,.18));
+ const p=rp.p,sm=(a,b)=>smoothReload01(THREE.MathUtils.clamp((p-a)/(b-a),0,1));
+ let target;
+ if(p<.11)target=home.clone().lerp(hold,sm(0,.11));
+ else if(p<.33)target=hold.clone().lerp(below,sm(.11,.33));
+ else if(p<.51)target=below.clone().lerp(pouch,sm(.33,.51));
+ else if(p<.75)target=pouch.clone().lerp(align,sm(.51,.75));
+ else if(p<.87)target=align.clone().lerp(hold,sm(.75,.87));
+ else target=hold.clone().lerp(home,sm(.87,1));
+ poseM4ReloadLeftArm(target.sub(home));
+}
 function updateM4ReloadMagazineFX(rp,home,targetQ){
  // Keep the seated original visible only until the actual release. Once it is
  // dropped, force that original root/mesh tree hidden every frame until a fresh
@@ -4107,6 +4171,10 @@ function updateReloadMagazineFX(rp){
  }
  if(reloadWeapon==="smg"){
    updateMP5ReloadMagazineFX(rp,home,targetQ);
+   return;
+ }
+ if(reloadWeapon==="dmr"){
+   updateDMRReloadMagazineFX(rp,home,targetQ);
    return;
  }
  if(reloadWeapon==="pistol"){
@@ -10199,6 +10267,8 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      else if(p<.80){lx=.18;ly=.24;lz=.11;lr=.10}
      else{t=smoothReload01((p-.80)/.20);lx=.18*(1-t);ly=.24*(1-t);lz=.11*(1-t);lr=.10*(1-t)}
      playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.06+lr,0,-.12-rp.arch*.08);
+   }else if(reloading&&reloadWeapon==="dmr"){
+     poseDMRReloadLeftArm(rp);
    }else if(reloading&&reloadWeapon==="pistol"){
      const p=rp.p;let lx=0,ly=0,lz=0,rz=0,t=0;
      // Old mag is released by the firing hand. At the same moment the support hand
