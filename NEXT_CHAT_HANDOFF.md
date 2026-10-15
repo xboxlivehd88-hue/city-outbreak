@@ -1,3 +1,11 @@
+# v668 VERIFIED — RESTORED ORIGINAL NATIVE CRAWL — 2026-10-14
+
+- **Full browser tests PASSED**. [Wave 1, original Infected and boss regression run 38677081399](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38677081399) succeeded with **zero page errors**. [Sprinter 38677081386](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38677081386) passed; [Hazmat/Green Guy 38677081391](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38677081391) passed. Recorded new crawler: 10 Wave 1 actors; original `Animation` clip 51 tracks (4 leg tracks), animated arms max 0.817 radians, animated legs max 0.462 radians, **root position zero drift**; source mesh bottom -0.024 to +0.017 above test ground during 95 moving frames. Exactly 16 original rig hitboxes, 3 recovered original textured skinned meshes, arm/leg death dismemberment correct without generic parts, no JS errors.
+- **Movement code restored EXACTLY from GitHub historical v665** `e7e6ac9f11f06c88bec4e3f68f478855e0c97b2c`: no custom leg poses, no v666 added knee motion, no v667 locked limbs, no per-frame artificial height correction. Preserves all v665 coloring/hitbox/dismemberment fixes and all other zombie models. This is the original movement user explicitly said was correct before later changes. v668 loader `./src/game.js?v=668`.
+- Wave 1 still tests the new crawler only; defer normal crawler rotation until user approval. v324 protected recovery remains unchanged. Play link after Pages deployment: `https://xboxlivehd88-hue.github.io/city-outbreak/?v=668-original-native-crawl`.
+
+---
+
 # v668 RESTORE ACTUAL ORIGINAL CRAWL — 2026-10-14
 
 - User reviewed v667 video `2026-10-14 23-31-03.mp4` and reports stiff legs up in air. Toby inspected the actual 41.63-second video with chronological screenshots (including close contact at 20-29 seconds). User explicitly says original movement from BEFORE the color fixes was the correct crawl and legs; we must stop inventing new gait and root algorithms.
