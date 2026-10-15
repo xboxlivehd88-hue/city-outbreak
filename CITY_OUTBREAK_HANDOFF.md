@@ -1,3 +1,11 @@
+# v690 VERIFIED — NEW M17 SUPPORT GRIP ADJUSTMENT PASSED — 2026-10-15
+
+- **REAL Chromium regression PASSED:** [GitHub Actions run 38810825649](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38810825649), full audit `passed:true`, `errors:[]`. It measured v690 **left M17 wrist delta x -0.085, support finger joint presence 4/4**, right original M17 grip unchanged, naturally moving elbows/shoulders in hip and ADS (no frozen/stretched v688 wrist hack), seven original weapon arm skins, all seven-gun test inventory, DMR original ADS center, Hazmat/Green Guy, batched grenade FX and player ground clearance.
+- **GitHub Pages deployment PASSED:** [run 38810889325](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38810889325) for the then-current v690 source; `index.html` points to `./src/game.js?v=690`. Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=690-m17-support-grip .
+- **Critical visual caveat:** These tests confirm real skinned bones and safe retargeting; NOT proof the hands wrap the M17 perfectly. User's video still needed before declaring final acceptance. Distinguish v689 (rollback) from **v690 (new forward wrist/finger adjustment)**. No other weapon, source GLB, gun transformations or approved core systems disturbed; v324 recovery protected.
+
+---
+
 # v690 — SMALL FORWARD M17 GRIP REFINEMENT AFTER v689 ROLLBACK — 2026-10-15
 
 - **User complaint:** “so instead of trying to fix the hands on the m17 you just went back a step?” YES: v689 only undid visibly broken v688 and restored closer v687; it did NOT actually fix M17 fingers. Own the regression honestly. Two provided videos `2026-10-15 16-55-03.mp4` (v687 close) and `2026-10-15 17-08-44.mp4` (v688 worse) were compared: v688 made huge crossed V sleeves in ADS and loose fingers; v687 support glove was near the pistol but not wrapped around its grip.
