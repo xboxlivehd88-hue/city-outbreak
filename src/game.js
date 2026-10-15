@@ -2900,6 +2900,10 @@ new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
 // bakelite magazine. Isolate ONLY this original source subtree, not the
 // Marksman, stock M305A, desk, or loose display cartridges.
 let dmrModelTemplate=null,dmrLoadError="",dmrSourceNodeCount=0;
+// v680: smooth, hip-only shoulder placement. A shared transform carries the
+// imported receiver, native magazine and both original player-hand actors
+// together; the already-close magazine reload remains entirely unchanged.
+let dmrShoulderBlend=0;
 new GLTFLoader().load("assets/norinco_m305a.glb?v=679",gltf=>{
  const src=gltf.scene.getObjectByName("m305a_leisure");
  if(!src)throw Error("Norinco LEISURE submodel is missing");
@@ -4129,7 +4133,7 @@ function rebuildGun(){
  clearReloadMagazineFX(true);
  shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();dmrShoulderBlend=0;playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141620,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -9961,6 +9965,21 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
   // the short shotgun. Keep the full original gun + hands above pavement at
   // steep down-look angles ONLY; do not change normal hipfire, ADS or rays.
   if(weapon==="dmr")gun.position.y+=.26*lookDownT;
+ }
+ // v680: video-confirmed the Leisure rifle is almost floating forward at
+ // hip-fire, with hands reaching toward the center of the screen. Draw it in
+ // to a proper shouldered hold: slightly back toward the camera and over to
+ // the player's right, canted just enough for the muzzle to point forward.
+ // Move the WHOLE gun group so BOTH hands and the ORIGINAL detachable bakelite
+ // magazine stay aligned with their source GLB; do not touch the reload FX.
+ // Transition fully to the existing v679 gun transform during reload and ADS,
+ // avoiding jumps while maintaining the previously close reload choreography.
+ const dmrShoulderTarget=weapon==="dmr"&&!reloading?1-aimBlend:0;
+ dmrShoulderBlend=THREE.MathUtils.damp(dmrShoulderBlend,dmrShoulderTarget,12,dt);
+ if(weapon==="dmr"&&dmrShoulderBlend>.0001){
+  gun.position.x+=.20*dmrShoulderBlend;
+  gun.position.z+=.52*dmrShoulderBlend;
+  gun.rotation.y+=.095*dmrShoulderBlend;
  }
  if(weapon==="rifle"&&m4ViewRoot){
    // Replacement M4 gets its own first-person pose instead of inheriting the old
