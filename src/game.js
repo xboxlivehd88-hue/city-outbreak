@@ -9343,6 +9343,16 @@ function readyNextWave(){
 setupReadyNextButton(readyNextWave);
 
 const thrown=[];
+// v672: reuse grenade-launcher casing geometry/materials across ALL shots.
+// Pre-split the exact sphere+band visual into 4/6/8 textured debris levels
+// at startup; neither firing nor detonation rebuilds these source meshes.
+const launcherProjectileTemplate=new THREE.Mesh(
+ new THREE.SphereGeometry(.10,10,7),M(0x4c5b36,.52));
+const launcherProjectileBand=new THREE.Mesh(
+ new THREE.TorusGeometry(.105,.018,7,12),M(0xc79a45,.38));
+launcherProjectileBand.rotation.x=Math.PI/2;
+launcherProjectileTemplate.add(launcherProjectileBand);
+prepareCasingFragments(launcherProjectileTemplate);
 function launcherAmmoTotal(){const a=ammoState.grenadeLauncher;return a.mag+a.reserve}
 function addGrenadeLauncherAmmo(n){
  const a=ammoState.grenadeLauncher,space=Math.max(0,10-launcherAmmoTotal());
@@ -9351,8 +9361,7 @@ function addGrenadeLauncherAmmo(n){
  return add;
 }
 function fireGrenadeLauncherRound(){
- const q=new THREE.Mesh(new THREE.SphereGeometry(.10,10,7),M(0x4c5b36,.52));
- const band=new THREE.Mesh(new THREE.TorusGeometry(.105,.018,7,12),M(0xc79a45,.38));band.rotation.x=Math.PI/2;q.add(band);
+ const q=launcherProjectileTemplate.clone(true);
  const start=new THREE.Vector3();cam.getWorldPosition(start);
  const dir=new THREE.Vector3();cam.getWorldDirection(dir);
  // A close zombie can occupy the normal .85 m projectile spawn point. Detect that
