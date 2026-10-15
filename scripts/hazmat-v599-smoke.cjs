@@ -58,7 +58,27 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
  return{eye,expected:PLAYER_EYE_HEIGHT,original:1.65*PLAYER_WORLD_SCALE,
     worldScale:PLAYER_WORLD_SCALE,samples};
 };`;
-   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit,contentType:"application/javascript"});
+   const profileAudit=`
+;globalThis.__city674PerfAudit=()=>{
+ const now=performance.now(),prior={
+  check:rainCoverCheckAt,x:rainCoverLastX,y:rainCoverLastY,z:rainCoverLastZ,
+  count:perfRainCoverChecks
+ };
+ rainCoverCheckAt=now-300;
+ rainCoverLastX=px;rainCoverLastY=playerGroundY+1.35;rainCoverLastZ=pz;
+ updateRainCover(now);
+ const stationarySkipped=perfRainCoverChecks===prior.count;
+ rainCoverCheckAt=now-310;rainCoverLastX=px-1;
+ updateRainCover(now+1);
+ const movedChecked=perfRainCoverChecks===prior.count+1;
+ rainCoverCheckAt=prior.check;rainCoverLastX=prior.x;
+ rainCoverLastY=prior.y;rainCoverLastZ=prior.z;
+ return{
+  navBuildBudget:ZOMBIE_ASTAR_PER_FRAME,stationarySkipped,movedChecked,
+  hudStats:JSON.parse(document.documentElement.dataset.cityPerformanceBreakdown||"null")
+ };
+};`;
+   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+profileAudit,contentType:"application/javascript"});
   });
   const rsp=await page.goto("http://127.0.0.1:4173/?v=674-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
@@ -67,6 +87,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   await page.evaluate(()=>globalThis.__hazmatSmoke.forceHazmats());
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.snapshot()?.attached===10,null,{timeout:45000});
   await page.waitForTimeout(700);
+  await page.waitForFunction(()=>!!document.documentElement.dataset.cityPerformanceBreakdown,null,{timeout:45000});
+  report.performance=await page.evaluate(()=>globalThis.__city674PerfAudit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
   report.motion=await page.evaluate(()=>globalThis.__hazmatSmoke.motion());
@@ -103,6 +125,15 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert(s.headHits>=1&&s.torsoHits>=1);
   assert(s.clips.includes("Zombie_Walk_Root")&&s.clips.includes("Zombie_Idle")&&s.clips.includes("Zombie_Skill"));
   assert.equal(s.pool,19);
+  assert(report.performance.navBuildBudget===1&&
+   report.performance.stationarySkipped&&report.performance.movedChecked&&
+   Number.isFinite(report.performance.hudStats?.updateMs)&&
+   Number.isFinite(report.performance.hudStats?.renderSubmitMs)&&
+   Number.isFinite(report.performance.hudStats?.rainMs)&&
+   Number.isFinite(report.performance.hudStats?.navWorstMs)&&
+   Number.isFinite(report.performance.hudStats?.roofWorstMs),
+   "v674 navigation frame budget and stationary rain raycast profiling failed: "+
+   JSON.stringify(report.performance));
   assert.equal(s.armTuning.reference,"Zombie_Idle");
   assert(s.armTuning.tracks>=4&&s.armTuning.upperArms>=2&&
     s.armTuning.left&&s.armTuning.right,"Native left/right Hazmat arms not retuned");
