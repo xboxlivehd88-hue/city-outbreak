@@ -1,3 +1,15 @@
+# v671 — APPROVED BOTH NATURAL CRAWLERS IN NORMAL ROTATION — 2026-10-15
+
+- User tested v670 and confirmed the new injured crawler **"they seem fine"**. This is the requested visual approval after multiple walking/leg-ground corrections; do not reopen or alter either approved native crawler animation, grounding, skins, original model hitboxes or dismemberment.
+- Removed temporary v664-v670 injured-crawler-only Wave 1 testing. Wave 1 again uses ten **normal Shamblers**. Ordinary `rolledZombieKind` crawler chance is unchanged, beginning Wave 3 and thereafter, while original Infected Wave 5+, Sprinter, Hazmat/Green Guy, Panzer, Suit Guy, Parasite, and every-10-wave boss rotation remain unchanged.
+- **Actual model selection:** in `makeZombie`, whenever `kind==="crawler"` and `forcedKind!=="crawler"`, randomly choose a natural model with a 50/50 split: `assets/animated_injured_zombie_crawling_loop.glb` (approved v670 original 51-track clip / grounded trailing legs / independent hand-pull travel / texture and 16 rigged hitboxes) OR the original `assets/zombie_number_3_-_animated.glb` native crawling GLB with its approved `Crawl`/`Running_Crawl` clips. Both remain the same existing 'crawler' kind: **NO INCREASE** to total crawler wave frequency.
+- Any crawler created by shooting off a zombie's legs remains on its **own conversion path** (`forcedKind==="crawler"`), preserving that original zombie's identity and rig. Neither natural GLB is force-fitted onto converted crawlers.
+- New browser regression tests the actual Wave 1 normal Shamblers, generates BOTH real naturally spawned crawler rigs via the normal model-selection branch in a test-only Wave 5 audit, checks their animations/material/damage/ground movement, verifies forced crawler conversion remains separate, and keeps original Infected/Sprinter/Hazmat/Green Guy and 19-boss regression checks.
+- Loader `./src/game.js?v=671`. Both handoff docs updated. Protected recovery checkpoint v324 **untouched**. Play link after deployment: https://xboxlivehd88-hue.github.io/city-outbreak/?v=671-two-approved-natural-crawlers
+- **Do not claim regression/deployment success without checking the final GitHub Actions results.**
+
+---
+
 # v670 AUTOMATED REGRESSIONS VERIFIED — 2026-10-15
 
 - Final v670 gameplay commit: `b5bae864bded30d2be6ee5bfe877af4abc5f3f07`. The complete final-source [Wave 1 new injured crawler/actual source 51-track native crawl, pull-factor, knee/foot/toe ground contact, limb-damage, original Infected and 19-boss regression](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38682619369) **PASS**.
