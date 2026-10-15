@@ -3000,7 +3000,7 @@ new GLTFLoader().load(NATURAL_CRAWLER_GLB_URL,gltf=>{
 
  // v664: NEW uploaded crawler distinct from the v550 original natural crawler.
  // Wave 1 is a dedicated visual test until user approval.
-const INJURED_CRAWLER_GLB_URL="assets/animated_injured_zombie_crawling_loop.glb?v=665";
+const INJURED_CRAWLER_GLB_URL="assets/animated_injured_zombie_crawling_loop.glb?v=666";
 let injuredCrawlerAsset=null;
 new GLTFLoader().load(INJURED_CRAWLER_GLB_URL,gltf=>{
  const clip=gltf.animations?.[0];
@@ -5631,6 +5631,64 @@ const NATURAL_CRAWLER_BONE_NAMES=Object.freeze({
 
 // v665: original damaged crawler skin, dedicated accurate bones/hitboxes.
 
+
+ // v666: The uploaded 10.27-second crawl clip moves arms and torso, but has
+ // NO hip/leg keyframes (only a toe joint). Preserve recorded upper motion,
+ // add shallow ground-hugging thigh/shin pulls on the SAME original GLB rig.
+const injuredCrawlWorldQuat=new THREE.Quaternion(),injuredCrawlParentQuat=new THREE.Quaternion();
+const injuredCrawlAim=new THREE.Vector3(),injuredCrawlProbe=new THREE.Vector3();
+const injuredCrawlMinProbeParts=Object.freeze([
+ ["L_Foot",.09],["R_Foot",.09],["L_LowerLeg",.115],["R_LowerLeg",.115],
+ ["L_Hand",.045],["R_Hand",.045],["Head",.16],["Hips",.065]
+]);
+function aimInjuredCrawlerSegment(root,bone,child,x,y,z){
+ if(!bone||!child)return;
+ root.getWorldQuaternion(injuredCrawlWorldQuat);
+ bone.parent?.getWorldQuaternion(injuredCrawlParentQuat);
+ injuredCrawlAim.set(x,y,z).normalize().applyQuaternion(injuredCrawlWorldQuat);
+ injuredCrawlAim.applyQuaternion(injuredCrawlParentQuat.invert());
+ bone.quaternion.setFromUnitVectors(child.position.clone().normalize(),injuredCrawlAim.normalize());
+ bone.updateWorldMatrix(true,false);
+}
+function poseInjuredCrawlerDraggingLegs(z){
+ if(!z?.injuredCrawlerBones?.size||z.dead||z.ragdoll||z.knockdown)return;
+ const bones=z.injuredCrawlerBones;
+ const phase=(z.injuredCrawlerTravel||0)*(2*Math.PI/1.18);
+ for(const [prefix,side] of [["L",-1],["R",1]]){
+  if(z[side<0?"leftLegDetached":"rightLegDetached"])continue;
+  const thigh=bones.get(prefix+"_UpperLeg"),shin=bones.get(prefix+"_LowerLeg"),foot=bones.get(prefix+"_Foot");
+  if(!thigh||!shin||!foot)continue;
+  const step=Math.sin(phase+(side<0?0:Math.PI));
+  // Bend thighs behind the pelvis. Calves skim the road instead of extending
+  // straight down through it, while the knees alternately contract and extend.
+  aimInjuredCrawlerSegment(z.g,thigh,shin,side*.10,-.43+step*.09,.89);
+  aimInjuredCrawlerSegment(z.g,shin,foot,side*.02,-.18-step*.10,.99);
+ }
+}
+function groundInjuredCrawlerPose(z,dt){
+ if(!z?.injuredCrawlerVisual||z.dead||z.ragdoll)return;
+ const floor=Number.isFinite(z.groundY)?z.groundY:z.g.position.y;
+ let lowest=Infinity;
+ z.g.updateWorldMatrix(true,true);
+ for(const [name,pad] of injuredCrawlMinProbeParts){
+  const bone=z.injuredCrawlerBones.get(name);
+  if(!bone)continue;
+  bone.getWorldPosition(injuredCrawlProbe);
+  const gap=injuredCrawlProbe.y-(floor+pad);
+  if(gap<lowest)lowest=gap;
+ }
+ if(!Number.isFinite(lowest))return;
+ // Correct EVERY pose frame, not once at asset load. The leg bind pose
+ // otherwise intersects road/sidewalk on some animation frames.
+ const scale=Math.max(.01,z.g.getWorldScale(injuredCrawlProbe).y);
+ const error=.027-lowest;
+ const gain=error>0?.92:.18;
+ const worldStep=THREE.MathUtils.clamp(error*gain,-Math.max(.003,dt*.65),Math.max(.05,dt*8));
+ z.injuredCrawlerVisual.position.y+=worldStep/scale;
+ z.injuredCrawlerGroundClearance=lowest+worldStep;
+ z.injuredCrawlerGroundAdjustment=(z.injuredCrawlerGroundAdjustment||0)+worldStep;
+ z.injuredCrawlerVisual.updateWorldMatrix(true,true);
+}
 const injuredHitGeo=new THREE.SphereGeometry(1,12,8);
 const injuredHitMat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,colorWrite:false,depthWrite:false,side:THREE.DoubleSide});
 const injuredHitUp=new THREE.Vector3(0,1,0),injuredHitP=new THREE.Vector3(),injuredHitQ=new THREE.Vector3(),injuredHitD=new THREE.Vector3();
@@ -5807,6 +5865,11 @@ function attachInjuredCrawlerVisual(z){
   const b=lookUp.get(name);if(b)z.injuredCrawlerBones.set(part,b);
  }
  attachInjuredCrawlerHitboxes(z);
+ z.injuredCrawlerTravel=0;
+ z.injuredCrawlerGroundAdjustment=0;
+ poseInjuredCrawlerDraggingLegs(z);
+ groundInjuredCrawlerPose(z,1/60);
+ updateInjuredCrawlerHitboxes(z);
  z.injuredCrawlerPrevX=z.g.position.x;z.injuredCrawlerPrevZ=z.g.position.z;
  document.documentElement.dataset.injuredCrawlerAttached=
   String(Number(document.documentElement.dataset.injuredCrawlerAttached||0)+1);
@@ -5819,9 +5882,17 @@ function updateInjuredCrawlerVisual(z,dt){
   z.g.position.z-z.injuredCrawlerPrevZ);
  z.injuredCrawlerPrevX=z.g.position.x;z.injuredCrawlerPrevZ=z.g.position.z;
  const speed=dist/Math.max(.005,dt);
- z.injuredCrawlerAction.setEffectiveTimeScale(
-  speed<.08?.32:THREE.MathUtils.clamp(speed/.85,.48,1.20));
+ z.injuredCrawlerTravel=(z.injuredCrawlerTravel||0)+Math.min(.28,dist);
+ // The uploaded clip is 10.27s long. v665 ran it at ~0.5-1.2x while the
+ // game advanced the crawler every frame: arms looked frozen/skated forward.
+ // Speed now drives recording time so roughly 4.8m of travel plays one full
+ // recorded sequence, with legs repeating a short alternating 1.18m stroke.
+ const duration=injuredCrawlerAsset?.clip.duration||10.267;
+ const rate=speed<.035?.10:THREE.MathUtils.clamp(speed*duration/4.8,.38,3.15);
+ z.injuredCrawlerAction.setEffectiveTimeScale(rate);
  z.injuredCrawlerMixer.update(dt);
+ poseInjuredCrawlerDraggingLegs(z);
+ groundInjuredCrawlerPose(z,dt);
  updateInjuredCrawlerHitboxes(z);
 }
 function attachNaturalCrawlerVisual(z){
