@@ -1,14 +1,14 @@
-// v676 verified-shader rerun on final loaded source and protected zombie tests.
-// v676 final synchronized loader: run against committed index.html game.js?v=676 and approved two-natural-crawler rotation.
+// v677 verified-shader rerun on final loaded source and protected zombie tests.
+// v677 final synchronized loader: run against committed index.html game.js?v=677 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"676",pass:false},errors=[];let browser,page;
+ const report={version:"677",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=676$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=677$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -249,7 +249,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    });
   }
   z.phase=prevPhase;syncInfectedGLB(z,0);
-  // v676: sample an entire authored gait instead of only four sparse upper
+  // v677: sample an entire authored gait instead of only four sparse upper
   // body checkpoints. One real Mixamo ankle's forward maximum can fall
   // between those four phases despite its full cycle articulating correctly.
   // Reset foot-plant bookkeeping for these static rig samples; the separate
@@ -720,7 +720,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=676-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=677-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -802,7 +802,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.injuredMotion.minFloorGap>-.30&&report.injuredMotion.maxFloorGap<.40&&
    report.injuredMotion.minKnee>-.08&&report.injuredMotion.minFoot>-.08&&
    report.injuredMotion.maxClipCorrection>=0,
-   "v676 original crawl must drag legs above the pavement without any root lift: "+
+   "v677 original crawl must drag legs above the pavement without any root lift: "+
     JSON.stringify(report.injuredMotion));
   assert(report.injuredDamage.hit>0&&report.injuredDamage.partsDelta===0&&
    !report.injuredDamage.oldGoreVisible&&report.injuredDamage.legacyMeshes.length===0&&
