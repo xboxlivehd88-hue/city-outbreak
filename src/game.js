@@ -2895,15 +2895,14 @@ new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
  });
  if(weapon==="rifle")rebuildGun();
 },undefined,err=>console.warn("M4 GLB load failed; M4 viewmodel unavailable",err));
-// v678: isolate the EXACT user-uploaded Norinco M305A MARKSMAN rifle.
-// This Sketchfab scene also contains TWO other complete rifles, a table and
-// detached cartridges. Never render the entire presentation scene.
-// Preserve native baked textures, real furniture/attachments and the real
-// magazine on the MARKSMAN group; do not make a generic rifle instead.
+// v679: user explicitly selected the exact Norinco M305A LEISURE rifle
+// shown in their Sketchfab screenshot, including red-dot optic and orange
+// bakelite magazine. Isolate ONLY this original source subtree, not the
+// Marksman, stock M305A, desk, or loose display cartridges.
 let dmrModelTemplate=null,dmrLoadError="",dmrSourceNodeCount=0;
-new GLTFLoader().load("assets/norinco_m305a.glb?v=678",gltf=>{
- const src=gltf.scene.getObjectByName("m305a_marksman");
- if(!src)throw Error("Norinco MARKSMAN submodel is missing");
+new GLTFLoader().load("assets/norinco_m305a.glb?v=679",gltf=>{
+ const src=gltf.scene.getObjectByName("m305a_leisure");
+ if(!src)throw Error("Norinco LEISURE submodel is missing");
  gltf.scene.updateMatrixWorld(true);
  const isolated=src.clone(true);
  // Parent Sketchfab/FBX matrices put the authored muzzle toward -Z.
@@ -2923,10 +2922,8 @@ new GLTFLoader().load("assets/norinco_m305a.glb?v=678",gltf=>{
    }
   }
  });
- // Loose display cartridge is not part of the mounted gun, but the real
- // detachable magazine and optical attachments MUST remain visible.
- const displayCartridge=isolated.getObjectByName("m305a_marksman_cartridge_0");
- if(displayCartridge)displayCartridge.visible=false;
+ // The selected Leisure source subtree consists of the receiver, original
+ // red-dot attachment and orange bakelite magazine only. No desk or props.
  dmrSourceNodeCount=0;isolated.traverse(o=>{if(o.isMesh&&o.visible)dmrSourceNodeCount++});
  dmrModelTemplate=isolated;
  document.documentElement.dataset.dmrGlbReady="true";
@@ -2935,7 +2932,7 @@ new GLTFLoader().load("assets/norinco_m305a.glb?v=678",gltf=>{
 },undefined,err=>{
  dmrLoadError=String(err);
  document.documentElement.dataset.dmrGlbError=dmrLoadError;
- console.error("Norinco M305A marksman original GLB load failed",err);
+ console.error("Norinco M305A Leisure original GLB load failed",err);
 });
 
 // Supplied SIG Sauer M17 GLB. The GLB is the sole visible M17 viewmodel.
@@ -4493,8 +4490,8 @@ function rebuildGun(){
  }else if(weapon==='dmr'){
   if(dmrModelTemplate){
    const model=dmrModelTemplate.clone(true);
-   model.name="OriginalNorincoM305AMarksman";
-   // The file's own Sketchfab -> FBX -> marksman transforms point the
+   model.name="OriginalNorincoM305ALeisure";
+   // The file's own Sketchfab -> FBX -> Leisure transforms point the
    // real barrel along -Z. Fit rifle length, never distort proportions.
    const carrier=new THREE.Group();carrier.name="NorincoDMRViewRoot";
    carrier.add(model);
@@ -4511,11 +4508,11 @@ function rebuildGun(){
    carrier.traverse(o=>{o.userData.externalWeaponAsset=true;
     if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    gun.add(carrier);
-   // Use the actual SOURCE MARKSMAN GLB magazine as the existing detachable
+   // Use the actual SOURCE LEISURE orange bakelite magazine as the detachable
    // magazine actor, not a procedural placeholder. Attach the gun's own
    // imported magazine to camera gun space while preserving its world pose,
    // so the original common reload uses coherent hand/magwell coordinates.
-   const realMag=model.getObjectByName("m305a_marksman_mag_p20r_0");
+   const realMag=model.getObjectByName("m305a_leisure_mag_bakelite_0");
    if(realMag){
     gun.updateMatrixWorld(true);
     gun.attach(realMag);
@@ -4524,7 +4521,7 @@ function rebuildGun(){
     playerReloadPart=realMag;
    }
    document.documentElement.dataset.dmrRealMagazine=String(!!playerReloadPart);
-   document.documentElement.dataset.dmrSourceVisual="norinco_m305a_marksman";
+   document.documentElement.dataset.dmrSourceVisual="norinco_m305a_leisure";
    document.documentElement.dataset.dmrModelLength=sourceSize.z.toFixed(3);
    document.documentElement.dataset.dmrViewScale=scale.toFixed(4);
    document.documentElement.dataset.dmrMeshCount=String(dmrSourceNodeCount);
