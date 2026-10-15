@@ -1,3 +1,15 @@
+# v672 GRENADE FRAME-HITCH OPTIMIZATION — 2026-10-15
+
+- **User requested comprehensive optimization of grenade lag**, asked how big games sustain dense onscreen effects, and approved safe implementation directly on main.
+- **Core rendering fix:** in `src/explosion-batch.js`, smoke and fire retain the ORIGINAL 128px procedural alpha textures, individual particle counts/color/rotation/size/drift/opacity and graphics particle scaling. They now draw as TWO InstancedMesh GPU batches (one smoke, one fire) rather than about 160 unique GPU draw calls/materials on High. Spark fragments already used one InstancedMesh and remain unchanged. First-burst alpha textures now prewarm via idle callback rather than being constructed on the explosion frame.
+- **GLB grenade shell optimization:** `src/grenade-shatter.js?v=672` uses once-per-source-geometry cached/pooled triangular casing fragment geometries at 4/6/8 sector quality levels, warmed when user `assets/spintop.glb` loads. On explosion, textured segments start at the current real world transform of the projectile, retain original flying/tumbling velocities and time-to-live, and are re-used rather than reconstructing up to 700 source triangles and 8 geometries per grenade. Launcher also uses the optimized path. Graphics particle settings still scale sector count.
+- **No changes** to grenade radius, damage, knockback, animation, grenade fuse, gameplay ragdoll physics, ordinary zombie animations/hitboxes, approved source assets or boss rotation. v671 Wave 1 ten Shamblers, 50/50 native crawlers from Wave 3+, infected and bosses are protected. Recovery v324 protected file untouched.
+- **Performance diagnostics**: DOM `dataset.grenadeLastSpriteCount`, `grenadeLastSpriteDraws`, `grenadePreparedFragmentTiers`, `lastGrenadeShatterMs`, `lastGrenadeVisualMs`, `lastGrenadeLogicMs`, `lastGrenadeFragments`, `lastGrenadeAffected`, `lastGrenadeRagdolls`. Performance HUD now lists full smoke/fire particle count but actual batched draw count and active physical shell fragments.
+- Updated `index.html` loader `./src/game.js?v=672`; `scripts/parasite-v586-smoke.cjs`, `scripts/sprinter-v611-smoke.cjs`, and `scripts/hazmat-v599-smoke.cjs` load v672. Hazmat regression now asserts 2 real batched smoke/fire draws, 100+ high detail particles, prebuilt original-GLB shards and finite timing metrics. All regression results and Pages deployment MUST be verified before treating this work as complete.
+- Playable link once deployed: https://xboxlivehd88-hue.github.io/city-outbreak/?v=672-optimized-grenades
+
+---
+
 # v671 VERIFIED — TWO APPROVED NATURALLY SPAWNING CRAWLERS — 2026-10-15
 
 - **User visual approval:** after testing v670, user said "they seem fine." The new animated injured crawler is APPROVED alongside the existing natural crawler. Leave their approved GLB animation, original textures, hitboxes, floor contact, and limb destruction untouched.
