@@ -46,14 +46,15 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    // v673 inspect real first-person gun world bounds at level and max-look-down.
    const eyeAudit=`
 ;globalThis.__eyeHeightAudit=()=>{
- const prior=cam.rotation.x,ground=playerGroundY;
+ const prior=pitch,ground=playerGroundY;
  const eye=cam.position.y-ground;
  const samples=[0,-.70,-1.05].map(p=>{
-  cam.rotation.x=p;cam.updateMatrixWorld(true);
+  // Exercise the REAL live gun-tuck branch as well as camera downward pitch.
+  pitch=p;move(0);cam.updateMatrixWorld(true);
   const bounds=new THREE.Box3().setFromObject(gun,true);
   return{pitch:p,groundClearance:bounds.min.y-ground,meshBelowEye:cam.position.y-bounds.min.y};
  });
- cam.rotation.x=prior;cam.updateMatrixWorld(true);
+ pitch=prior;move(0);cam.updateMatrixWorld(true);
  return{eye,expected:PLAYER_EYE_HEIGHT,original:1.65*PLAYER_WORLD_SCALE,
     worldScale:PLAYER_WORLD_SCALE,samples};
 };`;
@@ -63,11 +64,10 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
-  await page.waitForTimeout(250);
-  report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
   await page.evaluate(()=>globalThis.__hazmatSmoke.forceHazmats());
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.snapshot()?.attached===10,null,{timeout:45000});
   await page.waitForTimeout(700);
+  report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
   report.motion=await page.evaluate(()=>globalThis.__hazmatSmoke.motion());
   report.lifecycle=await page.evaluate(()=>globalThis.__hazmatLifecycleAudit());
@@ -87,7 +87,8 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert.equal(s.build,"631");assert.equal(s.wave,1);
   assert(Math.abs(report.eyeHeight.eye-2.10)<.025&&
    Math.abs(report.eyeHeight.eye-report.eyeHeight.original-.12)<.025&&
-   report.eyeHeight.worldScale===1.20&&report.eyeHeight.samples.length===3,
+   report.eyeHeight.worldScale===1.20&&report.eyeHeight.samples.length===3&&
+   report.eyeHeight.samples.every(x=>x.groundClearance>-.025),
    "Player eye increase should be ONLY 12cm with preserved player scale: "+
     JSON.stringify(report.eyeHeight));
   assert.equal(s.waveTarget,10);assert.equal(s.waveSpawned,10);
