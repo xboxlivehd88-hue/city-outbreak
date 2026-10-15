@@ -226,7 +226,7 @@ try{
 globalThis.__m17V691Preview=(ads)=>{
  weapon="pistol";aiming=!!ads;aimBlend=ads?1:0;pitch=0;
  reloading=false;reloadWeapon="";rebuildGun();move(.25);
-};;
+};`;
    const dmrShoulderAudit=`
 ;globalThis.__dmrV683ShoulderAudit=()=>{
  const previousAim=aiming,previousPitch=pitch;
