@@ -2903,6 +2903,14 @@ new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
 // Prepare one textured instance template; use it only for DMR ejections.
 let dmrModelTemplate=null,dmrCartridgeTemplate=null,dmrLoadError="",dmrSourceNodeCount=0;
 let dmrViewRoot=null,dmrViewHome=null,dmrViewQuat=null,dmrOpticPose=null,dmrMagazineGrip=null,dmrRecoilVisual=0;
+// v683: calibrated from 1920x1080 user's 2026-10-15 ADS video. The native
+// red-dot's aiming window sits ~67 screen pixels ABOVE the true center hit
+// marker. At FOV 48 and a .66-unit lens distance, this is ~.044 units in
+// camera space, i.e. .052 in the DMR's .84 ADS viewmodel local units.
+// Shift the ACTUAL original optic down into the existing center bullet ray;
+// do NOT move the shot ray, HUD hit marker, approved hip hold or gun scale.
+const DMR_ADS_LENS_VERTICAL_ZERO=.052;
+const DMR_ADS_LENS_HORIZONTAL_ZERO=.007;
 const DMR_RECOIL_PIVOT=new THREE.Vector3(.36,-.46,-1.45);
 // v680: smooth, hip-only shoulder placement. A shared transform carries the
 // imported receiver, native magazine and both original player-hand actors
@@ -4668,11 +4676,24 @@ function rebuildGun(){
     const opticBox=new THREE.Box3().setFromObject(sourceOptic,true);
     const opticMiddle=gun.worldToLocal(opticBox.getCenter(new THREE.Vector3()));
     const height=opticBox.max.y-opticBox.min.y;
-    // Imported sight includes a lower mounting rail; put eye near upper optics.
-    const eyeHeight=opticMiddle.y+height*.13;
+    // The v682 asset-bounds calculation placed the real lens/window 67px
+    // ABOVE the center firing ray on the user's actual ADS recording. Use
+    // that measured sight-window correction in 3D instead of shifting the
+    // hit marker (whose DMR shots already use center-camera aiming).
+    const eyeHeight=opticMiddle.y+height*.13+DMR_ADS_LENS_VERTICAL_ZERO;
     const adsScale=.84;
-    dmrOpticPose={x:-opticMiddle.x,y:-eyeHeight*adsScale,z:-.66-opticMiddle.z*adsScale};
+    dmrOpticPose={
+      x:-opticMiddle.x+DMR_ADS_LENS_HORIZONTAL_ZERO,
+      y:-eyeHeight*adsScale,
+      z:-.66-opticMiddle.z*adsScale
+    };
     document.documentElement.dataset.dmrSightPose=JSON.stringify(dmrOpticPose);
+    document.documentElement.dataset.dmrSightZeroCorrection=JSON.stringify({
+     verticalModelUnits:DMR_ADS_LENS_VERTICAL_ZERO,
+     horizontalModelUnits:DMR_ADS_LENS_HORIZONTAL_ZERO,
+     correctedEyeHeight:eyeHeight,opticCenterX:opticMiddle.x,
+     sightDistance:.66,zoomFov:ADS.dmr.fov
+    });
    }
    document.documentElement.dataset.dmrRealMagazine=String(!!playerReloadPart);
    document.documentElement.dataset.dmrSourceVisual="norinco_m305a_leisure";
