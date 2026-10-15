@@ -1,3 +1,13 @@
+# v683 — BROWSER-VERIFIED ADS ZERO CORRECTION / STALE SMOKE ROUTE REPAIRED — 2026-10-15
+
+- **Live headless Chromium regression SUCCESS:** [GitHub Actions run 38794813134](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38794813134) after fixing the stale test-route regex. The complete Hazmat/DMR test report has `passed:true`, `errors:[]`, preserved Wave 1, original Hazmat and Green Guy, GPU batched grenade smoke, static map and 2.10m player eye height; the real Leisure GLB loads with original textured magazine and separate native cartridge.
+- **Measured native DMR ADS aim-point projection:** camera normalized device coordinates **X +0.001203, Y -0.002025**, within ~1 screen pixel of exact center firing ray at tested viewport. Optic calibration delta **+0.052 Y, +0.007 X** in source-model eyeline; `dmrOpticPose` at full aim x≈-0.338/y≈-0.122/z≈+0.941 with FOV 48. This checks the real 3D optic positioning, not a moved hit-marker overlay. **User gameplay visual approval is still pending.**
+- **Protected v681 hip hold passed unchanged** X≈+0.309/Y≈-0.239/Z≈+0.758/Yaw≈+0.060. **V682 muzzle-only recoil passed** (no global gun rotation, imported rifle pitch ≈0.0053 rad on shot). **Planted reload passed**: identical global gun X 0.31/Y -0.24/Z 0.76 throughout all six checked phases, with original orange GLB magazine dropped, replacement carried, and seated. Both original crawler models, Infected, Sprinter, boss and other approved systems remain unedited by v683.
+- **Publishing:** `main` source and loader confirmed at v683, loader `./src/game.js?v=683`. Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=683-dmr-ads-zero . The CI test result is confirmed; **an independent live GitHub Pages deployment check has not been completed**, so do not assert hosting status based solely on CI.
+- **Next:** Ask user to inspect v683 red-dot sight versus impact indicator in real ADS gameplay. Maintain current recoil, reload and hip-fire approval unless new visual evidence requires changes. v324 recovery remains protected and unchanged.
+
+---
+
 # v683 — USER-VIDEO-CALIBRATED NORINCO RED-DOT / HIT MARKER ALIGNMENT — 2026-10-15
 
 - **Current explicit user report:** In v682, while aiming down sights, the Norinco M305A Leisure's actual red-dot optic and the impact/hit marker do not line up. User provided the real 1920x1080, 60 FPS, 22.23s gameplay recording `2026-10-15 15-23-44.mp4`.
