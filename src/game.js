@@ -10461,11 +10461,14 @@ resolveZombiePlayerContact(z,ox,oz);
 // execution, and never calls blocking GPU timer/query operations.
 const cityFrameProfile={
  frames:0,updateMs:0,lightsMs:0,rainMs:0,renderSubmitMs:0,
- maxCpuMs:0,hitches:0
+ maxCpuMs:0,hitches:0,wallFrames:[]
 };
 function takeCityFrameProfile(){
  const n=Math.max(1,cityFrameProfile.frames);
+ const wall=cityFrameProfile.wallFrames.slice().sort((a,b)=>a-b);
+ const at=q=>wall.length?wall[Math.min(wall.length-1,Math.floor((wall.length-1)*q))]:null;
  const result={
+  frameMedianMs:at(.5),frameP95Ms:at(.95),frameMaxMs:at(1),
   gpu:cityGpuTimer.snapshot(),
   updateMs:cityFrameProfile.updateMs/n,
   lightsMs:cityFrameProfile.lightsMs/n,
@@ -10480,7 +10483,7 @@ function takeCityFrameProfile(){
  cityFrameProfile.frames=0;cityFrameProfile.updateMs=0;
  cityFrameProfile.lightsMs=0;cityFrameProfile.rainMs=0;
  cityFrameProfile.renderSubmitMs=0;cityFrameProfile.maxCpuMs=0;
- cityFrameProfile.hitches=0;
+ cityFrameProfile.hitches=0;cityFrameProfile.wallFrames.length=0;
  perfNavBuilds=0;perfNavDeferred=0;perfNavWorstMs=0;
  perfRainCoverChecks=0;perfRainCoverWorstMs=0;
  document.documentElement.dataset.cityPerformanceBreakdown=JSON.stringify(result);
@@ -10720,6 +10723,7 @@ function frame(t){
   cityFrameProfile.lightsMs+=lightsEnd-updateEnd;
   cityFrameProfile.rainMs+=rainEnd-lightsEnd;
   cityFrameProfile.renderSubmitMs+=renderEnd-rainEnd;
+  cityFrameProfile.wallFrames.push(wallDt*1000);
   cityFrameProfile.maxCpuMs=Math.max(cityFrameProfile.maxCpuMs,renderEnd-cpuStart);
   if(wallDt>.05)cityFrameProfile.hitches++;
  }
