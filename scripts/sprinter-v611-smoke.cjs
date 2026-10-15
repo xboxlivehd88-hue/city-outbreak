@@ -5,7 +5,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
-  await page.route(/\/src\/game\.js\?v=664$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=665$/,async route=>{
    const resp=await route.fetch(),src=await resp.text();
    const added=[
    "",
@@ -129,7 +129,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    ].join("\n");
    await route.fulfill({response:resp,body:src+added,contentType:"application/javascript"});
   });
-  const res=await page.goto("http://127.0.0.1:4173/?v=664-sprinter-two-models&sprinterTest=1",{waitUntil:"domcontentloaded",timeout:85000});
+  const res=await page.goto("http://127.0.0.1:4173/?v=665-sprinter-two-models&sprinterTest=1",{waitUntil:"domcontentloaded",timeout:85000});
   report.http=res?.status();
   await page.waitForFunction(()=>globalThis.__sprinterSmoke?.ready(),null,{timeout:115000});
   await page.locator("#start").click({noWaitAfter:true});

@@ -1,3 +1,12 @@
+# v665 CANDIDATE — INJURED CRAWLER ORIGINAL COLORS + SKIN-ALIGNED HITBOXES — 2026-10-14
+
+- User's 46-second v664 recorded gameplay confirms the new crawler is pale white, old generic parts visibly detach from the body after gunshots and old generic crawler geometry appears after repeated hits. Inspected the full recording before edits.
+- Root cause of color failure confirmed using [original GLB inspector](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38666745212): all THREE original crawler materials reference their authentic embedded PNG through legacy KHR_materials_pbrSpecularGlossiness. GLTFLoader left original diffuse image unassigned. v665 asynchronously recovers embedded PNG texture index 0 and normal texture index 2, binds original RGB diffuse skin to all three original skinned GLB materials, preserves UVs and recorded `Animation` clip.
+- Root cause of legacy fragments: `launchDetachedLimb` re-enabled hidden original generic procedural limbs and blood pieces and physically flung them into the scene. v665 separates NEW injured crawler limb removal from procedural limbs, clips affected original skinned triangles and never launches old body geometry. New invisible head, torso, arm, and leg hit volumes follow ORIGINAL Mixamo joint positions each frame; previous misplaced procedural crawler hitMeshes are completely disabled for new crawler only.
+- Wave 1 remains exactly 10 NEW injured crawlers; approved existing natural crawler on later waves, original Infected/Wave 5+ rotation, 19-boss cycle and v324 recovery checkpoint protected. Run chromium Parasite/Infected + Sprinter + Hazmat tests and verify corrected damage regression before deploying v665.
+
+---
+
 # v664 BROWSER VERIFIED — NEW INJURED CRAWLER IN WAVE 1 — 2026-10-14
 
 - Browser/GLB proof: [original injured crawler GLB anatomy](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38664971664) SUCCESS. [Wave 1 / original Infected / Parasite boss](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38665434709) SUCCESS. [Original Sprinters](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38665434699) SUCCESS. [Original Hazmat and Green Guy](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38665434720) SUCCESS.

@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"664",pass:false},errors=[];let browser,page;
+ const report={version:"665",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=664$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=665$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -32,7 +32,34 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    clipTracks:injuredCrawlerAsset?.clip?.tracks?.length||0,
    mixer:!!first?.injuredCrawlerMixer,actionPlaying:first?.injuredCrawlerAction?.isRunning()||false,
    scale:v?.scale.x,length:Math.max(size?.x||0,size?.z||0),height:size?.y||0,
-   floor:box?.min.y,ground:first?.g.position.y};
+   floor:box?.min.y,ground:first?.g.position.y,
+   hitboxes:first?.injuredHitboxes?.length||0,
+   oldHitboxesReplaced:!!first?.injuredHitboxes?.length&&
+    first.hitMeshes.every(h=>h.name.startsWith("InjuredGLBHit_")),
+   materials:(()=>{const mats=[];first?.injuredCrawlerModel?.traverse(o=>{
+    if(o.isSkinnedMesh)for(const mat of (Array.isArray(o.material)?o.material:[o.material]))
+     mats.push({name:mat.name,diffuse:!!mat.map?.image,normal:!!mat.normalMap?.image,
+      width:mat.map?.image?.width||0,colorSpace:mat.map?.colorSpace});
+   });return mats})()};
+ },
+ injuredDamageAudit:()=>{
+  const z=zombies.find(a=>a.injuredCrawlerVisual&&!a.dead);
+  if(!z)throw Error("new crawler missing");
+  const before=parts.length,old=z.g.getObjectByName("CrawlerBodyBlood");
+  const head=z.injuredHitboxes.find(h=>h.part==="head");
+  const loc=head.mesh.getWorldPosition(new THREE.Vector3());
+  const r=new THREE.Raycaster();r.set(loc.clone().add(new THREE.Vector3(0,0,2)),
+   new THREE.Vector3(0,0,-1));
+  const hit=r.intersectObject(head.mesh,false).length;
+  const prior=z.injuredCrawlerModel?.getObjectByProperty("isSkinnedMesh",true)?.geometry?.index?.count||0;
+  detachArm(z,"left");detachLeg(z,"right");
+  const after=z.injuredCrawlerModel?.getObjectByProperty("isSkinnedMesh",true)?.geometry?.index?.count||0;
+  const legacyMeshes=[];
+  z.g.traverse(o=>{if(o.isMesh&&!o.name.startsWith("InjuredGLBHit_")&&
+   !o.userData.visualOnly&&!o.isSkinnedMesh&&o.visible)legacyMeshes.push(o.name||"unnamed")});
+  return {hit,partsDelta:parts.length-before,oldGoreVisible:!!old?.visible,
+   clipped:prior-after,legacyMeshes,armGone:z.leftArmDetached,legGone:z.rightLegDetached,
+   liveSkinned:!!z.injuredCrawlerModel?.getObjectByProperty("isSkinnedMesh",true)};
  },
  seedInfectedAudit:()=>{
   const slots=zombies.filter(z=>!z.dead&&z.kind==="crawler"&&z.injuredCrawlerVisual).slice(0,3);
@@ -585,7 +612,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=664-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=665-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -593,6 +620,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
   report.normalRotation=await page.evaluate(()=>globalThis.__parasiteSmoke.normalRotation());
   report.injuredCrawler=await page.evaluate(()=>globalThis.__parasiteSmoke.injuredCrawlerAudit());
+  report.injuredDamage=await page.evaluate(()=>globalThis.__parasiteSmoke.injuredDamageAudit());
   report.infectedTestActors=await page.evaluate(()=>globalThis.__parasiteSmoke.seedInfectedAudit());
   const infectedImages=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedVisualQA());
   report.infectedRenderFrames=infectedImages.map(f=>({name:f.name,bytes:f.jpeg.length}));
@@ -642,6 +670,15 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.injuredCrawler.height>.15&&report.injuredCrawler.height<3&&
    Math.abs(report.injuredCrawler.floor-report.injuredCrawler.ground)<.30,
    "New injured crawler not animated/grounded: "+JSON.stringify(report.injuredCrawler));
+  assert(report.injuredCrawler.hitboxes>=14&&report.injuredCrawler.oldHitboxesReplaced&&
+   report.injuredCrawler.materials.length>=3&&
+   report.injuredCrawler.materials.every(m=>m.diffuse&&m.normal&&m.width>0&&m.colorSpace==="srgb"),
+   "Original crawler textures or new animated hit volumes missing: "+JSON.stringify(report.injuredCrawler));
+  assert(report.injuredDamage.hit>0&&report.injuredDamage.partsDelta===0&&
+   !report.injuredDamage.oldGoreVisible&&report.injuredDamage.legacyMeshes.length===0&&
+   report.injuredDamage.clipped>0&&report.injuredDamage.armGone&&report.injuredDamage.legGone&&
+   report.injuredDamage.liveSkinned,
+   "The new crawler displayed generic limbs or old body mesh: "+JSON.stringify(report.injuredDamage));
   assert.deepEqual(report.normalRotation.first,["crawler","crawler","crawler","crawler"],
    "Wave 1 must be dedicated to the new injured crawler test");
   assert.deepEqual(report.normalRotation.second,["sprinter","shambler"],
