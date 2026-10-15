@@ -1,4 +1,4 @@
-// v681 final synchronized loader: run against committed index.html game.js?v=681 and approved two-natural-crawler rotation.
+// v682 final synchronized loader: run against committed index.html game.js?v=682 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 // v680 DMR source geometry audit: inspect user's real uploaded GLB, not a
 // guessed procedural replacement. Print bounded node, accessor and material
@@ -120,7 +120,7 @@ try{
    // v680: measure the real DMR whole-gun pose, including attached real
    // magazine/hands. The test does not perform or mutate reload choreography.
    const dmrShoulderAudit=`
-;globalThis.__dmrV681ShoulderAudit=()=>{
+;globalThis.__dmrV682ShoulderAudit=()=>{
  const previousAim=aiming,previousPitch=pitch;
  if(weapon!=="dmr")throw Error("DMR must be selected for shoulder pose audit");
  aiming=false;aimBlend=0;pitch=0;dmrShoulderBlend=0;dmrRightGripBlend=0;
@@ -133,10 +133,35 @@ try{
   mag:playerReloadPart?.name,
   gunHasBothHands:!!gun.getObjectByName("RightPlayerArm")&&!!gun.getObjectByName("LeftPlayerArm")};
  aiming=true;move(.50);
- const ads={x:gun.position.x,z:gun.position.z,yaw:gun.rotation.y,blend:dmrShoulderBlend,
+ const ads={x:gun.position.x,y:gun.position.y,z:gun.position.z,yaw:gun.rotation.y,blend:dmrShoulderBlend,
+  opticPose:dmrOpticPose?{...dmrOpticPose}:null,
   mag:playerReloadPart?.name};
  aiming=previousAim;pitch=previousPitch;rebuildGun();move(0);
  return{hip,ads};
+};`;
+   // Run the real DMR visuals at several points through a complete reload.
+   const dmrMechanicsAudit=`
+;globalThis.__dmrV682MechanicsAudit=()=>{
+ aiming=false;aimBlend=0;pitch=0;weapon="dmr";rebuildGun();
+ dmrShoulderBlend=1;dmrRightGripBlend=1;recoil=0;
+ move(.016);
+ const cartridges=[];
+ dmrCartridgeTemplate?.traverse(o=>{if(o.isMesh)cartridges.push({name:o.name,material:o.material?.name,texture:!!o.material?.map})});
+ const before={gun:[gun.position.x,gun.position.y,gun.position.z],optic:dmrOpticPose?{...dmrOpticPose}:null,
+    sourceCartridges:cartridges,mag:playerReloadPart?.name};
+ recoil=.16;move(.016);
+ const shot={gunRotation:gun.rotation.x,visualAngle:dmrRecoilVisual,receiverRotation:dmrViewRoot?.rotation.x||0,
+  sourceCartridge:!!dmrCartridgeTemplate};
+ recoil=0;dmrRecoilVisual=0;
+ reloading=true;reloadWeapon="dmr";reloadDurationMs=1000;
+ const samples=[.06,.23,.34,.57,.82,.92].map(p=>{
+  reloadStartedAt=gameTimeNow()-p*1000;move(.016);
+  return{p,x:gun.position.x,y:gun.position.y,z:gun.position.z,pitch:gun.rotation.x,
+    oldDropped:reloadOldMagDropped,fresh:!!reloadFreshMag,inserted:reloadMagInserted,
+    leftHand:playerHandRig?.leftGripAnchor?.position?.toArray(),magName:playerReloadPart?.name};
+ });
+ finishReloadMagazineFX();reloading=false;reloadWeapon="";reloadDurationMs=0;rebuildGun();
+ return{before,shot,samples};
 };`;
    const profileAudit=`
 ;globalThis.__city678PerfAudit=()=>{
@@ -192,9 +217,9 @@ try{
  const unsupported=createGpuFrameTimer({getContext:()=>({getExtension:()=>null})}).snapshot();
  return {measured,begins,ends,deleted,unsupported,live:cityGpuTimer.snapshot()};
 };`;
-   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+dmrShoulderAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
+   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+dmrShoulderAudit+dmrMechanicsAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=681-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=682-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.ready(),null,{timeout:110000});
   // Shaders, textures and actual pooled instance buffers must be initialized
@@ -216,7 +241,8 @@ try{
   await page.waitForFunction(()=>document.documentElement.dataset.dmrGlbReady==="true",null,{timeout:65000});
   report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
-  report.dmrShoulder=await page.evaluate(()=>globalThis.__dmrV681ShoulderAudit());
+  report.dmrShoulder=await page.evaluate(()=>globalThis.__dmrV682ShoulderAudit());
+  report.dmrMechanics=await page.evaluate(()=>globalThis.__dmrV682MechanicsAudit());
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
   report.motion=await page.evaluate(()=>globalThis.__hazmatSmoke.motion());
   report.lifecycle=await page.evaluate(()=>globalThis.__hazmatLifecycleAudit());
@@ -258,10 +284,30 @@ try{
     report.dmrShoulder.hip.indexTip?.[2]<-1.57&&
     report.dmrShoulder.hip.triggerWrist?.[2]<-1.46&&
     report.dmrShoulder.hip.mag==="m305a_leisure_mag_bakelite_0"&&
-    report.dmrShoulder.ads.x<-.27&&report.dmrShoulder.ads.z<-.95&&
+    report.dmrShoulder.ads.opticPose&&
+    Math.abs(report.dmrShoulder.ads.x-report.dmrShoulder.ads.opticPose.x*.84)<.025&&
+    Math.abs(report.dmrShoulder.ads.y-report.dmrShoulder.ads.opticPose.y)<.025&&
+    Math.abs(report.dmrShoulder.ads.z-report.dmrShoulder.ads.opticPose.z)<.025&&
+    report.dmrShoulder.ads.z>0&&
     Math.abs(report.dmrShoulder.ads.yaw)<.005&&
     report.dmrShoulder.ads.mag==="m305a_leisure_mag_bakelite_0",
-    "v681 must lower/retract hip DMR, rest real index finger on trigger and preserve ADS/magazine: "+JSON.stringify(report.dmrShoulder));
+    "v682 hip must stay approved and the real red-dot be physically centered near the eye: "+JSON.stringify(report.dmrShoulder));
+  assert(report.dmrMechanics?.before?.mag==="m305a_leisure_mag_bakelite_0"&&
+    report.dmrMechanics.before.sourceCartridges?.some(c=>c.material==="cartridge"&&c.texture)&&
+    Math.abs(report.dmrMechanics.shot.gunRotation)<.0001&&
+    report.dmrMechanics.shot.visualAngle>0&&report.dmrMechanics.shot.visualAngle<.035&&
+    report.dmrMechanics.shot.sourceCartridge&&
+    report.dmrMechanics.samples[0].oldDropped===false&&
+    report.dmrMechanics.samples[2].oldDropped===true&&
+    report.dmrMechanics.samples[3].fresh===true&&
+    report.dmrMechanics.samples[4].fresh===true&&
+    report.dmrMechanics.samples[5].inserted===true&&
+    report.dmrMechanics.samples.every(p=>
+      Math.abs(p.x-report.dmrMechanics.before.gun[0])<.005&&
+      Math.abs(p.y-report.dmrMechanics.before.gun[1])<.005&&
+      Math.abs(p.z-report.dmrMechanics.before.gun[2])<.005&&
+      Math.abs(p.pitch)<.005),
+    "v682 must use GLB cartridges, only muzzle recoil, and NEVER push the gun during reload: "+JSON.stringify(report.dmrMechanics));
   assert(Math.abs(report.eyeHeight.eye-2.10)<.025&&
    Math.abs(report.eyeHeight.eye-report.eyeHeight.original-.12)<.025&&
    report.eyeHeight.worldScale===1.20&&report.eyeHeight.samples.length===3&&
