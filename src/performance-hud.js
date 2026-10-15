@@ -19,7 +19,7 @@ export function createPerformanceGuard({
   perfTick+=dt;perfTime+=dt;perfFrames++;perfMaxMs=Math.max(perfMaxMs,dt*1000);
   if(perfTick>=1){
    const fps=Math.round(perfFrames/Math.max(.001,perfTime)),avg=(perfTime/perfFrames*1000).toFixed(1),ri=renderer.info.render,liveCount=livingCount(),fx=getFxCounts();
-   perfHud.textContent="PERFORMANCE\nFPS "+fps+"  AVG "+avg+"ms  MAX "+perfMaxMs.toFixed(1)+"ms\nDRAWS "+ri.calls+"  TRIANGLES "+ri.triangles+"\nZOMBIES "+liveCount+"  FX "+(fx.parts+fx.impacts+fx.casings)+"\nPIXEL RATIO "+renderer.getPixelRatio().toFixed(2);
+   perfHud.textContent="PERFORMANCE\nFPS "+fps+"  AVG "+avg+"ms  MAX "+perfMaxMs.toFixed(1)+"ms\nDRAWS "+ri.calls+"  TRIANGLES "+ri.triangles+"\nZOMBIES "+liveCount+"  FX "+(fx.parts+fx.impacts+fx.casings)+"\nEXPLOSIONS "+(fx.bursts||0)+"  SMOKE/FIRE "+(fx.batchedSprites||0)+" IN "+(fx.batchDraws||0)+" DRAWS\nSHELL FRAGMENTS "+(fx.fragments||0)+"\nPIXEL RATIO "+renderer.getPixelRatio().toFixed(2);
    if(consoleLogging)console.log("CityOutbreak perf",{fps,avgMs:avg,maxMs:perfMaxMs.toFixed(1),zombies:liveCount,parts:fx.parts,impacts:fx.impacts,casings:fx.casings,renderer:ri});
    perfTick=0;perfFrames=0;perfTime=0;perfMaxMs=0;
   }
