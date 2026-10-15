@@ -3828,8 +3828,8 @@ function poseOriginalFpsArms(){
   const pistolSightBlend=weapon==="pistol"&&!reloading?THREE.MathUtils.clamp(aimBlend,0,1):0;
   if(pistolSightBlend>.0001){
    const sideSign=side==="left"?-1:1;
-   s.addScaledVector(new THREE.Vector3(sideSign*.22,-.28,-.17),pistolSightBlend);
-   e.addScaledVector(new THREE.Vector3(sideSign*.13,-.17,-.19),pistolSightBlend);
+   s.addScaledVector(new THREE.Vector3(sideSign*.28,-.38,-.19),pistolSightBlend);
+   e.addScaledVector(new THREE.Vector3(sideSign*.20,-.26,-.24),pistolSightBlend);
   }
   const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
   // Animating translations is fine for fingers, but keep elbow and wrist
@@ -3848,6 +3848,16 @@ function poseOriginalFpsArms(){
   const lowerLength=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
   elbow.scale.z=THREE.MathUtils.clamp(e.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
   elbow.updateMatrixWorld(true);
+  // v688 M17: source Cinema4D elbows have angled local bone offsets.
+  // Rotating/scaling the elbow alone can leave its child wrist drifting
+  // up to 14 cm when switching hip -> ADS. Anchor the ACTUAL original
+  // skinned wrist precisely onto the approved trigger/support grip goal,
+  // even as the sleeve/elbow is moved out of the sight picture.
+  if(weapon==="pistol"){
+   const gunGoalWorld=gun.localToWorld(w.clone());
+   wrist.position.copy(elbow.worldToLocal(gunGoalWorld));
+   wrist.updateMatrixWorld(true);
+  }
   // SOURCE finger bases run down wrist-local -Z. Aim them FORWARD along the
   // barrel, then rotate each native palm toward its weapon grip. Previously
   // the original arbitrary bind wrist rotation pointed hands out of the gun.
