@@ -1,3 +1,11 @@
+# v667 VERIFIED — DRAGGING LEGS, LOW CRAWLING BODY — 2026-10-14
+
+- Latest full Chromium [Parasite/Infected/Wave 1 gameplay regression run 38675136959](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38675136959), **attempt 2 SUCCESS**. First attempt failed on nondeterministic unrelated original Infected right-ankle travel metric (0.051 vs 0.075 required; approved old Infected unmodified); verified rerun passed untouched code. [Sprinter run 38675137043](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38675137043) **SUCCESS**, [Hazmat/Green Guy run 38675137022](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38675137022) **SUCCESS**.
+- Measured animated crawler motion across 38 simulated advancing frames: 6 original Mixamo leg joint pose deviations at most 0.00034 radians, arm motion 0.831 radians, body vertical rise max 0.025 game units (previous v666 permitted 0.50), skin bounding minimum +0.046 above test root ground. New crawler is STILL exclusively Wave 1, ten copies. Original diffuse PNG, limb removal and 16 rigged hitboxes preserved; no original crawler or boss regression.
+- v667 loader `./src/game.js?v=667`, Pages `https://xboxlivehd88-hue.github.io/city-outbreak/?v=667-crawler-dragging-legs`. User has not yet approved visual, so keep Wave 1 testing until asked. Recovery v324 **unchanged**.
+
+---
+
 # v667 CRAWLER DRAGGING LEGS — TEST BUILD — 2026-10-14
 
 - User provided and Toby examined actual 43-second gameplay video `2026-10-14 23-02-36.mp4`: all v666 injured crawlers visibly FLOAT above street, and their legs cycle rather than trail. The task is **not** to make the legs crawl. **Only the arms pull while legs drag.**
