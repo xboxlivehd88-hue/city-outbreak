@@ -2549,6 +2549,26 @@ new GLTFLoader().load("assets/chicken_gun_fruzer_-_city.glb?v=320",gltf=>{
  zombieSpawnPlayableCellsReady=false;zombieSpawnPlayableCells.clear();
  setupStreetLampLighting(allStreetLampPlacements);
  addStreetLamps(allStreetLampPlacements);
+ // v675: static world transform freeze. The imported GLB roads, buildings,
+ // props and approved cloned alley fence never move after initial placement.
+ // Three.js would otherwise recompose local transforms for EACH object on
+ // every scene render, even while the camera is still. Cache these exact
+ // already-calculated local matrices; world visibility, lighting, ground
+ // raycasts, collisions and frustum culling stay fully dynamic.
+ // Skip this optimization if a future version adds authored map animations.
+ map.updateMatrixWorld(true);
+ let frozenStaticNodes=0;
+ if(!gltf.animations?.length){
+  map.traverse(o=>{
+   if(o.isBone||o.isSkinnedMesh||o.userData?.dynamicMapTransform)return;
+   o.updateMatrix();
+   o.matrixAutoUpdate=false;
+   frozenStaticNodes++;
+  });
+ }
+ document.documentElement.dataset.staticCityTransformNodes=String(frozenStaticNodes);
+ document.documentElement.dataset.staticCityTransformMode=
+  frozenStaticNodes>0?"frozen-static-world":"dynamic-animated-world";
  const bounds=new THREE.Box3().setFromObject(map),size=new THREE.Vector3();bounds.getSize(size);
  document.documentElement.dataset.newCityLoaded="1";
  document.documentElement.dataset.newCityScale=String(NEW_CITY_SCALE);
