@@ -1,3 +1,14 @@
+# v673 SMALL PLAYER EYE-HEIGHT ADJUSTMENT — 2026-10-15
+
+- **New request:** Player seems slightly too short when looking steeply down; gun appears to penetrate pavement. User wants ONLY a small height increase, not a major scale change.
+- **Minimal implementation:** `src/game.js` adds `PLAYER_EYE_HEIGHT=1.75*PLAYER_WORLD_SCALE` and changes the one first-person camera anchor in `move(dt)` from `playerGroundY+1.65*PLAYER_WORLD_SCALE` to `playerGroundY+PLAYER_EYE_HEIGHT`. With `PLAYER_WORLD_SCALE=1.20`, this increases eye/camera from **1.98 to 2.10 world units: +0.12m (~6%)**. Do **not** rescale player, shift authored gun root, tilt weapon, alter ADS scope/crosshair rays, change clipping plane, collider radius, map/camera ground-follow, zombie appearances, sprint, ragdolls or explosions.
+- **Reason:** taller camera raises the entire camera-mounted gun/arms with respect to real pavement, including at extreme downward view angles, without changing hip/ADS/reload tuning. User visual approval still required.
+- Browser regression scripts now route `game.js?v=673`. Hazmat/Green Guy suite additionally audits actual camera world height and shotgun mesh minY vs pavement for pitch 0, -0.70, and -1.05 rad, asserts exact small 0.12m change and unchanged player world scale. Other original Infected/two native crawlers/19 bosses, Sprinters regressions unchanged. **Check CI results rather than assume success; consider screenshot/mesh min clearance before marking full ground issue resolved.**
+- `index.html` loader `./src/game.js?v=673`. Expected Pages URL once verified: https://xboxlivehd88-hue.github.io/city-outbreak/?v=673-slightly-taller-player
+- Both handoffs updated. Protected `CURRENT_RECOVERY_CHECKPOINT.md` v324 remains **untouched**.
+
+---
+
 # v672 VERIFIED — EXPLOSION GPU BATCHING, PREPARED FRAGMENTS, 3 PASSING BROWSER SUITES — 2026-10-15
 
 - **User authorized direct thorough grenade optimization.** Final gameplay commit `d5a030c08c121ef2a6ce7598033f33c7ddfb8751` on `main`, loader `./src/game.js?v=672`. No changes to approved crawler/Infected/Sprinter/Hazmat/Green Guy/boss walking, hitboxes, ragdolls, grenade damage/fuse, or map.
