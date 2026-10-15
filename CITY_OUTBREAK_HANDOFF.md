@@ -1,3 +1,11 @@
+# v670 AUTOMATED REGRESSIONS VERIFIED — 2026-10-15
+
+- Final v670 gameplay commit: `b5bae864bded30d2be6ee5bfe877af4abc5f3f07`. The complete final-source [Wave 1 new injured crawler/actual source 51-track native crawl, pull-factor, knee/foot/toe ground contact, limb-damage, original Infected and 19-boss regression](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38682619369) **PASS**.
+- [Original Sprinters](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38682619191) **PASS**; [Hazmat and Green Guy](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38682619335) **PASS**; [GitHub Pages deployment for gameplay commit](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38682619368) **SUCCESS**.
+- These are automated browser checks, **not proof the crawl looks visually correct**. Await fresh USER gameplay feedback before ever putting injured crawler into mixed rotation. New crawler remains 10 in Wave 1 ONLY. Protected recovery v324 untouched.
+
+---
+
 # v670 TEST BUILD — NATIVE HAND-PULL TRAVEL AND REAL TRAILING LEG GROUND CONTACT — 2026-10-15
 
 - **User feedback on v669:** The new injured crawlers still slide across the pavement and visible legs do not stay above the street. There is no new video in this turn, so these changes address identifiable v669 source-code causes; visual approval remains REQUIRED.
