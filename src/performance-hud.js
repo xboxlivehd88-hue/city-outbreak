@@ -28,6 +28,10 @@ export function createPerformanceGuard({
     "\nZOMBIES "+liveCount+"  FX "+(fx.parts+fx.impacts+fx.casings)+
     "\nEXPLOSIONS "+(fx.bursts||0)+"  SMOKE/FIRE "+(fx.batchedSprites||0)+" IN "+(fx.batchDraws||0)+" DRAWS"+
     "\nSHELL FRAGMENTS "+(fx.fragments||0)+
+    "\nFX GPU PREWARM "+(fx.gpuWarmup||"waiting")+
+    (fx.lastGrenade?"\nGRENADE CPU "+fmt(fx.lastGrenade.total)+"ms | FX "+fmt(fx.lastGrenade.visual)+
+      " | SHELL "+fmt(fx.lastGrenade.fragments)+" | REACT "+fmt(fx.lastGrenade.reactions)+
+      "ms | DEATHS "+(fx.lastGrenade.ragdolls||0):"")+
     "\nPIXEL RATIO "+renderer.getPixelRatio().toFixed(2)+
     (p?"\nCPU GAME "+fmt(p.updateMs)+"ms | LIGHTS "+fmt(p.lightsMs)+
      " | RAIN "+fmt(p.rainMs)+" | RENDER SUBMIT "+fmt(p.renderSubmitMs)+
