@@ -45,7 +45,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  injuredDamageAudit:()=>{
   const z=zombies.find(a=>a.injuredCrawlerVisual&&!a.dead);
   if(!z)throw Error("new crawler missing");
-  const before=parts.length,old=z.g.getObjectByName("CrawlerBodyBlood");
+  const before=parts.filter(p=>p.limb).length,old=z.g.getObjectByName("CrawlerBodyBlood");
   const head=z.injuredHitboxes.find(h=>h.part==="head");
   const loc=head.mesh.getWorldPosition(new THREE.Vector3());
   const r=new THREE.Raycaster();r.set(loc.clone().add(new THREE.Vector3(0,0,2)),
@@ -57,7 +57,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const legacyMeshes=[];
   z.g.traverse(o=>{if(o.isMesh&&!o.name.startsWith("InjuredGLBHit_")&&
    !o.userData.visualOnly&&!o.isSkinnedMesh&&o.visible)legacyMeshes.push(o.name||"unnamed")});
-  return {hit,partsDelta:parts.length-before,oldGoreVisible:!!old?.visible,
+  return {hit,partsDelta:parts.filter(p=>p.limb).length-before,oldGoreVisible:!!old?.visible,
    clipped:prior-after,legacyMeshes,armGone:z.leftArmDetached,legGone:z.rightLegDetached,
    liveSkinned:!!z.injuredCrawlerModel?.getObjectByProperty("isSkinnedMesh",true)};
  },
