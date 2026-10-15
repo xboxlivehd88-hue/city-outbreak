@@ -1162,6 +1162,9 @@ scene.add(rainSplashes);
 const rainCoverRay=new THREE.Raycaster();
 const rainUp=new THREE.Vector3(0,1,0),rainCoverOrigin=new THREE.Vector3();
 let rainCoverCheckAt=-1e9,rainCovered=false,rainOpacity=.39,rainSplashSpawnAcc=0,rainSplashCursor=0;
+let rainCoverLastX=Infinity,rainCoverLastY=Infinity,rainCoverLastZ=Infinity;
+const RAIN_COVER_STATIONARY_REFRESH_MS=1800;
+let perfRainCoverChecks=0,perfRainCoverWorstMs=0;
 
 function resetRainDrop(i,randomY=true,centerX=0,centerY=0,centerZ=-15){
  const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*RAIN_RADIUS;
@@ -1225,10 +1228,17 @@ function updateRainSplashes(dt){
 
 function updateRainCover(t){
  if(t-rainCoverCheckAt<240)return;
- rainCoverCheckAt=t;
- rainCovered=false;
  if(!newCityRoot)return;
- rainCoverRay.set(rainCoverOrigin.set(px,playerGroundY+1.35,pz),rainUp);
+ const coverY=playerGroundY+1.35;
+ // Static roofs do not change while the player remains in one spot.
+ if(Math.hypot(px-rainCoverLastX,pz-rainCoverLastZ)<.22&&
+    Math.abs(coverY-rainCoverLastY)<.18&&
+    t-rainCoverCheckAt<RAIN_COVER_STATIONARY_REFRESH_MS)return;
+ rainCoverCheckAt=t;
+ rainCoverLastX=px;rainCoverLastZ=pz;rainCoverLastY=coverY;
+ const checkStart=performance.now();
+ rainCovered=false;
+ rainCoverRay.set(rainCoverOrigin.set(px,coverY,pz),rainUp);
  rainCoverRay.near=.15;rainCoverRay.far=18;
  const hits=rainCoverRay.intersectObject(newCityRoot,true);
  for(const hit of hits){
@@ -1239,6 +1249,8 @@ function updateRainCover(t){
    }
    if(!hidden){rainCovered=true;break}
  }
+ perfRainCoverChecks++;
+ perfRainCoverWorstMs=Math.max(perfRainCoverWorstMs,performance.now()-checkStart);
 }
 function updateRainEffect(dt,t){
  if(!rainLines||graphicsRainCount===0)return;
@@ -2784,6 +2796,11 @@ function buildZombieRoute(sx,sz,gx,gz){
  if(zombieRouteClear(last.x,last.z,gx,gz,ZNAV_PAD))smooth.push({x:gx,z:gz});
  return smooth;
 }
+// One expensive A* path search per frame. All other movement and combat
+// continue at the normal frame rate; deferred actors retain current paths.
+const ZOMBIE_ASTAR_PER_FRAME=1;
+let zombieNavBudgetActive=false,zombieNavBuildsThisFrame=0;
+let perfNavBuilds=0,perfNavDeferred=0,perfNavWorstMs=0;
 function updateZombieRoute(z,dt,huntMode,goalX=px,goalZ=pz){
  z.navCheckT=Math.max(0,(z.navCheckT||0)-dt);
  if(z.navPath&&z.navPath.length){
@@ -2809,7 +2826,16 @@ function updateZombieRoute(z,dt,huntMode,goalX=px,goalZ=pz){
    return;
  }
  if(!z.navPath||goalMoved||z.navForceRepath){
+   if(zombieNavBudgetActive&&zombieNavBuildsThisFrame>=ZOMBIE_ASTAR_PER_FRAME){
+    z.navCheckT=.038+(z.g.id%5)*.012;
+    perfNavDeferred++;
+    return;
+   }
+   if(zombieNavBudgetActive)zombieNavBuildsThisFrame++;
+   const navStart=performance.now();
    const route=buildZombieRoute(z.g.position.x,z.g.position.z,goalX,goalZ);
+   perfNavBuilds++;
+   perfNavWorstMs=Math.max(perfNavWorstMs,performance.now()-navStart);
    z.navForceRepath=false;
    z.navGoalX=goalX;z.navGoalZ=goalZ;
    if(route&&route.length){z.navPath=route;z.navIndex=0;z.avoidT=0}
@@ -10045,6 +10071,8 @@ if(extraCorpses>0){
 }
 if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
 spawnQueuedZombies();
+zombieNavBuildsThisFrame=0;
+zombieNavBudgetActive=true;
 activeFrame.length=0;for(const z of zombies)if(!z.dead)activeFrame.push(z);
 const active=activeFrame;
 updateBossUI();
@@ -10349,7 +10377,9 @@ resolveZombiePlayerContact(z,ox,oz);
  }
  updateNaturalCrawlerVisual(z,dt);updateInjuredCrawlerVisual(z,dt);
  syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);if(z.infectedCrawler)poseOriginalInfectedCrawler(z);
- if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
+ if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}
+ zombieNavBudgetActive=false;
+ if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 const perfGuard=createPerformanceGuard({
  renderer:ren,
  livingCount,
