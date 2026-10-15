@@ -130,9 +130,10 @@ try{
    ["Digit4","smg"],["Digit5","m240"],["Digit6","dmr"],["Digit7","grenadeLauncher"]];
  state.hotkeys=keys.map(([code,expected])=>{
   onKeyDown({code,key:code.at(-1),repeat:false,preventDefault:()=>{}});
+  move(.016); // actual weapon-frame pose settles after each key switch
   return{code,expected,selected:weapon};
  });
- setWeapon("dmr");
+ setWeapon("dmr");move(.016);
  return state;
 };`;
    const fpsArmsAudit=`
@@ -294,7 +295,6 @@ try{
   report.staticMap=await page.evaluate(()=>globalThis.__city678StaticMapAudit());
   await page.waitForFunction(()=>document.documentElement.dataset.dmrGlbReady==="true",null,{timeout:65000});
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:65000});
-  report.testLoadout=await page.evaluate(()=>globalThis.__armsV686Inventory());
   report.nativeArms=await page.evaluate(()=>globalThis.__fpsArmsV685Audit());
   report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
@@ -331,16 +331,6 @@ try{
    report.dmrTest.retired&&report.dmrTest.cycle.includes("dmr")&&
    !report.dmrTest.cycle.includes("awm"),
    "v680 must equip test DMR and remove retired sniper: "+JSON.stringify(report.dmrTest));
-  assert(report.testLoadout?.flag==="all-seven"&&
-    report.testLoadout.selected==="dmr"&&report.testLoadout.allUnlocked&&
-    report.testLoadout.guns?.length===7&&
-    report.testLoadout.hotkeys?.length===7&&
-    report.testLoadout.hotkeys.every(x=>x.selected===x.expected)&&
-    report.testLoadout.ammo?.grenadeLauncher?.mag===6&&
-    report.testLoadout.ammo?.grenadeLauncher?.reserve===4&&
-    Object.values(report.testLoadout.ammo||{}).every(a=>a.mag>0),
-    "v686 ALL 7 guns must be ready at spawn, numbered keys work, and all have rounds: "+
-    JSON.stringify(report.testLoadout));
   assert(report.nativeArms?.source==="cartoon_fps_arms.glb"&&
     !report.nativeArms.error&&Number(report.nativeArms.clips)>0&&
     report.nativeArms.data?.length===7&&
@@ -509,6 +499,20 @@ try{
   assert.equal(report.green.converted.hasMist,false);
   assert.equal(report.green.converted.hasIdentityAura,false);
   assert.deepEqual(report.green.converted.auras,[],"Legless Green Guy still has aura mesh");
+  // Exercise actual 1-7 hotkeys AFTER every gun-geometry / DMR sight /
+  // reload regression. Seven synthetic switches in one JS task have no
+  // intervening render, so they must not contaminate sight bounds checks.
+  report.testLoadout=await page.evaluate(()=>globalThis.__armsV686Inventory());
+  assert(report.testLoadout?.flag==="all-seven"&&
+    report.testLoadout.selected==="dmr"&&report.testLoadout.allUnlocked&&
+    report.testLoadout.guns?.length===7&&
+    report.testLoadout.hotkeys?.length===7&&
+    report.testLoadout.hotkeys.every(x=>x.selected===x.expected)&&
+    report.testLoadout.ammo?.grenadeLauncher?.mag===6&&
+    report.testLoadout.ammo?.grenadeLauncher?.reserve===4&&
+    Object.values(report.testLoadout.ammo||{}).every(a=>a.mag>0),
+    "v686 ALL 7 guns must be ready at spawn, numbered keys work, and all have rounds: "+
+    JSON.stringify(report.testLoadout));
   assert.equal(errors.length,0,"JS errors: "+errors.join("; "));
   report.passed=true;
  }catch(e){
