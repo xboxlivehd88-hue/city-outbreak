@@ -5681,7 +5681,9 @@ function groundInjuredCrawlerPose(z,dt){
  // Correct EVERY pose frame, not once at asset load. The leg bind pose
  // otherwise intersects road/sidewalk on some animation frames.
  const scale=Math.max(.01,z.g.getWorldScale(injuredCrawlProbe).y);
- const error=.027-lowest;
+ // Include a one-time measured skin-envelope allowance. The foot-bone pivot
+ // can clear the ground while the actual shoe/skinned shin penetrates it.
+ const error=.027+(z.injuredCrawlerSkinAllowance||0)-lowest;
  const gain=error>0?.92:.18;
  const worldStep=THREE.MathUtils.clamp(error*gain,-Math.max(.003,dt*.65),Math.max(.05,dt*8));
  z.injuredCrawlerVisual.position.y+=worldStep/scale;
@@ -5869,6 +5871,16 @@ function attachInjuredCrawlerVisual(z){
  z.injuredCrawlerGroundAdjustment=0;
  poseInjuredCrawlerDraggingLegs(z);
  groundInjuredCrawlerPose(z,1/60);
+ // Real skinned geometry hangs beneath ankle and knee joints. Measure the
+ // ORIGINAL posed mesh ONCE on attach; reuse the corrective distance cheaply
+ // every frame rather than expensive per-frame skin-triangle bounding boxes.
+ const skinBox=new THREE.Box3().setFromObject(holder,true);
+ const groundY=Number.isFinite(z.groundY)?z.groundY:z.g.position.y;
+ z.injuredCrawlerSkinAllowance=THREE.MathUtils.clamp(
+  groundY+.045-skinBox.min.y,0,.32);
+ if(z.injuredCrawlerSkinAllowance>0)groundInjuredCrawlerPose(z,1/60);
+ document.documentElement.dataset.injuredCrawlerSkinAllowance=
+  z.injuredCrawlerSkinAllowance.toFixed(3);
  updateInjuredCrawlerHitboxes(z);
  z.injuredCrawlerPrevX=z.g.position.x;z.injuredCrawlerPrevZ=z.g.position.z;
  document.documentElement.dataset.injuredCrawlerAttached=
