@@ -9976,8 +9976,8 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  scopeOverlay.classList.toggle("show",fullScopeAim);
  scopeOverlay.classList.toggle("m4Scope",false);
  gun.visible=!fullScopeAim;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
-function update(dt){
-perfGuard(dt);capFX();updateExplosionGlbs(dt);updateCasingFragments(dt);
+function update(dt,wallDt=dt){
+perfGuard(wallDt);capFX();updateExplosionGlbs(dt);updateCasingFragments(dt);
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;
  const grenadeOldPos=g.q.position.clone();
  g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);
@@ -10380,9 +10380,39 @@ resolveZombiePlayerContact(z,ox,oz);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}
  zombieNavBudgetActive=false;
  if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
+// v674: lightweight per-second CPU frame breakdown, analogous to a small
+// Unreal Insights summary. This measures JS/render SUBMISSION time, not GPU
+// execution, and never calls blocking GPU timer/query operations.
+const cityFrameProfile={
+ frames:0,updateMs:0,lightsMs:0,rainMs:0,renderSubmitMs:0,
+ maxCpuMs:0,hitches:0
+};
+function takeCityFrameProfile(){
+ const n=Math.max(1,cityFrameProfile.frames);
+ const result={
+  updateMs:cityFrameProfile.updateMs/n,
+  lightsMs:cityFrameProfile.lightsMs/n,
+  rainMs:cityFrameProfile.rainMs/n,
+  renderSubmitMs:cityFrameProfile.renderSubmitMs/n,
+  worstCpuMs:cityFrameProfile.maxCpuMs,
+  hitches:cityFrameProfile.hitches,
+  navBuilds:perfNavBuilds,navDeferred:perfNavDeferred,
+  navWorstMs:perfNavWorstMs,roofChecks:perfRainCoverChecks,
+  roofWorstMs:perfRainCoverWorstMs
+ };
+ cityFrameProfile.frames=0;cityFrameProfile.updateMs=0;
+ cityFrameProfile.lightsMs=0;cityFrameProfile.rainMs=0;
+ cityFrameProfile.renderSubmitMs=0;cityFrameProfile.maxCpuMs=0;
+ cityFrameProfile.hitches=0;
+ perfNavBuilds=0;perfNavDeferred=0;perfNavWorstMs=0;
+ perfRainCoverChecks=0;perfRainCoverWorstMs=0;
+ document.documentElement.dataset.cityPerformanceBreakdown=JSON.stringify(result);
+ return result;
+}
 const perfGuard=createPerformanceGuard({
  renderer:ren,
  livingCount,
+ getTimings:takeCityFrameProfile,
  getFxCounts:()=>({parts:parts.length,impacts:impacts.length,casings:casings.length,
   bursts:activeExplosionBursts.length,
   batchedSprites:activeExplosionBursts.reduce((n,fx)=>n+fx.particles.length,0),
@@ -10575,21 +10605,35 @@ try{
 }catch(_){}
 applyGraphicsQuality(savedQuality);
 function frame(t){
- let dt=Math.min(.04,(t-last)/1000);last=t;
+ const cpuStart=performance.now();
+ const wallDt=Math.max(0,(t-last)/1000);
+ const dt=Math.min(.04,wallDt);last=t;
  if(shopLowPower){
-   // Shop UI is DOM-based, so the 3D world can stay frozen. Redraw at only 4 FPS
-   // and throttle the frame callback itself so CPU + GPU both get a real break.
-   if(t-lastShopRenderAt>=250){lastShopRenderAt=t;ren.render(scene,cam)}
-   setTimeout(()=>requestAnimationFrame(frame),250);return;
+  if(t-lastShopRenderAt>=250){lastShopRenderAt=t;ren.render(scene,cam)}
+  setTimeout(()=>requestAnimationFrame(frame),250);return;
  }
- if(!paused)update(dt);
+ const updateStart=performance.now();
+ if(!paused)update(dt,wallDt);
+ const updateEnd=performance.now();
  updateStreetLampLighting(t);
  updateGasCanopyLighting(dt,false,t);
+ const lightsEnd=performance.now();
  updateRainEffect(dt,t);
+ const rainEnd=performance.now();
  earlyNightSky.position.copy(cam.position);
  earlyNightSkyUniforms.uTime.value=t*.001;
  ren.render(scene,cam);
- requestAnimationFrame(frame)
+ const renderEnd=performance.now();
+ if(!paused){
+  cityFrameProfile.frames++;
+  cityFrameProfile.updateMs+=updateEnd-updateStart;
+  cityFrameProfile.lightsMs+=lightsEnd-updateEnd;
+  cityFrameProfile.rainMs+=rainEnd-lightsEnd;
+  cityFrameProfile.renderSubmitMs+=renderEnd-rainEnd;
+  cityFrameProfile.maxCpuMs=Math.max(cityFrameProfile.maxCpuMs,renderEnd-cpuStart);
+  if(wallDt>.05)cityFrameProfile.hitches++;
+ }
+ requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];clearExplosionGlbs();clearCasingFragments();for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="shotgun";magSize=8;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:true,pistol:true,dmr:false,grenadeLauncher:false,m240:false,awm:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:0,reserve:0},m240:{mag:100,reserve:200},awm:{mag:5,reserve:20}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;awmReadyAt=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
