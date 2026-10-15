@@ -1,3 +1,13 @@
+# v675 — STATIC CITY TRANSFORM FAST PATH (BROWSER VALIDATION PENDING) — 2026-10-15
+
+- User asked whether further performance optimization is possible after v674 AI path-budget, stationary rain-ray savings and detailed frame profiler. Unreal/Unity performance guidance confirms CPU/GPU separation, frustum culling, static-object caching, LOD and batching are standard techniques. In v675 this is a **conservative and reversible static-world CPU optimization**, NOT a claim that all hitching is solved.
+- In `src/game.js`, after the entire unchanged `assets/chicken_gun_fruzer_-_city.glb` map, fences, city collision, approved streetlamp geometry, and spawn zones are installed, `map.updateMatrixWorld(true)` composes the correct world matrices, and `matrixAutoUpdate=false` caches each fixed local transform. This avoids recomposing every static imported city node every rendered frame. If a future city GLB has actual animation clips, freeze is skipped. Dynamic world lights, spawned zombies, weapons, camera, sky, rain, and other effects are NOT inside the city map and remain animated normally. Geometry, draw calls, visual texture, physical map raycast/collision, shader settings and frustum culling are unchanged.
+- New DOM diagnostics: `document.documentElement.dataset.staticCityTransformNodes` and `staticCityTransformMode`. Hazmat regression injects `__city675StaticMapAudit` which tests imported mesh world matrices before/after forced world updates and tests that the real player ground raycast stays identical; keeps v674 perf diagnostics and v673 actual shotgun look-down clearance tests.
+- **Loader:** `./src/game.js?v=675`. Three existing Chromium smoke suites route v675 and test the same approved Wave 1, two natural crawler models, Infected, Sprinters, Hazmat, Green Guy, 19 bosses, grenade batching and viewmodel clearance. **CI and Pages outcome must be checked and recorded** before declaring the build verified. No protected recovery v324 edits. User visual review of performance still pending.
+- Planned playable link after Pages success: https://xboxlivehd88-hue.github.io/city-outbreak/?v=675-static-city-frame-optimization
+
+---
+
 # v674 VERIFIED — PERFORMANCE SPIKE BUDGET + PLAYER GUN CLEARANCE PRESERVED — 2026-10-15
 
 - **User request:** Investigate techniques used by major games and improve CITY OUTBREAK's persistent lag on high-end Windows desktop; protect the just-addressed small player eye-height increase and actual gun clearance of v673. Major engine references researched: Unreal Engine profiling and Nanite LOD/occlusion, Unity batching/instancing/culling, Chrome DevTools frame analysis. Never claim browser WebGL has Unreal Nanite.
