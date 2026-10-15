@@ -1,0 +1,23 @@
+name: v664 New injured crawler GLB inspection
+on:
+  push:
+    paths:
+      - 'scripts/inspect-injured-crawler-glb.cjs'
+      - '.github/workflows/injured-crawler-inspect.yml'
+      - 'assets/animated_injured_zombie_crawling_loop.glb'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect newly uploaded original GLB
+        run: node scripts/inspect-injured-crawler-glb.cjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: injured-crawler-asset-audit
+          path: INJURED_CRAWLER_GLB_AUDIT.json
