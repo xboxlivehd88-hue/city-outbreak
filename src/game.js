@@ -3722,7 +3722,9 @@ const FPS_NATIVE_GRIPS={
  shotgun:{left:{delta:[.07,-.08,.07],roll:1.52},right:{delta:[-.04,-.07,.04],roll:3.14}},
  // v689: restore the user-described closer v687 M17 hand fit, undo the
  // overextended v688 ADS sleeve/elbow and skinned wrist transforms.
- pistol:{left:{delta:[-.12,-.065,.07],roll:.16},right:{delta:[-.025,-.06,.03],roll:3.02}},
+ // v690: nudge ONLY the supporting wrist ~3.5 cm toward the real M17 grip.
+ // Keep v687 elbow/shoulder motion and right trigger wrist completely intact.
+ pistol:{left:{delta:[-.085,-.065,.07],roll:.16},right:{delta:[-.025,-.06,.03],roll:3.02}},
  dmr:{left:{delta:[.08,-.095,.045],roll:1.54},right:{delta:[-.035,-.07,.045],roll:3.14}},
  grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:1.55},right:{delta:[-.04,-.085,.04],roll:3.14}},
  m240:{left:{delta:[.09,-.08,.06],roll:1.51},right:{delta:[-.04,-.085,.05],roll:3.14}}
@@ -3847,8 +3849,22 @@ function poseOriginalFpsArms(){
   const parentWorld=elbow.getWorldQuaternion(new THREE.Quaternion());
   wrist.quaternion.copy(parentWorld.invert().multiply(desiredWorld));
   wrist.updateMatrixWorld(true);
-  // Retain genuine animation on all finger roots and phalanges; only the
-  // firing index bends an extra few degrees at the Norinco's trigger.
+  // Keep native finger animation and gently close the M17 support hand
+  // around the pistol grip. Source phalanges are animated; their local X
+  // bending produces real finger flex, not stretched wrist/sleeve skin.
+  // These corrections are pistol-only and fade during the mag exchange.
+  if(weapon==="pistol"){
+   const gripFlex=side==="left"?(reloading?THREE.MathUtils.clamp(1-rp.hand,0,1):1):.42;
+   const fingerNames=side==="left"
+    ?["L_point_2_09","L_middle_2_00","L_ring_2_016","L_pink_2_020"]
+    :["R_middle_2_035","R_ring_2_039","R_pink_2_043"];
+   const flex=side==="left"?.16:.10;
+   for(const name of fingerNames){
+    const finger=fpsNativeArms.getObjectByName(name);
+    if(finger)finger.rotateX(-flex*gripFlex);
+   }
+  }
+  // The DMR's original approved trigger finger movement remains unchanged.
   if(side==="right"&&weapon==="dmr"&&!reloading){
    chain.index.rotateX(-.11);
    chain.indexMid.rotateX(-.09);
