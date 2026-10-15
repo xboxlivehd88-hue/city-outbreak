@@ -1,5 +1,30 @@
 // v678 final synchronized loader: run against committed index.html game.js?v=678 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
+// v678 DMR source geometry audit: inspect user's real uploaded GLB, not a
+// guessed procedural replacement. Print bounded node, accessor and material
+// facts into the browser CI log for correct first-person orientation/scale.
+try{
+ const bin=fs.readFileSync("assets/norinco_m305a.glb");
+ const jsonBytes=bin.readUInt32LE(12),tag=bin.toString("ascii",16,20);
+ if(tag!=="JSON")throw Error("GLB JSON header missing: "+tag);
+ const gltf=JSON.parse(bin.toString("utf8",20,20+jsonBytes));
+ const meshFacts=(gltf.meshes||[]).slice(0,24).map((m,i)=>({
+  index:i,name:m.name,
+  surfaces:m.primitives?.map(p=>{
+   const a=gltf.accessors?.[p.attributes?.POSITION];
+   return{min:a?.min,max:a?.max,faces:gltf.accessors?.[p.indices]?.count,
+    material:gltf.materials?.[p.material]?.name};
+  }).slice(0,6)
+ }));
+ console.log("DMR_SOURCE_GLB_AUDIT="+JSON.stringify({
+  bytes:bin.length,nodes:(gltf.nodes||[]).slice(0,35).map((n,i)=>({
+   i,name:n.name,mesh:n.mesh,translation:n.translation,rotation:n.rotation,scale:n.scale,
+   matrix:n.matrix?.slice(0,16)})),
+  meshes:meshFacts,materials:(gltf.materials||[]).map(m=>m.name).slice(0,18),
+  animations:(gltf.animations||[]).map(a=>a.name),scenes:gltf.scenes?.length
+ }));
+}catch(error){console.log("DMR_SOURCE_GLB_AUDIT_ERROR="+String(error))}
+
 (async()=>{
  let browser,page;const report={build:658,passed:false},errors=[];
  try{
