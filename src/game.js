@@ -6,7 +6,7 @@ import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
-import {createPerformanceGuard} from "./performance-hud.js?v=674";
+import {createPerformanceGuard} from "./performance-hud.js?v=676";
 import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=464";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
@@ -3192,10 +3192,6 @@ async function prewarmExplosionGpu(){
   let burn=null,haze=null,warmTarget=null;
   try{
    prepareExplosionTextures();
-   const sample=Array.from({length:160},()=>({
-    color:0xffffff,age:0,life:1,opacity:0,size:.01,rotation:0,
-    position:new THREE.Vector3(),smoke:false,core:true
-   }));
    burn=primeExplosionParticleBatch(explosionBurstTextures.fire,false,160);
    haze=primeExplosionParticleBatch(explosionBurstTextures.smoke,true,160);
    const warmSpark=new THREE.InstancedMesh(explosionSparkGeometry,explosionSparkMaterial,1);
