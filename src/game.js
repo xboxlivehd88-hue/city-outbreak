@@ -4511,6 +4511,19 @@ function rebuildGun(){
    carrier.traverse(o=>{o.userData.externalWeaponAsset=true;
     if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    gun.add(carrier);
+   // Use the actual SOURCE MARKSMAN GLB magazine as the existing detachable
+   // magazine actor, not a procedural placeholder. Attach the gun's own
+   // imported magazine to camera gun space while preserving its world pose,
+   // so the original common reload uses coherent hand/magwell coordinates.
+   const realMag=model.getObjectByName("m305a_marksman_mag_p20r_0");
+   if(realMag){
+    gun.updateMatrixWorld(true);
+    gun.attach(realMag);
+    realMag.userData.reloadHome=realMag.position.clone();
+    realMag.userData.reloadHomeQuat=realMag.quaternion.clone();
+    playerReloadPart=realMag;
+   }
+   document.documentElement.dataset.dmrRealMagazine=String(!!playerReloadPart);
    document.documentElement.dataset.dmrSourceVisual="norinco_m305a_marksman";
    document.documentElement.dataset.dmrModelLength=sourceSize.z.toFixed(3);
    document.documentElement.dataset.dmrViewScale=scale.toFixed(4);
@@ -4559,7 +4572,7 @@ function rebuildGun(){
  }
  // Shared procedural trigger/receiver details belong only to the remaining
  // procedural weapons. The M4, MP5 and M17 GLBs already contain their own hardware.
- const externalViewmodel=weapon==='rifle'||weapon==='smg'||weapon==='pistol'||weapon==='shotgun';
+ const externalViewmodel=weapon==='rifle'||weapon==='smg'||weapon==='pistol'||weapon==='shotgun'||weapon==='dmr';
  if(!externalViewmodel){
    if(weapon!=='pistol'){
      const guard=new THREE.Mesh(new THREE.TorusGeometry(.11,.025,8,16,Math.PI),dark);guard.rotation.z=Math.PI;guard.position.set(x,-.48,weapon==='shotgun'?-1.02:-.94);gun.add(guard);
