@@ -1,6 +1,6 @@
-// v679 final synchronized loader: run against committed index.html game.js?v=679 and approved two-natural-crawler rotation.
+// v680 final synchronized loader: run against committed index.html game.js?v=680 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
-// v679 DMR source geometry audit: inspect user's real uploaded GLB, not a
+// v680 DMR source geometry audit: inspect user's real uploaded GLB, not a
 // guessed procedural replacement. Print bounded node, accessor and material
 // facts into the browser CI log for correct first-person orientation/scale.
 try{
@@ -68,7 +68,7 @@ try{
   return {modelReady,modelError,standing,converted};
  }
 };`;
-   // v679 inspect real first-person gun world bounds at level and max-look-down.
+   // v680 inspect real first-person gun world bounds at level and max-look-down.
    const eyeAudit=`
 ;globalThis.__eyeHeightAudit=()=>{
  const prior=pitch,selected=weapon,ground=playerGroundY;
@@ -190,7 +190,7 @@ try{
 };`;
    await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+dmrShoulderAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=679-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=680-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.ready(),null,{timeout:110000});
   // Shaders, textures and actual pooled instance buffers must be initialized
@@ -243,7 +243,7 @@ try{
    report.dmrTest.worldSize?.[2]>2.5&&report.dmrTest.worldSize?.[2]<5.5&&
    report.dmrTest.retired&&report.dmrTest.cycle.includes("dmr")&&
    !report.dmrTest.cycle.includes("awm"),
-   "v679 must equip test DMR and remove retired sniper: "+JSON.stringify(report.dmrTest));
+   "v680 must equip test DMR and remove retired sniper: "+JSON.stringify(report.dmrTest));
   assert(report.dmrShoulder?.hip?.blend>.99&&
     report.dmrShoulder.hip.x>.195&&report.dmrShoulder.hip.x<.205&&
     report.dmrShoulder.hip.z>.51&&report.dmrShoulder.hip.z<.53&&
@@ -298,7 +298,7 @@ try{
     :Number.isFinite(frame.frameMedianMs)&&Number.isFinite(frame.frameP95Ms)&&
       Number.isFinite(frame.frameMaxMs)&&
       frame.frameP95Ms>=frame.frameMedianMs&&frame.frameMaxMs>=frame.frameP95Ms),
-   "v679 steady-state frame pacing must exclude too-few startup samples: "+JSON.stringify(frame));
+   "v680 steady-state frame pacing must exclude too-few startup samples: "+JSON.stringify(frame));
   assert(report.performance.navBuildBudget===1&&
    report.performance.stationarySkipped&&report.performance.movedChecked&&
    Number.isFinite(report.performance.hudStats?.updateMs)&&
@@ -306,7 +306,7 @@ try{
    Number.isFinite(report.performance.hudStats?.rainMs)&&
    Number.isFinite(report.performance.hudStats?.navWorstMs)&&
    Number.isFinite(report.performance.hudStats?.roofWorstMs),
-   "v679 navigation frame budget and stationary rain raycast profiling failed: "+
+   "v680 navigation frame budget and stationary rain raycast profiling failed: "+
    JSON.stringify(report.performance));
   assert.equal(s.armTuning.reference,"Zombie_Idle");
   assert(s.armTuning.tracks>=4&&s.armTuning.upperArms>=2&&
@@ -344,7 +344,7 @@ try{
   assert(report.grenadeGpuPrewarm?.status==="ready"&&
    report.grenadeGpuPrewarm?.timeMs>0&&
    !report.grenadeGpuPrewarm.error,
-   "v679 explosion shader/texture/particle buffers weren't prewarmed: "+JSON.stringify(report.grenadeGpuPrewarm));
+   "v680 explosion shader/texture/particle buffers weren't prewarmed: "+JSON.stringify(report.grenadeGpuPrewarm));
   assert(report.grenadeFx.prepared>=3&&report.grenadeFx.fragmentCount>0&&
    report.grenadeFx.particles>=100&&report.grenadeFx.batchDraws===2&&
    report.grenadeFx.batches==="2"&&
