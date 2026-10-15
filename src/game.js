@@ -5661,8 +5661,8 @@ function poseInjuredCrawlerDraggingLegs(z){
   const step=Math.sin(phase+(side<0?0:Math.PI));
   // Bend thighs behind the pelvis. Calves skim the road instead of extending
   // straight down through it, while the knees alternately contract and extend.
-  aimInjuredCrawlerSegment(z.g,thigh,shin,side*.10,-.43+step*.09,.89);
-  aimInjuredCrawlerSegment(z.g,shin,foot,side*.02,-.18-step*.10,.99);
+  aimInjuredCrawlerSegment(z.g,thigh,shin,side*.10,-.40+step*.23,.89+step*.10);
+  aimInjuredCrawlerSegment(z.g,shin,foot,side*.02,-.20-step*.23,.96-step*.12);
  }
 }
 function groundInjuredCrawlerPose(z,dt){
