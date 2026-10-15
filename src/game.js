@@ -2899,12 +2899,34 @@ new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
 // shown in their Sketchfab screenshot, including red-dot optic and orange
 // bakelite magazine. Isolate ONLY this original source subtree, not the
 // Marksman, stock M305A, desk, or loose display cartridges.
-let dmrModelTemplate=null,dmrLoadError="",dmrSourceNodeCount=0;
+// v682: the original Leisure GLB includes its own loose live-cartridge prop.
+// Prepare one textured instance template; use it only for DMR ejections.
+let dmrModelTemplate=null,dmrCartridgeTemplate=null,dmrLoadError="",dmrSourceNodeCount=0;
+let dmrViewRoot=null,dmrViewHome=null,dmrViewQuat=null,dmrOpticPose=null,dmrMagazineGrip=null,dmrRecoilVisual=0;
+const DMR_RECOIL_PIVOT=new THREE.Vector3(.36,-.46,-1.45);
 // v680: smooth, hip-only shoulder placement. A shared transform carries the
 // imported receiver, native magazine and both original player-hand actors
 // together; the already-close magazine reload remains entirely unchanged.
 let dmrShoulderBlend=0,dmrRightGripBlend=0;
 new GLTFLoader().load("assets/norinco_m305a.glb?v=679",gltf=>{
+ // Exact original cartridge from this SAME user GLB, excluding its desk.
+ const cartridgeDisplay=gltf.scene.getObjectByName("cartridges");
+ if(cartridgeDisplay){
+  const cartridge=cartridgeDisplay.clone(true);
+  gltf.scene.updateMatrixWorld(true);
+  cartridge.matrix.copy(cartridgeDisplay.matrixWorld);
+  cartridge.matrix.decompose(cartridge.position,cartridge.quaternion,cartridge.scale);
+  const cartridgeBox=new THREE.Box3().setFromObject(cartridge,true);
+  const cartridgeSize=cartridgeBox.getSize(new THREE.Vector3());
+  if(cartridgeSize.length()>.000001){
+   const holder=new THREE.Group();holder.name="NorincoSourceCartridge";holder.add(cartridge);
+   const fit=.145/Math.max(cartridgeSize.x,cartridgeSize.y,cartridgeSize.z);
+   holder.scale.setScalar(fit);
+   holder.position.copy(cartridgeBox.getCenter(new THREE.Vector3())).multiplyScalar(-fit);
+   holder.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+   dmrCartridgeTemplate=holder;
+  }
+ }
  const src=gltf.scene.getObjectByName("m305a_leisure");
  if(!src)throw Error("Norinco LEISURE submodel is missing");
  gltf.scene.updateMatrixWorld(true);
@@ -3594,7 +3616,8 @@ function addPlayerHands(){
 function updateDMRRightTriggerGrip(dt){
  const r=playerHandRig;
  if(weapon!=="dmr"||!r?.rightUpper||!r.rightFore||!r.dmrIndexBase)return;
- const target=reloading?0:1;
+ // Keep the firing hand firmly around the pistol grip during reload too.
+ const target=1;
  dmrRightGripBlend=THREE.MathUtils.damp(dmrRightGripBlend,target,16,dt);
  const t=dmrRightGripBlend;
  const base=r.rightHandBase;
@@ -4172,7 +4195,8 @@ function rebuildGun(){
  clearReloadMagazineFX(true);
  shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();dmrShoulderBlend=0;dmrRightGripBlend=0;playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();dmrShoulderBlend=0;dmrRightGripBlend=0;
+ dmrViewRoot=null;dmrViewHome=null;dmrViewQuat=null;dmrOpticPose=null;dmrMagazineGrip=null;dmrRecoilVisual=0;playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141620,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -4551,6 +4575,7 @@ function rebuildGun(){
    carrier.traverse(o=>{o.userData.externalWeaponAsset=true;
     if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
    gun.add(carrier);
+   dmrViewRoot=carrier;dmrViewHome=carrier.position.clone();dmrViewQuat=carrier.quaternion.clone();
    // Use the actual SOURCE LEISURE orange bakelite magazine as the detachable
    // magazine actor, not a procedural placeholder. Attach the gun's own
    // imported magazine to camera gun space while preserving its world pose,
@@ -4562,6 +4587,24 @@ function rebuildGun(){
     realMag.userData.reloadHome=realMag.position.clone();
     realMag.userData.reloadHomeQuat=realMag.quaternion.clone();
     playerReloadPart=realMag;
+    gun.updateMatrixWorld(true);
+    const magCenter=new THREE.Box3().setFromObject(realMag,true).getCenter(new THREE.Vector3());
+    dmrMagazineGrip=gun.worldToLocal(magCenter).add(new THREE.Vector3(-.10,-.015,.05));
+   }
+   // The actual red-dot attachment defines the ADS eye line. Its world-space
+   // original bound is transformed back into gun-local space so no guessed
+   // hardcoded ADS depth can send the rifle away from the player's camera.
+   const sourceOptic=model.getObjectByName("m305a_leisure_attachments_0");
+   if(sourceOptic){
+    gun.updateMatrixWorld(true);
+    const opticBox=new THREE.Box3().setFromObject(sourceOptic,true);
+    const opticMiddle=gun.worldToLocal(opticBox.getCenter(new THREE.Vector3()));
+    const height=opticBox.max.y-opticBox.min.y;
+    // Imported sight includes a lower mounting rail; put eye near upper optics.
+    const eyeHeight=opticMiddle.y+height*.13;
+    const adsScale=.84;
+    dmrOpticPose={x:-opticMiddle.x,y:-eyeHeight*adsScale,z:-.66-opticMiddle.z*adsScale};
+    document.documentElement.dataset.dmrSightPose=JSON.stringify(dmrOpticPose);
    }
    document.documentElement.dataset.dmrRealMagazine=String(!!playerReloadPart);
    document.documentElement.dataset.dmrSourceVisual="norinco_m305a_leisure";
@@ -7005,8 +7048,10 @@ function casing(){
   // Shotgun alone uses its real GLB spent shell; all other firearms retain
   // the approved generic brass casing mesh, ejection point and physics.
   const shotgunCase=weapon==="shotgun"&&!!shotgunSpentShellTemplate;
+  const originalDMRCartridge=weapon==="dmr"&&!!dmrCartridgeTemplate;
   const q=shotgunCase
     ?shotgunSpentShellTemplate.clone(true)
+    :originalDMRCartridge?dmrCartridgeTemplate.clone(true)
     :new THREE.Mesh(FX.casingGeo,FX.casingMat);
   if(shotgunCase){
     // The GLB shotgun points +Z and its displayed root rotates 180 degrees
@@ -7016,9 +7061,12 @@ function casing(){
     q.rotateY(Math.PI);
     q.rotateX((Math.random()-.5)*.5);
     q.rotateZ((Math.random()-.5)*.4);
+  }else if(originalDMRCartridge){
+    q.quaternion.copy(gun.getWorldQuaternion(new THREE.Quaternion()));
+    q.rotateZ((Math.random()-.5)*.35);
   }else q.rotation.z=Math.PI/2;
   const wp=new THREE.Vector3();
-  gun.localToWorld(wp.set(.56,-.26,-1.05));
+  gun.localToWorld(wp.set(originalDMRCartridge?.46:.56,originalDMRCartridge?-.30:-.26,originalDMRCartridge?-1.50:-1.05));
   q.position.copy(wp);scene.add(q);
   const right=new THREE.Vector3(1,0,0).applyQuaternion(cam.quaternion),up=new THREE.Vector3(0,1,0);
   casings.push({q,v:right.multiplyScalar(1.7+Math.random()*.8).add(up.multiplyScalar(1.1+Math.random()*.7)),life:1.0,spin:(Math.random()-.5)*18});
@@ -9964,19 +10012,22 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
   if(!targetCant&&shotgunReloadCant<.0005)shotgunReloadCant=0;
  }else shotgunReloadCant=0;
  const shotgunCant=weapon==="shotgun"?shotgunReloadCant:0;
- const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"?0:.20)*rp.arch;
+ const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"||weapon==="dmr"?0:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
- gun.position.x=ac2.x*adsScale*aimBlend+(weapon==="shotgun"?.095*shotgunCant:rp.arch*(weapon==="pistol"?.05:.10));
+ // DMR ADS looks through the actual red-dot rather than the old sniper pose.
+ const dmrAds=weapon==="dmr"&&dmrOpticPose?dmrOpticPose:null;
+ gun.position.x=(dmrAds?dmrAds.x:ac2.x)*adsScale*aimBlend+(weapon==="dmr"?0:weapon==="shotgun"?.095*shotgunCant:rp.arch*(weapon==="pistol"?.05:.10));
  const rifleAdsRecoilScale=weapon==="rifle"?THREE.MathUtils.lerp(1,.22,aimBlend):1;
- const wholeGunRecoil=(weapon==="smg"||weapon==="m240")?0:recoil*rifleAdsRecoilScale;
- gun.position.z=ac2.z*aimBlend+wholeGunRecoil*.42+(weapon==="shotgun"?.055*shotgunCant:rp.arch*.09);
- gun.position.y=ac2.y*aimBlend-wholeGunRecoil*.08+(weapon==="shotgun"?.045*shotgunCant:-rp.arch*(weapon==="m240"?.12:.18));
+ // v682: never whip the entire DMR around the camera on firing.
+ const wholeGunRecoil=(weapon==="smg"||weapon==="m240"||weapon==="dmr")?0:recoil*rifleAdsRecoilScale;
+ gun.position.z=(dmrAds?dmrAds.z:ac2.z)*aimBlend+wholeGunRecoil*.42+(weapon==="dmr"?0:weapon==="shotgun"?.055*shotgunCant:rp.arch*.09);
+ gun.position.y=(dmrAds?dmrAds.y:ac2.y)*aimBlend-wholeGunRecoil*.08+(weapon==="dmr"?0:weapon==="shotgun"?.045*shotgunCant:-rp.arch*(weapon==="m240"?.12:.18));
  gun.rotation.x=(ac2.rx||0)*aimBlend+wholeGunRecoil*2.05+reloadTilt+(weapon==="shotgun"?.035*shotgunCant:0);
- gun.rotation.y=weapon==="shotgun"?-.21*shotgunCant:rp.arch*(weapon==="grenadeLauncher"?.10:.04);
+ gun.rotation.y=weapon==="shotgun"?-.21*shotgunCant:weapon==="dmr"?0:rp.arch*(weapon==="grenadeLauncher"?.10:.04);
  // Roll the shotgun roughly 66° onto its LEFT side so the right-side loading
  // opening faces up/toward the player. The previous 23° cant was imperceptible
  // next to the receiver's narrow profile; keep this for every shell, not rp.arch.
- gun.rotation.z=weapon==="shotgun"?1.15*shotgunCant:-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
+ gun.rotation.z=weapon==="shotgun"?1.15*shotgunCant:weapon==="dmr"?0:-rp.arch*(weapon==="pistol"?.30:weapon==="grenadeLauncher"?.24:.16);
  if(weapon==="shotgun"&&shotgunCant>0){
   // Keep the firing hand stationary in camera space. The imported receiver,
   // support hand and actual GLB shells roll about the grip, not the camera.
@@ -10010,13 +10061,24 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  // slightly farther right, but fade that downshift when inspecting the floor
  // to preserve the approved down-look barrel clearance. Do not change ADS,
  // the real mag's home, or any reload animation.
- const dmrShoulderTarget=weapon==="dmr"&&!reloading?1-aimBlend:0;
+ // A reload must NOT remove the approved hip shoulder hold: this caused
+ // the whole rifle to shoot forward by .76 units as soon as R was pressed.
+ const dmrShoulderTarget=weapon==="dmr"?(reloading?1:1-aimBlend):0;
  dmrShoulderBlend=THREE.MathUtils.damp(dmrShoulderBlend,dmrShoulderTarget,12,dt);
  if(weapon==="dmr"&&dmrShoulderBlend>.0001){
   gun.position.x+=.31*dmrShoulderBlend;
   gun.position.z+=.76*dmrShoulderBlend;
   gun.position.y-=.24*dmrShoulderBlend*(1-lookDownT);
   gun.rotation.y+=.06*dmrShoulderBlend;
+ }
+ // Only the original Norinco rifle pitches, by about one degree around the
+ // grip/stock pivot; receiver, player camera and both hands remain stable.
+ if(weapon==="dmr"&&dmrViewRoot&&dmrViewHome&&dmrViewQuat){
+  dmrRecoilVisual=THREE.MathUtils.damp(dmrRecoilVisual,reloading?0:Math.min(.024,recoil*.12),24,dt);
+  const pitchKick=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),dmrRecoilVisual);
+  const arm=DMR_RECOIL_PIVOT.clone().sub(dmrViewHome);
+  dmrViewRoot.quaternion.copy(dmrViewQuat).multiply(pitchKick);
+  dmrViewRoot.position.copy(dmrViewHome).add(arm).sub(arm.applyQuaternion(pitchKick));
  }
  if(weapon==="rifle"&&m4ViewRoot){
    // Replacement M4 gets its own first-person pose instead of inheriting the old
