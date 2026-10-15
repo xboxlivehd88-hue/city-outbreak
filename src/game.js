@@ -12,7 +12,8 @@ import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.j
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
-import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments} from "./grenade-shatter.js?v=531";
+import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
+import {createExplosionParticleBatch,drawExplosionParticleBatch,disposeExplosionParticleBatch} from "./explosion-batch.js?v=672";
 // v567: suit boss model is selected only when its name is drawn on a normal
 // boss wave (every 10th wave); preserve the approved v566 rig and collision.
 const SUIT_BOSS_NAME="SUIT GUY";
@@ -3066,6 +3067,7 @@ new GLTFLoader().load("assets/spintop.glb?v=391",gltf=>{
  holder.name="GrenadeGLBTemplate";
  holder.userData.bottomYPivot=true;
  grenadeModelTemplate=holder;
+ document.documentElement.dataset.grenadePreparedFragmentTiers=String(prepareCasingFragments(holder));
 },undefined,err=>console.warn("Grenade GLB load failed; grenade unavailable",err));
 let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
 const FX={
@@ -3123,9 +3125,7 @@ function makeExplosionBurstTexture(smoke){
  return texture;
 }
 function clearExplosionBurst(burst){
- for(const particle of burst.particles)particle.sprite.material.dispose();
- // Instanced sparks and procedural textures share geometry/material between
- // blasts; removing the parent cleans up every short-lived visual instance.
+ for(const batch of burst.particleBatches)disposeExplosionParticleBatch(batch);
  if(burst.group.parent)burst.group.parent.remove(burst.group);
 }
 function clearExplosionGlbs(){
@@ -3175,20 +3175,9 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  const particles=[];
  const radius=isLauncher?2.15:2.55;
  const add=(smoke,x,y,z,size,color,opacity,vx,vy,vz,life)=>{
-   const sprite=new THREE.Sprite(new THREE.SpriteMaterial({
-     map:smoke?explosionBurstTextures.smoke:explosionBurstTextures.fire,
-     color,transparent:true,opacity,
-     depthWrite:false,depthTest:true,
-     blending:smoke?THREE.NormalBlending:THREE.AdditiveBlending,
-     rotation:(Math.random()-.5)*Math.PI
-   }));
-   sprite.position.set(x,y,z);
-   sprite.scale.set(size,size,1); // No explosion/ground growth at any setting
-   group.add(sprite);
-   particles.push({
-     sprite,velocity:new THREE.Vector3(vx,vy,vz),opacity,life,age:0,
-     smoke,core:particles.length===0,phase:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.85
-   });
+  particles.push({position:new THREE.Vector3(x,y,z),size,color,opacity,
+   velocity:new THREE.Vector3(vx,vy,vz),life,age:0,rotation:(Math.random()-.5)*Math.PI,
+   smoke,core:particles.length===0,phase:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.85});
  };
  // A tight white-hot core ignites inside the grenade before its shell bursts.
  add(false,0,0,0,.44,0xfff8df,1,0,.04,0,.12);
@@ -3226,6 +3215,11 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
    add(smoke,x,y,z,size,color,smoke?.71:.84,
        Math.cos(angle)*speed,up,Math.sin(angle)*speed,life);
  }
+ // Identical fire/smoke detail in just two GPU draw calls per blast.
+ const fireBatch=createExplosionParticleBatch(explosionBurstTextures.fire,false,particles.filter(p=>!p.smoke));
+ const smokeBatch=createExplosionParticleBatch(explosionBurstTextures.smoke,true,particles.filter(p=>p.smoke));
+ const particleBatches=[fireBatch,smokeBatch].filter(Boolean);
+ for(const batch of particleBatches)group.add(batch.mesh);
  const sparkCount=Math.max(14,Math.round((isLauncher?160:200)*(1+.28*spectacle)*Math.pow(quality,1.8)));
  const sparkMesh=new THREE.InstancedMesh(explosionSparkGeometry,explosionSparkMaterial,sparkCount);
  sparkMesh.name="DenseExplosionSparksAndFragments";
@@ -3262,10 +3256,12 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
    flash.position.set(0,1.45,0);
    group.add(flash);
  }
- const burst={group,particles,sparkMesh,sparks,flash,flashPeak:3.2+2.0*spectacle,ruptureDelay,age:0,life:1.75+.43*spectacle};
- if(ruptureDelay>0)for(const part of particles)if(!part.core)part.sprite.visible=false;
+ const burst={group,particles,particleBatches,sparkMesh,sparks,flash,flashPeak:3.2+2.0*spectacle,ruptureDelay,age:0,life:1.75+.43*spectacle};
+ for(const batch of particleBatches)drawExplosionParticleBatch(batch,cam.quaternion,ruptureDelay,0);
  drawExplosionSparks(burst,0);
  activeExplosionBursts.push(burst);
+ document.documentElement.dataset.grenadeLastSpriteCount=String(particles.length);
+ document.documentElement.dataset.grenadeLastSpriteDraws=String(particleBatches.length);
 }
 function updateExplosionGlbs(dt){
  for(let i=activeExplosionBursts.length-1;i>=0;i--){
@@ -3274,21 +3270,18 @@ function updateExplosionGlbs(dt){
    drawExplosionSparks(fx,dt);
    if(fx.flash)fx.flash.intensity=fx.flashPeak*Math.max(0,1-fx.age/.23)**2;
    for(const p of fx.particles){
-     if(!p.core&&fx.age<fx.ruptureDelay)continue;
-     p.sprite.visible=true;
-     p.age+=dt;
-     const t=Math.min(1,p.age/p.life);
-     p.sprite.material.opacity=p.opacity*Math.pow(1-t,p.smoke?1.15:1.85);
-     p.sprite.position.addScaledVector(p.velocity,dt);
-     // Airborne smoke rolls and drifts, never spawns any flat floor geometry.
-     if(p.smoke){
-       p.velocity.x+=Math.sin(p.phase+p.age*4)*dt*.70;
-       p.velocity.z+=Math.cos(p.phase*.9+p.age*3)*dt*.70;
-     }
-     p.sprite.material.rotation+=p.spin*dt;
-     p.velocity.multiplyScalar(Math.exp(-dt*(p.smoke?1.35:3.0)));
-     if(t>=1)p.sprite.visible=false;
+    if(!p.core&&fx.age<fx.ruptureDelay)continue;
+    if(p.age>=p.life)continue;
+    p.age+=dt;p.position.addScaledVector(p.velocity,dt);
+    if(p.smoke){
+     p.velocity.x+=Math.sin(p.phase+p.age*4)*dt*.70;
+     p.velocity.z+=Math.cos(p.phase*.9+p.age*3)*dt*.70;
+    }
+    p.rotation+=p.spin*dt;
+    p.velocity.multiplyScalar(Math.exp(-dt*(p.smoke?1.35:3.0)));
    }
+   for(const batch of fx.particleBatches)
+    drawExplosionParticleBatch(batch,cam.quaternion,fx.ruptureDelay,fx.age);
    if(fx.age>=fx.life){
      clearExplosionBurst(fx);
      activeExplosionBursts.splice(i,1);
@@ -9536,25 +9529,35 @@ function radiatedSpinTopTarget(z){
 function explodeGrenade(g){
  const grenadeStart=performance.now();
  noise(.42,.95,900);tone(48,.45,"sine",.42);
- // The spinning grenade's actual textured faces rip outward from its center.
- // Keep gameplay damage tied to the original bottom-pivot position p.
+ // Preserve exact GLB shell rupture and unchanged damage/ragdoll rules.
  const p=g.q.position.clone();
  const visualOrigin=new THREE.Box3().setFromObject(g.q).getCenter(new THREE.Vector3());
- burstCasingIntoFragments(g.q,visualOrigin,scene,graphicsOptions.particles);
+ const shardStart=performance.now();
+ const fragments=burstCasingIntoFragments(g.q,visualOrigin,scene,graphicsOptions.particles);
+ const shardMs=performance.now()-shardStart;
  scene.remove(g.q);
+ const particleStart=performance.now();
  spawnExplosionBurst(visualOrigin,false,.055);
+ const visualMs=performance.now()-particleStart;
+ let affected=0,ragdollDeaths=0;
  for(const z of living()){
-   const d=z.suitBossBlastHitboxes?.length?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
-   if(d<7.5){
-     const blast=Math.max(1,Math.ceil((8-d)/2))*damageLevel,force=Math.max(.25,1-d/7.5);
-     z.hp-=blast;
-     if(z.hp<=0&&!z.dead)killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),2.90+force*3.30,p);
-     else blastReact(z,p,.55+force*.95)
-   }
+  const d=z.suitBossBlastHitboxes?.length?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
+  if(d<7.5){
+   affected++;
+   const blast=Math.max(1,Math.ceil((8-d)/2))*damageLevel,force=Math.max(.25,1-d/7.5);
+   z.hp-=blast;
+   if(z.hp<=0&&!z.dead){
+    ragdollDeaths++;
+    killZ(z,false,z.g.position.clone().add(new THREE.Vector3(0,1.4,0)),2.90+force*3.30,p);
+   }else blastReact(z,p,.55+force*.95)
+  }
  }
- // Lightweight timing diagnostic: CPU grenade logic, not total GPU render time.
- document.documentElement.dataset.lastGrenadeLogicMs=
-  String(Math.round((performance.now()-grenadeStart)*10)/10);
+ document.documentElement.dataset.lastGrenadeShatterMs=shardMs.toFixed(2);
+ document.documentElement.dataset.lastGrenadeVisualMs=visualMs.toFixed(2);
+ document.documentElement.dataset.lastGrenadeFragments=String(fragments);
+ document.documentElement.dataset.lastGrenadeAffected=String(affected);
+ document.documentElement.dataset.lastGrenadeRagdolls=String(ragdollDeaths);
+ document.documentElement.dataset.lastGrenadeLogicMs=String(Math.round((performance.now()-grenadeStart)*10)/10);
 }
 
 function detonateNuke(){
@@ -10320,7 +10323,11 @@ resolveZombiePlayerContact(z,ox,oz);
 const perfGuard=createPerformanceGuard({
  renderer:ren,
  livingCount,
- getFxCounts:()=>({parts:parts.length,impacts:impacts.length,casings:casings.length}),
+ getFxCounts:()=>({parts:parts.length,impacts:impacts.length,casings:casings.length,
+  bursts:activeExplosionBursts.length,
+  batchedSprites:activeExplosionBursts.reduce((n,fx)=>n+fx.particles.length,0),
+  batchDraws:activeExplosionBursts.reduce((n,fx)=>n+fx.particleBatches.length,0),
+  fragments:activeCasingFragmentCount()}),
  enabled:true,
  consoleLogging:false
 }); // HUD stays visible; console spam stays off unless explicitly needed
