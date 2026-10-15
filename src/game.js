@@ -5565,7 +5565,8 @@ function releaseZombieVisual(z){
  if(z.mixer){try{z.mixer.stopAllAction()}catch(_){}}
  z.naturalCrawlerMixer=null;z.naturalCrawlerActions=null;z.naturalCrawlerAction=null;
  z.injuredCrawlerMixer=null;z.injuredCrawlerAction=null;z.injuredCrawlerVisual=null;
- z.injuredCrawlerModel=null;z.injuredCrawlerBones=null;
+ z.injuredCrawlerModel=null;z.injuredCrawlerBones=null;z.injuredCrawlerToeBones=null;
+ z.injuredCrawlerHandMotion=null;
  z.parasiteBossMixer=null;z.parasiteBossVisual=null;z.parasiteBossModel=null;
  z.naturalCrawlerVisual=null;z.naturalCrawlerBones=null;
  z.infectedMixer=null;z.infectedAction=null;z.infectedVisual=null;z.infectedBones=null;
@@ -5806,6 +5807,16 @@ function attachInjuredCrawlerVisual(z){
  for(const [part,name] of Object.entries(NATURAL_CRAWLER_BONE_NAMES)){
   const b=lookUp.get(name);if(b)z.injuredCrawlerBones.set(part,b);
  }
+ // v670: real GLB toe-tip joints let the trailing soles follow the pavement.
+ z.injuredCrawlerToeBones=new Map();
+ for(const side of ["L","R"]){
+  z.injuredCrawlerBones.get(side+"_Foot")?.traverse(b=>{
+   if(b.isBone&&crawlerBoneLabel(b).includes("toe")&&!z.injuredCrawlerToeBones.has(side))
+    z.injuredCrawlerToeBones.set(side,b);
+  });
+ }
+ z.injuredCrawlerPullFactor=.82;
+ z.injuredCrawlerHandMotion=null;
  attachInjuredCrawlerHitboxes(z);
  z.injuredCrawlerPrevX=z.g.position.x;z.injuredCrawlerPrevZ=z.g.position.z;
  document.documentElement.dataset.injuredCrawlerAttached=
@@ -5813,27 +5824,52 @@ function attachInjuredCrawlerVisual(z){
  document.documentElement.dataset.injuredCrawlerScale=holder.scale.x.toFixed(4);
  return true;
 }
+// v670: Keep the GLB's original 51 animation tracks. The hand's actual
+// backward stroke tells navigation when to pull; no procedural limb poses.
+const injuredPullP=new THREE.Vector3(),injuredPullH=new THREE.Vector3();
+const injuredPullL=new THREE.Vector3(),injuredPullR=new THREE.Vector3();
+function updateInjuredCrawlerPull(z,dt,bones){
+ const hips=bones.get("Hips"),head=bones.get("Head");
+ const left=bones.get("L_Hand"),right=bones.get("R_Hand");
+ if(!hips||!head||!left||!right)return;
+ z.g.updateMatrixWorld(true);
+ const hipZ=z.g.worldToLocal(hips.getWorldPosition(injuredPullP)).z;
+ const headZ=z.g.worldToLocal(head.getWorldPosition(injuredPullH)).z;
+ const lz=z.g.worldToLocal(left.getWorldPosition(injuredPullL)).z-hipZ;
+ const rz=z.g.worldToLocal(right.getWorldPosition(injuredPullR)).z-hipZ;
+ const backward=headZ<hipZ?1:-1,previous=z.injuredCrawlerHandMotion;
+ if(previous){
+  const pullDistance=Math.max(0,backward*(lz-previous.lz))+
+   Math.max(0,backward*(rz-previous.rz));
+  const rate=pullDistance/Math.max(.008,dt);
+  const target=THREE.MathUtils.clamp(.58+rate*1.35,.58,1.45);
+  z.injuredCrawlerPullFactor=THREE.MathUtils.lerp(
+   z.injuredCrawlerPullFactor??.82,target,.38);
+ }
+ z.injuredCrawlerHandMotion={lz,rz};
+}
 const injuredDragPivot=new THREE.Vector3(),injuredDragEnd=new THREE.Vector3();
 const injuredDragActual=new THREE.Vector3(),injuredDragDesired=new THREE.Vector3();
 const injuredDragWorldQ=new THREE.Quaternion(),injuredDragParentQ=new THREE.Quaternion();
 const injuredDragLocalQ=new THREE.Quaternion();
-function keepInjuredLegEndAboveGround(joint,endBone,ground,minHeight){
+function keepInjuredLegEndAboveGround(joint,endBone,rootGround,minHeight){
  if(!joint||!endBone)return 0;
  joint.updateWorldMatrix(true,true);
- const below=ground+minHeight-endBone.getWorldPosition(injuredDragEnd).y;
+ endBone.getWorldPosition(injuredDragEnd);
+ // Check pavement at EACH trailing joint, not just under the pelvis.
+ const localGround=sampleZombieGroundY(injuredDragEnd.x,injuredDragEnd.z,rootGround);
+ const below=localGround+minHeight-injuredDragEnd.y;
  if(below<=.002)return 0;
  joint.getWorldPosition(injuredDragPivot);
  injuredDragActual.subVectors(injuredDragEnd,injuredDragPivot);
  if(injuredDragActual.lengthSq()<.0001)return 0;
- // Bend the articulated leg around its own hip/knee rather than move the
- // pelvis, spine, head, or hands. Angle is capped to prevent snapping.
  injuredDragDesired.copy(injuredDragActual);
- injuredDragDesired.y+=Math.min(.42,below);
+ injuredDragDesired.y+=Math.min(.43,below);
  injuredDragWorldQ.setFromUnitVectors(injuredDragActual.normalize(),
   injuredDragDesired.normalize());
  const angle=2*Math.acos(THREE.MathUtils.clamp(injuredDragWorldQ.w,-1,1));
- if(angle>.20)injuredDragWorldQ.slerpQuaternions(
-  injuredDragLocalQ.identity(),injuredDragWorldQ,.20/angle);
+ if(angle>.23)injuredDragWorldQ.slerpQuaternions(
+  injuredDragLocalQ.identity(),injuredDragWorldQ,.23/angle);
  joint.parent.getWorldQuaternion(injuredDragParentQ);
  injuredDragLocalQ.copy(injuredDragParentQ).invert()
   .multiply(injuredDragWorldQ).multiply(injuredDragParentQ);
@@ -5846,32 +5882,33 @@ function updateInjuredCrawlerVisual(z,dt){
  const dist=Math.hypot(z.g.position.x-z.injuredCrawlerPrevX,
   z.g.position.z-z.injuredCrawlerPrevZ);
  z.injuredCrawlerPrevX=z.g.position.x;z.injuredCrawlerPrevZ=z.g.position.z;
- const speed=dist/Math.max(.005,dt);
- // This authored clip is the v664/v665/v668 crawl that the user approved.
- // It was too slow relative to the actor's movement, which looked like
- // sliding. Match native clip playback to actual ground speed without
- // replacing shoulder/hand poses or adding artificial leg cycling.
+ const actualSpeed=dist/Math.max(.005,dt);
+ // Decouple the recorded crawl clock from the forward-reach slowdown.
+ // Otherwise reducing travel would also slow the arms and cause more sliding.
  z.injuredCrawlerAction.setEffectiveTimeScale(
-  speed<.08?.24:THREE.MathUtils.clamp(speed/.70,.48,1.85));
+  actualSpeed<.025?.30:THREE.MathUtils.clamp(z.speed/.49,1.0,1.85));
  z.injuredCrawlerMixer.update(dt);
- const bones=z.injuredCrawlerBones,ground=z.g.position.y;
+ const bones=z.injuredCrawlerBones,rootGround=z.groundY||0;
  let worstPenetration=0;
  for(const side of ["L","R"]){
-  // Original GLB knee and trailing foot remain free to flex and drag; if
-  // they clip the pavement, bend only their own parent bone up just enough.
-  const knee=bones.get(side+"_LowerLeg"),foot=bones.get(side+"_Foot");
-  const upper=bones.get(side+"_UpperLeg");
-  worstPenetration=Math.max(worstPenetration,
-   keepInjuredLegEndAboveGround(upper,knee,ground,.08));
-  worstPenetration=Math.max(worstPenetration,
-   keepInjuredLegEndAboveGround(knee,foot,ground,.10));
-  // The foot's parent rotation can shift its knee position; give the knee
-  // a last conservative check with no pelvis or whole-body movement.
-  worstPenetration=Math.max(worstPenetration,
-   keepInjuredLegEndAboveGround(upper,knee,ground,.08));
+  const knee=bones.get(side+"_LowerLeg"),ankle=bones.get(side+"_Foot");
+  const thigh=bones.get(side+"_UpperLeg");
+  const toe=z.injuredCrawlerToeBones?.get(side);
+  // v669 cleared bare bone positions, not their visible shin/sole skin.
+  // These conservative clearances keep mesh above uneven ground without
+  // moving the body or stiffening the original moving hip/knee keys.
+  for(let pass=0;pass<2;pass++){
+   worstPenetration=Math.max(worstPenetration,
+    keepInjuredLegEndAboveGround(thigh,knee,rootGround,.155));
+   worstPenetration=Math.max(worstPenetration,
+    keepInjuredLegEndAboveGround(knee,ankle,rootGround,.175));
+   if(toe)worstPenetration=Math.max(worstPenetration,
+    keepInjuredLegEndAboveGround(ankle,toe,rootGround,.06));
+  }
  }
  document.documentElement.dataset.injuredCrawlerLegCorrection=
   worstPenetration.toFixed(3);
+ updateInjuredCrawlerPull(z,dt,bones);
  updateInjuredCrawlerHitboxes(z);
 }
 function attachNaturalCrawlerVisual(z){
@@ -10209,6 +10246,10 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  const huntTargetSpeed=playerDistToZombie>32?5.8:playerDistToZombie>16?5.4:5.0;
  let navSpeed=huntMode?Math.min(6.15,Math.max(huntTargetSpeed,z.speed)):z.speed;
  if(huntMode&&kind==="crawler")navSpeed*=.75;
+ // v670 NEW injured crawler only: slower travel on native hand-pull strokes.
+ // This goes through normal navigation, collision and wall avoidance.
+ if(z.injuredCrawlerSpawn)navSpeed*=.73*THREE.MathUtils.clamp(
+  z.injuredCrawlerPullFactor??.82,.58,1.45);
  if(kind==="boss")navSpeed=bossCharging?BOSS_CHARGE_SPEED:bossPressureSpeed(playerDistToZombie,z.speed);
  const motionScale=(huntMode||bossCharging||bossPressuring)?1:surge*shamble;
 let stepX=(nx+sx*zig)*navSpeed*motionScale*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*motionScale*stun*limpSlow*dt;
