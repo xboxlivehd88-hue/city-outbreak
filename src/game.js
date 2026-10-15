@@ -5588,7 +5588,7 @@ function releaseZombieVisual(z){
 let sprinterOnlyTest=new URLSearchParams(window.location.search).get("sprinterTest")==="1";
 function rolledZombieKind(w,roll){
  if(sprinterOnlyTest)return "sprinter";
- if(w===1)return "crawler"; // v664: new injured crawler exclusively for Wave 1 testing
+ if(w===1)return "shambler"; // v671: restored normal Wave 1 after injured crawler approval
  if(w===2)return roll<.18?"sprinter":"shambler";
  if(w===3){
    if(roll<.08)return "crawler";
@@ -6056,12 +6056,13 @@ const ZOMBIE_WORLD_SCALE=1.15;
 function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  let d=diff(wave),g=new THREE.Group(),scale=(.90+rnd()*.045)*ZOMBIE_WORLD_SCALE;
  let roll=rnd(),kind=forcedKind||rolledZombieKind(wave,roll);
- // Explicit forced "crawler" is the leg-loss conversion path and must
- // preserve its previous generic/identity-matched body.
- // During v664 visual tests, Wave 1 uses only the new injured crawler.
- // Wave 3+ retain the approved existing natural crawler model.
- const injuredCrawlerSpawn=kind==="crawler"&&forcedKind!=="crawler"&&wave===1;
- const naturalCrawlerSpawn=kind==="crawler"&&forcedKind!=="crawler"&&!injuredCrawlerSpawn;
+ // v671: both visually approved natural crawler GLBs share the EXISTING
+ // crawler roll in Wave 3+. Choose model 50/50 without changing crawler
+ // probability, native animations, textures, hitboxes or combat.
+ // Explicit forced crawler is a leg-loss conversion: NEVER swap its model.
+ const spawnedNaturalCrawler=kind==="crawler"&&forcedKind!=="crawler";
+ const injuredCrawlerSpawn=spawnedNaturalCrawler&&rnd()<.5;
+ const naturalCrawlerSpawn=spawnedNaturalCrawler&&!injuredCrawlerSpawn;
 
  const nightmareType = kind==="crawler"?"crawler":(kind==="boss"?"brute":((kind==="sprinter"||kind==="infected"||kind==="acidic")?"twitch":"normal"));
  const bodyType=i%3, outfit=i%4;
