@@ -10388,8 +10388,11 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
    // The imported M4 is much more realistic than the old block rifle. In ADS,
    // fade the procedural arms out so they do not form the giant V around the optic.
    // They remain fully visible at hip-fire and during reload.
-   const rifleAdsArmScale=(weapon==="rifle"&&!reloading)?Math.max(.001,1-aimBlend*1.35):1;
-   const smgAdsArmScale=(weapon==="smg"&&!reloading)?Math.max(.001,1-aimBlend*1.35):1;
+   // The original M4/MP5 needed vanishing PROCEDURAL fists in ADS.
+   // The new real skinned hands are retargeted to physical grips instead;
+   // never collapse their hidden IK guides to a zero-sized point in ADS.
+   const rifleAdsArmScale=(weapon==="rifle"&&!reloading&&!fpsNativeArms)?Math.max(.001,1-aimBlend*1.35):1;
+   const smgAdsArmScale=(weapon==="smg"&&!reloading&&!fpsNativeArms)?Math.max(.001,1-aimBlend*1.35):1;
    const adsArmScale=weapon==="smg"?smgAdsArmScale:rifleAdsArmScale;
    playerHandRig.left.scale.setScalar(adsArmScale);playerHandRig.right.scale.setScalar(adsArmScale);
    // Imported M4 ADS: the GLB root already sits 1.66 units forward of the camera.
