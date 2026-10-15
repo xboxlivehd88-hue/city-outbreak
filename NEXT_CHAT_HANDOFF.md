@@ -1,3 +1,11 @@
+# v664 BROWSER VERIFIED — NEW INJURED CRAWLER IN WAVE 1 — 2026-10-14
+
+- Browser/GLB proof: [original injured crawler GLB anatomy](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38664971664) SUCCESS. [Wave 1 / original Infected / Parasite boss](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38665434709) SUCCESS. [Original Sprinters](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38665434699) SUCCESS. [Original Hazmat and Green Guy](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38665434720) SUCCESS.
+- Real Chromium reported Wave 1 `target=10`, `spawned=10`, `live=10`, `kinds=["crawler"]`, `newCrawlerCount=10`, `oldCrawlerCount=0`, `bosses=0`. Every new crawler uses skinned original `animated_injured_zombie_crawling_loop.glb` with 17 mapped body joints, playing native clip `Animation` with 51 tracks. Calibrated visual bounding span about 1.92 game units, height 1.20, feet/body on the ground in test. Old natural crawler still available from Wave 3+, and original Infected remains on its approved Wave 5+ mixed rotation.
+- This is a **Wave 1 testing release**, NOT the final mixed rotation for both crawlers. Do not add the new crawler to later waves until user approves its visual/motion/death behavior. Current loader `./src/game.js?v=664`; protected recovery v324 unchanged.
+
+---
+
 # v664 CANDIDATE — NEW INJURED NATURAL CRAWLER WAVE 1 — 2026-10-14
 
 - User requests newly uploaded `assets/animated_injured_zombie_crawling_loop.glb` become the ten Wave 1 test zombies. The prior natural crawler `zombie_number_3_-_animated.glb` is UNCHANGED, retained on Waves 3+ while this new crawler is approved. Converted legless zombies never use either natural model flag. Two naturally spawned crawlers will coexist after user approval.
