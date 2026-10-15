@@ -3720,7 +3720,10 @@ const FPS_NATIVE_GRIPS={
  rifle:{left:{delta:[.09,-.08,.03],roll:1.53},right:{delta:[-.04,-.07,.06],roll:3.14}},
  smg:{left:{delta:[.06,-.09,.06],roll:1.54},right:{delta:[-.05,-.09,.04],roll:3.14}},
  shotgun:{left:{delta:[.07,-.08,.07],roll:1.52},right:{delta:[-.04,-.07,.04],roll:3.14}},
- pistol:{left:{delta:[-.12,-.065,.07],roll:.16},right:{delta:[-.025,-.06,.03],roll:3.02}},
+ // v688 video: M17 support glove hovers left/below the trigger grip and
+ // exposed fingertips miss the front strap. Bring only these SKINNED wrists
+ // closer to the grip; don't move the actual P320/M17 original GLB.
+ pistol:{left:{delta:[-.025,-.012,-.035],roll:-.12},right:{delta:[-.040,-.018,-.022],roll:3.08}},
  dmr:{left:{delta:[.08,-.095,.045],roll:1.54},right:{delta:[-.035,-.07,.045],roll:3.14}},
  grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:1.55},right:{delta:[-.04,-.085,.04],roll:3.14}},
  m240:{left:{delta:[.09,-.08,.06],roll:1.51},right:{delta:[-.04,-.085,.05],roll:3.14}}
@@ -3815,9 +3818,19 @@ function poseOriginalFpsArms(){
   const group=side==="left"?playerHandRig.left:playerHandRig.right;
   const upper=fpsJointEnds(controller.upper,group);
   const lower=fpsJointEnds(controller.fore,group);
-  const s=upper.a,e=lower.a;
+  const s=upper.a.clone(),e=lower.a.clone();
   const preset=grip[side];
   const w=lower.b.clone().add(new THREE.Vector3(...preset.delta));
+  // v688: the M17 ADS video showed both big coat sleeves forming a tent
+  // across the actual pistol sight. Keep the grip wrists where they are,
+  // but bring the upper-arm/elbow path LOWER and OUTSIDE the sight picture.
+  // Restore original actor shoulder/elbow goals seamlessly outside ADS.
+  const pistolSightBlend=weapon==="pistol"&&!reloading?THREE.MathUtils.clamp(aimBlend,0,1):0;
+  if(pistolSightBlend>.0001){
+   const sideSign=side==="left"?-1:1;
+   s.addScaledVector(new THREE.Vector3(sideSign*.22,-.28,-.17),pistolSightBlend);
+   e.addScaledVector(new THREE.Vector3(sideSign*.13,-.17,-.19),pistolSightBlend);
+  }
   const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
   // Animating translations is fine for fingers, but keep elbow and wrist
   // lengths from the asset bind rig to maintain valid skinned segment spans.
@@ -3850,6 +3863,13 @@ function poseOriginalFpsArms(){
   if(side==="right"&&weapon==="dmr"&&!reloading){
    chain.index.rotateX(-.11);
    chain.indexMid.rotateX(-.09);
+  }
+  // M17: make the trigger index wrap near the guard and cup the left support
+  // fingers against the right glove, not as two independent open fists.
+  // This is an extra small bend on the REAL imported animated finger joints.
+  if(weapon==="pistol"&&!reloading){
+   if(side==="right"){chain.index.rotateX(-.15);chain.indexMid.rotateX(-.09);}
+   else{chain.index.rotateX(-.16);chain.indexMid.rotateX(-.12);}
   }
  };
  poseSide("left",{upper:playerHandRig.leftUpper,fore:playerHandRig.leftFore});
