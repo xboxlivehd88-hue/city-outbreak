@@ -1,3 +1,4 @@
+// v677 regression rerun: synchronized GPU timer, frame pacing warmup gate and original zombie source.
 // v677 verified-shader rerun on final loaded source and protected zombie tests.
 // v677 final synchronized loader: run against committed index.html game.js?v=677 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
