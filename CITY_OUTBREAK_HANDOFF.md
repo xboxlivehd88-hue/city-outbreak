@@ -1,3 +1,12 @@
+# v686 VERIFIED — ALL SEVEN GUNS READY FOR GLB HAND ALIGNMENT TEST — 2026-10-15
+
+- **FULL Chromium regression passed:** [Actions 38803265005](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38803265005). Actual report `passed:true`, `errors:[]`. User spawns with all seven unlocked, DMR equipped, loaded ammo per gun, grenade launcher 6+4, and actual keyboard hotkeys **Digit1–Digit7 all select the correct weapon**. Original `cartoon_fps_arms.glb` has 47 joints and only one textured skinned mesh per weapon with zero old procedural arm meshes. DMR red-dot stays centered (NDC ~+0.001203 / -0.002025), approved hip and planted reload, Hazmat, Green Guy and GPU-batched grenade tests passed.
+- **Pages deployment succeeded:** [Actions 38803264380](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38803264380). Main loader is `./src/game.js?v=686`; playable [v686 hands fitting](https://xboxlivehd88-hue.github.io/city-outbreak/?v=686-all-guns-arm-test).
+- Earlier v686 smoke failures came from an unrelated **camera/world-axis gun length assertion** and from running all hotkeys mid-test without a render frame. The final validated script tests DMR's authored 3.8 unit barrel scale independent of camera facing, then switches 1–7 with a real move frame **after** all existing geometry/ADS checks. It passed completely. No DMR visual change or other gameplay physics change was needed.
+- The **purpose is temporary testing**. The user reports the actual appearance of hands relative to different guns is not aligned despite the numeric wrist fit. **Do not claim the arm grips visually look right yet.** Let user film each gun and correct each native arm pose/IK accordingly. Do not adjust approved gun models/aim/reload without explicit new evidence. The protected recovery **v324 remains unchanged**.
+
+---
+
 # v686 — TEMPORARY ALL-SEVEN-WEAPON SPAWN FOR FPS ARMS FITTING — 2026-10-15
 
 - **Latest user feedback:** New original `assets/cartoon_fps_arms.glb` hands appear misaligned on **multiple different guns**. User requests that the player **spawn with ALL weapons** so they can cycle through every weapon, record which hands do not fit, and refine the real GLB's per-weapon grips. Do not blindly assume v685 wrist-target precision means the visual hands/fingers fit the gun.
