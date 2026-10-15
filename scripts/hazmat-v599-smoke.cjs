@@ -1,4 +1,4 @@
-// v680 final synchronized loader: run against committed index.html game.js?v=680 and approved two-natural-crawler rotation.
+// v681 final synchronized loader: run against committed index.html game.js?v=681 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 // v680 DMR source geometry audit: inspect user's real uploaded GLB, not a
 // guessed procedural replacement. Print bounded node, accessor and material
@@ -120,13 +120,17 @@ try{
    // v680: measure the real DMR whole-gun pose, including attached real
    // magazine/hands. The test does not perform or mutate reload choreography.
    const dmrShoulderAudit=`
-;globalThis.__dmrV680ShoulderAudit=()=>{
+;globalThis.__dmrV681ShoulderAudit=()=>{
  const previousAim=aiming,previousPitch=pitch;
  if(weapon!=="dmr")throw Error("DMR must be selected for shoulder pose audit");
- aiming=false;aimBlend=0;pitch=0;dmrShoulderBlend=0;
+ aiming=false;aimBlend=0;pitch=0;dmrShoulderBlend=0;dmrRightGripBlend=0;
  move(.50);
- const hip={x:gun.position.x,z:gun.position.z,yaw:gun.rotation.y,
-  blend:dmrShoulderBlend,mag:playerReloadPart?.name,
+ const hip={x:gun.position.x,y:gun.position.y,z:gun.position.z,yaw:gun.rotation.y,
+  blend:dmrShoulderBlend,grip:dmrRightGripBlend,
+  indexTip:playerHandRig?.dmrIndexTip?.position?.toArray(),
+  indexVisible:!!playerHandRig?.dmrIndexTip?.visible,
+  triggerWrist:playerHandRig?.rightHandBase?.clone().lerp(new THREE.Vector3(.41,-.64,-1.48),dmrRightGripBlend).toArray(),
+  mag:playerReloadPart?.name,
   gunHasBothHands:!!gun.getObjectByName("RightPlayerArm")&&!!gun.getObjectByName("LeftPlayerArm")};
  aiming=true;move(.50);
  const ads={x:gun.position.x,z:gun.position.z,yaw:gun.rotation.y,blend:dmrShoulderBlend,
@@ -190,7 +194,7 @@ try{
 };`;
    await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+dmrShoulderAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=680-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=681-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.ready(),null,{timeout:110000});
   // Shaders, textures and actual pooled instance buffers must be initialized
@@ -212,7 +216,7 @@ try{
   await page.waitForFunction(()=>document.documentElement.dataset.dmrGlbReady==="true",null,{timeout:65000});
   report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
-  report.dmrShoulder=await page.evaluate(()=>globalThis.__dmrV680ShoulderAudit());
+  report.dmrShoulder=await page.evaluate(()=>globalThis.__dmrV681ShoulderAudit());
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
   report.motion=await page.evaluate(()=>globalThis.__hazmatSmoke.motion());
   report.lifecycle=await page.evaluate(()=>globalThis.__hazmatLifecycleAudit());
@@ -245,15 +249,19 @@ try{
    !report.dmrTest.cycle.includes("awm"),
    "v680 must equip test DMR and remove retired sniper: "+JSON.stringify(report.dmrTest));
   assert(report.dmrShoulder?.hip?.blend>.99&&
-    report.dmrShoulder.hip.x>.195&&report.dmrShoulder.hip.x<.205&&
-    report.dmrShoulder.hip.z>.51&&report.dmrShoulder.hip.z<.53&&
-    report.dmrShoulder.hip.yaw>.09&&report.dmrShoulder.hip.yaw<.10&&
+    report.dmrShoulder.hip.x>.305&&report.dmrShoulder.hip.x<.315&&
+    report.dmrShoulder.hip.y<-.23&&report.dmrShoulder.hip.y>-.25&&
+    report.dmrShoulder.hip.z>.75&&report.dmrShoulder.hip.z<.77&&
+    report.dmrShoulder.hip.yaw>.055&&report.dmrShoulder.hip.yaw<.065&&
     report.dmrShoulder.hip.gunHasBothHands&&
+    report.dmrShoulder.hip.indexVisible&&report.dmrShoulder.hip.grip>.99&&
+    report.dmrShoulder.hip.indexTip?.[2]<-1.57&&
+    report.dmrShoulder.hip.triggerWrist?.[2]<-1.46&&
     report.dmrShoulder.hip.mag==="m305a_leisure_mag_bakelite_0"&&
     report.dmrShoulder.ads.x<-.27&&report.dmrShoulder.ads.z<-.95&&
     Math.abs(report.dmrShoulder.ads.yaw)<.005&&
     report.dmrShoulder.ads.mag==="m305a_leisure_mag_bakelite_0",
-    "v680 must hold the real DMR close in hip, center unchanged ADS, and retain original magazine: "+JSON.stringify(report.dmrShoulder));
+    "v681 must lower/retract hip DMR, rest real index finger on trigger and preserve ADS/magazine: "+JSON.stringify(report.dmrShoulder));
   assert(Math.abs(report.eyeHeight.eye-2.10)<.025&&
    Math.abs(report.eyeHeight.eye-report.eyeHeight.original-.12)<.025&&
    report.eyeHeight.worldScale===1.20&&report.eyeHeight.samples.length===3&&
