@@ -5813,15 +5813,65 @@ function attachInjuredCrawlerVisual(z){
  document.documentElement.dataset.injuredCrawlerScale=holder.scale.x.toFixed(4);
  return true;
 }
+const injuredDragPivot=new THREE.Vector3(),injuredDragEnd=new THREE.Vector3();
+const injuredDragActual=new THREE.Vector3(),injuredDragDesired=new THREE.Vector3();
+const injuredDragWorldQ=new THREE.Quaternion(),injuredDragParentQ=new THREE.Quaternion();
+const injuredDragLocalQ=new THREE.Quaternion();
+function keepInjuredLegEndAboveGround(joint,endBone,ground,minHeight){
+ if(!joint||!endBone)return 0;
+ joint.updateWorldMatrix(true,true);
+ const below=ground+minHeight-endBone.getWorldPosition(injuredDragEnd).y;
+ if(below<=.002)return 0;
+ joint.getWorldPosition(injuredDragPivot);
+ injuredDragActual.subVectors(injuredDragEnd,injuredDragPivot);
+ if(injuredDragActual.lengthSq()<.0001)return 0;
+ // Bend the articulated leg around its own hip/knee rather than move the
+ // pelvis, spine, head, or hands. Angle is capped to prevent snapping.
+ injuredDragDesired.copy(injuredDragActual);
+ injuredDragDesired.y+=Math.min(.42,below);
+ injuredDragWorldQ.setFromUnitVectors(injuredDragActual.normalize(),
+  injuredDragDesired.normalize());
+ const angle=2*Math.acos(THREE.MathUtils.clamp(injuredDragWorldQ.w,-1,1));
+ if(angle>.20)injuredDragWorldQ.slerpQuaternions(
+  injuredDragLocalQ.identity(),injuredDragWorldQ,.20/angle);
+ joint.parent.getWorldQuaternion(injuredDragParentQ);
+ injuredDragLocalQ.copy(injuredDragParentQ).invert()
+  .multiply(injuredDragWorldQ).multiply(injuredDragParentQ);
+ joint.quaternion.premultiply(injuredDragLocalQ);
+ joint.updateWorldMatrix(true,true);
+ return below;
+}
 function updateInjuredCrawlerVisual(z,dt){
  if(!z?.injuredCrawlerVisual||!z.injuredCrawlerMixer||z.dead||z.knockdown)return;
  const dist=Math.hypot(z.g.position.x-z.injuredCrawlerPrevX,
   z.g.position.z-z.injuredCrawlerPrevZ);
  z.injuredCrawlerPrevX=z.g.position.x;z.injuredCrawlerPrevZ=z.g.position.z;
  const speed=dist/Math.max(.005,dt);
+ // This authored clip is the v664/v665/v668 crawl that the user approved.
+ // It was too slow relative to the actor's movement, which looked like
+ // sliding. Match native clip playback to actual ground speed without
+ // replacing shoulder/hand poses or adding artificial leg cycling.
  z.injuredCrawlerAction.setEffectiveTimeScale(
-  speed<.08?.32:THREE.MathUtils.clamp(speed/.85,.48,1.20));
+  speed<.08?.24:THREE.MathUtils.clamp(speed/.70,.48,1.85));
  z.injuredCrawlerMixer.update(dt);
+ const bones=z.injuredCrawlerBones,ground=z.g.position.y;
+ let worstPenetration=0;
+ for(const side of ["L","R"]){
+  // Original GLB knee and trailing foot remain free to flex and drag; if
+  // they clip the pavement, bend only their own parent bone up just enough.
+  const knee=bones.get(side+"_LowerLeg"),foot=bones.get(side+"_Foot");
+  const upper=bones.get(side+"_UpperLeg");
+  worstPenetration=Math.max(worstPenetration,
+   keepInjuredLegEndAboveGround(upper,knee,ground,.08));
+  worstPenetration=Math.max(worstPenetration,
+   keepInjuredLegEndAboveGround(knee,foot,ground,.10));
+  // The foot's parent rotation can shift its knee position; give the knee
+  // a last conservative check with no pelvis or whole-body movement.
+  worstPenetration=Math.max(worstPenetration,
+   keepInjuredLegEndAboveGround(upper,knee,ground,.08));
+ }
+ document.documentElement.dataset.injuredCrawlerLegCorrection=
+  worstPenetration.toFixed(3);
  updateInjuredCrawlerHitboxes(z);
 }
 function attachNaturalCrawlerVisual(z){
