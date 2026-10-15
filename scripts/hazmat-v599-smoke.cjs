@@ -120,7 +120,7 @@ try{
    // v680: measure the real DMR whole-gun pose, including attached real
    // magazine/hands. The test does not perform or mutate reload choreography.
    const dmrShoulderAudit=`
-;globalThis.__dmrV682ShoulderAudit=()=>{
+;globalThis.__dmrV683ShoulderAudit=()=>{
  const previousAim=aiming,previousPitch=pitch;
  if(weapon!=="dmr")throw Error("DMR must be selected for shoulder pose audit");
  aiming=false;aimBlend=0;pitch=0;dmrShoulderBlend=0;dmrRightGripBlend=0;
@@ -133,8 +133,16 @@ try{
   mag:playerReloadPart?.name,
   gunHasBothHands:!!gun.getObjectByName("RightPlayerArm")&&!!gun.getObjectByName("LeftPlayerArm")};
  aiming=true;move(.50);
+ // Real 3D ray/optic projection at full ADS, not just matching arbitrary
+ // position constants. This must land on the SAME camera center as shots.
+ gun.updateMatrixWorld(true);cam.updateMatrixWorld(true);
+ const sight=dmrOpticAimPoint?.clone();
+ const projected=sight?gun.localToWorld(sight).project(cam):null;
+ const zero=JSON.parse(document.documentElement.dataset.dmrSightZeroCorrection||"null");
  const ads={x:gun.position.x,y:gun.position.y,z:gun.position.z,yaw:gun.rotation.y,blend:dmrShoulderBlend,
   opticPose:dmrOpticPose?{...dmrOpticPose}:null,
+  zero,screen:projected?.toArray()||null,
+  magazine:playerReloadPart?.name,hitMarkerCenter:[.5,.5],
   mag:playerReloadPart?.name};
  aiming=previousAim;pitch=previousPitch;rebuildGun();move(0);
  return{hip,ads};
@@ -241,7 +249,7 @@ try{
   await page.waitForFunction(()=>document.documentElement.dataset.dmrGlbReady==="true",null,{timeout:65000});
   report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
-  report.dmrShoulder=await page.evaluate(()=>globalThis.__dmrV682ShoulderAudit());
+  report.dmrShoulder=await page.evaluate(()=>globalThis.__dmrV683ShoulderAudit());
   report.dmrMechanics=await page.evaluate(()=>globalThis.__dmrV682MechanicsAudit());
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
   report.motion=await page.evaluate(()=>globalThis.__hazmatSmoke.motion());
@@ -290,8 +298,16 @@ try{
     Math.abs(report.dmrShoulder.ads.z-report.dmrShoulder.ads.opticPose.z)<.025&&
     report.dmrShoulder.ads.z>0&&
     Math.abs(report.dmrShoulder.ads.yaw)<.005&&
-    report.dmrShoulder.ads.mag==="m305a_leisure_mag_bakelite_0",
-    "v683 hip must stay approved and the real red-dot be physically centered near the eye: "+JSON.stringify(report.dmrShoulder));
+    report.dmrShoulder.ads.mag==="m305a_leisure_mag_bakelite_0"&&
+    Math.abs(report.dmrShoulder.ads.zero?.verticalModelUnits-.052)<1e-6&&
+    Math.abs(report.dmrShoulder.ads.zero?.horizontalModelUnits-.007)<1e-6&&
+    Math.abs(report.dmrShoulder.ads.zero?.zoomFov-48)<1e-6&&
+    Math.abs(report.dmrShoulder.ads.screen?.[0]||0)<.015&&
+    Math.abs(report.dmrShoulder.ads.screen?.[1]||0)<.015&&
+    report.dmrShoulder.ads.screen?.[2]>-1&&
+    report.dmrShoulder.ads.screen?.[2]<1,
+    "v683 preserve hip; the actual original DMR sight must project to the unchanged center hit ray: "+
+    JSON.stringify(report.dmrShoulder));
   assert(report.dmrMechanics?.before?.mag==="m305a_leisure_mag_bakelite_0"&&
     report.dmrMechanics.before.sourceCartridges?.some(c=>c.material==="cartridge"&&c.texture)&&
     Math.abs(report.dmrMechanics.shot.gunRotation)<.0001&&
