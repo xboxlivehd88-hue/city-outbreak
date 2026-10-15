@@ -5877,7 +5877,7 @@ function attachInjuredCrawlerVisual(z){
  const skinBox=new THREE.Box3().setFromObject(holder,true);
  const groundY=Number.isFinite(z.groundY)?z.groundY:z.g.position.y;
  z.injuredCrawlerSkinAllowance=THREE.MathUtils.clamp(
-  groundY+.045-skinBox.min.y,0,.32);
+  groundY+.075-skinBox.min.y,0,.32);
  if(z.injuredCrawlerSkinAllowance>0)groundInjuredCrawlerPose(z,1/60);
  document.documentElement.dataset.injuredCrawlerSkinAllowance=
   z.injuredCrawlerSkinAllowance.toFixed(3);
