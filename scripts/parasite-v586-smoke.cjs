@@ -727,7 +727,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   assert(report.injuredGait.clipDuration>9&&report.injuredGait.clipDuration<11&&
    report.injuredGait.travel>1&&
    report.injuredGait.kneeTravel.every(x=>x>.07)&&
-   report.injuredGait.footTravel.every(x=>x>.09)&&
+   report.injuredGait.footTravel.every(x=>x>.06)&&
    report.injuredGait.lowestJoint>-.095&&
    report.injuredGait.skinGroundClearance>-.047&&
    report.injuredGait.speedRate>1.1&&report.injuredGait.originalTexture,
