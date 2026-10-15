@@ -1,3 +1,4 @@
+// v671 final synchronized loader: run against committed index.html game.js?v=671 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
  const report={version:"671",pass:false},errors=[];let browser,page;
