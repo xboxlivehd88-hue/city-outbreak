@@ -231,6 +231,11 @@ globalThis.__m17V691Preview=(ads)=>{
  ren.render(scene,cam);
  const jpeg=document.querySelector("#cv")?.toDataURL("image/jpeg",.35);
  return jpeg?.startsWith("data:image/jpeg;base64,")?jpeg.slice(23):null;
+};
+// The visual preview must not change the weapon needed by following DMR tests.
+globalThis.__m17V691PreviewRestore=()=>{
+ weapon="dmr";aiming=false;aimBlend=0;pitch=0;
+ reloading=false;reloadWeapon="";rebuildGun();move(.016);
 };`;
    const dmrShoulderAudit=`
 ;globalThis.__dmrV683ShoulderAudit=()=>{
@@ -374,6 +379,7 @@ globalThis.__m17V691Preview=(ads)=>{
     if(jpeg?.length>6000)console.log("M17_V691_"+key.toUpperCase()+"_JPEG="+jpeg);
    }catch(captureError){report.m17Preview[key]=String(captureError).slice(0,220)}
   }
+  await page.evaluate(()=>globalThis.__m17V691PreviewRestore());
   report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
   report.dmrShoulder=await page.evaluate(()=>globalThis.__dmrV683ShoulderAudit());
