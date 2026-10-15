@@ -1,3 +1,13 @@
+# v685 — CORRECT ORIGINAL FPS ARMS UPSIDE-DOWN ORIENTATION — 2026-10-15
+
+- **User video / instruction:** Uploaded `2026-10-15 16-11-51.mp4` shows the newly introduced GLB player arms oriented incorrectly. The user explicitly requests a **180° rotation around X**. This is a rotation/orientation task only, not a request to rework any approved weapon, ADS, reload, scale, performance or zombie system.
+- **Actual committed change on GitHub main:** In `src/game.js`, `attachOriginalFpsArms()` now sets `rig.rotation.x=Math.PI` on the **cloned original source skinned arms root** `OriginalCartoonFPSArmsGLB`, before attaching to the held gun. The existing 47-bone retargeting solver already maps targets through the rig's world-space parent quaternion, so it compensates for this model-root orientation correction while retaining approved weapon hand/grip target locations. Exposes `document.documentElement.dataset.fpsArmsRootRotationX` for diagnostics. No gun transform, hand target, original GLB mesh, material, animation or magazine/reload system was edited.
+- **Build/loader:** `index.html` loads `./src/game.js?v=685`; playable https://xboxlivehd88-hue.github.io/city-outbreak/?v=685-arms-180x . All three protected browser smoke tests now target v685; the Hazmat/DMR test additionally asserts **rig X rotation π for all seven weapons**, native single textured 47-joint mesh, NO old procedural arm meshes, and both wrists still near original per-weapon targets. GitHub workflow context renamed `city-outbreak/arms-v685-browser`.
+- **Verification status:** Code and loader committed. Browser CI result and live deployment must be checked separately before claiming they passed. Only the user's next gameplay recording can confirm visual orientation looks as intended.
+- Original DMR v683 zero/ADS, v681 approved hip hold, v682 recoil & planted Bakelite reload, other weapon behaviors, Wave 1, two natural crawlers, Infected, Sprinter, Hazmat, Green Guy, all 19 bosses, GPU grenade batching, map, player camera and protected **v324 recovery checkpoint** remain unchanged.
+
+---
+
 # v684 — ORIGINAL CARTOON FPS ARMS GLB REPLACES PROCEDURAL PLAYER ARMS — 2026-10-15
 
 - **Latest user request:** User newly uploaded `assets/cartoon_fps_arms.glb` and explicitly requested that the old player arms be REMOVED and REPLACED for EVERY weapon. Source file is in `main` via uploaded commit `91f657fbe90a6a0f0e47cbd91c6a52637bd48e47`. Do not replace the new mesh with procedural capsules or new generated hands.
