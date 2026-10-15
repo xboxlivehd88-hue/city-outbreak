@@ -9,7 +9,7 @@ const nodes=gltf.nodes||[],anims=gltf.animations||[];
 const report={
 file,bytes:bin.length,generator:gltf.asset?.generator,scenes:gltf.scenes?.length,
 nodeCount:nodes.length,meshCount:gltf.meshes?.length,textureCount:gltf.textures?.length,
-imageCount:gltf.images?.length,materialNames:(gltf.materials||[]).map(m=>({name:m.name,alphaMode:m.alphaMode,doubleSided:m.doubleSided})),
+imageCount:gltf.images?.length,materialNames:(gltf.materials||[]).map(m=>({name:m.name,alphaMode:m.alphaMode,doubleSided:m.doubleSided,pbr:m.pbrMetallicRoughness,normal:m.normalTexture,emissive:m.emissiveTexture,legacy:m.extensions?.KHR_materials_pbrSpecularGlossiness,otherExtensions:Object.keys(m.extensions||{})})),textures:gltf.textures,images:gltf.images?.map(img=>({name:img.name,mimeType:img.mimeType,bufferView:img.bufferView,uri:img.uri})),extensionsUsed:gltf.extensionsUsed,
 skins:(gltf.skins||[]).map(s=>({joints:s.joints?.length,bones:(s.joints||[]).map(i=>nodes[i]?.name)})),
 animations:anims.map(a=>({name:a.name||"(unnamed)",channels:a.channels?.length,samplers:a.samplers?.length,targets:(a.channels||[]).slice(0,42).map(c=>({node:nodes[c.target?.node]?.name||"#"+c.target?.node,path:c.target?.path}))})),
 rootNodes:(gltf.scenes||[]).flatMap(s=>(s.nodes||[]).map(i=>({name:nodes[i]?.name,translation:nodes[i]?.translation,rotation:nodes[i]?.rotation,scale:nodes[i]?.scale,children:nodes[i]?.children?.length}))),
