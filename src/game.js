@@ -6,7 +6,8 @@ import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
-import {createPerformanceGuard} from "./performance-hud.js?v=676";
+import {createPerformanceGuard} from "./performance-hud.js?v=677";
+import {createGpuFrameTimer} from "./gpu-frame-timer.js?v=677";
 import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=464";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
@@ -985,6 +986,7 @@ function groan(v){
 }
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x171b22);scene.fog=new THREE.FogExp2(0x242321,.0047);
 const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.08,220),ren=new THREE.WebGLRenderer({canvas:cv,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,1.10));ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.18;
+const cityGpuTimer=createGpuFrameTimer(ren);
 // v534: lower tiers really reduce rendered pixels, city shaders and sky cost.
 // High preserves the approved full-quality original; physics never changes.
 const GRAPHICS_QUALITY_KEY="city-outbreak-graphics-v1";
@@ -10464,6 +10466,7 @@ const cityFrameProfile={
 function takeCityFrameProfile(){
  const n=Math.max(1,cityFrameProfile.frames);
  const result={
+  gpu:cityGpuTimer.snapshot(),
   updateMs:cityFrameProfile.updateMs/n,
   lightsMs:cityFrameProfile.lightsMs/n,
   rainMs:cityFrameProfile.rainMs/n,
@@ -10481,6 +10484,7 @@ function takeCityFrameProfile(){
  perfNavBuilds=0;perfNavDeferred=0;perfNavWorstMs=0;
  perfRainCoverChecks=0;perfRainCoverWorstMs=0;
  document.documentElement.dataset.cityPerformanceBreakdown=JSON.stringify(result);
+ document.documentElement.dataset.cityGpuFrame=JSON.stringify(result.gpu);
  return result;
 }
 const perfGuard=createPerformanceGuard({
@@ -10704,7 +10708,11 @@ function frame(t){
  const rainEnd=performance.now();
  earlyNightSky.position.copy(cam.position);
  earlyNightSkyUniforms.uTime.value=t*.001;
- ren.render(scene,cam);
+ // Asynchronous GPU timing is sampled at most once per six gameplay frames;
+ // result collection only polls availability and never blocks on GPU work.
+ const gpuSample=running&&!paused&&!between&&cityGpuTimer.begin();
+ try{ren.render(scene,cam)}
+ finally{if(gpuSample)cityGpuTimer.end()}
  const renderEnd=performance.now();
  if(!paused){
   cityFrameProfile.frames++;
