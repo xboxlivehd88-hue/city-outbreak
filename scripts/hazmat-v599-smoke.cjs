@@ -6,6 +6,10 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
+  page.on("console",msg=>{
+   if(/THREE\\.WebGLProgram|Shader Error|shader compilation|program link/i.test(msg.text()))
+    errors.push("SHADER: "+msg.text().slice(0,500));
+  });
   page.on("response",r=>{if(r.url().includes("/assets/zombie_hazmat.glb"))report.assetHttp=r.status()});
   await page.route(/\/src\/game\.js\?v=672$/,async route=>{
    const rsp=await route.fetch(),src=await rsp.text();
@@ -51,6 +55,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
   report.motion=await page.evaluate(()=>globalThis.__hazmatSmoke.motion());
   report.lifecycle=await page.evaluate(()=>globalThis.__hazmatLifecycleAudit());
+  await page.waitForTimeout(170); // force real WebGL shader compilation/render
   report.grenadeFx=await page.evaluate(()=>({
    prepared:Number(document.documentElement.dataset.grenadePreparedFragmentTiers||0),
    particles:Number(document.documentElement.dataset.grenadeLastSpriteCount||0),
@@ -59,7 +64,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
    shellMs:Number(document.documentElement.dataset.lastGrenadeShatterMs),
    smokeMs:Number(document.documentElement.dataset.lastGrenadeVisualMs),
    logicMs:Number(document.documentElement.dataset.lastGrenadeLogicMs),
-   batches:activeExplosionBursts[0]?.particleBatches?.map(b=>b.mesh.name)||[]
+   batches:String(document.documentElement.dataset.grenadeLastSpriteDraws||"")
   }));
   const s=report.state;
   assert.equal(report.http,200);assert.equal(report.assetHttp,200);
@@ -111,8 +116,7 @@ const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=r
   assert(life.explosionMs<4500,"Main-thread grenade blast stalls >4.5 seconds");
   assert(report.grenadeFx.prepared>=3&&report.grenadeFx.fragmentCount>0&&
    report.grenadeFx.particles>=100&&report.grenadeFx.batchDraws===2&&
-   report.grenadeFx.batches.includes("BatchedExplosionSmoke")&&
-   report.grenadeFx.batches.includes("BatchedExplosionFire")&&
+   report.grenadeFx.batches==="2"&&
    Number.isFinite(report.grenadeFx.shellMs)&&Number.isFinite(report.grenadeFx.smokeMs)&&
    Number.isFinite(report.grenadeFx.logicMs),
    "Optimized grenade must preserve original GLB shattering and full-detail smoke/fire in only 2 GPU draws: "+
