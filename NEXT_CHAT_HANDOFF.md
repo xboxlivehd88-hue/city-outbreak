@@ -1,3 +1,13 @@
+# v691 — M17 NATURAL TWO-HANDED GRIP REFINEMENT — 2026-10-15
+
+- **Starting point:** main v690 commit `43d7374192482a6f36fc8ac3d43f18fbd19e537a`. Existing real Chromium v690 measures **M17 wrist separation 0.2173m at hip vs 0.0540m at ADS**. One fixed offset therefore separated the hands during hip fire and nearly crossed wrists in ADS. Closest user reference remains v687 gameplay footage 2026-10-15 16-55-03.mp4; v688 unnatural shoulder/sleeve hack must not return.
+- **Scoped v691 game code:** Keep actual 47-bone `assets/cartoon_fps_arms.glb`, 180-degree X correction, untouched original M17 model and `FPS_NATIVE_GRIPS.pistol` base settings. Move ONLY the support wrist target +.07m X for hip fire with smoothly blended -.03m X at ADS. Fade that correction during support-hand magazine retrieval. Subtly curl ONLY the real M17 right index knuckle and second joint (-.025/- .065 radians idle, recoil-responsive). No forced upper-arm/elbow/shoulder/wrist bind translations, new meshes or changes to other six gun profiles.
+- **v691 verification:** Browser audit tightened from v690 broad 0.04–0.6m wrist bound to **hip .10–.195m, ADS .06–.15m** while retaining existing source GLB, seven-gun inventory, DMR, zombie, GPU and ground-clearance checks; it now logs actual WebGL JPEG previews for hip and ADS. Regressions and GitHub Pages must be verified; green math is not user visual approval.
+- **Source/deployment:** `index.html` loader `./src/game.js?v=691`; preview https://xboxlivehd88-hue.github.io/city-outbreak/?v=691-m17-twohand-fit . Both handoff files updated. **Protected v324 recovery checkpoint unchanged.**
+- **Next review:** Compare actual video for palm/thumb contact, support and trigger finger shape, natural sleeves and pistol magazine exchange before calling it final. Keep all seven unlocked for testing.
+
+---
+
 # v690 VERIFIED — NEW M17 SUPPORT GRIP ADJUSTMENT PASSED — 2026-10-15
 
 - **REAL Chromium regression PASSED:** [GitHub Actions run 38810825649](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38810825649), full audit `passed:true`, `errors:[]`. It measured v690 **left M17 wrist delta x -0.085, support finger joint presence 4/4**, right original M17 grip unchanged, naturally moving elbows/shoulders in hip and ADS (no frozen/stretched v688 wrist hack), seven original weapon arm skins, all seven-gun test inventory, DMR original ADS center, Hazmat/Green Guy, batched grenade FX and player ground clearance.

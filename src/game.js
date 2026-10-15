@@ -3822,6 +3822,14 @@ function poseOriginalFpsArms(){
   const s=upper.a,e=lower.a;
   const preset=grip[side];
   const w=lower.b.clone().add(new THREE.Vector3(...preset.delta));
+  // v691: M17 wrists were 22cm apart at hip but only 5cm apart in ADS.
+  // Only the support wrist gets a smoothly blended grip-side target correction.
+  // Never force shoulder/elbow positions or modify source bind translations.
+  if(weapon==="pistol"&&side==="left"){
+   const holding=reloading?THREE.MathUtils.clamp(1-rp.hand,0,1):1;
+   const sightBlend=THREE.MathUtils.smoothstep(aimBlend,0,1);
+   w.x+=THREE.MathUtils.lerp(.07,-.03,sightBlend)*holding;
+  }
   const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
   // Animating translations is fine for fingers, but keep elbow and wrist
   // lengths from the asset bind rig to maintain valid skinned segment spans.
@@ -3863,6 +3871,13 @@ function poseOriginalFpsArms(){
     const finger=fpsNativeArms.getObjectByName(name);
     if(finger)finger.rotateX(-flex*gripFlex);
    }
+  }
+  // v691: Curl the original SIG firing-hand index knuckle and middle joint
+  // toward the trigger, without moving the wrist or replacing any mesh.
+  if(weapon==="pistol"&&side==="right"){
+   const indexFlex=reloading?.035:recoil>.03?.095:.065;
+   chain.index.rotateX(-.025);
+   chain.indexMid.rotateX(-indexFlex);
   }
   // The DMR's original approved trigger finger movement remains unchanged.
   if(side==="right"&&weapon==="dmr"&&!reloading){
