@@ -5,7 +5,12 @@
 // Shared shaders/textures are NOT recreated for each grenade.
 import * as THREE from "three";
 
+// v676: per-texture batch pool. Reserve the FIRST blast's instance buffers
+// while the title screen is idle and recycle them after particles expire.
+// This does not change particle counts, textures, blending, or animation.
 const materials=new WeakMap();
+const batchPool=new WeakMap();
+const MAX_IDLE_BATCHES_PER_TEXTURE=2;
 const dummy=new THREE.Object3D();
 const spinQuat=new THREE.Quaternion();
 const viewQuat=new THREE.Quaternion();
@@ -48,20 +53,38 @@ function particleMaterial(texture,smoke){
 
 export function createExplosionParticleBatch(texture,smoke,particles){
  if(!particles.length)return null;
- const geometry=new THREE.PlaneGeometry(1,1);
- const opacity=new THREE.InstancedBufferAttribute(new Float32Array(particles.length),1);
- opacity.setUsage(THREE.DynamicDrawUsage);
- geometry.setAttribute("instanceOpacity",opacity);
- const mesh=new THREE.InstancedMesh(geometry,particleMaterial(texture,smoke),particles.length);
- mesh.name=smoke?"BatchedExplosionSmoke":"BatchedExplosionFire";
- mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
- mesh.frustumCulled=false;mesh.castShadow=false;mesh.receiveShadow=false;
+ let pool=batchPool.get(texture);
+ let batch=null;
+ if(pool){
+  const idx=pool.findIndex(item=>item.capacity>=particles.length);
+  if(idx>=0)batch=pool.splice(idx,1)[0];
+ }
+ if(!batch){
+  const geometry=new THREE.PlaneGeometry(1,1);
+  const opacity=new THREE.InstancedBufferAttribute(new Float32Array(particles.length),1);
+  opacity.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute("instanceOpacity",opacity);
+  const mesh=new THREE.InstancedMesh(geometry,particleMaterial(texture,smoke),particles.length);
+  mesh.name=smoke?"BatchedExplosionSmoke":"BatchedExplosionFire";
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.frustumCulled=false;mesh.castShadow=false;mesh.receiveShadow=false;
+  batch={mesh,geometry,opacity,particles:[],capacity:particles.length,texture};
+ }
+ batch.mesh.count=particles.length;
+ batch.particles=particles;
  for(let i=0;i<particles.length;i++){
   tempColor.setHex(particles[i].color);
-  mesh.setColorAt(i,tempColor);
+  batch.mesh.setColorAt(i,tempColor);
  }
- mesh.instanceColor.needsUpdate=true;
- return{mesh,geometry,opacity,particles};
+ if(batch.mesh.instanceColor)batch.mesh.instanceColor.needsUpdate=true;
+ return batch;
+}
+// Called only during title-screen prewarming, not during the blast frame.
+export function primeExplosionParticleBatch(texture,smoke,capacity=160){
+ const samples=Array.from({length:capacity},()=>({color:0xffffff}));
+ const batch=createExplosionParticleBatch(texture,smoke,samples);
+ // Keep the buffers in memory for the first true combat explosion.
+ return batch;
 }
 export function drawExplosionParticleBatch(batch,cameraQuaternion,ruptureDelay=0,age=0){
  if(!batch)return;
@@ -88,6 +111,14 @@ export function drawExplosionParticleBatch(batch,cameraQuaternion,ruptureDelay=0
 export function disposeExplosionParticleBatch(batch){
  if(!batch)return;
  if(batch.mesh.parent)batch.mesh.parent.remove(batch.mesh);
+ batch.particles=[];
+ batch.mesh.count=0;
+ let pool=batchPool.get(batch.texture);
+ if(!pool){pool=[];batchPool.set(batch.texture,pool)}
+ if(pool.length<MAX_IDLE_BATCHES_PER_TEXTURE){
+  pool.push(batch);return;
+ }
+ // Only excess concurrent-blast instances are discarded. Core reusable
+ // geometry/material/texture pools survive and do not cause repeated spikes.
  batch.geometry.dispose();
- // Material and source textures stay cached for the next explosion.
 }
