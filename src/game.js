@@ -3000,7 +3000,7 @@ new GLTFLoader().load(NATURAL_CRAWLER_GLB_URL,gltf=>{
 
  // v664: NEW uploaded crawler distinct from the v550 original natural crawler.
  // Wave 1 is a dedicated visual test until user approval.
-const INJURED_CRAWLER_GLB_URL="assets/animated_injured_zombie_crawling_loop.glb?v=664";
+const INJURED_CRAWLER_GLB_URL="assets/animated_injured_zombie_crawling_loop.glb?v=665";
 let injuredCrawlerAsset=null;
 new GLTFLoader().load(INJURED_CRAWLER_GLB_URL,gltf=>{
  const clip=gltf.animations?.[0];
@@ -3008,23 +3008,36 @@ new GLTFLoader().load(INJURED_CRAWLER_GLB_URL,gltf=>{
   document.documentElement.dataset.injuredCrawlerLoadError="Recorded crawler animation missing";
   console.error("Injured crawler GLB has no usable animation");return;
  }
- // Keep original skin texture/maps; prevent BLEND depth sorting from causing
- // transparent cheeks, head and other overlapping skin surfaces.
- gltf.scene.traverse(o=>{
-  if(!o.isMesh)return;
-  for(const mat of (Array.isArray(o.material)?o.material:[o.material])){
-   if(mat?.transparent){
+ // Sketchfab glTF uses legacy KHR_materials_pbrSpecularGlossiness, whose
+ // embedded diffuse image is skipped by modern GLTFLoader. v664 was white.
+ Promise.all([gltf.parser.getDependency("texture",0),
+              gltf.parser.getDependency("texture",2)]).then(([diffuse,normal])=>{
+  if(!diffuse?.image||!normal?.image)throw Error("Original diffuse/normal PNG missing");
+  diffuse.colorSpace=THREE.SRGBColorSpace;normal.colorSpace=THREE.NoColorSpace;
+  diffuse.needsUpdate=true;normal.needsUpdate=true;
+  let mapped=0;
+  gltf.scene.traverse(o=>{
+   if(!o.isMesh)return;
+   for(const mat of (Array.isArray(o.material)?o.material:[o.material])){
+    if(!mat)continue;
+    mat.map=diffuse;mat.normalMap=normal;mat.color.setRGB(1,1,1);
+    mat.metalness=0;mat.roughness=.90;mat.vertexColors=false;
     mat.transparent=false;mat.alphaTest=.075;mat.depthWrite=true;
-    mat.side=THREE.DoubleSide;mat.needsUpdate=true;
+    mat.side=THREE.DoubleSide;mat.needsUpdate=true;mapped++;
    }
-  }
+  });
+  if(mapped<3)throw Error("Missing textured crawler meshes: "+mapped);
+  injuredCrawlerAsset={scene:gltf.scene,clip,diffuse,normal};
+  document.documentElement.dataset.injuredCrawlerAsset="textured";
+  document.documentElement.dataset.injuredCrawlerOriginalTextures=String(mapped);
+  document.documentElement.dataset.injuredCrawlerAnimation=clip.name;
+  for(const z of zombies)if(z.injuredCrawlerSpawn&&!z.dead)attachInjuredCrawlerVisual(z);
+  console.log("CITY OUTBREAK v665 original injured crawler textures recovered",
+   {mapped,diffuse:diffuse.image?.width,clip:clip.name});
+ }).catch(err=>{
+  document.documentElement.dataset.injuredCrawlerLoadError=String(err?.message||err);
+  console.error("Unable to recover crawler's original colors",err);
  });
- injuredCrawlerAsset={scene:gltf.scene,clip};
- document.documentElement.dataset.injuredCrawlerAsset="loaded";
- document.documentElement.dataset.injuredCrawlerAnimation=clip.name;
- for(const z of zombies)if(z.injuredCrawlerSpawn&&!z.dead)attachInjuredCrawlerVisual(z);
- console.log("CITY OUTBREAK v664 injured crawler ready",{
-  file:INJURED_CRAWLER_GLB_URL,animation:clip.name,tracks:clip.tracks.length});
 },undefined,error=>{
  document.documentElement.dataset.injuredCrawlerLoadError=String(error?.message||error);
  console.warn("Injured crawler GLB unavailable",error);
@@ -5616,7 +5629,139 @@ const NATURAL_CRAWLER_BONE_NAMES=Object.freeze({
  R_UpperLeg:"rightupleg",R_LowerLeg:"rightleg",R_Foot:"rightfoot"
 });
 
-// v664: New crawling GLB is independently spawned; v550 crawler unchanged.
+// v665: original damaged crawler skin, dedicated accurate bones/hitboxes.
+
+const injuredHitGeo=new THREE.SphereGeometry(1,12,8);
+const injuredHitMat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,colorWrite:false,depthWrite:false,side:THREE.DoubleSide});
+const injuredHitUp=new THREE.Vector3(0,1,0),injuredHitP=new THREE.Vector3(),injuredHitQ=new THREE.Vector3(),injuredHitD=new THREE.Vector3();
+function updateInjuredCrawlerHitboxes(z){
+ if(!z.injuredHitboxes?.length||z.dead)return;
+ z.g.updateMatrixWorld(true);
+ for(const hit of z.injuredHitboxes){
+  const a=z.injuredCrawlerBones.get(hit.a),b=hit.b?z.injuredCrawlerBones.get(hit.b):null;
+  if(!a)continue;
+  a.getWorldPosition(injuredHitP);z.g.worldToLocal(injuredHitP);
+  if(b){b.getWorldPosition(injuredHitQ);z.g.worldToLocal(injuredHitQ)}
+  else injuredHitQ.copy(injuredHitP);
+  hit.mesh.position.copy(injuredHitP).add(injuredHitQ).multiplyScalar(.5);
+  injuredHitD.subVectors(injuredHitQ,injuredHitP);
+  const span=injuredHitD.length();
+  if(span>.0001)hit.mesh.quaternion.setFromUnitVectors(injuredHitUp,injuredHitD.multiplyScalar(1/span));
+  else hit.mesh.quaternion.identity();
+  hit.mesh.scale.set(hit.r,Math.max(hit.r,span*.5+hit.r*.35),hit.r);
+ }
+ z.g.updateMatrixWorld(true);
+}
+function attachInjuredCrawlerHitboxes(z){
+ // Throw away the OLD crawler-shaped targets. Use original skinned Mixamo
+ // bone positions for all new head, chest, hands, and legs.
+ for(const old of z.hitMeshes||[])old.raycast=()=>{};
+ const shapes=[
+  ["Head",null,"head",.19],["Neck","Head","head",.135],
+  ["Chest","Neck","torso",.23],["Spine","Chest","torso",.24],
+  ["Hips","Spine","torso",.22],["Hips",null,"torso",.17],
+  ["L_UpperArm","L_LowerArm","leftArm",.14],["L_LowerArm","L_Hand","leftArm",.12],
+  ["L_Hand",null,"leftArm",.105],["R_UpperArm","R_LowerArm","rightArm",.14],
+  ["R_LowerArm","R_Hand","rightArm",.12],["R_Hand",null,"rightArm",.105],
+  ["L_UpperLeg","L_LowerLeg","leftLeg",.14],["L_LowerLeg","L_Foot","leftLeg",.12],
+  ["R_UpperLeg","R_LowerLeg","rightLeg",.14],["R_LowerLeg","R_Foot","rightLeg",.12]
+ ];
+ z.injuredHitboxes=[];z.hitMeshes=[];
+ for(const [a,b,part,r] of shapes){
+  if(!z.injuredCrawlerBones.has(a)||(b&&!z.injuredCrawlerBones.has(b)))continue;
+  const mesh=new THREE.Mesh(injuredHitGeo,injuredHitMat);
+  mesh.name="InjuredGLBHit_"+part+"_"+a;
+  mesh.visible=false;mesh.userData.zombie=z;mesh.userData.part=part;
+  mesh.userData.isHead=part==="head";z.g.add(mesh);
+  z.hitMeshes.push(mesh);z.injuredHitboxes.push({a,b,part,r,mesh});
+ }
+ updateInjuredCrawlerHitboxes(z);
+}
+function clipInjuredCrawlerLimbs(z){
+ if(!z.injuredCrawlerVisual||!z.injuredCrawlerBones)return null;
+ const detachedKeys=[];
+ for(const [side,word] of [["L","left"],["R","right"]]){
+  if(z[word+"LegDetached"])detachedKeys.push(side+"_UpperLeg",side+"_LowerLeg",side+"_Foot");
+  if(z[word+"ArmDetached"])detachedKeys.push(side+"_UpperArm",side+"_LowerArm",side+"_Hand");
+ }
+ if(!detachedKeys.length)return null;
+ // Include Mixamo toe/hand child joints: a foot often has its own weighted
+ // ToeBase even when the parent Foot has been severed.
+ const removedBones=new Set(),distalFootBones=new Set();
+ for(const key of detachedKeys){
+  const bone=z.injuredCrawlerBones.get(key);
+  if(bone)bone.traverse(child=>{if(child.isBone)removedBones.add(child)});
+ }
+ for(const side of ["L","R"]){
+  if(!z[(side==="L"?"left":"right")+"LegDetached"])continue;
+  z.injuredCrawlerBones.get(side+"_Foot")?.traverse(child=>{
+   if(child.isBone)distalFootBones.add(child);
+  });
+ }
+ let changed=0,removed=0;
+ z.injuredCrawlerVisual.traverse(mesh=>{
+  if(!mesh.isSkinnedMesh||!mesh.skeleton)return;
+  const base=mesh.userData.injuredBaseGeometry||mesh.geometry;
+  mesh.userData.injuredBaseGeometry=base;
+  const skin=base.getAttribute("skinIndex"),weights=base.getAttribute("skinWeight"),
+    pos=base.getAttribute("position");
+  if(!skin||!weights||!pos)return;
+  const boneIndices=new Set(),footIndices=new Set();
+  mesh.skeleton.bones.forEach((bone,i)=>{
+   if(removedBones.has(bone))boneIndices.add(i);
+   if(distalFootBones.has(bone))footIndices.add(i);
+  });
+  if(!boneIndices.size)return;
+  const legWeight=new Float32Array(pos.count),footWeight=new Float32Array(pos.count);
+  for(let i=0;i<pos.count;i++){
+   let total=0;
+   for(let k=0;k<Math.min(4,skin.itemSize,weights.itemSize);k++)
+    if(boneIndices.has(skin.getComponent(i,k)))total+=weights.getComponent(i,k);
+   legWeight[i]=total;
+   if(footIndices.size)for(let k=0;k<Math.min(4,skin.itemSize,weights.itemSize);k++)
+    if(footIndices.has(skin.getComponent(i,k)))footWeight[i]+=weights.getComponent(i,k);
+  }
+  const index=base.index,count=index?.count||pos.count,read=i=>index?index.getX(i):i;
+  const groups=base.groups?.length?base.groups:[{start:0,count,materialIndex:0}];
+  const indices=[],outGroups=[];let clipped=0;
+  for(const group of groups){
+   const first=indices.length,stop=Math.min(count,group.start+group.count);
+   for(let i=group.start;i+2<stop;i+=3){
+    const a=read(i),b=read(i+1),d=read(i+2),
+     wa=legWeight[a],wb=legWeight[b],wd=legWeight[d];
+    // Preserve the approved hip/torso seam clipping, but remove ANY triangle
+    // still influenced by a severed foot or toe. Otherwise a single weighted
+    // boot triangle can remain on the pavement as a detached-foot artifact.
+    if(Math.max(footWeight[a],footWeight[b],footWeight[d])>.12||
+       Number(wa>.55)+Number(wb>.55)+Number(wd>.55)>=2||(wa+wb+wd)/3>.72){
+     clipped++;continue;
+    }
+    indices.push(a,b,d);
+   }
+   if(indices.length>first)outGroups.push({start:first,count:indices.length-first,materialIndex:group.materialIndex||0});
+  }
+  if(!clipped||indices.length<12)return;
+  const copy=base.clone();copy.setIndex(indices);copy.clearGroups();
+  for(const group of outGroups)copy.addGroup(group.start,group.count,group.materialIndex);
+  mesh.geometry=copy;z.ownedGeometries?.push(copy);
+  changed++;removed+=clipped;
+ });
+ return{changed,removed};
+}
+
+function detachInjuredCrawlerLimb(z,side,leg){
+ const key=side+(leg?"LegDetached":"ArmDetached");if(z[key])return;
+ const part=side+(leg?"Leg":"Arm"),bone=z.injuredCrawlerBones?.get((side==="left"?"L":"R")+(leg?"_UpperLeg":"_UpperArm"));
+ const impact=bone?.getWorldPosition(new THREE.Vector3())||z.g.position.clone();
+ z[key]=true;clipInjuredCrawlerLimbs(z);
+ for(const h of z.injuredHitboxes||[])if(h.part===part)h.mesh.raycast=()=>{};
+ z.hitMeshes=z.hitMeshes.filter(h=>h.userData.part!==part);
+ if(leg)z.legDamage=3;
+ // Never detach, show, or launch any OLD procedural crawler limb or blood mesh.
+ burst(impact,true);noise(leg?.15:.12,leg?.25:.22,leg?280:350);
+ show((side==="left"?"LEFT ":"RIGHT ")+(leg?"LEG OFF":"ARM OFF"));
+}
+
 function attachInjuredCrawlerVisual(z){
  if(!z?.injuredCrawlerSpawn||z.dead||z.injuredCrawlerVisual||!injuredCrawlerAsset)return false;
  const model=SkeletonUtils.clone(injuredCrawlerAsset.scene),lookUp=new Map();
@@ -5661,6 +5806,7 @@ function attachInjuredCrawlerVisual(z){
  for(const [part,name] of Object.entries(NATURAL_CRAWLER_BONE_NAMES)){
   const b=lookUp.get(name);if(b)z.injuredCrawlerBones.set(part,b);
  }
+ attachInjuredCrawlerHitboxes(z);
  z.injuredCrawlerPrevX=z.g.position.x;z.injuredCrawlerPrevZ=z.g.position.z;
  document.documentElement.dataset.injuredCrawlerAttached=
   String(Number(document.documentElement.dataset.injuredCrawlerAttached||0)+1);
@@ -5676,6 +5822,7 @@ function updateInjuredCrawlerVisual(z,dt){
  z.injuredCrawlerAction.setEffectiveTimeScale(
   speed<.08?.32:THREE.MathUtils.clamp(speed/.85,.48,1.20));
  z.injuredCrawlerMixer.update(dt);
+ updateInjuredCrawlerHitboxes(z);
 }
 function attachNaturalCrawlerVisual(z){
  if(!z?.naturalCrawlerSpawn||z.dead||z.naturalCrawlerVisual||!naturalCrawlerAsset)return false;
@@ -6946,6 +7093,7 @@ function launchDetachedLimb(z,limb,side,leg=false){
 function detachArm(z,side){
  const key=side==="left"?"leftArmDetached":"rightArmDetached";
  if(z[key])return;
+ if(z.injuredCrawlerVisual){detachInjuredCrawlerLimb(z,side,false);return}
  if(z.hazmatVisual||z.sprinterVisual||z.radiatedGreenVisual||z.walkerVisual||
     z.infectedVisual||((z.kind==="infected"||z.infectedCrawler)&&z.rigVisual)){
    const customBones=z.hazmatBones||z.sprinterBones||z.radiatedGreenBones||z.walkerBones||
@@ -8010,6 +8158,7 @@ function convertLeglessToCrawler(z){
 function detachLeg(z,side){
  const key=side==="left"?"leftLegDetached":"rightLegDetached";
  if(z[key])return;
+ if(z.injuredCrawlerVisual){detachInjuredCrawlerLimb(z,side,true);return}
  if(z.hazmatVisual||z.sprinterVisual||z.radiatedGreenVisual||z.walkerVisual||
     z.infectedVisual||((z.kind==="infected"||z.infectedCrawler)&&z.rigVisual)){
    const customBones=z.hazmatBones||z.sprinterBones||z.radiatedGreenBones||z.walkerBones||
