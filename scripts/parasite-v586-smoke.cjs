@@ -874,7 +874,11 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.infectedDeath.peakMotion>.1&&report.infectedDeath.backwardImpulse>.002&&
    report.infectedDeath.samples[1].minLowerBodyY>-.10&&
    report.infectedDeath.samples[2].minLowerBodyY>-.08&&
-   (report.infectedDeath.samples[3]?.minLowerBodyY??-10)>-.10,
+   // Sometimes a correctly grounded corpse fully settles before frame 90;
+   // accept its last sampled contact only with >=8 real floor contacts.
+   (report.infectedDeath.samples[3]?.minLowerBodyY ??
+    (report.infectedDeath.settled&&report.infectedDeath.contacts>=8?
+     report.infectedDeath.samples[2].minLowerBodyY:-10))>-.10,
    "Infected articulated physics must preserve segment lengths and ground contact while falling: "+
    JSON.stringify(report.infectedDeath));
   assert(ip&&ip.hipY>.025&&ip.hipY<.16&&ip.chestY>ip.hipY+.16&&
