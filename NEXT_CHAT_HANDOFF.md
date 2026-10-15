@@ -1,3 +1,13 @@
+# v667 CRAWLER DRAGGING LEGS — TEST BUILD — 2026-10-14
+
+- User provided and Toby examined actual 43-second gameplay video `2026-10-14 23-02-36.mp4`: all v666 injured crawlers visibly FLOAT above street, and their legs cycle rather than trail. The task is **not** to make the legs crawl. **Only the arms pull while legs drag.**
+- Root cause in v666: corrective floor logic checked shins, feet, knees and hips, then raised the entire skinned model up to **0.50 game units** to keep trailing parts off the ground. It also applied artificial hip/knee rotations after the native recorded GLB animation. This was visually wrong.
+- v667 new `animated_injured_zombie_crawling_loop.glb` model ONLY: capture both actual Mixamo legs' **6** original limb bone quaternions in the initial grounded crawl pose, and restore those after every animation sample. Legs remain limp and trail; preserve the native original 51-track clip for upper-body motion and restrained alternating shoulder/forearm pulls synced to ground travel. Remove all foot/shin-ground probes from floating-root logic. Position the body from the original v665 grounded holder calibration, damp only small hip bobbing relative to initial pose (max root lift +0.025, max lowered -0.065); NEVER raise entire crawler to accommodate hanging feet. 16 bone-following hitboxes, actual skin texture and limb destruction stay approved/unchanged.
+- New Chromium regression `injuredMotionAudit` moves the actor 38 frames, verifies all **six leg joint orientations remain the same**, arms actively swing, and holder cannot float more than 0.03 above initial ground baseline. Existing Wave 1, original Infected ragdoll, Parasite boss 19-cycle, Sprinter and Hazmat/Green regression remain mandatory before deployment.
+- User has **not yet visually approved** this new GLB: Wave 1 stays ten injured crawlers, Wave 3+ existing crawler undisturbed; v324 protected checkpoint unchanged. Loader v667.
+
+---
+
 # v666 CRAWLER MOVEMENT TEST — 2026-10-14
 
 - User provided 58-second v665 video: some new injured crawlers have legs sinking below ground while bodies slide toward player rather than visibly pulling themselves with limbs. Reviewed sampled frames through full recording.
