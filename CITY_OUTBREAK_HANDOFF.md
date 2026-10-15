@@ -1,3 +1,11 @@
+# v666 CRAWLER MOVEMENT TEST — 2026-10-14
+
+- User provided 58-second v665 video: some new injured crawlers have legs sinking below ground while bodies slide toward player rather than visibly pulling themselves with limbs. Reviewed sampled frames through full recording.
+- v666 new injured crawler ONLY: preserve recorded GLB `Animation` 51 tracks, native textures from v665, 16 animated bone hitboxes, proper original limb detachment and ragdoll. Synchronize clip speed with measured ground travel; blend small left/right alternating arm pull and hip/knee flex over recorded movement. Track 7 live limb contacts (hands, feet, shins, pelvis) each frame and smoothly correct the visual root height to avoid legs clipping into street. Never modify original v550 natural crawler, converted crawlers, old Infected or boss systems.
+- Wave 1 remains exclusively 10 new injured crawlers pending user visual sign-off. Build v666 loader `./src/game.js?v=666`. Existing protected recovery v324 unchanged. Run browser regressions and verify Pages deployment before claiming live.
+
+---
+
 # v665 VERIFIED — ORIGINAL INJURED CRAWLER TEXTURES + CORRECT HITS — 2026-10-14
 
 - User-submitted 45.98-second v664 video was inspected across the whole recording, with close frame review at repeated shooting/legacy arm detach. The video exposed white/washed-out materials, wrong hitboxes and flying old procedural limbs/gore.
