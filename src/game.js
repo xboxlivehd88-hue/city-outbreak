@@ -1,6 +1,7 @@
 import * as THREE from "three";
 // v658: gravity-integrated Infected joints and unpowered collapse; approved crawler untouched.
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {clone as cloneSkeleton} from "three/addons/utils/SkeletonUtils.js";
 import {createHazmatZombieController} from "./hazmat-zombie.js?v=608";
 import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
@@ -2895,6 +2896,53 @@ new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
  });
  if(weapon==="rifle")rebuildGun();
 },undefined,err=>console.warn("M4 GLB load failed; M4 viewmodel unavailable",err));
+// v684: user's newly uploaded, original rigged FIRST-PERSON arms GLB.
+// A SINGLE textured SkinnedMesh carries both arms, with 47 skeleton joints
+// (each wrist/elbow plus individually articulated fingers). Keep the authored
+// materials/skin bindings; do not redraw old capsule arms over this mesh.
+let fpsArmsTemplate=null,fpsArmsLoadError="",fpsArmsTemplateLength=0;
+new GLTFLoader().load("assets/cartoon_fps_arms.glb?v=684",gltf=>{
+ const src=gltf.scene;
+ src.updateMatrixWorld(true);
+ const left=src.getObjectByName("L_arm_01"),right=src.getObjectByName("R_arm_023");
+ const leftElbow=src.getObjectByName("L_elbow_02"),leftWrist=src.getObjectByName("L_wrist_03");
+ const skinned=[];src.traverse(o=>{if(o.isSkinnedMesh)skinned.push(o)});
+ if(!left||!right||!leftElbow||!leftWrist||skinned.length!==1){
+  fpsArmsLoadError="Rigged arms missing named bones or original skinned mesh";
+  document.documentElement.dataset.fpsArmsError=fpsArmsLoadError;return;
+ }
+ const p0=left.getWorldPosition(new THREE.Vector3());
+ const p1=leftElbow.getWorldPosition(new THREE.Vector3());
+ const p2=leftWrist.getWorldPosition(new THREE.Vector3());
+ fpsArmsTemplateLength=p0.distanceTo(p1)+p1.distanceTo(p2);
+ if(fpsArmsTemplateLength<.00001){
+  fpsArmsLoadError="Native arm bone span invalid";document.documentElement.dataset.fpsArmsError=fpsArmsLoadError;return;
+ }
+ src.traverse(o=>{
+  o.userData.externalWeaponAsset=true;
+  if(o.isSkinnedMesh){
+   o.castShadow=false;o.receiveShadow=false;o.frustumCulled=false;
+   for(const mat of (Array.isArray(o.material)?o.material:[o.material]))if(mat){
+    for(const prop of ["map","normalMap","roughnessMap","metalnessMap"]){
+     const tex=mat[prop];if(tex)tex.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());
+    }
+   }
+  }
+ });
+ fpsArmsTemplate=src;
+ document.documentElement.dataset.fpsArmsGlbReady="true";
+ document.documentElement.dataset.fpsArmsSkinBones=String(skinned[0].skeleton.bones.length);
+ document.documentElement.dataset.fpsArmsAnimationClips=String(gltf.animations.length);
+ document.documentElement.dataset.fpsArmsOriginalTexture=String(!!skinned[0].material?.map);
+ // Remove the previously constructed controllers and rebuild the held gun.
+ // This is a VIEWMODEL rebuild, not a change to ammunition, reload or shooting.
+ if(!reloading)rebuildGun();
+},undefined,err=>{
+ fpsArmsLoadError=String(err);
+ document.documentElement.dataset.fpsArmsError=fpsArmsLoadError;
+ console.error("Original user cartoon FPS arms GLB failed to load",err);
+});
+
 // v679: user explicitly selected the exact Norinco M305A LEISURE rifle
 // shown in their Sketchfab screenshot, including red-dot optic and orange
 // bakelite magazine. Isolate ONLY this original source subtree, not the
@@ -3551,16 +3599,20 @@ const M4_RELOAD_POUCH_GRIP_GUN=new THREE.Vector3(
  HAND_POSES.rifle.left[1]+M4_RELOAD_POUCH_HAND_OFFSET.y,
  HAND_POSES.rifle.left[2]+M4_RELOAD_POUCH_HAND_OFFSET.z
 );
+// Retain empty mathematical joints as controllers for already-approved weapon
+// reloads and hand targets. The visible old sleeves / spheres / cylinder fingers
+// are REMOVED: only the supplied GLB's textured skin is rendered.
 function fpsArmSegment(a,b,r,mat,parent){
- const d=new THREE.Vector3().subVectors(b,a),len=d.length(),mid=new THREE.Vector3().addVectors(a,b).multiplyScalar(.5);
- const q=new THREE.Mesh(new THREE.CylinderGeometry(r*.90,r,len,8),mat);q.position.copy(mid);
- q.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.clone().normalize());q.castShadow=false;q.receiveShadow=false;
- q.userData.fpsBaseLength=len;parent.add(q);return q
+ const d=new THREE.Vector3().subVectors(b,a),len=d.length();
+ const q=new THREE.Object3D();q.position.copy(a).add(b).multiplyScalar(.5);
+ q.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.clone().normalize());
+ q.userData.fpsBaseLength=len;parent.add(q);return q;
 }
 function fpsHand(parent,hand,side,glove){
- const palm=new THREE.Mesh(new THREE.SphereGeometry(.105,9,7),glove);palm.scale.set(.92,1.00,1.30);palm.position.copy(hand);palm.userData.fpsHandOffset=palm.position.clone().sub(hand);palm.castShadow=false;parent.add(palm);
- const thumb=new THREE.Mesh(new THREE.CylinderGeometry(.030,.038,.13,7),glove);thumb.position.set(hand.x+(side==='left'?.085:-.085),hand.y+.015,hand.z+.025);thumb.userData.fpsHandOffset=thumb.position.clone().sub(hand);thumb.rotation.z=side==='left'?-.75:.75;thumb.rotation.x=.28;thumb.castShadow=false;parent.add(thumb);
- for(let i=0;i<3;i++){if(side==='right'&&weapon==='dmr'&&i===2)continue;const f=new THREE.Mesh(new THREE.CylinderGeometry(.020,.024,.13,6),glove);f.position.set(hand.x+(i-1)*.045,hand.y-.035,hand.z-.060);f.userData.fpsHandOffset=f.position.clone().sub(hand);f.rotation.x=Math.PI/2;f.castShadow=false;parent.add(f)}
+ const marker=new THREE.Object3D();marker.position.copy(hand);
+ marker.userData.fpsHandOffset=new THREE.Vector3();
+ marker.name=side==="right"?"RightGripController":"LeftGripController";
+ parent.add(marker);
 }
 function setFpsArmSegmentPose(q,a,b){
  if(!q)return;
@@ -3593,7 +3645,8 @@ function resetM4ReloadLeftArm(){
 }
 function addPlayerHands(){
  const pose=weapon==='shotgun'&&shotgunHandTargets?{...HAND_POSES.shotgun,left:shotgunHandTargets.left.toArray(),right:shotgunHandTargets.right.toArray()}:HAND_POSES[weapon]||HAND_POSES.rifle;
- const sleeve=M(0x27302d,.88),cuff=M(0x171b1b,.90),glove=M(0x111414,.82);
+ // Empty controller nodes require no generated sleeve, cuff or glove materials.
+ const sleeve=null,cuff=null,glove=null;
  const right=new THREE.Group(),left=new THREE.Group();right.name='RightPlayerArm';left.name='LeftPlayerArm';gun.add(right,left);
  // The pistol support hand was visually swallowing the reload magazine. Scale only
  // the M17 left-hand/arm geometry down while preserving the approved animation path.
@@ -3617,6 +3670,7 @@ function addPlayerHands(){
  const leftGripAnchor=new THREE.Object3D();leftGripAnchor.name="LeftHandGripAnchor";leftGripAnchor.position.copy(lh);gun.add(leftGripAnchor);
  playerHandRig={right,left,pose,leftShoulder:ls.clone(),leftElbowBase:lm.clone(),leftHandBase:lh.clone(),leftUpper,leftFore,leftGripAnchor,m4Articulated:false,
    rightShoulder:rs.clone(),rightElbowBase:rm.clone(),rightHandBase:rh.clone(),rightUpper,rightFore,dmrIndexBase,dmrIndexTip};
+ attachOriginalFpsArms();
 }
 // v681: hold the right firing hand on the Norinco trigger, without touching
 // any DMR magazine part, reload FX or the original reload paths. On reload the
@@ -3645,6 +3699,104 @@ function updateDMRRightTriggerGrip(dt){
  setFpsArmSegmentPose(r.dmrIndexBase,knuckle,middle);
  setFpsArmSegmentPose(r.dmrIndexTip,middle,tip);
 }
+// The 47-bone source rig is a single SKINNED mesh, not static prop arms.
+// Retarget its original shoulder/elbow/wrist chains onto the existing hidden
+// hand controllers; preserves M4/MP5/shotgun/M17/DMR/M240/launcher paths.
+let fpsNativeArms=null,fpsNativeBoneChains=null,fpsNativePoseFrames=0;
+const fpsJointAxis=new THREE.Vector3(0,1,0);
+function attachOriginalFpsArms(){
+ fpsNativeArms=null;fpsNativeBoneChains=null;
+ if(!fpsArmsTemplate||!playerHandRig)return;
+ const rig=cloneSkeleton(fpsArmsTemplate);
+ rig.name="OriginalCartoonFPSArmsGLB";
+ const nativeLength=Math.max(.001,fpsArmsTemplateLength);
+ rig.scale.multiplyScalar(1.48/nativeLength);
+ rig.traverse(o=>{
+  o.userData.externalWeaponAsset=true;
+  if(o.isSkinnedMesh){o.castShadow=false;o.receiveShadow=false;o.frustumCulled=false;}
+ });
+ gun.add(rig);
+ const chain=(prefix)=>{
+  const names=prefix==="L"?["L_arm_01","L_elbow_02","L_wrist_03","L_point_08","L_point_2_09"]:
+                             ["R_arm_023","R_elbow_024","R_wrist_025","R_point_030","R_point_2_031"];
+  const b=names.map(name=>rig.getObjectByName(name));
+  if(b.some(j=>!j))return null;
+  return{arm:b[0],elbow:b[1],wrist:b[2],index:b[3],indexMid:b[4],
+   armRest:b[0].quaternion.clone(),elbowRest:b[1].quaternion.clone(),
+   indexRest:b[3].quaternion.clone(),indexMidRest:b[4].quaternion.clone()};
+ };
+ const left=chain("L"),right=chain("R");
+ if(!left||!right){fpsArmsLoadError="Clone lost original wrist/elbow/finger bones";document.documentElement.dataset.fpsArmsError=fpsArmsLoadError;gun.remove(rig);return}
+ fpsNativeArms=rig;fpsNativeBoneChains={left,right};
+ fpsNativeArms.visible=false;  // first IK frame initializes final weapon grips
+ document.documentElement.dataset.fpsArmsSource="cartoon_fps_arms.glb";
+ document.documentElement.dataset.fpsArmsRenderedMeshCount="1";
+}
+function fpsJointEnds(segment,parent){
+ const length=segment.userData.fpsBaseLength*segment.scale.y;
+ const a=new THREE.Vector3(0,-length*.5,0).applyQuaternion(segment.quaternion).add(segment.position);
+ const b=new THREE.Vector3(0,length*.5,0).applyQuaternion(segment.quaternion).add(segment.position);
+ parent.localToWorld(a);parent.localToWorld(b);
+ gun.worldToLocal(a);gun.worldToLocal(b);
+ return{a,b};
+}
+function rotateNativeBoneToward(bone,child,goalGun,restQuat){
+ // Match the source bone's own local elbow/wrist axis (source negative Z)
+ // with the controller's shoulder-to-elbow / elbow-to-wrist direction.
+ const parent=bone.parent;
+ parent.updateMatrixWorld(true);
+ const current=bone.getWorldPosition(new THREE.Vector3());
+ const goal=gun.localToWorld(goalGun.clone());
+ const desired=goal.sub(current).normalize();
+ const parentQuat=parent.getWorldQuaternion(new THREE.Quaternion());
+ desired.applyQuaternion(parentQuat.invert());
+ const restAxis=child.position.clone().applyQuaternion(restQuat).normalize();
+ const delta=new THREE.Quaternion().setFromUnitVectors(restAxis,desired);
+ bone.quaternion.copy(delta).multiply(restQuat);
+ parent.updateMatrixWorld(true);
+}
+function poseOriginalFpsArms(){
+ if(!fpsNativeArms||!fpsNativeBoneChains||!playerHandRig)return;
+ // The controller rig is INVISIBLE and retains the exact original per-gun
+ // hand targets. Its current transforms already account for reload and ADS.
+ gun.updateMatrixWorld(true);
+ const poseSide=(side,controller)=>{
+  const chain=fpsNativeBoneChains[side];
+  const rigGroup=side==="left"?playerHandRig.left:playerHandRig.right;
+  const upper=fpsJointEnds(controller.upper,rigGroup);
+  const lower=fpsJointEnds(controller.fore,rigGroup);
+  const s=upper.a,e=lower.a,w=lower.b;
+  const desiredUpper=e.clone().sub(s).length();
+  const desiredFore=w.clone().sub(e).length();
+  const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
+  arm.parent.updateMatrixWorld(true);
+  arm.position.copy(arm.parent.worldToLocal(gun.localToWorld(s.clone())));
+  arm.scale.set(1,1,1);elbow.scale.set(1,1,1);
+  arm.updateMatrixWorld(true);
+  rotateNativeBoneToward(arm,elbow,e,chain.armRest);
+  const rawE=arm.getWorldPosition(new THREE.Vector3()).distanceTo(elbow.getWorldPosition(new THREE.Vector3()));
+  arm.scale.z=Math.max(.30,Math.min(2.9,desiredUpper/Math.max(.001,rawE)));
+  arm.updateMatrixWorld(true);
+  rotateNativeBoneToward(elbow,wrist,w,chain.elbowRest);
+  const rawW=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
+  elbow.scale.z=Math.max(.30,Math.min(2.9,desiredFore/Math.max(.001,rawW)));
+  elbow.updateMatrixWorld(true);
+  // Natural glove/index pose from the GLB; one small trigger curl applies
+  // ONLY on the DMR, not to rifle receivers or their camera ray.
+  chain.index.quaternion.copy(chain.indexRest);
+  chain.indexMid.quaternion.copy(chain.indexMidRest);
+  if(side==="right"&&weapon==="dmr"&&!reloading){
+   chain.index.rotateX(-.20);
+   chain.indexMid.rotateX(-.12);
+  }
+ };
+ poseSide("left",{upper:playerHandRig.leftUpper,fore:playerHandRig.leftFore});
+ poseSide("right",{upper:playerHandRig.rightUpper,fore:playerHandRig.rightFore});
+ fpsNativeArms.visible=true;
+ fpsNativePoseFrames++;
+ document.documentElement.dataset.fpsArmsPoseFrames=String(fpsNativePoseFrames);
+}
+
 function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 const DETACHABLE_RELOAD_WEAPONS=new Set(["rifle","smg","pistol","dmr","m240"]);
 function detachableMagazineReload(w=reloadWeapon||weapon){return DETACHABLE_RELOAD_WEAPONS.has(w)&&!!playerReloadPart}
@@ -4271,7 +4423,7 @@ function rebuildGun(){
  clearReloadMagazineFX(true);
  shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();dmrShoulderBlend=0;dmrRightGripBlend=0;
+ gun.clear();fpsNativeArms=null;fpsNativeBoneChains=null;dmrShoulderBlend=0;dmrRightGripBlend=0;
  dmrViewRoot=null;dmrViewHome=null;dmrViewQuat=null;dmrOpticPose=null;dmrOpticAimPoint=null;dmrMagazineGrip=null;dmrRecoilVisual=0;playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141620,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
@@ -10324,6 +10476,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  updateShotgunReloadFX(rp);
  updateReloadMagazineFX(rp);
  updateGrenadeLauncherReloadFX(rp);
+ poseOriginalFpsArms();
  scopeOverlay.classList.remove("show");
  scopeOverlay.classList.toggle("m4Scope",false);
  gun.visible=true;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
