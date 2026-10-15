@@ -1,3 +1,11 @@
+# v664 CANDIDATE — NEW INJURED NATURAL CRAWLER WAVE 1 — 2026-10-14
+
+- User requests newly uploaded `assets/animated_injured_zombie_crawling_loop.glb` become the ten Wave 1 test zombies. The prior natural crawler `zombie_number_3_-_animated.glb` is UNCHANGED, retained on Waves 3+ while this new crawler is approved. Converted legless zombies never use either natural model flag. Two naturally spawned crawlers will coexist after user approval.
+- Actual GLB inspection GitHub Actions [38664971664](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38664971664) SUCCESS: 4,599,468 bytes, 62 skin joints, three textured meshes, `Animation` with 51 recorded animation channels. v664 uses the original clone and clip, animated silhouette scaling, original materials, existing hidden procedural crawler hitboxes and native bone ragdoll. Loader `./src/game.js?v=664`.
+- Browser regression must verify Wave 1 all 10 NEW crawler visuals; test-only original Infected remain independent. After tests push verified candidate to main and check Pages. User has not yet visually approved the new crawler; do NOT place new crawler into later-wave rotation before approval. Protected v324 checkpoint untouched.
+
+---
+
 # v663 VERIFIED — INFECTED IN NORMAL MIXED ROSTER — 2026-10-14
 
 - Chromium original-Infected/mixed-roster + boss smoke [38652984178](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38652984178) **SUCCESS**. Browser produced actual Wave 1 `target=10`, `spawned=10`, `live=10`, `kinds=["shambler"]`, `bosses=0`. Probabilistic roster probes preserved Wave 2 Sprinter/Shambler and Wave 5/6 Infected/Shambler. Test-only 3 original Infected GLB actors verified walking, crawling, limb destruction, skinned gunshot deaths, and converted crawler death without appearing as real Wave 1 spawns. 19-boss no-repeat rotation unchanged/passed.

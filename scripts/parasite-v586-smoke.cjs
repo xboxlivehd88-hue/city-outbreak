@@ -1,17 +1,19 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"663",pass:false},errors=[];let browser,page;
+ const report={version:"664",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=663$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=664$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
- ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&!!infectedGlbAsset&&newCityCollisionReady,
- waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],preview:!sprinterOnlyTest}),
+ ready:()=>!!parasiteBossAsset&&!!naturalCrawlerAsset&&!!injuredCrawlerAsset&&!!infectedGlbAsset&&newCityCollisionReady,
+ waveOne:()=>({wave,target:waveTarget,spawned:waveSpawned,live:zombies.filter(z=>!z.dead).length,bosses:zombies.filter(z=>z.kind==="boss"&&!z.dead).length,kinds:[...new Set(zombies.filter(z=>!z.dead).map(z=>z.kind))],preview:!sprinterOnlyTest,
+  newCrawlerCount:zombies.filter(z=>!z.dead&&z.injuredCrawlerVisual).length,
+  oldCrawlerCount:zombies.filter(z=>!z.dead&&z.naturalCrawlerVisual).length}),
  normalRotation:()=>({
   first:[0,.08,.5,.99].map(roll=>rolledZombieKind(1,roll)),
   second:[.05,.7].map(roll=>rolledZombieKind(2,roll)),
@@ -20,9 +22,21 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
  }),
  // Test-only: exercise the actual original GLB without changing normal Wave 1.
  // These actors are added AFTER confirming the player's real first ten spawns.
+ injuredCrawlerAudit:()=>{
+  const all=zombies.filter(z=>!z.dead&&z.injuredCrawlerSpawn);
+  const first=all[0],v=first?.injuredCrawlerVisual;
+  const box=v?new THREE.Box3().setFromObject(v,true):null;
+  const size=box?.getSize(new THREE.Vector3());
+  return {count:all.length,skinned:!!first?.injuredCrawlerModel?.getObjectByProperty("isSkinnedMesh",true),
+   bones:first?.injuredCrawlerBones?.size||0,clip:injuredCrawlerAsset?.clip?.name,
+   clipTracks:injuredCrawlerAsset?.clip?.tracks?.length||0,
+   mixer:!!first?.injuredCrawlerMixer,actionPlaying:first?.injuredCrawlerAction?.isRunning()||false,
+   scale:v?.scale.x,length:Math.max(size?.x||0,size?.z||0),height:size?.y||0,
+   floor:box?.min.y,ground:first?.g.position.y};
+ },
  seedInfectedAudit:()=>{
-  const slots=zombies.filter(z=>!z.dead&&z.kind==="shambler").slice(0,3);
-  if(slots.length!==3)throw Error("Missing ordinary Wave 1 spawn positions");
+  const slots=zombies.filter(z=>!z.dead&&z.kind==="crawler"&&z.injuredCrawlerVisual).slice(0,3);
+  if(slots.length!==3)throw Error("Missing Wave 1 injured crawler spawn positions");
   for(let i=0;i<3;i++)makeZombie(slots[i].g.position.x,slots[i].g.position.z,
    waveSpawned+i,"infected");
   return zombies.filter(z=>!z.dead&&z.kind==="infected"&&z.infectedVisual).length;
@@ -571,13 +585,14 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=663-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=664-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.waveOne()?.spawned===10,null,{timeout:70000});
   report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
   report.normalRotation=await page.evaluate(()=>globalThis.__parasiteSmoke.normalRotation());
+  report.injuredCrawler=await page.evaluate(()=>globalThis.__parasiteSmoke.injuredCrawlerAudit());
   report.infectedTestActors=await page.evaluate(()=>globalThis.__parasiteSmoke.seedInfectedAudit());
   const infectedImages=await page.evaluate(()=>globalThis.__parasiteSmoke.infectedVisualQA());
   report.infectedRenderFrames=infectedImages.map(f=>({name:f.name,bytes:f.jpeg.length}));
@@ -617,9 +632,18 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   assert.equal(report.waveOne.spawned,10);
   assert.equal(report.waveOne.bosses,0,"Wave 1 must contain only normal zombies");
   assert.equal(report.waveOne.preview,true,"Normal game must not force Sprinter-only test mode");
-  assert.deepEqual(report.waveOne.kinds,["shambler"],"Wave 1 must be ten standard Shamblers, not Infected");
-  assert.deepEqual(report.normalRotation.first,["shambler","shambler","shambler","shambler"],
-   "Infected must not remain in normal Wave 1 rolls");
+  assert.deepEqual(report.waveOne.kinds,["crawler"],"Wave 1 must contain the new injured crawler type");
+  assert.equal(report.waveOne.newCrawlerCount,10,"All ten Wave 1 crawlers must display the new original GLB");
+  assert.equal(report.waveOne.oldCrawlerCount,0,"Wave 1 must not show the earlier natural crawler GLB");
+  assert(report.injuredCrawler?.count===10&&report.injuredCrawler.skinned&&
+   report.injuredCrawler.bones>=14&&report.injuredCrawler.mixer&&
+   report.injuredCrawler.actionPlaying&&report.injuredCrawler.clipTracks>=25&&
+   report.injuredCrawler.length>.8&&report.injuredCrawler.length<4&&
+   report.injuredCrawler.height>.15&&report.injuredCrawler.height<3&&
+   Math.abs(report.injuredCrawler.floor-report.injuredCrawler.ground)<.30,
+   "New injured crawler not animated/grounded: "+JSON.stringify(report.injuredCrawler));
+  assert.deepEqual(report.normalRotation.first,["crawler","crawler","crawler","crawler"],
+   "Wave 1 must be dedicated to the new injured crawler test");
   assert.deepEqual(report.normalRotation.second,["sprinter","shambler"],
    "Preserve Wave 2 mixed roster");
   assert.deepEqual(report.normalRotation.fifth,["infected","shambler"],
