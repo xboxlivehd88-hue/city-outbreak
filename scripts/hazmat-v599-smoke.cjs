@@ -398,8 +398,13 @@ try{
     report.m17Grip.hip.left?.[0]>.23&&report.m17Grip.hip.left?.[0]<.36&&
     report.m17Grip.hip.right?.[0]>.29&&report.m17Grip.hip.right?.[0]<.45&&
     report.m17Grip.hip.separation>.04&&report.m17Grip.hip.separation<.22&&
-    report.m17Grip.ads.leftElbow?.[0]<report.m17Grip.hip.leftElbow?.[0]-.08&&
-    report.m17Grip.ads.rightElbow?.[0]>report.m17Grip.hip.rightElbow?.[0]+.08&&
+    report.m17Grip.ads.separation>.04&&report.m17Grip.ads.separation<.22&&
+    report.m17Grip.hip.left[0]<report.m17Grip.hip.right[0]&&
+    report.m17Grip.ads.left[0]<report.m17Grip.ads.right[0]&&
+    Math.abs(report.m17Grip.ads.left[0]-report.m17Grip.hip.left[0])<.035&&
+    Math.abs(report.m17Grip.ads.right[0]-report.m17Grip.hip.right[0])<.035&&
+    report.m17Grip.ads.leftElbow?.[0]<report.m17Grip.hip.leftElbow?.[0]-.035&&
+    report.m17Grip.ads.rightElbow?.[0]>report.m17Grip.hip.rightElbow?.[0]+.06&&
     report.m17Grip.ads.leftElbow?.[1]<report.m17Grip.hip.leftElbow?.[1]-.09&&
     report.m17Grip.ads.rightElbow?.[1]<report.m17Grip.hip.rightElbow?.[1]-.09,
     "v688 M17 source hands must cup M17 grip and ADS elbows clear sight: "+
