@@ -2895,6 +2895,49 @@ new GLTFLoader().load("assets/ar-15_style_rifle.glb?v=466",gltf=>{
  });
  if(weapon==="rifle")rebuildGun();
 },undefined,err=>console.warn("M4 GLB load failed; M4 viewmodel unavailable",err));
+// v678: isolate the EXACT user-uploaded Norinco M305A MARKSMAN rifle.
+// This Sketchfab scene also contains TWO other complete rifles, a table and
+// detached cartridges. Never render the entire presentation scene.
+// Preserve native baked textures, real furniture/attachments and the real
+// magazine on the MARKSMAN group; do not make a generic rifle instead.
+let dmrModelTemplate=null,dmrLoadError="",dmrSourceNodeCount=0;
+new GLTFLoader().load("assets/norinco_m305a.glb?v=678",gltf=>{
+ const src=gltf.scene.getObjectByName("m305a_marksman");
+ if(!src)throw Error("Norinco MARKSMAN submodel is missing");
+ gltf.scene.updateMatrixWorld(true);
+ const isolated=src.clone(true);
+ // Parent Sketchfab/FBX matrices put the authored muzzle toward -Z.
+ // Transfer the full world matrix to a clean independent viewmodel group.
+ isolated.matrix.copy(src.matrixWorld);
+ isolated.matrix.decompose(isolated.position,isolated.quaternion,isolated.scale);
+ isolated.traverse(o=>{
+  o.userData.externalWeaponAsset=true;
+  if(o.isMesh){
+   o.castShadow=false;o.receiveShadow=false;
+   for(const mat of (Array.isArray(o.material)?o.material:[o.material])){
+    if(!mat)continue;
+    for(const key of ["map","normalMap","roughnessMap","metalnessMap"]){
+     const tex=mat[key];
+     if(tex){tex.anisotropy=Math.min(4,ren.capabilities.getMaxAnisotropy());tex.needsUpdate=true}
+    }
+   }
+  }
+ });
+ // Loose display cartridge is not part of the mounted gun, but the real
+ // detachable magazine and optical attachments MUST remain visible.
+ const displayCartridge=isolated.getObjectByName("m305a_marksman_cartridge_0");
+ if(displayCartridge)displayCartridge.visible=false;
+ dmrSourceNodeCount=0;isolated.traverse(o=>{if(o.isMesh&&o.visible)dmrSourceNodeCount++});
+ dmrModelTemplate=isolated;
+ document.documentElement.dataset.dmrGlbReady="true";
+ document.documentElement.dataset.dmrGlbMeshes=String(dmrSourceNodeCount);
+ if(weapon==="dmr")rebuildGun();
+},undefined,err=>{
+ dmrLoadError=String(err);
+ document.documentElement.dataset.dmrGlbError=dmrLoadError;
+ console.error("Norinco M305A marksman original GLB load failed",err);
+});
+
 // Supplied SIG Sauer M17 GLB. The GLB is the sole visible M17 viewmodel.
 let m17ModelTemplate=null;
 new GLTFLoader().load("assets/low-poly_sig_sauer_m17.glb",gltf=>{
@@ -4448,12 +4491,35 @@ function rebuildGun(){
      }else playerReloadPart=null;
    }
  }else if(weapon==='dmr'){
-   // Long-range marksman rifle with extended handguard, scope and heavier barrel.
-   stock(-.36,M(0x3f342b,.68));part(.36,.31,1.18,metal,-.30,-1.18);part(.32,.28,1.12,poly,-.28,-2.10);
-   grip(-.63,-.80,-.25);magazine(-.64,-1.30,.23,.52,.34,.08);cyl(.066,1.65,steel,x,-.235,-3.18);muzzleBrake(-4.0,.11);
-   rail(-1.72,1.62,-.095);rearIron(-.74,-.010,.86);frontIron(-3.22,-.010,.82);
-   for(let zz=-1.72;zz>-2.55;zz-=.17){for(const sx of [-.15,.15])box(.025,.075,.10,dark,x+sx,-.27,zz,gun)}
-   box(.018,.12,.36,dark,x+.20,-.28,-1.17,gun);box(.20,.045,.08,dark,x,-.14,-.56,gun);
+  if(dmrModelTemplate){
+   const model=dmrModelTemplate.clone(true);
+   model.name="OriginalNorincoM305AMarksman";
+   // The file's own Sketchfab -> FBX -> marksman transforms point the
+   // real barrel along -Z. Fit rifle length, never distort proportions.
+   const carrier=new THREE.Group();carrier.name="NorincoDMRViewRoot";
+   carrier.add(model);
+   carrier.updateMatrixWorld(true);
+   const sourceBounds=new THREE.Box3().setFromObject(carrier,true);
+   const sourceSize=sourceBounds.getSize(new THREE.Vector3());
+   // Retain receiver close to player's hands, muzzle ahead of the player.
+   const scale=3.80/Math.max(.001,sourceSize.z);
+   carrier.scale.setScalar(scale);
+   carrier.updateMatrixWorld(true);
+   const bounds=new THREE.Box3().setFromObject(carrier,true);
+   const center=bounds.getCenter(new THREE.Vector3());
+   carrier.position.set(x-center.x,-.29-center.y,-2.06-center.z);
+   carrier.traverse(o=>{o.userData.externalWeaponAsset=true;
+    if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+   gun.add(carrier);
+   document.documentElement.dataset.dmrSourceVisual="norinco_m305a_marksman";
+   document.documentElement.dataset.dmrModelLength=sourceSize.z.toFixed(3);
+   document.documentElement.dataset.dmrViewScale=scale.toFixed(4);
+   document.documentElement.dataset.dmrMeshCount=String(dmrSourceNodeCount);
+  }else{
+   // Keep DMR fire/ADS/reload usable during asynchronous first GLB fetch.
+   // Never substitute a generic procedural rifle: asset status is visible.
+   document.documentElement.dataset.dmrSourceVisual="awaiting-original-glb";
+  }
  }else if(weapon==='m240'){
    if(m240ModelTemplate){
      const root=new THREE.Group(),model=m240ModelTemplate.clone(true);
