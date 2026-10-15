@@ -1,3 +1,12 @@
+# v668 RESTORE ACTUAL ORIGINAL CRAWL — 2026-10-14
+
+- User reviewed v667 video `2026-10-14 23-31-03.mp4` and reports stiff legs up in air. Toby inspected the actual 41.63-second video with chronological screenshots (including close contact at 20-29 seconds). User explicitly says original movement from BEFORE the color fixes was the correct crawl and legs; we must stop inventing new gait and root algorithms.
+- **Exact source restore**: replacement of entire `attachInjuredCrawlerVisual(z)` + `updateInjuredCrawlerVisual(z,dt)` section with byte-for-byte v665 approved pre-v666 functions taken directly from GitHub main historical commit `e7e6ac9f11f06c88bec4e3f68f478855e0c97b2c`. This brings back the actual uploaded 51-track `Animation` full-body gait, native leg bending/dragging, one-time floor calibration, original 0.32–1.20x speed following actual movement, and original v665 hitbox tracking. Remove all v666 added knee/leg kicks, v667 frozen six-joint pose and all per-frame model height corrections. NO custom pose correction remains.
+- **Preserve v665 approved visual/damage work** elsewhere: original PNG diffuse and normal maps from legacy source GLB, 16 dynamic hitboxes, model-only limb clipping/no old generic fragment launches; older natural crawler and all other zombies completely unmodified. Wave 1 stays only the new injured crawler while user evaluates; not yet in mixed crawler rotation. v324 protected recovery unchanged.
+- New v668 browser regression tests the exact recorded clip, movable ORIGINAL leg joints rather than frozen quaternions, real upper-body motion and constant holder root height with original model floor bounds; original Infected/Sprinter/Hazmat/boss suite retained. GitHub loader `./src/game.js?v=668`.
+
+---
+
 # v667 VERIFIED — DRAGGING LEGS, LOW CRAWLING BODY — 2026-10-14
 
 - Latest full Chromium [Parasite/Infected/Wave 1 gameplay regression run 38675136959](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38675136959), **attempt 2 SUCCESS**. First attempt failed on nondeterministic unrelated original Infected right-ankle travel metric (0.051 vs 0.075 required; approved old Infected unmodified); verified rerun passed untouched code. [Sprinter run 38675137043](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38675137043) **SUCCESS**, [Hazmat/Green Guy run 38675137022](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38675137022) **SUCCESS**.
