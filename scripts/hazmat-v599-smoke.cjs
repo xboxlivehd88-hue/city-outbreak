@@ -117,6 +117,23 @@ try{
  };
 };
 `;
+   // v680: measure the real DMR whole-gun pose, including attached real
+   // magazine/hands. The test does not perform or mutate reload choreography.
+   const dmrShoulderAudit=`
+;globalThis.__dmrV680ShoulderAudit=()=>{
+ const previousAim=aiming,previousPitch=pitch;
+ if(weapon!=="dmr")throw Error("DMR must be selected for shoulder pose audit");
+ aiming=false;aimBlend=0;pitch=0;dmrShoulderBlend=0;
+ move(.50);
+ const hip={x:gun.position.x,z:gun.position.z,yaw:gun.rotation.y,
+  blend:dmrShoulderBlend,mag:playerReloadPart?.name,
+  gunHasBothHands:!!gun.getObjectByName("RightPlayerArm")&&!!gun.getObjectByName("LeftPlayerArm")};
+ aiming=true;move(.50);
+ const ads={x:gun.position.x,z:gun.position.z,yaw:gun.rotation.y,blend:dmrShoulderBlend,
+  mag:playerReloadPart?.name};
+ aiming=previousAim;pitch=previousPitch;rebuildGun();move(0);
+ return{hip,ads};
+};`;
    const profileAudit=`
 ;globalThis.__city678PerfAudit=()=>{
  const now=performance.now(),prior={
@@ -171,7 +188,7 @@ try{
  const unsupported=createGpuFrameTimer({getContext:()=>({getExtension:()=>null})}).snapshot();
  return {measured,begins,ends,deleted,unsupported,live:cityGpuTimer.snapshot()};
 };`;
-   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
+   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+dmrShoulderAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
   });
   const rsp=await page.goto("http://127.0.0.1:4173/?v=679-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
@@ -195,6 +212,7 @@ try{
   await page.waitForFunction(()=>document.documentElement.dataset.dmrGlbReady==="true",null,{timeout:65000});
   report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
+  report.dmrShoulder=await page.evaluate(()=>globalThis.__dmrV680ShoulderAudit());
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
   report.motion=await page.evaluate(()=>globalThis.__hazmatSmoke.motion());
   report.lifecycle=await page.evaluate(()=>globalThis.__hazmatLifecycleAudit());
@@ -226,6 +244,16 @@ try{
    report.dmrTest.retired&&report.dmrTest.cycle.includes("dmr")&&
    !report.dmrTest.cycle.includes("awm"),
    "v679 must equip test DMR and remove retired sniper: "+JSON.stringify(report.dmrTest));
+  assert(report.dmrShoulder?.hip?.blend>.99&&
+    report.dmrShoulder.hip.x>.195&&report.dmrShoulder.hip.x<.205&&
+    report.dmrShoulder.hip.z>.51&&report.dmrShoulder.hip.z<.53&&
+    report.dmrShoulder.hip.yaw>.09&&report.dmrShoulder.hip.yaw<.10&&
+    report.dmrShoulder.hip.gunHasBothHands&&
+    report.dmrShoulder.hip.mag==="m305a_leisure_mag_bakelite_0"&&
+    report.dmrShoulder.ads.x<-.27&&report.dmrShoulder.ads.z<-.95&&
+    Math.abs(report.dmrShoulder.ads.yaw)<.005&&
+    report.dmrShoulder.ads.mag==="m305a_leisure_mag_bakelite_0",
+    "v680 must hold the real DMR close in hip, center unchanged ADS, and retain original magazine: "+JSON.stringify(report.dmrShoulder));
   assert(Math.abs(report.eyeHeight.eye-2.10)<.025&&
    Math.abs(report.eyeHeight.eye-report.eyeHeight.original-.12)<.025&&
    report.eyeHeight.worldScale===1.20&&report.eyeHeight.samples.length===3&&
