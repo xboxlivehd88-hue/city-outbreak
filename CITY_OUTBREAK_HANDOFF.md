@@ -1,3 +1,12 @@
+# v669 CRAWLER FLOOR CONTACT + NATIVE CRAWL SYNC — CANDIDATE — 2026-10-14
+
+- User's latest **30.08 sec** `2026-10-14 23-46-01.mp4` inspected at 16 evenly spaced and 16 close 0.5-sec frames: some recorded source leg joints sink into sidewalk, while crawlers still slide too quickly relative to their arms. This is after the v668 restoration of the ORIGINAL GLB native crawl; don't reintroduce custom leg stepping or root model raising.
+- Preserve v668 original Mixamo `Animation` GLB, complete 51 tracks, 16 skin-aligned hitboxes, actual original diffuse/normal textures, limb detachment/removal and ragdoll. **Only** accelerate original animation to match distance traveled (max 1.85x instead of 1.20x), and perform capped quaternion joint correction at each original knee and foot when behind-body dragging limbs penetrate ground. This does NOT lock any limb, move the pelvis, or lift the entire skinned model. Per-joint correction is overwritten by native clip on subsequent animation frames.
+- Wave 1 remains 10 new injured crawlers for testing, while original native crawler remains Wave 3+; original Infected, Sprinter, Hazmat, Green Guy and boss rotation untouched; protected recovery v324 unchanged.
+- Added browser motion audit to check both leg and arm movement, exact fixed model root, knee/foot world height vs street after simulated movement; existing damage and enemy regressions retained. Loader `./src/game.js?v=669`; commit and verify only after all checks.
+
+---
+
 # v668 VERIFIED — RESTORED ORIGINAL NATIVE CRAWL — 2026-10-14
 
 - **Full browser tests PASSED**. [Wave 1, original Infected and boss regression run 38677081399](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38677081399) succeeded with **zero page errors**. [Sprinter 38677081386](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38677081386) passed; [Hazmat/Green Guy 38677081391](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38677081391) passed. Recorded new crawler: 10 Wave 1 actors; original `Animation` clip 51 tracks (4 leg tracks), animated arms max 0.817 radians, animated legs max 0.462 radians, **root position zero drift**; source mesh bottom -0.024 to +0.017 above test ground during 95 moving frames. Exactly 16 original rig hitboxes, 3 recovered original textured skinned meshes, arm/leg death dismemberment correct without generic parts, no JS errors.

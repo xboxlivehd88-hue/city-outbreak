@@ -1,12 +1,12 @@
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
- const report={version:"668",pass:false},errors=[];let browser,page;
+ const report={version:"669",pass:false},errors=[];let browser,page;
  try{
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=668$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=669$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -57,6 +57,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   const orig=z.g.position.clone(),prev=[z.injuredCrawlerPrevX,z.injuredCrawlerPrevZ];
   const rootY=holder.position.y;
   let maxArmChange=0,maxLegChange=0,maxRootChange=0,minFloorGap=Infinity,maxFloorGap=-Infinity;
+  let minKnee=Infinity,minFoot=Infinity,maxClipCorrection=0;
   for(let i=0;i<95;i++){
    z.g.position.x+=.013;z.g.position.z+=.007;
    updateInjuredCrawlerVisual(z,1/60);
@@ -66,6 +67,15 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
     else maxLegChange=Math.max(maxLegChange,angle);
    }
    maxRootChange=Math.max(maxRootChange,Math.abs(holder.position.y-rootY));
+   // Verify actual knee/foot world clearance after bone-only correction.
+   for(const side of ["L","R"]){
+    const knee=z.injuredCrawlerBones.get(side+"_LowerLeg");
+    const foot=z.injuredCrawlerBones.get(side+"_Foot");
+    minKnee=Math.min(minKnee,knee.getWorldPosition(new THREE.Vector3()).y-z.g.position.y);
+    minFoot=Math.min(minFoot,foot.getWorldPosition(new THREE.Vector3()).y-z.g.position.y);
+   }
+   maxClipCorrection=Math.max(maxClipCorrection,
+    Number(document.documentElement.dataset.injuredCrawlerLegCorrection||0));
    if(i%12===0){
     const bounds=new THREE.Box3().setFromObject(holder,true);
     const gap=bounds.min.y-z.g.position.y;
@@ -78,6 +88,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   updateInjuredCrawlerHitboxes(z);
   return {legTracks,clipName:clip.name,clipTracks:clip.tracks.length,
    maxArmChange,maxLegChange,maxRootChange,minFloorGap,maxFloorGap,
+   minKnee,minFoot,maxClipCorrection,
    playbackTime:time,originalBones:bones.length,oldPinnedLegs:!!z.injuredCrawlerDragLegPose};
  },
  injuredDamageAudit:()=>{
@@ -650,7 +661,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=668-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=669-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
@@ -719,8 +730,10 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
    report.injuredMotion.maxLegChange>.004&&
    report.injuredMotion.maxRootChange<.00001&&
    !report.injuredMotion.oldPinnedLegs&&
-   report.injuredMotion.minFloorGap>-.30&&report.injuredMotion.maxFloorGap<.40,
-   "v668 must play the original native crawl with freely animated legs and no body lift: "+
+   report.injuredMotion.minFloorGap>-.30&&report.injuredMotion.maxFloorGap<.40&&
+   report.injuredMotion.minKnee>-.08&&report.injuredMotion.minFoot>-.08&&
+   report.injuredMotion.maxClipCorrection>=0,
+   "v669 original crawl must drag legs above the pavement without any root lift: "+
     JSON.stringify(report.injuredMotion));
   assert(report.injuredDamage.hit>0&&report.injuredDamage.partsDelta===0&&
    !report.injuredDamage.oldGoreVisible&&report.injuredDamage.legacyMeshes.length===0&&
