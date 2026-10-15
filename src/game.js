@@ -5802,26 +5802,83 @@ function attachInjuredCrawlerVisual(z){
  if(Number.isFinite(lift)&&Math.abs(lift)<8)holder.position.y+=lift;
  z.injuredCrawlerVisual=holder;z.injuredCrawlerModel=model;
  z.injuredCrawlerMixer=mixer;z.injuredCrawlerAction=action;
+ // v666: keep the original animated pose but anchor it to a single sensible
+ // ground offset; a single spawn-frame mesh minimum was not adequate once
+ // its hands, knees and lower legs began cycling through the recorded clip.
+ z.injuredCrawlerRestY=holder.position.y;
+ z.injuredCrawlerGroundPhase=0;
+ z.injuredCrawlerCrawlDistance=0;
+ z.injuredCrawlerTravelSpeed=0;
  z.injuredCrawlerBones=new Map();
  for(const [part,name] of Object.entries(NATURAL_CRAWLER_BONE_NAMES)){
   const b=lookUp.get(name);if(b)z.injuredCrawlerBones.set(part,b);
  }
  attachInjuredCrawlerHitboxes(z);
+ z.injuredCrawlerRestY=holder.position.y;
  z.injuredCrawlerPrevX=z.g.position.x;z.injuredCrawlerPrevZ=z.g.position.z;
  document.documentElement.dataset.injuredCrawlerAttached=
   String(Number(document.documentElement.dataset.injuredCrawlerAttached||0)+1);
  document.documentElement.dataset.injuredCrawlerScale=holder.scale.x.toFixed(4);
  return true;
 }
+const injuredCrawlProbe=new THREE.Vector3();
 function updateInjuredCrawlerVisual(z,dt){
  if(!z?.injuredCrawlerVisual||!z.injuredCrawlerMixer||z.dead||z.knockdown)return;
  const dist=Math.hypot(z.g.position.x-z.injuredCrawlerPrevX,
   z.g.position.z-z.injuredCrawlerPrevZ);
  z.injuredCrawlerPrevX=z.g.position.x;z.injuredCrawlerPrevZ=z.g.position.z;
  const speed=dist/Math.max(.005,dt);
- z.injuredCrawlerAction.setEffectiveTimeScale(
-  speed<.08?.32:THREE.MathUtils.clamp(speed/.85,.48,1.20));
+ // The uploaded model has only a single 51-track Animation clip. Playing it
+ // at 0.48-1.20x while game locomotion moves separately caused foot sliding.
+ // Match cycle rate to actual forward travel, then add a restrained opposing
+ // arm-and-knee pull to make every advance visibly articulated.
+ z.injuredCrawlerTravelSpeed=THREE.MathUtils.lerp(z.injuredCrawlerTravelSpeed||0,
+  THREE.MathUtils.clamp(speed,0,3),Math.min(1,dt*9));
+ const moving=THREE.MathUtils.smoothstep(z.injuredCrawlerTravelSpeed,.07,.65);
+ z.injuredCrawlerAction.setEffectiveTimeScale(moving<.03?.12:
+  THREE.MathUtils.clamp(.62+z.injuredCrawlerTravelSpeed*.88,.64,2.0));
  z.injuredCrawlerMixer.update(dt);
+ z.injuredCrawlerCrawlDistance+=dist;
+ const phase=z.injuredCrawlerCrawlDistance*5.2;
+ z.injuredCrawlerGroundPhase=phase;
+ // Modify only the existing Mixamo shoulder/hip joint rotations AFTER the
+ // original GLB clip evaluates. Never replace its animation or its real rig.
+ for(const [side,offset] of [["L",0],["R",Math.PI]]){
+  const swing=Math.sin(phase+offset)*moving;
+  const upper=z.injuredCrawlerBones.get(side+"_UpperArm");
+  const lower=z.injuredCrawlerBones.get(side+"_LowerArm");
+  const thigh=z.injuredCrawlerBones.get(side+"_UpperLeg");
+  const shin=z.injuredCrawlerBones.get(side+"_LowerLeg");
+  if(upper)upper.rotateX(-swing*.20);
+  if(lower)lower.rotateX(Math.max(0,swing)*.15);
+  if(thigh)thigh.rotateX(swing*.24);
+  if(shin)shin.rotateX(-Math.max(0,swing)*.18);
+ }
+ // Correct floor clearance from live hands, feet, knees and hips, not a
+ // one-time Box3 min (which changes as the animation curls and extends).
+ // Adjust ONLY this new model holder; old crawler and its approved physics
+ // retain exactly their previous grounding and movement.
+ const holder=z.injuredCrawlerVisual,bones=z.injuredCrawlerBones;
+ z.g.updateMatrixWorld(true);
+ let lowest=Infinity;
+ for(const [key,padding] of [
+  ["L_Hand",.035],["R_Hand",.035],["L_Foot",.06],["R_Foot",.06],
+  ["L_LowerLeg",.11],["R_LowerLeg",.11],["Hips",.13]]){
+  const joint=bones.get(key);if(!joint)continue;
+  joint.getWorldPosition(injuredCrawlProbe);
+  lowest=Math.min(lowest,injuredCrawlProbe.y-padding);
+ }
+ if(Number.isFinite(lowest)){
+  const ground=Number.isFinite(z.groundY)?z.groundY:z.g.position.y;
+  const clearance=lowest-ground;
+  const parentScale=Math.max(.1,z.g.scale.y);
+  const correction=THREE.MathUtils.clamp(-clearance/parentScale,-.15,.20);
+  const desired=THREE.MathUtils.clamp(holder.position.y+correction,
+   z.injuredCrawlerRestY-.20,z.injuredCrawlerRestY+.50);
+  holder.position.y=THREE.MathUtils.lerp(holder.position.y,desired,
+   Math.min(1,dt*(clearance<0?25:5)));
+  document.documentElement.dataset.injuredCrawlerGroundClearance=clearance.toFixed(3);
+ }
  updateInjuredCrawlerHitboxes(z);
 }
 function attachNaturalCrawlerVisual(z){
