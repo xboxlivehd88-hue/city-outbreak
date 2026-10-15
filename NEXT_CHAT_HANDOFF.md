@@ -1,3 +1,12 @@
+# v669 VERIFIED — ORIGINAL CRAWL, KNEE/FOOT JOINT GROUNDING, REDUCED SLIDING — 2026-10-14
+
+- **Real Chromium full Wave 1/Infected/19-boss browser suite PASS**: [workflow 38678548288](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38678548288), zero page errors. Original approved model tests independent Sprinter [38678548243](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38678548243) PASS and Hazmat/Green Guy [38678548265](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38678548265) PASS.
+- Native original 51-track Mixamo crawler animation remains in place; six legs were **never frozen**, and root was **never raised** during the 95-frame simulated moving advance: `maxLegChange=0.472 rad`, `maxArmChange=1.192 rad`, `maxRootChange=0`. Contact correction is limited to original leg joints. Measured `minKnee=+0.078`, `minFoot=+0.099`, source skinned lowest visual bounds -0.00546 to +0.03373 game-units vs test ground, and actual joint correction max .076 game units. No new artificial kicks, leg locking or root float.
+- Climbing speed native clip now follows movement closer: actual `timeScale=1.85` maximum rather than original 1.2. 10 Wave 1 ONLY new injured crawler, original 3 native textured skins and 16 custom real-rig hitboxes, limb clipping without old generic limbs confirmed. Original Infected, Sprinter, Green Guy, Hazmat, 19 bosses, older natural crawler and protected recovery v324 untouched.
+- v669 loader `./src/game.js?v=669`; Pages test link `https://xboxlivehd88-hue.github.io/city-outbreak/?v=669-crawler-legs-grounded` after confirmed deploy. Await USER visual approval before adding new crawler to normal wave rotation.
+
+---
+
 # v669 CRAWLER FLOOR CONTACT + NATIVE CRAWL SYNC — CANDIDATE — 2026-10-14
 
 - User's latest **30.08 sec** `2026-10-14 23-46-01.mp4` inspected at 16 evenly spaced and 16 close 0.5-sec frames: some recorded source leg joints sink into sidewalk, while crawlers still slide too quickly relative to their arms. This is after the v668 restoration of the ORIGINAL GLB native crawl; don't reintroduce custom leg stepping or root model raising.
