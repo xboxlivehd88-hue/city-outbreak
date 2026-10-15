@@ -84,6 +84,35 @@ try{
  return{eye,selected,dmrSamples,expected:PLAYER_EYE_HEIGHT,original:1.65*PLAYER_WORLD_SCALE,
     worldScale:PLAYER_WORLD_SCALE,samples};
 };`;
+   const dmrAudit=`
+;globalThis.__dmrV678Audit=()=>{
+ const root=gun.getObjectByName("OriginalNorincoM305AMarksman");
+ const meshNames=[],materialNames=[],visibleMaps=[];
+ root?.traverse(o=>{
+  if(o.isMesh&&o.visible){
+   meshNames.push(o.name);
+   for(const mat of (Array.isArray(o.material)?o.material:[o.material])){
+    if(mat){materialNames.push(mat.name);visibleMaps.push(!!mat.map)}
+   }
+  }
+ });
+ const box=root?new THREE.Box3().setFromObject(root,true):null;
+ const gunBox=root?new THREE.Box3().setFromObject(gun,true):null;
+ return{weapon,ready:!!unlocked.dmr,ammo:ammoState.dmr.mag,spare:ammoState.dmr.reserve,
+  name:weaponDefs.dmr.name,cycle:WEAPON_CYCLE_ORDER.slice(),
+  source:document.documentElement.dataset.dmrSourceVisual,
+  glbReady:document.documentElement.dataset.dmrGlbReady,
+  error:document.documentElement.dataset.dmrGlbError||"",
+  geometry:meshNames,materials:materialNames,realTextures:visibleMaps,
+  sourceLength:document.documentElement.dataset.dmrModelLength,
+  viewScale:document.documentElement.dataset.dmrViewScale,
+  worldSize:box?.getSize(new THREE.Vector3()).toArray(),
+  gunSize:gunBox?.getSize(new THREE.Vector3()).toArray(),
+  retired:!("awm" in weaponDefs)&&!("awm" in unlocked)&&!("awm" in ammoState)&&
+    !("awm" in ADS)&&!("awm" in HAND_POSES)&&!("awm" in WEAPON_CONTACT)
+ };
+};
+`;
    const profileAudit=`
 ;globalThis.__city678PerfAudit=()=>{
  const now=performance.now(),prior={
@@ -138,7 +167,7 @@ try{
  const unsupported=createGpuFrameTimer({getContext:()=>({getExtension:()=>null})}).snapshot();
  return {measured,begins,ends,deleted,unsupported,live:cityGpuTimer.snapshot()};
 };`;
-   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
+   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
   });
   const rsp=await page.goto("http://127.0.0.1:4173/?v=678-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
@@ -159,13 +188,8 @@ try{
   report.performance=await page.evaluate(()=>globalThis.__city678PerfAudit());
   report.gpuFrame=await page.evaluate(()=>globalThis.__city678GpuAudit());
   report.staticMap=await page.evaluate(()=>globalThis.__city678StaticMapAudit());
-  report.dmrTest=await page.evaluate(()=>({
-   weapon,ready:!!unlocked.dmr,ammo:ammoState.dmr.mag,spare:ammoState.dmr.reserve,
-   model:gun.children.length,weaponName:weaponDefs.dmr.name,
-   cycle:WEAPON_CYCLE_ORDER.slice(),
-   retired:!("awm" in weaponDefs)&&!("awm" in unlocked)&&!("awm" in ammoState)&&
-    !("awm" in ADS)&&!("awm" in HAND_POSES)&&!("awm" in WEAPON_CONTACT)
-  }));
+  await page.waitForFunction(()=>document.documentElement.dataset.dmrGlbReady==="true",null,{timeout:65000});
+  report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
   report.eyeHeight=await page.evaluate(()=>globalThis.__eyeHeightAudit());
   report.state=await page.evaluate(()=>globalThis.__hazmatSmoke.snapshot());
   report.motion=await page.evaluate(()=>globalThis.__hazmatSmoke.motion());
@@ -185,8 +209,14 @@ try{
   assert.equal(report.http,200);assert.equal(report.assetHttp,200);
   assert.equal(s.build,"631");assert.equal(s.wave,1);
   assert(report.dmrTest.weapon==="dmr"&&report.dmrTest.ready&&
-   report.dmrTest.weaponName==="DMR"&&report.dmrTest.ammo===10&&
-   report.dmrTest.spare===30&&report.dmrTest.model>2&&
+   report.dmrTest.name==="DMR"&&report.dmrTest.ammo===10&&
+   report.dmrTest.spare===30&&report.dmrTest.source==="norinco_m305a_marksman"&&
+   report.dmrTest.glbReady==="true"&&!report.dmrTest.error&&
+   report.dmrTest.geometry.includes("m305a_marksman_m305a_0")&&
+   report.dmrTest.geometry.includes("m305a_marksman_attachments2_0")&&
+   report.dmrTest.geometry.includes("m305a_marksman_mag_p20r_0")&&
+   report.dmrTest.realTextures.some(Boolean)&&
+   report.dmrTest.worldSize?.[2]>2.5&&report.dmrTest.worldSize?.[2]<5.5&&
    report.dmrTest.retired&&report.dmrTest.cycle.includes("dmr")&&
    !report.dmrTest.cycle.includes("awm"),
    "v678 must equip test DMR and remove retired sniper: "+JSON.stringify(report.dmrTest));
