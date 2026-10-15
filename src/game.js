@@ -13,7 +13,7 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
-import {createExplosionParticleBatch,drawExplosionParticleBatch,disposeExplosionParticleBatch} from "./explosion-batch.js?v=672";
+import {createExplosionParticleBatch,drawExplosionParticleBatch,disposeExplosionParticleBatch,primeExplosionParticleBatch} from "./explosion-batch.js?v=676";
 // v567: suit boss model is selected only when its name is drawn on a normal
 // boss wave (every 10th wave); preserve the approved v566 rig and collision.
 const SUIT_BOSS_NAME="SUIT GUY";
@@ -3176,9 +3176,63 @@ function prepareExplosionTextures(){
  if(explosionBurstTextures)return;
  explosionBurstTextures={fire:makeExplosionBurstTexture(false),smoke:makeExplosionBurstTexture(true)};
 }
+// v676: The user's desktop recording caught a 60.4ms first-blast hitch
+// while 160 smoke/fire particles were already only TWO draws. Pre-compile
+// both explosion shaders, upload their alpha textures, and create the exact
+// same reusable GPU instance buffers BEFORE combat, while the title screen
+// is idle. This is the renderer-recommended remedy for first-use stutter.
+// No gameplay FX counts, physics, animations or visuals are reduced.
+let explosionGpuPrewarmPromise=null;
+async function prewarmExplosionGpu(){
+ if(explosionGpuPrewarmPromise)return explosionGpuPrewarmPromise;
+ if(running)return;
+ explosionGpuPrewarmPromise=(async()=>{
+  const started=performance.now();
+  document.documentElement.dataset.explosionGpuWarmup="running";
+  let burn=null,haze=null,warmTarget=null;
+  try{
+   prepareExplosionTextures();
+   const sample=Array.from({length:160},()=>({
+    color:0xffffff,age:0,life:1,opacity:0,size:.01,rotation:0,
+    position:new THREE.Vector3(),smoke:false,core:true
+   }));
+   burn=primeExplosionParticleBatch(explosionBurstTextures.fire,false,160);
+   haze=primeExplosionParticleBatch(explosionBurstTextures.smoke,true,160);
+   const warmSpark=new THREE.InstancedMesh(explosionSparkGeometry,explosionSparkMaterial,1);
+   warmSpark.setColorAt(0,new THREE.Color(0xfff8d4));
+   const warmScene=new THREE.Scene();
+   warmScene.add(burn.mesh,haze.mesh,warmSpark);
+   // compileAsync avoids blocking the first grenade for shader linking.
+   if(typeof ren.compileAsync==="function")await ren.compileAsync(warmScene,cam);
+   else ren.compile(warmScene,cam);
+   ren.initTexture(explosionBurstTextures.fire);
+   ren.initTexture(explosionBurstTextures.smoke);
+   // A 1x1 offscreen draw prepares the SAME instance buffers and GPU paths
+   // without drawing a single pixel to the player's screen.
+   if(!running){
+    const previous=ren.getRenderTarget();
+    warmTarget=new THREE.WebGLRenderTarget(1,1,{depthBuffer:false,stencilBuffer:false});
+    try{ren.setRenderTarget(warmTarget);ren.render(warmScene,cam)}
+    finally{ren.setRenderTarget(previous)}
+   }
+   document.documentElement.dataset.explosionGpuWarmup="ready";
+  }catch(error){
+   document.documentElement.dataset.explosionGpuWarmup="failed";
+   document.documentElement.dataset.explosionGpuWarmupError=String(error?.message||error);
+   console.warn("CITY OUTBREAK explosion GPU prewarm unavailable",error);
+  }finally{
+   if(burn)disposeExplosionParticleBatch(burn);
+   if(haze)disposeExplosionParticleBatch(haze);
+   warmTarget?.dispose();
+   document.documentElement.dataset.explosionGpuWarmupMs=
+    (performance.now()-started).toFixed(1);
+  }
+ })();
+ return explosionGpuPrewarmPromise;
+}
 if(typeof requestIdleCallback==="function")
- requestIdleCallback(prepareExplosionTextures,{timeout:2500});
-else setTimeout(prepareExplosionTextures,350);
+ requestIdleCallback(()=>{prewarmExplosionGpu()},{timeout:2500});
+else setTimeout(()=>{prewarmExplosionGpu()},350);
 function clearExplosionBurst(burst){
  for(const batch of burst.particleBatches)disposeExplosionParticleBatch(batch);
  if(burst.group.parent)burst.group.parent.remove(burst.group);
@@ -9604,6 +9658,7 @@ function explodeGrenade(g){
  spawnExplosionBurst(visualOrigin,false,.055);
  const visualMs=performance.now()-particleStart;
  let affected=0,ragdollDeaths=0;
+ const reactionStart=performance.now();
  for(const z of living()){
   const d=z.suitBossBlastHitboxes?.length?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
   if(d<7.5){
@@ -9621,7 +9676,10 @@ function explodeGrenade(g){
  document.documentElement.dataset.lastGrenadeFragments=String(fragments);
  document.documentElement.dataset.lastGrenadeAffected=String(affected);
  document.documentElement.dataset.lastGrenadeRagdolls=String(ragdollDeaths);
+ document.documentElement.dataset.lastGrenadeReactionMs=
+  (performance.now()-reactionStart).toFixed(1);
  document.documentElement.dataset.lastGrenadeLogicMs=String(Math.round((performance.now()-grenadeStart)*10)/10);
+ document.documentElement.dataset.lastGrenadeAtMs=String(performance.now());
 }
 
 function detonateNuke(){
@@ -10437,7 +10495,15 @@ const perfGuard=createPerformanceGuard({
   bursts:activeExplosionBursts.length,
   batchedSprites:activeExplosionBursts.reduce((n,fx)=>n+fx.particles.length,0),
   batchDraws:activeExplosionBursts.reduce((n,fx)=>n+fx.particleBatches.length,0),
-  fragments:activeCasingFragmentCount()}),
+  fragments:activeCasingFragmentCount(),
+  gpuWarmup:document.documentElement.dataset.explosionGpuWarmup||"waiting",
+  lastGrenade:performance.now()-Number(document.documentElement.dataset.lastGrenadeAtMs||0)<9000
+   ?{total:Number(document.documentElement.dataset.lastGrenadeLogicMs||0),
+    visual:Number(document.documentElement.dataset.lastGrenadeVisualMs||0),
+    fragments:Number(document.documentElement.dataset.lastGrenadeShatterMs||0),
+    reactions:Number(document.documentElement.dataset.lastGrenadeReactionMs||0),
+    ragdolls:Number(document.documentElement.dataset.lastGrenadeRagdolls||0)}
+   :null}),
  enabled:true,
  consoleLogging:false
 }); // HUD stays visible; console spam stays off unless explicitly needed
