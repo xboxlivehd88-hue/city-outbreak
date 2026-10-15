@@ -6,7 +6,7 @@ import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
-import {createPerformanceGuard} from "./performance-hud.js?v=262";
+import {createPerformanceGuard} from "./performance-hud.js?v=672";
 import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=464";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
@@ -3124,6 +3124,15 @@ function makeExplosionBurstTexture(smoke){
  texture.colorSpace=THREE.SRGBColorSpace;
  return texture;
 }
+// Prepare the source-style smoke and fire alpha textures while the title
+// screen loads. The first live explosion no longer builds two 128px canvases.
+function prepareExplosionTextures(){
+ if(explosionBurstTextures)return;
+ explosionBurstTextures={fire:makeExplosionBurstTexture(false),smoke:makeExplosionBurstTexture(true)};
+}
+if(typeof requestIdleCallback==="function")
+ requestIdleCallback(prepareExplosionTextures,{timeout:2500});
+else setTimeout(prepareExplosionTextures,350);
 function clearExplosionBurst(burst){
  for(const batch of burst.particleBatches)disposeExplosionParticleBatch(batch);
  if(burst.group.parent)burst.group.parent.remove(burst.group);
@@ -3157,12 +3166,7 @@ function drawExplosionSparks(fx,dt){
  fx.sparkMesh.instanceMatrix.needsUpdate=true;
 }
 function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
- if(!explosionBurstTextures){
-   explosionBurstTextures={
-     fire:makeExplosionBurstTexture(false),
-     smoke:makeExplosionBurstTexture(true)
-   };
- }
+ prepareExplosionTextures();
  const quality=Math.max(0,Math.min(1,graphicsOptions.particles/100));
  // Extra spectacle ramps in ABOVE Medium; Low stays almost exactly v532.
  const spectacle=THREE.MathUtils.clamp((quality-.5)/.5,0,1);
