@@ -1,3 +1,11 @@
+# v689 VERIFIED — RECOVERED CLOSER M17 SKINNED HAND GRIP (2026-10-15)
+
+- **Real headless Chromium PASS:** [GitHub Actions 38808702654](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38808702654) completed **success**, full `HAZMAT_V599_REPORT` has `passed:true`, `errors:[]`. The v689 M17 test validates exact original v687 pistol grip offsets, authentic animated skin, no old procedural arms, and normal hip-to-ADS movement (NOT v688's unnatural frozen wrist/stretch). Restored user-closer v687 grip orientation. Tests also passed authentic seven-weapon skin, DMR red-dot center zero, DMR original-mesh/reload, Hazmat/Green Guy, batched grenade regression.
+- **GitHub Pages deployed successfully:** [run 38808702387](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38808702387) for committed v689 source. Game loader `./src/game.js?v=689`; [v689 test URL](https://xboxlivehd88-hue.github.io/city-outbreak/?v=689-m17-grip-recovery). User approval of actual visible M17 hands remains pending. The recovered v687 sleeves still need cautious, video-based refinement; do NOT call them perfected simply because mathematical tests pass.
+- Original user's latest video `2026-10-15 17-08-44.mp4` was inspected alongside previous v687 recording `2026-10-15 16-55-03.mp4`. v688 enlarged/warped ADS sleeve V and exposed disconnected fingers. v689 removed only v688 M17-added wrist/shoulder/elbow/finger pose hacks and reverted exact original v687 pose. All other approved game systems, seven-gun test inventory and protected v324 recovery remain untouched.
+
+---
+
 # v689 — M17 REGRESSION RECOVERY: RESTORE CLOSER v687 ANIMATED HAND GRIP — 2026-10-15
 
 - **New user video + clear rejection of v688:** `2026-10-15 17-08-44.mp4` (26.27 seconds, 1920×1080 at 60 fps) inspected against previous `2026-10-15 16-55-03.mp4`. The NEW v688 M17 arms look **much worse**, especially the huge crossed V of coat sleeves during ADS and disconnected exposed fingers beside the grip. User explicitly says **"they are really messed up now"**. Previous M17 user appraisal was **"hands are close"**, referring to v687, before the v688 sleeve + wrist code.
