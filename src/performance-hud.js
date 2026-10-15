@@ -35,7 +35,7 @@ export function createPerformanceGuard({
     "\nPIXEL RATIO "+renderer.getPixelRatio().toFixed(2)+
     (p?"\nCPU GAME "+fmt(p.updateMs)+"ms | LIGHTS "+fmt(p.lightsMs)+
      " | RAIN "+fmt(p.rainMs)+" | RENDER SUBMIT "+fmt(p.renderSubmitMs)+
-     "\nFRAME P50 "+fmt(p.frameMedianMs)+"ms | P95 "+fmt(p.frameP95Ms)+"ms | MAX "+fmt(p.frameMaxMs)+"ms"+
+     "\nFRAME "+(p.frameSamples>=5?"P50 "+fmt(p.frameMedianMs)+"ms | P95 "+fmt(p.frameP95Ms)+"ms | MAX "+fmt(p.frameMaxMs)+"ms":"PACING WARMUP ("+(p.frameSamples||0)+" FRAMES)") +
      "\nGPU RENDER "+(p.gpu?.status==="ready"
        ?fmt(p.gpu.avgMs)+"ms AVG | "+fmt(p.gpu.p95Ms)+"ms P95 | "+fmt(p.gpu.worstMs)+"ms WORST"
        :p.gpu?.status==="unavailable"?"NOT EXPOSED BY BROWSER":String(p.gpu?.status||"collecting"))+
