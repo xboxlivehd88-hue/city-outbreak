@@ -1,3 +1,4 @@
+// v672 verified-shader rerun on final loaded source and protected zombie tests.
 // v672 final synchronized loader: run against committed index.html game.js?v=672 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
 (async()=>{
