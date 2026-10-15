@@ -650,7 +650,20 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   });
   const rsp=await page.goto("http://127.0.0.1:4173/?v=666-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
-  await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
+  try{
+   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:80000});
+  }catch(e){
+   report.readinessDiagnosis=await page.evaluate(()=>({
+    gameModuleInjected:!!globalThis.__parasiteSmoke,
+    pageData:{...document.documentElement.dataset},
+    cityCanvas:!!document.querySelector("canvas"),startButton:!!document.querySelector("#start"),
+    resources:performance.getEntriesByType("resource").filter(x=>/\\.glb|game\\.js/.test(x.name))
+     .map(x=>({name:x.name.split("/").pop(),duration:Math.round(x.duration),bytes:x.transferSize})).slice(-32),
+    ready:globalThis.__parasiteSmoke?.ready?.()||false,
+   }));
+   console.log("V666_CRAWLER_READINESS_DIAGNOSTIC="+JSON.stringify(report.readinessDiagnosis));
+   throw e;
+  }
   await page.locator("#start").click({noWaitAfter:true});
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.waveOne()?.spawned===10,null,{timeout:70000});
   report.waveOne=await page.evaluate(()=>globalThis.__parasiteSmoke.waveOne());
