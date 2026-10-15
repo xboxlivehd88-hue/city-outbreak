@@ -1,6 +1,6 @@
-// v678 final synchronized loader: run against committed index.html game.js?v=678 and approved two-natural-crawler rotation.
+// v679 final synchronized loader: run against committed index.html game.js?v=679 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),assert=require("node:assert/strict"),fs=require("fs");
-// v678 DMR source geometry audit: inspect user's real uploaded GLB, not a
+// v679 DMR source geometry audit: inspect user's real uploaded GLB, not a
 // guessed procedural replacement. Print bounded node, accessor and material
 // facts into the browser CI log for correct first-person orientation/scale.
 try{
@@ -68,7 +68,7 @@ try{
   return {modelReady,modelError,standing,converted};
  }
 };`;
-   // v678 inspect real first-person gun world bounds at level and max-look-down.
+   // v679 inspect real first-person gun world bounds at level and max-look-down.
    const eyeAudit=`
 ;globalThis.__eyeHeightAudit=()=>{
  const prior=pitch,selected=weapon,ground=playerGroundY;
@@ -87,7 +87,7 @@ try{
 };`;
    const dmrAudit=`
 ;globalThis.__dmrV678Audit=()=>{
- const root=gun.getObjectByName("OriginalNorincoM305AMarksman");
+ const root=gun.getObjectByName("OriginalNorincoM305ALeisure");
  const meshNames=[],materialNames=[],visibleMaps=[];
  root?.traverse(o=>{
   if(o.isMesh&&o.visible){
@@ -103,7 +103,8 @@ try{
   name:weaponDefs.dmr.name,cycle:WEAPON_CYCLE_ORDER.slice(),
   source:document.documentElement.dataset.dmrSourceVisual,
   magazine:playerReloadPart?.name,magParent:playerReloadPart?.parent?.name,
-  importedMag:!!gun.getObjectByName("m305a_marksman_mag_p20r_0"),
+  magMaterial:playerReloadPart?.material?.name,magOriginalTexture:!!playerReloadPart?.material?.map,
+  importedMag:!!gun.getObjectByName("m305a_leisure_mag_bakelite_0"),
   glbReady:document.documentElement.dataset.dmrGlbReady,
   error:document.documentElement.dataset.dmrGlbError||"",
   geometry:meshNames,materials:materialNames,realTextures:visibleMaps,
@@ -172,7 +173,7 @@ try{
 };`;
    await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=678-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=679-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.ready(),null,{timeout:110000});
   // Shaders, textures and actual pooled instance buffers must be initialized
@@ -213,17 +214,18 @@ try{
   assert.equal(s.build,"631");assert.equal(s.wave,1);
   assert(report.dmrTest.weapon==="dmr"&&report.dmrTest.ready&&
    report.dmrTest.name==="DMR"&&report.dmrTest.ammo===10&&
-   report.dmrTest.spare===30&&report.dmrTest.source==="norinco_m305a_marksman"&&
+   report.dmrTest.spare===30&&report.dmrTest.source==="norinco_m305a_leisure"&&
    report.dmrTest.glbReady==="true"&&!report.dmrTest.error&&
-   report.dmrTest.geometry.includes("m305a_marksman_m305a_0")&&
-   report.dmrTest.geometry.includes("m305a_marksman_attachments2_0")&&
-   report.dmrTest.magazine==="m305a_marksman_mag_p20r_0"&&
+   report.dmrTest.geometry.includes("m305a_leisure_m305a_0")&&
+   report.dmrTest.geometry.includes("m305a_leisure_attachments_0")&&
+   report.dmrTest.magazine==="m305a_leisure_mag_bakelite_0"&&
    report.dmrTest.importedMag&&
+   report.dmrTest.magMaterial==="mag_bakelite"&&report.dmrTest.magOriginalTexture&&
    report.dmrTest.realTextures.some(Boolean)&&
    report.dmrTest.worldSize?.[2]>2.5&&report.dmrTest.worldSize?.[2]<5.5&&
    report.dmrTest.retired&&report.dmrTest.cycle.includes("dmr")&&
    !report.dmrTest.cycle.includes("awm"),
-   "v678 must equip test DMR and remove retired sniper: "+JSON.stringify(report.dmrTest));
+   "v679 must equip test DMR and remove retired sniper: "+JSON.stringify(report.dmrTest));
   assert(Math.abs(report.eyeHeight.eye-2.10)<.025&&
    Math.abs(report.eyeHeight.eye-report.eyeHeight.original-.12)<.025&&
    report.eyeHeight.worldScale===1.20&&report.eyeHeight.samples.length===3&&
@@ -268,7 +270,7 @@ try{
     :Number.isFinite(frame.frameMedianMs)&&Number.isFinite(frame.frameP95Ms)&&
       Number.isFinite(frame.frameMaxMs)&&
       frame.frameP95Ms>=frame.frameMedianMs&&frame.frameMaxMs>=frame.frameP95Ms),
-   "v678 steady-state frame pacing must exclude too-few startup samples: "+JSON.stringify(frame));
+   "v679 steady-state frame pacing must exclude too-few startup samples: "+JSON.stringify(frame));
   assert(report.performance.navBuildBudget===1&&
    report.performance.stationarySkipped&&report.performance.movedChecked&&
    Number.isFinite(report.performance.hudStats?.updateMs)&&
@@ -276,7 +278,7 @@ try{
    Number.isFinite(report.performance.hudStats?.rainMs)&&
    Number.isFinite(report.performance.hudStats?.navWorstMs)&&
    Number.isFinite(report.performance.hudStats?.roofWorstMs),
-   "v678 navigation frame budget and stationary rain raycast profiling failed: "+
+   "v679 navigation frame budget and stationary rain raycast profiling failed: "+
    JSON.stringify(report.performance));
   assert.equal(s.armTuning.reference,"Zombie_Idle");
   assert(s.armTuning.tracks>=4&&s.armTuning.upperArms>=2&&
@@ -314,7 +316,7 @@ try{
   assert(report.grenadeGpuPrewarm?.status==="ready"&&
    report.grenadeGpuPrewarm?.timeMs>0&&
    !report.grenadeGpuPrewarm.error,
-   "v678 explosion shader/texture/particle buffers weren't prewarmed: "+JSON.stringify(report.grenadeGpuPrewarm));
+   "v679 explosion shader/texture/particle buffers weren't prewarmed: "+JSON.stringify(report.grenadeGpuPrewarm));
   assert(report.grenadeFx.prepared>=3&&report.grenadeFx.fragmentCount>0&&
    report.grenadeFx.particles>=100&&report.grenadeFx.batchDraws===2&&
    report.grenadeFx.batches==="2"&&
