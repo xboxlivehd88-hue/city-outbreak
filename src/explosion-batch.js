@@ -18,7 +18,7 @@ function particleMaterial(texture,smoke){
  material=new THREE.ShaderMaterial({
   uniforms:{uTexture:{value:texture}},
   vertexShader:`
-   attribute vec3 instanceColor;
+   // Three.js declares instanceColor through USE_INSTANCING_COLOR.
    attribute float instanceOpacity;
    varying vec2 vUv;
    varying vec3 vColor;
