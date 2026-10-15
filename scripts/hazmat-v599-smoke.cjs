@@ -72,6 +72,7 @@ try{
    const eyeAudit=`
 ;globalThis.__eyeHeightAudit=()=>{
  const prior=pitch,selected=weapon,ground=playerGroundY;
+ move(0);cam.updateMatrixWorld(true);
  const eye=cam.position.y-ground;
  const sampleGun=()=>[0,-.70,-1.05].map(p=>{
   pitch=p;move(0);cam.updateMatrixWorld(true);
@@ -101,6 +102,8 @@ try{
  return{weapon,ready:!!unlocked.dmr,ammo:ammoState.dmr.mag,spare:ammoState.dmr.reserve,
   name:weaponDefs.dmr.name,cycle:WEAPON_CYCLE_ORDER.slice(),
   source:document.documentElement.dataset.dmrSourceVisual,
+  magazine:playerReloadPart?.name,magParent:playerReloadPart?.parent?.name,
+  importedMag:!!gun.getObjectByName("m305a_marksman_mag_p20r_0"),
   glbReady:document.documentElement.dataset.dmrGlbReady,
   error:document.documentElement.dataset.dmrGlbError||"",
   geometry:meshNames,materials:materialNames,realTextures:visibleMaps,
@@ -214,7 +217,8 @@ try{
    report.dmrTest.glbReady==="true"&&!report.dmrTest.error&&
    report.dmrTest.geometry.includes("m305a_marksman_m305a_0")&&
    report.dmrTest.geometry.includes("m305a_marksman_attachments2_0")&&
-   report.dmrTest.geometry.includes("m305a_marksman_mag_p20r_0")&&
+   report.dmrTest.magazine==="m305a_marksman_mag_p20r_0"&&
+   report.dmrTest.importedMag&&
    report.dmrTest.realTextures.some(Boolean)&&
    report.dmrTest.worldSize?.[2]>2.5&&report.dmrTest.worldSize?.[2]<5.5&&
    report.dmrTest.retired&&report.dmrTest.cycle.includes("dmr")&&
@@ -223,7 +227,8 @@ try{
   assert(Math.abs(report.eyeHeight.eye-2.10)<.025&&
    Math.abs(report.eyeHeight.eye-report.eyeHeight.original-.12)<.025&&
    report.eyeHeight.worldScale===1.20&&report.eyeHeight.samples.length===3&&
-   report.eyeHeight.samples.every(x=>x.groundClearance>-.025),
+   report.eyeHeight.samples.every(x=>x.groundClearance>-.025)&&
+    report.eyeHeight.dmrSamples?.every(x=>x.groundClearance>-.015),
    "Player eye increase should be ONLY 12cm with preserved player scale: "+
     JSON.stringify(report.eyeHeight));
   assert(report.staticMap?.count>150&&report.staticMap.mode==="frozen-static-world"&&
