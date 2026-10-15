@@ -10248,8 +10248,13 @@ const wantedYaw=Math.atan2(dx,dz)+Math.PI;
  if(huntMode&&kind==="crawler")navSpeed*=.75;
  // v670 NEW injured crawler only: slower travel on native hand-pull strokes.
  // This goes through normal navigation, collision and wall avoidance.
- if(z.injuredCrawlerSpawn)navSpeed*=.73*THREE.MathUtils.clamp(
-  z.injuredCrawlerPullFactor??.82,.58,1.45);
+ if(z.injuredCrawlerSpawn){
+  // The ordinary last-five chase otherwise forces this crawler to 5+ units/s.
+  // Only the dedicated Wave 1 GLB is exempt from that unnatural sprint.
+  navSpeed=Math.min(navSpeed,z.speed*1.08);
+  navSpeed*=.73*THREE.MathUtils.clamp(
+   z.injuredCrawlerPullFactor??.82,.58,1.45);
+ }
  if(kind==="boss")navSpeed=bossCharging?BOSS_CHARGE_SPEED:bossPressureSpeed(playerDistToZombie,z.speed);
  const motionScale=(huntMode||bossCharging||bossPressuring)?1:surge*shamble;
 let stepX=(nx+sx*zig)*navSpeed*motionScale*stun*limpSlow*dt,stepZ=(nz+sz*zig)*navSpeed*motionScale*stun*limpSlow*dt;
