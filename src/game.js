@@ -10466,8 +10466,13 @@ const cityFrameProfile={
 function takeCityFrameProfile(){
  const n=Math.max(1,cityFrameProfile.frames);
  const wall=cityFrameProfile.wallFrames.slice().sort((a,b)=>a-b);
- const at=q=>wall.length?wall[Math.min(wall.length-1,Math.floor((wall.length-1)*q))]:null;
+ // A single frame after the title-screen shader warmup is NOT a meaningful
+ // median or 95th-percentile runtime benchmark. Require several live samples
+ // before exposing steady-state pacing; the existing hitch counter still
+ // captures individual long frames.
+ const at=q=>wall.length>=5?wall[Math.min(wall.length-1,Math.floor((wall.length-1)*q))]:null;
  const result={
+  frameSamples:wall.length,
   frameMedianMs:at(.5),frameP95Ms:at(.95),frameMaxMs:at(1),
   gpu:cityGpuTimer.snapshot(),
   updateMs:cityFrameProfile.updateMs/n,
