@@ -2903,7 +2903,7 @@ let dmrModelTemplate=null,dmrLoadError="",dmrSourceNodeCount=0;
 // v680: smooth, hip-only shoulder placement. A shared transform carries the
 // imported receiver, native magazine and both original player-hand actors
 // together; the already-close magazine reload remains entirely unchanged.
-let dmrShoulderBlend=0;
+let dmrShoulderBlend=0,dmrRightGripBlend=0;
 new GLTFLoader().load("assets/norinco_m305a.glb?v=679",gltf=>{
  const src=gltf.scene.getObjectByName("m305a_leisure");
  if(!src)throw Error("Norinco LEISURE submodel is missing");
@@ -3530,7 +3530,7 @@ function fpsArmSegment(a,b,r,mat,parent){
 function fpsHand(parent,hand,side,glove){
  const palm=new THREE.Mesh(new THREE.SphereGeometry(.105,9,7),glove);palm.scale.set(.92,1.00,1.30);palm.position.copy(hand);palm.userData.fpsHandOffset=palm.position.clone().sub(hand);palm.castShadow=false;parent.add(palm);
  const thumb=new THREE.Mesh(new THREE.CylinderGeometry(.030,.038,.13,7),glove);thumb.position.set(hand.x+(side==='left'?.085:-.085),hand.y+.015,hand.z+.025);thumb.userData.fpsHandOffset=thumb.position.clone().sub(hand);thumb.rotation.z=side==='left'?-.75:.75;thumb.rotation.x=.28;thumb.castShadow=false;parent.add(thumb);
- for(let i=0;i<3;i++){const f=new THREE.Mesh(new THREE.CylinderGeometry(.020,.024,.13,6),glove);f.position.set(hand.x+(i-1)*.045,hand.y-.035,hand.z-.060);f.userData.fpsHandOffset=f.position.clone().sub(hand);f.rotation.x=Math.PI/2;f.castShadow=false;parent.add(f)}
+ for(let i=0;i<3;i++){if(side==='right'&&weapon==='dmr'&&i===2)continue;const f=new THREE.Mesh(new THREE.CylinderGeometry(.020,.024,.13,6),glove);f.position.set(hand.x+(i-1)*.045,hand.y-.035,hand.z-.060);f.userData.fpsHandOffset=f.position.clone().sub(hand);f.rotation.x=Math.PI/2;f.castShadow=false;parent.add(f)}
 }
 function setFpsArmSegmentPose(q,a,b){
  if(!q)return;
@@ -3570,10 +3570,49 @@ function addPlayerHands(){
  if(weapon==='pistol')left.scale.setScalar(.72);
  const rs=new THREE.Vector3(.80,-1.12,.08),ls=weapon==="shotgun"?new THREE.Vector3(-.27,-.99,-.43):new THREE.Vector3(-.35,-1.08,.06),rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
  const rm=new THREE.Vector3().lerpVectors(rs,rh,.58),lm=new THREE.Vector3().lerpVectors(ls,lh,.58);
- fpsArmSegment(rs,rm,.105,sleeve,right);fpsArmSegment(rm,weapon==='pistol'?rh.clone().lerp(rm,.14):rh,.086,cuff,right);fpsHand(right,rh,'right',glove);
+ const rightUpper=fpsArmSegment(rs,rm,.105,sleeve,right),rightFore=fpsArmSegment(rm,weapon==='pistol'?rh.clone().lerp(rm,.14):rh,.086,cuff,right);
+ fpsHand(right,rh,'right',glove);
+ // v681: the original DMR hand sat behind the stock instead of gripping the
+ // trigger. Replace one of its three generic straight fingers with a bent,
+ // jointed index finger that can visibly rest inside the trigger guard.
+ let dmrIndexBase=null,dmrIndexTip=null;
+ if(weapon==='dmr'){
+  const first=rh.clone().add(new THREE.Vector3(-.035,.028,-.040));
+  const middle=rh.clone().add(new THREE.Vector3(-.073,.032,-.122));
+  const tip=rh.clone().add(new THREE.Vector3(-.056,-.022,-.198));
+  dmrIndexBase=fpsArmSegment(first,middle,.028,glove,right);
+  dmrIndexTip=fpsArmSegment(middle,tip,.023,glove,right);
+ }
  const leftUpper=fpsArmSegment(ls,lm,.105,sleeve,left),leftFore=fpsArmSegment(lm,weapon==='pistol'?lh.clone().lerp(lm,.14):lh,.086,cuff,left);fpsHand(left,lh,'left',glove);
  const leftGripAnchor=new THREE.Object3D();leftGripAnchor.name="LeftHandGripAnchor";leftGripAnchor.position.copy(lh);gun.add(leftGripAnchor);
- playerHandRig={right,left,pose,leftShoulder:ls.clone(),leftElbowBase:lm.clone(),leftHandBase:lh.clone(),leftUpper,leftFore,leftGripAnchor,m4Articulated:false};
+ playerHandRig={right,left,pose,leftShoulder:ls.clone(),leftElbowBase:lm.clone(),leftHandBase:lh.clone(),leftUpper,leftFore,leftGripAnchor,m4Articulated:false,
+   rightShoulder:rs.clone(),rightElbowBase:rm.clone(),rightHandBase:rh.clone(),rightUpper,rightFore,dmrIndexBase,dmrIndexTip};
+}
+// v681: hold the right firing hand on the Norinco trigger, without touching
+// any DMR magazine part, reload FX or the original reload paths. On reload the
+// arm returns to its unchanged v680 position before the magazine is manipulated.
+function updateDMRRightTriggerGrip(dt){
+ const r=playerHandRig;
+ if(weapon!=="dmr"||!r?.rightUpper||!r.rightFore||!r.dmrIndexBase)return;
+ const target=reloading?0:1;
+ dmrRightGripBlend=THREE.MathUtils.damp(dmrRightGripBlend,target,16,dt);
+ const t=dmrRightGripBlend;
+ const base=r.rightHandBase;
+ // Move only the firing wrist toward the trigger/grip in normal play.
+ // The support hand, loaded magazine and actual rifle are not changed.
+ const hand=base.clone().lerp(new THREE.Vector3(.41,-.64,-1.48),t);
+ const elbow=r.rightElbowBase.clone().lerp(
+  r.rightShoulder.clone().lerp(hand,.56).add(new THREE.Vector3(.15,-.045,.12)),t);
+ setFpsArmSegmentPose(r.rightUpper,r.rightShoulder,elbow);
+ setFpsArmSegmentPose(r.rightFore,elbow,hand);
+ setFpsHandPose(r.right,hand);
+ // Articulate the index separately into the trigger-guard opening rather than
+ // showing three identical straight fingers floating behind the stock.
+ const knuckle=hand.clone().add(new THREE.Vector3(-.035,.028,-.040));
+ const middle=hand.clone().add(new THREE.Vector3(-.073,.032,-.122));
+ const tip=hand.clone().add(new THREE.Vector3(-.056,-.022,-.198));
+ setFpsArmSegmentPose(r.dmrIndexBase,knuckle,middle);
+ setFpsArmSegmentPose(r.dmrIndexTip,middle,tip);
 }
 function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 const DETACHABLE_RELOAD_WEAPONS=new Set(["rifle","smg","pistol","dmr","m240"]);
@@ -4133,7 +4172,7 @@ function rebuildGun(){
  clearReloadMagazineFX(true);
  shotgunReloadCant=0; // New weapon/viewmodel must not retain an old shotgun roll.
  gun.traverse(o=>{if(o!==gun&&o.geometry&&!o.userData.externalWeaponAsset){try{o.geometry.dispose()}catch(_){}}});
- gun.clear();dmrShoulderBlend=0;playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
+ gun.clear();dmrShoulderBlend=0;dmrRightGripBlend=0;playerHandRig=null;playerReloadPart=null;m4ViewRoot=null;m4BoltCarrier=null;m4BoltHome=null;m4ChargingHandle=null;m4ChargingHandleHome=null;mp5ViewRoot=null;mp5RecoilPivot=null;shotgunViewRoot=null;shotgunPump=null;shotgunPumpHome=null;shotgunShell=null;shotgunShellTemplate=null;shotgunSpentShellTemplate=null;shotgunTrigger=null;shotgunInserter=null;shotgunHandTargets=null;shotgunLoadPort=null;shotgunBottomLoadPort=null;shotgunReloadShellActor=null;shotgunReloadShellIndex=0;m240ViewRoot=null;m240ViewModel=null;m240ViewBasePos=null;m240ViewBaseQuat=null;m240BarrelKick=0;launcherBreakRig=null;launcherFreshRound=null;launcherChamberRound=null;launcherRoundSeated=false;
  const x=.36,metal=M(0x25292b,.28),steel=M(0x141719,.2),dark=M(0x090b0c,.32),poly=M(0x202426,.68),rubber=M(0x141620,.88),wood=M(0x65462e,.72),brass=M(0xb48a45,.36);
  const part=(w,h,d,mat,y,z)=>bevelBox(w,h,d,mat,x,y,z);
  const grip=(y,z,ang=-.22,mat=poly)=>{let q=part(.24,.55,.30,mat,y,z);q.rotation.x=ang;for(let yy=-.16;yy<.18;yy+=.09)box(.205,.018,.315,dark,x,y+yy,z-.005,gun);return q};
@@ -9966,20 +10005,18 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
   // steep down-look angles ONLY; do not change normal hipfire, ADS or rays.
   if(weapon==="dmr")gun.position.y+=.26*lookDownT;
  }
- // v680: video-confirmed the Leisure rifle is almost floating forward at
- // hip-fire, with hands reaching toward the center of the screen. Draw it in
- // to a proper shouldered hold: slightly back toward the camera and over to
- // the player's right, canted just enough for the muzzle to point forward.
- // Move the WHOLE gun group so BOTH hands and the ORIGINAL detachable bakelite
- // magazine stay aligned with their source GLB; do not touch the reload FX.
- // Transition fully to the existing v679 gun transform during reload and ADS,
- // avoiding jumps while maintaining the previously close reload choreography.
+ // v681: user video shows the v680 rifle still riding above the crosshair
+ // and too far from the shoulder. Lower the HIP pose, bring it closer and
+ // slightly farther right, but fade that downshift when inspecting the floor
+ // to preserve the approved down-look barrel clearance. Do not change ADS,
+ // the real mag's home, or any reload animation.
  const dmrShoulderTarget=weapon==="dmr"&&!reloading?1-aimBlend:0;
  dmrShoulderBlend=THREE.MathUtils.damp(dmrShoulderBlend,dmrShoulderTarget,12,dt);
  if(weapon==="dmr"&&dmrShoulderBlend>.0001){
-  gun.position.x+=.20*dmrShoulderBlend;
-  gun.position.z+=.52*dmrShoulderBlend;
-  gun.rotation.y+=.095*dmrShoulderBlend;
+  gun.position.x+=.31*dmrShoulderBlend;
+  gun.position.z+=.76*dmrShoulderBlend;
+  gun.position.y-=.24*dmrShoulderBlend*(1-lookDownT);
+  gun.rotation.y+=.06*dmrShoulderBlend;
  }
  if(weapon==="rifle"&&m4ViewRoot){
    // Replacement M4 gets its own first-person pose instead of inheriting the old
@@ -10122,6 +10159,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      playerHandRig.right.position.set(0,-.025*rp.arch,.02*rp.arch);
      playerHandRig.right.rotation.set(.04*rp.arch,0,.05*rp.arch);
    }
+   updateDMRRightTriggerGrip(dt);
  }
  updateShotgunReloadFX(rp);
  updateReloadMagazineFX(rp);
