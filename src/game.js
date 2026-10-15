@@ -9960,6 +9960,10 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
   gun.rotation.x+=.45*lookDownT;
   gun.position.z+=.22*lookDownT;
   gun.position.y+=.07*lookDownT;
+  // The new 3.8-unit Norinco GLB is longer and more downward-swept than
+  // the short shotgun. Keep the full original gun + hands above pavement at
+  // steep down-look angles ONLY; do not change normal hipfire, ADS or rays.
+  if(weapon==="dmr")gun.position.y+=.26*lookDownT;
  }
  if(weapon==="rifle"&&m4ViewRoot){
    // Replacement M4 gets its own first-person pose instead of inheriting the old
