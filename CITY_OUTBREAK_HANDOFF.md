@@ -1,3 +1,12 @@
+# v692 VERIFIED — MOUSE-LOOK SPIKE FILTER TESTS AND DEPLOYMENT PASSED — 2026-10-16
+
+- **Node unit regression PASS:** the v692 mouse-look filter rejects implausible extreme movement, caps a large event, handles lock recenter spikes, and leaves ordinary/fast plausible mouse input unchanged. Verified by GitHub Actions run [38907730566](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38907730566).
+- **Actual Chromium gameplay regression PASS:** same run `38907730566` had `HAZMAT_V599_REPORT.passed=true`, `errors=[]` and confirmed `mouseLookProtection="v692-active"`, all seven gun hotkeys, original arms GLB, M17 hip grip, Hazmat, DMR and grenade/performance checks. This does **not** prove the intermittent real-world device spike has completely disappeared; the user should test in gameplay.
+- **Pages deployment PASS:** [38907729891](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38907729891); [play v692](https://xboxlivehd88-hue.github.io/city-outbreak/?v=692-mouse-look-guard). Sprinter regression PASS [38907730419](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38907730419). Parasite regression was still in progress when verification was recorded.
+- **GitHub gameplay commit:** `8b0bbbca440f81f82b58fb052d39155c157086d6`. Protected recovery v324 untouched. v691 M17 ADS sleeve appearance remains pending user visual approval.
+
+---
+
 # v692 — POINTER-LOCK MOUSE CAMERA WHIP PROTECTION — 2026-10-16
 
 - **User report:** Several different mice cause intermittent camera whip/spinning ONLY in CITY OUTBREAK. The sole v691 player `onMouseMove` directly applied raw `e.movementX/Y` to yaw/pitch, with no sanity checking. Browser pointer-lock or polling anomalies may occasionally report a giant one-off delta; this is the concrete vulnerability, though the origin of each spike cannot yet be proven.
