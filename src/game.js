@@ -3838,7 +3838,13 @@ function poseOriginalFpsArms(){
   wrist.position.copy(chain.wristTranslation);
   arm.parent.updateMatrixWorld(true);
   arm.position.copy(arm.parent.worldToLocal(gun.localToWorld(s.clone())));
-  arm.scale.set(1,1,1);elbow.scale.set(1,1,1);
+  // v693 M17: restrict ONLY native coat sleeve thickness, not bone lengths.
+  // Smoothly reduce bulky ADS sleeves without forcing shoulder/elbow placement.
+  const m17Ads=weapon==="pistol"?THREE.MathUtils.smoothstep(aimBlend,0,1):0;
+  const sleeveUpper=weapon==="pistol"?THREE.MathUtils.lerp(.96,.82,m17Ads):1;
+  const sleeveFore=weapon==="pistol"?THREE.MathUtils.lerp(.96,.84,m17Ads):1;
+  arm.scale.set(sleeveUpper,sleeveUpper,1);
+  elbow.scale.set(sleeveFore,sleeveFore,1);
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(arm,elbow,e,chain.armRest);
   const upperLength=arm.getWorldPosition(new THREE.Vector3()).distanceTo(elbow.getWorldPosition(new THREE.Vector3()));
@@ -3848,6 +3854,10 @@ function poseOriginalFpsArms(){
   const lowerLength=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
   elbow.scale.z=THREE.MathUtils.clamp(e.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
   elbow.updateMatrixWorld(true);
+  // Compensate inherited sleeve girth scale at the skinned original glove.
+  // Authentic wrist/fingers remain visible and the original bone spans remain.
+  const gloveRestore=1/(sleeveUpper*sleeveFore);
+  wrist.scale.set(gloveRestore,gloveRestore,1);
   // SOURCE finger bases run down wrist-local -Z. Aim them FORWARD along the
   // barrel, then rotate each native palm toward its weapon grip. Previously
   // the original arbitrary bind wrist rotation pointed hands out of the gun.
@@ -3858,26 +3868,31 @@ function poseOriginalFpsArms(){
   const parentWorld=elbow.getWorldQuaternion(new THREE.Quaternion());
   wrist.quaternion.copy(parentWorld.invert().multiply(desiredWorld));
   wrist.updateMatrixWorld(true);
-  // Keep native finger animation and gently close the M17 support hand
-  // around the pistol grip. Source phalanges are animated; their local X
-  // bending produces real finger flex, not stretched wrist/sleeve skin.
-  // These corrections are pistol-only and fade during the mag exchange.
+  // v693: video shows four M17 support fingers jutting SIDEWAYS from the grip.
+  // Bend BOTH the original first knuckles and second phalanges as a real fist.
+  // Ease this during the existing support-hand magazine fetch/reseat animation.
   if(weapon==="pistol"){
-   const gripFlex=side==="left"?(reloading?THREE.MathUtils.clamp(1-rp.hand,0,1):1):.42;
-   const fingerNames=side==="left"
+   const gripFlex=side==="left"?(reloading?THREE.MathUtils.clamp(1-rp.hand,0,1):1):.45;
+   const baseNames=side==="left"
+    ?["L_point_08","L_middle_012","L_ring_015","L_pink_019"]
+    :["R_middle_034","R_ring_038","R_pink_042"];
+   const tipNames=side==="left"
     ?["L_point_2_09","L_middle_2_00","L_ring_2_016","L_pink_2_020"]
     :["R_middle_2_035","R_ring_2_039","R_pink_2_043"];
-   const flex=side==="left"?.16:.10;
-   for(const name of fingerNames){
+   for(const name of baseNames){
     const finger=fpsNativeArms.getObjectByName(name);
-    if(finger)finger.rotateX(-flex*gripFlex);
+    if(finger)finger.rotateX(-(side==="left"?.23:.08)*gripFlex);
+   }
+   for(const name of tipNames){
+    const finger=fpsNativeArms.getObjectByName(name);
+    if(finger)finger.rotateX(-(side==="left"?.32:.15)*gripFlex);
    }
   }
   // v691: Curl the original SIG firing-hand index knuckle and middle joint
   // toward the trigger, without moving the wrist or replacing any mesh.
   if(weapon==="pistol"&&side==="right"){
-   const indexFlex=reloading?.035:recoil>.03?.095:.065;
-   chain.index.rotateX(-.025);
+   const indexFlex=reloading?.035:recoil>.03?.12:.09;
+   chain.index.rotateX(-.055);
    chain.indexMid.rotateX(-indexFlex);
   }
   // The DMR's original approved trigger finger movement remains unchanged.
@@ -3892,6 +3907,7 @@ function poseOriginalFpsArms(){
  fpsNativePoseFrames++;
  document.documentElement.dataset.fpsArmsPoseFrames=String(fpsNativePoseFrames);
  document.documentElement.dataset.fpsArmsAnimatedFingerTime=fingerTime.toFixed(3);
+ if(weapon==="pistol")document.documentElement.dataset.fpsArmsM17SleeveProfile="v693-native-slim";
 }
 
 function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}

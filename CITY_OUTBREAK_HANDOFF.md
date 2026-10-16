@@ -1,3 +1,12 @@
+# v693 — M17 ORIGINAL FINGER WRAP AND SLIMMER ADS SLEEVES — 2026-10-17
+
+- **New video inspected closely:** `2026-10-17 01-37-56.mp4`, 19.17 seconds at 1280×720/30fps. At 4–7s and 9–10s, original left support fingers poke sideways OUT of the pistol grip rather than wrap the firing hand. At 7.2–8.1s and 11.8–12.4s, both big grey cloth sleeves form a triangular V obscuring the ADS sight picture. At ~14–16s left hand moves away and back for magazine reload. Confirmed v691/v692 closer wrist-distance did not fix actual finger anatomy or coat shape.
+- **Scoped v693 change:** Original 47-bone skinned `assets/cartoon_fps_arms.glb`, original clip and source materials preserved. Only for M17: gently narrow native shoulder/elbow local sleeve X/Y cross-section from .96 hip to .82/.84 ADS, compensate original glove scale at wrist, no manual shoulder/elbow or wrist position translations (avoid v688). Curl all four LEFT native finger base/second joints (.23/.32 rad) for real grip; release flex during support hand magazine move. Increase right trigger-index articulated bend subtly. No changes to actual pistol geometry/ADS/bullet/reload timings or other six weapon profiles.
+- **Smoke:** Existing real Chromium browser captures M17 shaded HIP/ADS canvas screenshots for review, verifies model/weapon/DMR/zombies/perf and checks `fpsArmsM17SleeveProfile=v693-native-slim`. Tests and Pages deployment must be checked before asserting pass, **visual approval still requires user's playtest**.
+- **Loader/game:** `./src/game.js?v=693`, https://xboxlivehd88-hue.github.io/city-outbreak/?v=693-m17-fingers-sleeves . Preserve v692 mouse camera spike protection, seven test weapons, original DMR, bosses, crawlers, map, grenade FPS work. **Protected v324 checkpoint unchanged.**
+
+---
+
 # v692 VERIFIED — MOUSE-LOOK SPIKE FILTER TESTS AND DEPLOYMENT PASSED — 2026-10-16
 
 - **Node unit regression PASS:** the v692 mouse-look filter rejects implausible extreme movement, caps a large event, handles lock recenter spikes, and leaves ordinary/fast plausible mouse input unchanged. Verified by GitHub Actions run [38907730566](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38907730566).
