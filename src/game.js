@@ -3755,10 +3755,52 @@ function attachOriginalFpsArms(){
  // so the cartoon fingers fit actual gun receivers rather than engulfing them.
  // The arm-chain IK recomputes elbow/forearm span against existing hand targets.
  rig.scale.multiplyScalar(1.20/nativeLength);
+ // v695: The uploaded original arms GLB contains genuinely oversized sleeve
+ // polygons (elbow-weighted source spans ~246 wide versus ~136 hand width).
+ // Taper ONLY the sleeve vertices in this PISTOL clone. Retain the original
+ // textured skinned mesh, 47 original bones, finger animation and skin weights.
+ // The other six weapons continue sharing the unmodified imported geometry.
+ let m17SleeveVerts=0;
  rig.traverse(o=>{
   o.userData.externalWeaponAsset=true;
-  if(o.isSkinnedMesh){o.castShadow=false;o.receiveShadow=false;o.frustumCulled=false;}
+  if(o.isSkinnedMesh){
+   o.castShadow=false;o.receiveShadow=false;o.frustumCulled=false;
+   if(weapon==="pistol"){
+    const geom=o.geometry.clone();
+    const p=geom.getAttribute("position");
+    const joints=geom.getAttribute("skinIndex"),weights=geom.getAttribute("skinWeight");
+    const lb=o.skeleton.bones.findIndex(b=>b.name==="L_elbow_02");
+    const rb=o.skeleton.bones.findIndex(b=>b.name==="R_elbow_024");
+    if(p&&joints&&weights&&lb>=0&&rb>=0){
+     for(let i=0;i<p.count;i++){
+      let leftWeight=0,rightWeight=0;
+      for(let j=0;j<4;j++){
+       const bone=joints.getComponent(i,j),w=weights.getComponent(i,j);
+       if(bone===lb)leftWeight+=w;
+       else if(bone===rb)rightWeight+=w;
+      }
+      const influence=Math.max(leftWeight,rightWeight);
+      const z=p.getZ(i);
+      if(influence<.10||z>=-100)continue; // never reshape glove or fingers
+      const depth=THREE.MathUtils.clamp((-z-100)/480,0,1);
+      const falloff=depth*depth*(3-2*depth);
+      const keep=1-.67*Math.pow(influence,.80)*falloff;
+      if(keep>.995)continue;
+      const side=leftWeight>rightWeight?1:-1;
+      const centerX=side*(303+36*depth);
+      const centerY=-36.5;
+      p.setXY(i,centerX+(p.getX(i)-centerX)*keep,
+                centerY+(p.getY(i)-centerY)*keep);
+      m17SleeveVerts++;
+     }
+     p.needsUpdate=true;
+     geom.computeBoundingBox();geom.computeBoundingSphere();
+    }
+    o.geometry=geom;
+   }
+  }
  });
+ if(weapon==="pistol")document.documentElement.dataset.fpsArmsM17TaperVerts=String(m17SleeveVerts);
  gun.add(rig);
  const chain=(prefix)=>{
   const names=prefix==="L"?["L_arm_01","L_elbow_02","L_wrist_03","L_point_08","L_point_2_09"]:
@@ -3865,7 +3907,12 @@ function poseOriginalFpsArms(){
   // Compensate inherited sleeve girth scale at the skinned original glove.
   // Authentic wrist/fingers remain visible and the original bone spans remain.
   const gloveRestore=1/(sleeveUpper*sleeveFore);
-  wrist.scale.set(gloveRestore,gloveRestore,1);
+  // Prior .72 shrink scaled only an invisible controller; the real support
+  // glove never became smaller. Scale the authentic LEFT wrist/finger bones,
+  // not a hidden guide or a new mesh. Leave trigger-hand size unchanged.
+  const nativeSupportSize=weapon==="pistol"&&side==="left"?.86:1;
+  wrist.scale.set(gloveRestore*nativeSupportSize,
+                  gloveRestore*nativeSupportSize,nativeSupportSize);
   // SOURCE finger bases run down wrist-local -Z. Aim them FORWARD along the
   // barrel, then rotate each native palm toward its weapon grip. Previously
   // the original arbitrary bind wrist rotation pointed hands out of the gun.
@@ -3889,11 +3936,17 @@ function poseOriginalFpsArms(){
     :["R_middle_2_035","R_ring_2_039","R_pink_2_043"];
    for(const name of baseNames){
     const finger=fpsNativeArms.getObjectByName(name);
-    if(finger)finger.rotateX(-(side==="left"?.23:.08)*gripFlex);
+    if(finger)finger.rotateX(-(side==="left"?.48:.08)*gripFlex);
    }
    for(const name of tipNames){
     const finger=fpsNativeArms.getObjectByName(name);
-    if(finger)finger.rotateX(-(side==="left"?.32:.15)*gripFlex);
+    if(finger)finger.rotateX(-(side==="left"?.64:.15)*gripFlex);
+   }
+   if(side==="left"){
+    const thumb=fpsNativeArms.getObjectByName("L_thumb_04");
+    const thumbMid=fpsNativeArms.getObjectByName("L_thumb_2_05");
+    if(thumb){thumb.rotateX(-.11*gripFlex);thumb.rotateY(.15*gripFlex)}
+    if(thumbMid)thumbMid.rotateX(-.22*gripFlex);
    }
   }
   // v691: Curl the original SIG firing-hand index knuckle and middle joint
@@ -3915,7 +3968,10 @@ function poseOriginalFpsArms(){
  fpsNativePoseFrames++;
  document.documentElement.dataset.fpsArmsPoseFrames=String(fpsNativePoseFrames);
  document.documentElement.dataset.fpsArmsAnimatedFingerTime=fingerTime.toFixed(3);
- if(weapon==="pistol")document.documentElement.dataset.fpsArmsM17SleeveProfile="v694-natural-shoulders";
+ if(weapon==="pistol"){
+  document.documentElement.dataset.fpsArmsM17SleeveProfile="v695-source-sleeve-taper";
+  document.documentElement.dataset.fpsArmsM17GloveScale="0.86";
+ }
 }
 
 function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
