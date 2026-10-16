@@ -3922,18 +3922,16 @@ function rotateNativeBoneToward(bone,child,goalGun,restQuat){
  const parent=bone.parent;
  parent.updateMatrixWorld(true);
  const current=bone.getWorldPosition(new THREE.Vector3());
- // Keep the gun target as a world POINT; never mutate it into a unit
- // direction before converting back through the scaled arm parent.
+ // Preserve the proven v707 source IK: using quaternion-space direction
+ // exactly retains the approved gun-local wrist endpoints across all 7 guns.
+ // v708/v709 scaled-parent inversion was rejected by REAL Chromium:
+ // its left ADS wrist drifted 3–14 cm away from the actual foregrips.
  const goal=gun.localToWorld(goalGun.clone());
- const desired=goal.clone().sub(current).normalize();
- // The source forearm inherits nonuniform upper-sleeve scale in ADS.
- // A world QUATERNION ignores its parent's scale/shear, causing the native
- // wrist to miss the genuine support grip by 6–30 cm on the long guns.
- // Transform the destination through the FULL inverse parent matrix.
- const goalParent=parent.worldToLocal(goal.clone());
- const desiredLocal=goalParent.sub(bone.position).normalize();
+ const desired=goal.sub(current).normalize();
+ const parentQuat=parent.getWorldQuaternion(new THREE.Quaternion());
+ desired.applyQuaternion(parentQuat.invert());
  const restAxis=child.position.clone().applyQuaternion(restQuat).normalize();
- const delta=new THREE.Quaternion().setFromUnitVectors(restAxis,desiredLocal);
+ const delta=new THREE.Quaternion().setFromUnitVectors(restAxis,desired);
  bone.quaternion.copy(delta).multiply(restQuat);
  parent.updateMatrixWorld(true);
 }
