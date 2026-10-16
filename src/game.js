@@ -3267,6 +3267,14 @@ const FX={
 // The existing graphics particle percentage controls every density tier.
 let explosionBurstTextures=null;
 const activeExplosionBursts=[];
+// One persistent local flash, registered before the first renderer program
+// compile. Previously EACH launcher blast added a new PointLight, changing
+// the live scene light count and forcing expensive shader recompilations
+// when multiple rounds exploded together. Keep one stable scene light.
+const sharedExplosionFlash=new THREE.PointLight(0xffa55b,0,11,2);
+sharedExplosionFlash.castShadow=false;
+scene.add(sharedExplosionFlash);
+document.documentElement.dataset.explosionFlashLightProfile="one-persistent-light";
 const explosionSparkGeometry=new THREE.TetrahedronGeometry(1,0);
 const explosionSparkMaterial=new THREE.MeshBasicMaterial({
  color:0xffffff,toneMapped:false,fog:false,side:THREE.DoubleSide
@@ -3398,6 +3406,7 @@ function clearExplosionBurst(burst){
 function clearExplosionGlbs(){
  for(const burst of activeExplosionBursts)clearExplosionBurst(burst);
  activeExplosionBursts.length=0;
+ sharedExplosionFlash.intensity=0;
 }
 function drawExplosionSparks(fx,dt){
  // The longest spark lives about 1.08s. Stop re-uploading their matrix
@@ -3515,12 +3524,12 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  group.add(sparkMesh);
  // A brief local light flash makes the large High-quality explosion illuminate
  // nearby surfaces; no shadow map is allocated, and disabling Lights omits it.
- let flash=null;
- if(quality>=.85&&graphicsOptions.lights!=="off"){
-   flash=new THREE.PointLight(0xffa55b,3.2+2.0*spectacle,8.0+2.3*spectacle,2);
-   flash.castShadow=false;
-   flash.position.set(0,1.45,0);
-   group.add(flash);
+ // Never add/remove PointLights mid-combat. Reuse the one already
+ // registered with the main scene; overlapping blasts share its peak.
+ const flash=quality>=.85&&graphicsOptions.lights!=="off"?sharedExplosionFlash:null;
+ if(flash){
+  flash.position.copy(position);flash.position.y+=1.45;
+  flash.intensity=Math.max(flash.intensity,3.2+2.0*spectacle);
  }
  const burst={group,particles,particleBatches,sparkMesh,sparks,flash,flashPeak:3.2+2.0*spectacle,ruptureDelay,age:0,life:1.75+.43*spectacle,sparksFinished:false};
  for(const batch of particleBatches)drawExplosionParticleBatch(batch,cam.quaternion,ruptureDelay,0);
@@ -3530,11 +3539,19 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  document.documentElement.dataset.grenadeLastSpriteDraws=String(particleBatches.length);
 }
 function updateExplosionGlbs(dt){
+ let strongestFlash=0;
  for(let i=activeExplosionBursts.length-1;i>=0;i--){
    const fx=activeExplosionBursts[i];
    fx.age+=dt;
    drawExplosionSparks(fx,dt);
-   if(fx.flash)fx.flash.intensity=fx.flashPeak*Math.max(0,1-fx.age/.23)**2;
+   if(fx.flash){
+    const intensity=fx.flashPeak*Math.max(0,1-fx.age/.23)**2;
+    if(intensity>strongestFlash){
+     strongestFlash=intensity;
+     sharedExplosionFlash.position.copy(fx.group.position);
+     sharedExplosionFlash.position.y+=1.45;
+    }
+   }
    for(const p of fx.particles){
     if(!p.core&&fx.age<fx.ruptureDelay)continue;
     if(p.age>=p.life)continue;
@@ -3553,6 +3570,9 @@ function updateExplosionGlbs(dt){
      activeExplosionBursts.splice(i,1);
    }
  }
+ // Shader light count stays ONE on all frames, even with three or four
+ // concurrent launcher detonations. Lights OFF remains visually off.
+ sharedExplosionFlash.intensity=graphicsOptions.lights!=="off"?strongestFlash:0;
 }
 function cosmeticParticleCount(count){return Math.max(0,Math.round(count*graphicsOptions.particles/100));}
 function capFX(){
