@@ -1,0 +1,32 @@
+name: Measure Original FPS Hand and Gun Geometry
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/arms-contact-audit.cjs'
+      - '.github/workflows/arms-contact-audit.yml'
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Audit authentic gun mesh contact points
+        run: |
+          python3 -m http.server 4173 >/tmp/arms-grip-server.log 2>&1 &
+          sleep 2
+          node scripts/arms-contact-audit.cjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v701-grip-geometry
+          path: V701_GRIP_GEOMETRY.json
