@@ -3659,7 +3659,15 @@ function addPlayerHands(){
  // The pistol support hand was visually swallowing the reload magazine. Scale only
  // the M17 left-hand/arm geometry down while preserving the approved animation path.
  if(weapon==='pistol')left.scale.setScalar(.72);
- const rs=new THREE.Vector3(.80,-1.12,.08),ls=weapon==="shotgun"?new THREE.Vector3(-.27,-.99,-.43):new THREE.Vector3(-.35,-1.08,.06),rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
+ // v694: The M17 sleeve roots sit near the camera (Z +.08);
+ // perspective magnifies these broad coats into huge ADS triangles.
+ // Move ONLY the hidden pistol shoulder-controller origins away from the
+ // camera. Existing arm/elbow/wrist solver follows naturally—no forced
+ // bone translation, no source skin replacement or unnatural ADS freeze.
+ const rs=weapon==="pistol"?new THREE.Vector3(.64,-1.17,-.43):new THREE.Vector3(.80,-1.12,.08);
+ const ls=weapon==="pistol"?new THREE.Vector3(-.26,-1.15,-.43):
+  weapon==="shotgun"?new THREE.Vector3(-.27,-.99,-.43):new THREE.Vector3(-.35,-1.08,.06);
+ const rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
  const rm=new THREE.Vector3().lerpVectors(rs,rh,.58),lm=new THREE.Vector3().lerpVectors(ls,lh,.58);
  const rightUpper=fpsArmSegment(rs,rm,.105,sleeve,right),rightFore=fpsArmSegment(rm,weapon==='pistol'?rh.clone().lerp(rm,.14):rh,.086,cuff,right);
  fpsHand(right,rh,'right',glove);
@@ -3907,7 +3915,7 @@ function poseOriginalFpsArms(){
  fpsNativePoseFrames++;
  document.documentElement.dataset.fpsArmsPoseFrames=String(fpsNativePoseFrames);
  document.documentElement.dataset.fpsArmsAnimatedFingerTime=fingerTime.toFixed(3);
- if(weapon==="pistol")document.documentElement.dataset.fpsArmsM17SleeveProfile="v693-native-slim";
+ if(weapon==="pistol")document.documentElement.dataset.fpsArmsM17SleeveProfile="v694-natural-shoulders";
 }
 
 function smoothReload01(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}

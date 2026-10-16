@@ -1,3 +1,12 @@
+# v694 — CORRECT PISTOL ADS SLEEVE PERSPECTIVE AT THE HIDDEN SHOULDER ANCHORS — 2026-10-17
+
+- **User's original 19-second video** `2026-10-17 01-37-56.mp4`: visible left fingers protrude from M17 in hip, broad coat/sleeve V fills ADS at 7-8 and 12s, reload hand geometry awkward. The first v693 source bone curl and local X/Y coat narrowing did NOT adequately fix ADS V; this was confirmed by inspected real Chromium screenshots from passing [v693 regression 38911574017](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38911574017), which preserved original 47-bone skinned arms and 7 weapons.
+- **Root cause for the exaggerated projected sleeves:** hidden M17 controller SHOULDER targets were Z +.08 and +.06, essentially in front of the camera, while M17 hands were Z -.82. This enlarges baggy original source garments at ADS. **v694 M17-only** changes invisible right shoulder origin [.80,-1.12,.08] -> [.64,-1.17,-.43], left [-.35,-1.08,.06] -> [-.26,-1.15,-.43]. Derived elbows and hands still follow original natural IK; no manual animated GLB arm/elbow/wrist translations, no v688 regression, no other weapon transforms. v693 source finger curls and moderate coat-thickness adjustment retained.
+- **Testing:** Chromium game audit captures real WebGL HIP and ADS views and checks live `fpsArmsM17SleeveProfile=v694-natural-shoulders`, all 7 original weapons, original GLB, DMR, zombies, grenade FX and v692 mouse-look protection. Tests/PAGES pending. Don't call the hands finally approved without direct inspection of new renders and user playtest.
+- **Loader:** `./src/game.js?v=694`; test https://xboxlivehd88-hue.github.io/city-outbreak/?v=694-m17-natural-shoulders . **v324 recovery untouched.**
+
+---
+
 # v693 — M17 ORIGINAL FINGER WRAP AND SLIMMER ADS SLEEVES — 2026-10-17
 
 - **New video inspected closely:** `2026-10-17 01-37-56.mp4`, 19.17 seconds at 1280×720/30fps. At 4–7s and 9–10s, original left support fingers poke sideways OUT of the pistol grip rather than wrap the firing hand. At 7.2–8.1s and 11.8–12.4s, both big grey cloth sleeves form a triangular V obscuring the ADS sight picture. At ~14–16s left hand moves away and back for magazine reload. Confirmed v691/v692 closer wrist-distance did not fix actual finger anatomy or coat shape.
