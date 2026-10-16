@@ -3793,7 +3793,10 @@ function attachOriginalFpsArms(){
       if(influence<.10||z>=-100)continue; // never reshape glove or fingers
       const depth=THREE.MathUtils.clamp((-z-100)/480,0,1);
       const falloff=depth*depth*(3-2*depth);
-      const keep=1-(weapon==="pistol"?.67:.76)*Math.pow(influence,.80)*falloff;
+      // Real original elbow-weighted cloth spans ~246 source units wide,
+      // while the glove is ~136. Reduce only the cloth cross-section; the
+      // original texture, wrist, finger vertices and skeleton stay untouched.
+      const keep=1-(weapon==="pistol"?.84:.83)*Math.pow(influence,.80)*falloff;
       if(keep>.995)continue;
       const side=leftWeight>rightWeight?1:-1;
       const centerX=side*(303+36*depth);
