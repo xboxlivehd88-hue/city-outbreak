@@ -6,6 +6,8 @@ const {chromium}=require("playwright"),fs=require("fs");
   browser=await chromium.launch({headless:true,args:["--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-dev-shm-usage"]});
   const page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>report.errors.push(String(e)));
+  page.on("console",msg=>{if(msg.type()==="error")report.errors.push("console: "+msg.text().slice(0,450))});
+  page.on("requestfailed",req=>report.errors.push("requestfailed: "+req.url()+" "+(req.failure()?.errorText||"")));
   const addon=`
 ;globalThis.__sourceWeaponGeometryAudit=()=>{
  const previous={weapon,aiming,pitch,inspection:fpsArmsInspector.enabled};
@@ -92,7 +94,20 @@ const {chromium}=require("playwright"),fs=require("fs");
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:90000});
   await page.waitForTimeout(9000);
   await page.locator("#start").click({noWaitAfter:true});
-  await page.waitForFunction(()=>!!globalThis.__sourceWeaponGeometryAudit,null,{timeout:60000});
+  try{
+   await page.waitForFunction(()=>!!globalThis.__sourceWeaponGeometryAudit,null,{timeout:20000});
+  }catch(startError){
+   report.startup=await page.evaluate(()=>({
+    ready:document.documentElement.dataset.fpsArmsGlbReady,
+    build:document.documentElement.dataset.cityOutbreakBuild,
+    warmup:document.documentElement.dataset.explosionGpuWarmup,
+    warmupError:document.documentElement.dataset.explosionGpuWarmupError,
+    loader:[...document.scripts].map(x=>x.src).filter(Boolean),
+    hook:typeof globalThis.__sourceWeaponGeometryAudit,
+    fatal:document.body.innerText.slice(-700)
+   }));
+   throw startError;
+  }
   report.models=await page.evaluate(()=>globalThis.__sourceWeaponGeometryAudit());
   report.handAndLauncher=await page.evaluate(()=>globalThis.__v705FingerLauncherAudit());
   console.log("V704_HAND_LAUNCHER_AUDIT="+JSON.stringify(report.handAndLauncher));
