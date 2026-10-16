@@ -4006,37 +4006,16 @@ function poseOriginalFpsArms(){
   elbow.scale.set(sleeveFore,sleeveFore,1);
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(arm,elbow,e,chain.armRest);
-  let shortenedNativeShoulder=false;
+  // Preserve the approved actual elbow and wrist world targets. A v707
+  // virtual shoulder/ADS shortening trial shifted the DMR/M240 support hands
+  // up to 30 cm off their grips; geometry regression rejected and reverted it.
+  // Open-arm inspection stretches by design, and H returns to REAL grips.
   const upperLength=arm.getWorldPosition(new THREE.Vector3()).distanceTo(elbow.getWorldPosition(new THREE.Vector3()));
-  // v707: the REAL normal-mode ADS inspection found the long-gun upper
-  // source sleeve stretching 2.3x (M4) to 2.86x (DMR/M240). Keep the
-  // APPROVED elbow and wrist/optic positions, and tuck only the VIRTUAL
-  // source shoulder along its existing shoulder-to-elbow line in ADS.
-  // Not the destructive v688 hand/shoulder forcing or a weapon offset.
-  if(!fpsArmsInspector.enabled&&weapon!=="pistol"&&!reloading&&aimBlend>.01){
-   const span=s.distanceTo(e),sourceSpan=Math.max(.001,upperLength);
-   const maximum=1.62;
-   if(span/sourceSpan>maximum){
-    const blend=THREE.MathUtils.smoothstep(aimBlend,.14,.95);
-    const shorten=Math.max(0,span-maximum*sourceSpan)*blend;
-    shortenedNativeShoulder=shorten>.00001;
-    s=s.clone().lerp(e,Math.min(.95,shorten/Math.max(.001,span)));
-    arm.position.copy(arm.parent.worldToLocal(gun.localToWorld(s.clone())));
-    arm.updateMatrixWorld(true);
-    rotateNativeBoneToward(arm,elbow,e,chain.armRest);
-   }
-  }
   arm.scale.z=THREE.MathUtils.clamp(s.distanceTo(e)/Math.max(.001,upperLength),.3,3.2);
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(elbow,wrist,w,chain.elbowRest);
   const lowerLength=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
-  // After the virtual shoulder is brought forward, the skinned elbow may
-  // not land exactly on its old procedural guide 'e'. Measure from the REAL
-  // bone joint instead. Otherwise the 1.62x sleeve cap displaced the DMR
-  // and M240 support wrists by ~12 cm away from the source foregrip.
-  const actualElbow=shortenedNativeShoulder
-    ?gun.worldToLocal(elbow.getWorldPosition(new THREE.Vector3())):e;
-  elbow.scale.z=THREE.MathUtils.clamp(actualElbow.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
+  elbow.scale.z=THREE.MathUtils.clamp(e.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
   elbow.updateMatrixWorld(true);
   // Compensate inherited sleeve girth scale at the skinned original glove.
   // Authentic wrist/fingers remain visible and the original bone spans remain.
