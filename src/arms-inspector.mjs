@@ -1,4 +1,4 @@
-// CITY OUTBREAK v697 — intentionally non-gameplay, original source-arm reference.
+// CITY OUTBREAK v698 — intentionally non-gameplay, original source-arm reference.
 // The SAME extended wrist and elbow targets are used for all seven guns.
 // H restores the exact existing grip controller; J reveals palm axes in 90° steps.
 export function createArmsInspector(onChanged){
