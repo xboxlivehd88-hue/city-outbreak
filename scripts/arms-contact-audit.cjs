@@ -41,15 +41,16 @@ const {chromium}=require("playwright"),fs=require("fs");
  return result;
 };
 `;
-  await page.route(url=>url.href.includes("/src/game.js?v=701"),async route=>{
+  await page.route(url=>url.pathname.endsWith("/src/game.js"),async route=>{
     const rsp=await route.fetch();const source=await rsp.text();
+    console.log("V701_SOURCE_AUDIT_INJECTED",route.request().url());
     await route.fulfill({response:rsp,body:source+addon,contentType:"application/javascript"});
   });
   await page.goto("http://127.0.0.1:4173/?v=701-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:90000});
   await page.waitForTimeout(9000);
   await page.locator("#start").click({noWaitAfter:true});
-  await page.waitForFunction(()=>!!globalThis.__sourceWeaponGeometryAudit,null,{timeout:15000});
+  await page.waitForFunction(()=>!!globalThis.__sourceWeaponGeometryAudit,null,{timeout:60000});
   report.models=await page.evaluate(()=>globalThis.__sourceWeaponGeometryAudit());
   for(const m of report.models){
    const jpeg=m.hip.jpeg;
