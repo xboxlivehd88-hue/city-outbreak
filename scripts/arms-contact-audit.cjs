@@ -1,4 +1,6 @@
 // Real seven-weapon first-person grip geometry measurement, not fake calibration.
+// v708: exercise the full parent-matrix ADS forearm correction on CURRENT main
+// against the protected v706 seven-gun wrist-contact baseline.
 const {chromium}=require("playwright"),fs=require("fs");
 (async()=>{
  let browser;const report={passed:false,models:[],errors:[]};
