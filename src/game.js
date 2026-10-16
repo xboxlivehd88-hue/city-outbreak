@@ -3889,7 +3889,14 @@ function poseOriginalFpsArms(){
   // actual weapon GLBs and existing shoulder/reload/ADS hand controllers.
   if(!fpsArmsInspector.enabled){
    const shift=new THREE.Vector3(...nativeGripShift(weapon,side));
-   w.add(shift);e.addScaledVector(shift,.45);
+   // During a reload the left hand must LEAVE the foregrip and follow the
+   // existing magazine/shell actor. Blend source-contact correction back to
+   // zero as that controller reaches for the pouch and restore on reseating.
+   // Right firing hand stays on its original gun contact throughout.
+   const contactHold=side==="left"&&reloading
+      ?THREE.MathUtils.clamp(1-rp.hand,0,1):1;
+   w.addScaledVector(shift,contactHold);
+   e.addScaledVector(shift,.45*contactHold);
   }
   // v691: M17 wrists were 22cm apart at hip but only 5cm apart in ADS.
   // Only the support wrist gets a smoothly blended grip-side target correction.
