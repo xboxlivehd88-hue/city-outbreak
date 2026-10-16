@@ -3275,6 +3275,24 @@ const explosionSparkDummy=new THREE.Object3D();
 const explosionSparkUp=new THREE.Vector3(0,1,0);
 const explosionSparkDirection=new THREE.Vector3();
 const explosionSparkColors=[0xfff8d4,0xffdf78,0xffa73e,0xff581e,0xffffff];
+// Keep fully allocated GPU instance buffers between launcher impacts.
+const explosionSparkPool=[];
+function acquireExplosionSparkMesh(count){
+ const idx=explosionSparkPool.findIndex(m=>m.instanceMatrix.count>=count);
+ const mesh=idx>=0?explosionSparkPool.splice(idx,1)[0]:
+   new THREE.InstancedMesh(explosionSparkGeometry,explosionSparkMaterial,count);
+ mesh.count=count;mesh.visible=true;mesh.name="DenseExplosionSparksAndFragments";
+ mesh.frustumCulled=false;mesh.castShadow=false;mesh.receiveShadow=false;
+ mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+ return mesh;
+}
+function recycleExplosionSparkMesh(mesh){
+ if(!mesh)return;
+ if(mesh.parent)mesh.parent.remove(mesh);
+ mesh.count=0;mesh.visible=false;
+ if(explosionSparkPool.length<3)explosionSparkPool.push(mesh);
+ else mesh.dispose?.();
+}
 
 // The v529 radial circles looked sparse and artificial. Make irregular cloud
 // silhouettes once, not per frame, using two tiny procedural alpha textures.
@@ -3319,13 +3337,20 @@ async function prewarmExplosionGpu(){
  explosionGpuPrewarmPromise=(async()=>{
   const started=performance.now();
   document.documentElement.dataset.explosionGpuWarmup="running";
-  let burn=null,haze=null,warmTarget=null;
+  let burn=null,haze=null,warmTarget=null,warmSpark=null;
   try{
    prepareExplosionTextures();
    burn=primeExplosionParticleBatch(explosionBurstTextures.fire,false,160);
    haze=primeExplosionParticleBatch(explosionBurstTextures.smoke,true,160);
-   const warmSpark=new THREE.InstancedMesh(explosionSparkGeometry,explosionSparkMaterial,1);
-   warmSpark.setColorAt(0,new THREE.Color(0xfff8d4));
+   // Prewarm 256 REAL instance slots, not the former single dummy spark.
+   warmSpark=acquireExplosionSparkMesh(256);
+   const hidden=new THREE.Object3D();hidden.scale.setScalar(.00001);hidden.updateMatrix();
+   for(let i=0;i<256;i++){
+    warmSpark.setMatrixAt(i,hidden.matrix);
+    warmSpark.setColorAt(i,new THREE.Color(explosionSparkColors[i%explosionSparkColors.length]));
+   }
+   warmSpark.instanceMatrix.needsUpdate=true;
+   if(warmSpark.instanceColor)warmSpark.instanceColor.needsUpdate=true;
    const warmScene=new THREE.Scene();
    warmScene.add(burn.mesh,haze.mesh,warmSpark);
    // compileAsync avoids blocking the first grenade for shader linking.
@@ -3349,6 +3374,7 @@ async function prewarmExplosionGpu(){
   }finally{
    if(burn)disposeExplosionParticleBatch(burn);
    if(haze)disposeExplosionParticleBatch(haze);
+   if(warmSpark)recycleExplosionSparkMesh(warmSpark);
    warmTarget?.dispose();
    document.documentElement.dataset.explosionGpuWarmupMs=
     (performance.now()-started).toFixed(1);
@@ -3361,6 +3387,7 @@ if(typeof requestIdleCallback==="function")
 else setTimeout(()=>{prewarmExplosionGpu()},350);
 function clearExplosionBurst(burst){
  for(const batch of burst.particleBatches)disposeExplosionParticleBatch(batch);
+ recycleExplosionSparkMesh(burst.sparkMesh);
  if(burst.group.parent)burst.group.parent.remove(burst.group);
 }
 function clearExplosionGlbs(){
@@ -3368,6 +3395,12 @@ function clearExplosionGlbs(){
  activeExplosionBursts.length=0;
 }
 function drawExplosionSparks(fx,dt){
+ // The longest spark lives about 1.08s. Stop re-uploading their matrix
+ // buffers while the smoke plume remains visible for another second.
+ if(fx.age>1.12){
+  if(!fx.sparksFinished){fx.sparkMesh.count=0;fx.sparksFinished=true}
+  return;
+ }
  for(let i=0;i<fx.sparks.length;i++){
    const s=fx.sparks[i];
    if(dt>0){
@@ -3451,11 +3484,7 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  const particleBatches=[fireBatch,smokeBatch].filter(Boolean);
  for(const batch of particleBatches)group.add(batch.mesh);
  const sparkCount=Math.max(14,Math.round((isLauncher?160:200)*(1+.28*spectacle)*Math.pow(quality,1.8)));
- const sparkMesh=new THREE.InstancedMesh(explosionSparkGeometry,explosionSparkMaterial,sparkCount);
- sparkMesh.name="DenseExplosionSparksAndFragments";
- sparkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
- sparkMesh.frustumCulled=false;
- sparkMesh.castShadow=false;sparkMesh.receiveShadow=false;
+ const sparkMesh=acquireExplosionSparkMesh(sparkCount);
  const sparks=[];
  for(let i=0;i<sparkCount;i++){
    const angle=Math.random()*Math.PI*2;
@@ -3486,7 +3515,7 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
    flash.position.set(0,1.45,0);
    group.add(flash);
  }
- const burst={group,particles,particleBatches,sparkMesh,sparks,flash,flashPeak:3.2+2.0*spectacle,ruptureDelay,age:0,life:1.75+.43*spectacle};
+ const burst={group,particles,particleBatches,sparkMesh,sparks,flash,flashPeak:3.2+2.0*spectacle,ruptureDelay,age:0,life:1.75+.43*spectacle,sparksFinished:false};
  for(const batch of particleBatches)drawExplosionParticleBatch(batch,cam.quaternion,ruptureDelay,0);
  drawExplosionSparks(burst,0);
  activeExplosionBursts.push(burst);
@@ -3721,6 +3750,7 @@ function updateDMRRightTriggerGrip(dt){
 // Retarget its original shoulder/elbow/wrist chains onto the existing hidden
 // hand controllers; preserves M4/MP5/shotgun/M17/DMR/M240/launcher paths.
 let fpsNativeArms=null,fpsNativeBoneChains=null,fpsNativePoseFrames=0,fpsNativeMixer=null;
+let fpsNativeFingerRest=[]; // native GLB base quaternions prevent cumulative spins
 // Source-oriented open-arm reference is TEMPORARILY ON for all seven gun tests.
 const fpsArmsInspector=createArmsInspector(()=>{if(playerHandRig)rebuildGun()});
 globalThis.__cityArmsReference=fpsArmsInspector;
@@ -3749,7 +3779,7 @@ const FPS_NATIVE_GRIPS={
 };
 const fpsJointAxis=new THREE.Vector3(0,1,0);
 function attachOriginalFpsArms(){
- fpsNativeArms=null;fpsNativeBoneChains=null;fpsNativeMixer=null;
+ fpsNativeArms=null;fpsNativeBoneChains=null;fpsNativeMixer=null;fpsNativeFingerRest=[];
  if(!fpsArmsTemplate||!playerHandRig)return;
  const rig=cloneSkeleton(fpsArmsTemplate);
  rig.name="OriginalCartoonFPSArmsGLB";
@@ -3831,7 +3861,16 @@ function attachOriginalFpsArms(){
   fpsNativeMixer=new THREE.AnimationMixer(rig);
   const authored=fpsNativeMixer.clipAction(fpsArmsGripClip);
   authored.play();authored.setLoop(THREE.LoopOnce,1);authored.clampWhenFinished=true;
+  fpsNativeMixer.setTime(0);
  }
+ // Capture the original quaternion of EVERY articulated thumb/finger joint.
+ // Non-keyed finger bones were accumulating manual rotateX/rotateY each frame.
+ rig.traverse(b=>{
+  if(b.isBone&&/^[LR]_(?:thumb|point|middle|ring|pink)_/.test(b.name))
+   fpsNativeFingerRest.push({bone:b,quat:b.quaternion.clone()});
+ });
+ document.documentElement.dataset.fpsArmsFingerRestCount=String(fpsNativeFingerRest.length);
+ document.documentElement.dataset.fpsArmsFingerStability="v704-reset-per-frame";
  document.documentElement.dataset.fpsArmsNativeGripProfile=weapon;
  document.documentElement.dataset.fpsArmsRealAnimation=String(!!fpsNativeMixer);
  document.documentElement.dataset.fpsArmsHandScale="1.20";
@@ -3873,6 +3912,10 @@ function poseOriginalFpsArms(){
  const fingerTime=fpsArmsInspector.enabled?0:reloading
    ?THREE.MathUtils.lerp(.12,Math.min(fpsArmsGripClip?.duration||2.167,2.0),rp.p)
    :recoil>.03?.88:.56;
+ // Never accumulate incremental Euler finger curls across gameplay frames.
+ // Restore the source pose before sampling its real authored animation;
+ // only then apply the current frame's desired grip bend.
+ for(const {bone,quat} of fpsNativeFingerRest)bone.quaternion.copy(quat);
  if(fpsNativeMixer)fpsNativeMixer.setTime(fingerTime);
  gun.updateMatrixWorld(true);
  const grip=FPS_NATIVE_GRIPS[weapon]||FPS_NATIVE_GRIPS.rifle;
@@ -10247,13 +10290,20 @@ function blastReact(z,origin,strength=1){
  beginKnockdown(z,origin,strength);
 }
 function explodeLauncherRound(g){
+ const launcherBlastStart=performance.now();
  noise(.34,.95,1100);tone(46,.42,"sine",.48);tone(92,.20,"square",.20);
  // Shatter the live projectile casing before removing it, at its real center.
  const p=g.q.position.clone();
  const visualOrigin=new THREE.Box3().setFromObject(g.q).getCenter(new THREE.Vector3());
+ const shatterStarted=performance.now();
  burstCasingIntoFragments(g.q,visualOrigin,scene,graphicsOptions.particles);
  scene.remove(g.q);
+ const shatterMs=performance.now()-shatterStarted;
+ const fxStarted=performance.now();
  spawnExplosionBurst(visualOrigin,true,.055);
+ const fxMs=performance.now()-fxStarted;
+ document.documentElement.dataset.lastLauncherShatterMs=shatterMs.toFixed(2);
+ document.documentElement.dataset.lastLauncherVisualMs=fxMs.toFixed(2);
  for(const z of living()){
    const d=z.suitBossBlastHitboxes?.length?suitBossBlastDistance(z,p):z.g.position.distanceTo(p);
    if(d<6.5){
@@ -10264,6 +10314,8 @@ function explodeLauncherRound(g){
      else blastReact(z,p,.70+force*1.15)
    }
  }
+ document.documentElement.dataset.lastLauncherLogicMs=(performance.now()-launcherBlastStart).toFixed(2);
+ document.documentElement.dataset.launcherSparkGpuPool="v704-prewarmed-recycled";
 }
 function throwGrenade(){
  if(!running||paused||dying||between||grenades<=0)return;
