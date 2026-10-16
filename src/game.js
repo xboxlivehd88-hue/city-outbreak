@@ -14,6 +14,7 @@ import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.j
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=700";
+import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
@@ -3730,9 +3731,9 @@ globalThis.__cityArmsReference=fpsArmsInspector;
 // gives the real finger bones a chance to wrap the real gun, without translating
 // the imported weapons, their red-dot sights, reload mags or camera.
 const FPS_NATIVE_GRIPS={
- rifle:{left:{delta:[.09,-.08,.03],roll:1.53},right:{delta:[-.04,-.07,.06],roll:3.14}},
- smg:{left:{delta:[.06,-.09,.06],roll:1.54},right:{delta:[-.05,-.09,.04],roll:3.14}},
- shotgun:{left:{delta:[.07,-.08,.07],roll:1.52},right:{delta:[-.04,-.07,.04],roll:3.14}},
+ rifle:{left:{delta:[.09,-.08,.03],roll:.16},right:{delta:[-.04,-.07,.06],roll:Math.PI*1.5}},
+ smg:{left:{delta:[.06,-.09,.06],roll:.16},right:{delta:[-.05,-.09,.04],roll:Math.PI*1.5}},
+ shotgun:{left:{delta:[.07,-.08,.07],roll:.16},right:{delta:[-.04,-.07,.04],roll:Math.PI*1.5}},
  // v689: restore the user-described closer v687 M17 hand fit, undo the
  // overextended v688 ADS sleeve/elbow and skinned wrist transforms.
  // v690: nudge ONLY the supporting wrist ~3.5 cm toward the real M17 grip.
@@ -3742,9 +3743,9 @@ const FPS_NATIVE_GRIPS={
  // outside the grip while native fingertips curve across the face of the M17.
  // No change to shoulder/elbow/controller placement, sight or other six guns.
  pistol:{left:{delta:[-.085,-.065,.07],roll:.16},right:{delta:[-.025,-.06,.03],roll:Math.PI*1.5}},
- dmr:{left:{delta:[.08,-.095,.045],roll:1.54},right:{delta:[-.035,-.07,.045],roll:3.14}},
- grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:1.55},right:{delta:[-.04,-.085,.04],roll:3.14}},
- m240:{left:{delta:[.09,-.08,.06],roll:1.51},right:{delta:[-.04,-.085,.05],roll:3.14}}
+ dmr:{left:{delta:[.08,-.095,.045],roll:.16},right:{delta:[-.035,-.07,.045],roll:Math.PI*1.5}},
+ grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:.16},right:{delta:[-.04,-.085,.04],roll:Math.PI*1.5}},
+ m240:{left:{delta:[.09,-.08,.06],roll:.16},right:{delta:[-.04,-.085,.05],roll:Math.PI*1.5}}
 };
 const fpsJointAxis=new THREE.Vector3(0,1,0);
 function attachOriginalFpsArms(){
@@ -3773,7 +3774,7 @@ function attachOriginalFpsArms(){
   o.userData.externalWeaponAsset=true;
   if(o.isSkinnedMesh){
    o.castShadow=false;o.receiveShadow=false;o.frustumCulled=false;
-   if(weapon==="pistol"&&!fpsArmsInspector.enabled){
+   if(!fpsArmsInspector.enabled){
     const geom=o.geometry.clone();
     const p=geom.getAttribute("position");
     const joints=geom.getAttribute("skinIndex"),weights=geom.getAttribute("skinWeight");
@@ -3792,7 +3793,7 @@ function attachOriginalFpsArms(){
       if(influence<.10||z>=-100)continue; // never reshape glove or fingers
       const depth=THREE.MathUtils.clamp((-z-100)/480,0,1);
       const falloff=depth*depth*(3-2*depth);
-      const keep=1-.67*Math.pow(influence,.80)*falloff;
+      const keep=1-(weapon==="pistol"?.67:.76)*Math.pow(influence,.80)*falloff;
       if(keep>.995)continue;
       const side=leftWeight>rightWeight?1:-1;
       const centerX=side*(303+36*depth);
@@ -3881,6 +3882,12 @@ function poseOriginalFpsArms(){
   let s=upper.a,e=lower.a;
   const preset=grip[side];
   const w=lower.b.clone().add(new THREE.Vector3(...preset.delta));
+  // Move native hands to MEASURED source firearm contact areas, preserving the
+  // actual weapon GLBs and existing shoulder/reload/ADS hand controllers.
+  if(!fpsArmsInspector.enabled){
+   const shift=new THREE.Vector3(...nativeGripShift(weapon,side));
+   w.add(shift);e.addScaledVector(shift,.45);
+  }
   // v691: M17 wrists were 22cm apart at hip but only 5cm apart in ADS.
   // Only the support wrist gets a smoothly blended grip-side target correction.
   // Never force shoulder/elbow positions or modify source bind translations.
@@ -3979,6 +3986,24 @@ function poseOriginalFpsArms(){
    const indexFlex=reloading?.08:recoil>.03?.37:.31;
    chain.index.rotateX(reloading?-.10:-.25);
    chain.indexMid.rotateX(-indexFlex);
+  }
+  // Original first and second phalanges now wrap the grip/fore-end on all
+  // six long weapons. M17 keeps its independently tuned v696 finger movement.
+  if(weapon!=="pistol"&&!fpsArmsInspector.enabled){
+   const hold=side==="left"?(reloading?THREE.MathUtils.clamp(1-rp.hand,0,1):1):1;
+   const roots=side==="left"?["L_point_08","L_middle_012","L_ring_015","L_pink_019"]:
+     ["R_middle_034","R_ring_038","R_pink_042"];
+   const mids=side==="left"?["L_point_2_09","L_middle_2_00","L_ring_2_016","L_pink_2_020"]:
+     ["R_middle_2_035","R_ring_2_039","R_pink_2_043"];
+   for(const n of roots)fpsNativeArms.getObjectByName(n)?.rotateX(-.33*hold);
+   for(const n of mids)fpsNativeArms.getObjectByName(n)?.rotateX(-.46*hold);
+   if(side==="left"){
+    fpsNativeArms.getObjectByName("L_thumb_04")?.rotateY(.15*hold);
+    fpsNativeArms.getObjectByName("L_thumb_2_05")?.rotateX(-.18*hold);
+   }else if(weapon!=="dmr"){
+    chain.index.rotateX(-.18*hold);
+    chain.indexMid.rotateX(-.28*hold);
+   }
   }
   // The DMR's original approved trigger finger movement remains unchanged.
   if(side==="right"&&weapon==="dmr"&&!reloading&&!fpsArmsInspector.enabled){
