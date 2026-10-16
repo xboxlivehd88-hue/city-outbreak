@@ -205,6 +205,11 @@ try{
   return{
    left:l?.toArray(),right:r?.toArray(),separation:l&&r?l.distanceTo(r):null,
    leftElbow:point("L_elbow_02")?.toArray(),rightElbow:point("R_elbow_024")?.toArray(),
+   // v695 anatomical measurement: actual source fingertips vs real M17 grip.
+   originalFingers:Object.fromEntries([
+    "L_thumb_3_06","L_point_4_011","L_middle_4_014","L_ring_4_018","L_pink_4_022",
+    "R_thumb_3_028","R_point_4_033","R_middle_4_037","R_ring_4_041","R_pink_4_045"
+   ].map(n=>[n,point(n)?.toArray()])),
    leftIndex:!!rig?.getObjectByName("L_point_08"),
    leftFingerJointNames:["L_point_2_09","L_middle_2_00","L_ring_2_016","L_pink_2_020"].filter(n=>!!rig?.getObjectByName(n)),
    rightIndex:!!rig?.getObjectByName("R_point_030"),
