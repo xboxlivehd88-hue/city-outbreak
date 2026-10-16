@@ -3879,7 +3879,11 @@ function poseOriginalFpsArms(){
   if(weapon==="pistol"&&side==="left"){
    const holding=reloading?THREE.MathUtils.clamp(1-rp.hand,0,1):1;
    const sightBlend=THREE.MathUtils.smoothstep(aimBlend,0,1);
-   w.x+=THREE.MathUtils.lerp(.07,-.03,sightBlend)*holding;
+   // v696: fingertip audit showed left support/thumb sitting ~20 cm away
+   // from the original firing hand; bring it IN and FORWARD around the
+   // actual original M17 grip. Release on magazine retrieval as before.
+   w.x+=THREE.MathUtils.lerp(.12,.025,sightBlend)*holding;
+   w.z-=.055*holding;
   }
   const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
   // Animating translations is fine for fingers, but keep elbow and wrist
@@ -3952,8 +3956,10 @@ function poseOriginalFpsArms(){
   // v691: Curl the original SIG firing-hand index knuckle and middle joint
   // toward the trigger, without moving the wrist or replacing any mesh.
   if(weapon==="pistol"&&side==="right"){
-   const indexFlex=reloading?.035:recoil>.03?.12:.09;
-   chain.index.rotateX(-.055);
+   // Keep this fingertip near the real trigger instead of projecting
+   // nearly 25 cm forward into empty space alongside the slide.
+   const indexFlex=reloading?.08:recoil>.03?.37:.31;
+   chain.index.rotateX(reloading?-.10:-.25);
    chain.indexMid.rotateX(-indexFlex);
   }
   // The DMR's original approved trigger finger movement remains unchanged.
@@ -3969,7 +3975,7 @@ function poseOriginalFpsArms(){
  document.documentElement.dataset.fpsArmsPoseFrames=String(fpsNativePoseFrames);
  document.documentElement.dataset.fpsArmsAnimatedFingerTime=fingerTime.toFixed(3);
  if(weapon==="pistol"){
-  document.documentElement.dataset.fpsArmsM17SleeveProfile="v695-source-sleeve-taper";
+  document.documentElement.dataset.fpsArmsM17SleeveProfile="v696-connected-pistol-grip";
   document.documentElement.dataset.fpsArmsM17GloveScale="0.86";
  }
 }
