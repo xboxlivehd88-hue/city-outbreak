@@ -4006,6 +4006,7 @@ function poseOriginalFpsArms(){
   elbow.scale.set(sleeveFore,sleeveFore,1);
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(arm,elbow,e,chain.armRest);
+  let shortenedNativeShoulder=false;
   const upperLength=arm.getWorldPosition(new THREE.Vector3()).distanceTo(elbow.getWorldPosition(new THREE.Vector3()));
   // v707: the REAL normal-mode ADS inspection found the long-gun upper
   // source sleeve stretching 2.3x (M4) to 2.86x (DMR/M240). Keep the
@@ -4018,6 +4019,7 @@ function poseOriginalFpsArms(){
    if(span/sourceSpan>maximum){
     const blend=THREE.MathUtils.smoothstep(aimBlend,.14,.95);
     const shorten=Math.max(0,span-maximum*sourceSpan)*blend;
+    shortenedNativeShoulder=shorten>.00001;
     s=s.clone().lerp(e,Math.min(.95,shorten/Math.max(.001,span)));
     arm.position.copy(arm.parent.worldToLocal(gun.localToWorld(s.clone())));
     arm.updateMatrixWorld(true);
@@ -4028,7 +4030,13 @@ function poseOriginalFpsArms(){
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(elbow,wrist,w,chain.elbowRest);
   const lowerLength=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
-  elbow.scale.z=THREE.MathUtils.clamp(e.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
+  // After the virtual shoulder is brought forward, the skinned elbow may
+  // not land exactly on its old procedural guide 'e'. Measure from the REAL
+  // bone joint instead. Otherwise the 1.62x sleeve cap displaced the DMR
+  // and M240 support wrists by ~12 cm away from the source foregrip.
+  const actualElbow=shortenedNativeShoulder
+    ?gun.worldToLocal(elbow.getWorldPosition(new THREE.Vector3())):e;
+  elbow.scale.z=THREE.MathUtils.clamp(actualElbow.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
   elbow.updateMatrixWorld(true);
   // Compensate inherited sleeve girth scale at the skinned original glove.
   // Authentic wrist/fingers remain visible and the original bone spans remain.
