@@ -48,6 +48,9 @@ const {chromium}=require("playwright"),fs=require("fs");
   aiming=true;aimBlend=1;move(.16);
   const ads={lw:point("L_wrist_03"),rw:point("R_wrist_025"),ri:point("R_point_4_033"),lt:point("L_thumb_3_06"),
    scales:["L_arm_01","L_elbow_02","R_arm_023","R_elbow_024"].map(n=>[n,rig.getObjectByName(n)?.scale.z])};
+  // Save actual shader-rendered ADS for every ORIGINAL gun, never generic meshes.
+  try{ren.render(scene,cam);ads.jpeg=ren.domElement.toDataURL("image/jpeg",.47).slice(23)}
+  catch(error){ads.captureError=String(error)}
   result.push({w,hip,ads});
  }
  weapon=previous.weapon;aiming=previous.aiming;pitch=previous.pitch;aimBlend=0;
@@ -162,10 +165,12 @@ const {chromium}=require("playwright"),fs=require("fs");
   console.log("V704_HAND_LAUNCHER_AUDIT="+JSON.stringify(report.handAndLauncher));
 
   for(const m of report.models){
-   const jpeg=m.hip.jpeg;
-   if(jpeg?.length>6000)console.log("V701_NATIVE_"+m.w.toUpperCase()+"_HIP_JPEG="+jpeg);
+   const jpeg=m.hip.jpeg,ads=m.ads.jpeg;
+   if(jpeg?.length>6000)console.log("V711_"+m.w.toUpperCase()+"_HIP_JPEG="+jpeg);
+   if(ads?.length>6000)console.log("V711_"+m.w.toUpperCase()+"_ADS_JPEG="+ads);
    m.hip.imageBytes=jpeg?.length||0;
-   delete m.hip.jpeg;
+   m.ads.imageBytes=ads?.length||0;
+   delete m.hip.jpeg;delete m.ads.jpeg;
   }
 
   report.passed=report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0)&&
