@@ -143,6 +143,19 @@ const {chromium}=require("playwright"),fs=require("fs");
    throw startError;
   }
   report.models=await page.evaluate(()=>globalThis.__sourceWeaponGeometryAudit());
+  // Ground-truth normal ADS original support-wrist contacts captured in
+  // Chromium v706 BEFORE ADS sleeve retraction. The shorter sleeve must
+  // retain these real gun positions instead of dragging hands off receivers.
+  const approvedADS={
+    pistol:[.3056,-.3649,-.8737],rifle:[.4938,-.4893,-2.076],
+    shotgun:[.3502,-.3501,-1.5026],smg:[.2759,-.4711,-1.6643],
+    m240:[.3919,-.3365,-2.5613],dmr:[.4155,-.3196,-2.6197],
+    grenadeLauncher:[.4233,-.2852,-1.7503]
+  };
+  for(const m of report.models){
+   const contact=approvedADS[m.w];
+   m.ads.originalContactError=Math.hypot(...m.ads.lw.map((v,i)=>v-contact[i]));
+  }
   report.handAndLauncher=await page.evaluate(()=>globalThis.__v705FingerLauncherAudit());
   console.log("V704_HAND_LAUNCHER_AUDIT="+JSON.stringify(report.handAndLauncher));
 
@@ -161,7 +174,8 @@ const {chromium}=require("playwright"),fs=require("fs");
     report.handAndLauncher.launcher?.reused&&report.handAndLauncher.launcher?.stopped&&
     report.handAndLauncher.launcher?.count>100&&
     report.handAndLauncher.launcher?.persistentFlash&&
-    report.models.every(x=>x.ads.scales.every(([n,z])=>Number.isFinite(z)&&z<=1.80))&&
+    report.models.every(x=>x.ads.scales.every(([n,z])=>Number.isFinite(z)&&z<=1.80)&&
+      x.ads.originalContactError<.055)&&
     report.handAndLauncher.launcher?.prewarmedInstances>=3;
  }catch(e){report.error=String(e.stack||e)}
  finally{console.log("SOURCE_GRIP_GEOMETRY="+JSON.stringify(report));fs.writeFileSync("V701_GRIP_GEOMETRY.json",JSON.stringify(report,null,2));await browser?.close().catch(()=>{})}
