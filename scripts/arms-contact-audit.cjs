@@ -9,7 +9,7 @@ const {chromium}=require("playwright"),fs=require("fs");
   page.on("console",msg=>{if(msg.type()==="error")report.errors.push("console: "+msg.text().slice(0,450))});
   page.on("requestfailed",req=>report.errors.push("requestfailed: "+req.url()+" "+(req.failure()?.errorText||"")));
   const addon=`
-;globalThis.__v707PrepareAudit=()=>{
+;globalThis.__v708PrepareAudit=()=>{
  // Freeze only the automation's live zombie AI while we sample seven skinned
  // rigs; keep the REAL map, camera, weapon meshes and renderer available.
  health=1000000;paused=true;
@@ -121,7 +121,7 @@ const {chromium}=require("playwright"),fs=require("fs");
     console.log("V701_SOURCE_AUDIT_INJECTED",route.request().url());
     await route.fulfill({response:rsp,body:source+addon,contentType:"application/javascript"});
   });
-  await page.goto("http://127.0.0.1:4173/?v=707-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
+  await page.goto("http://127.0.0.1:4173/?v=708-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:90000});
   await page.waitForTimeout(9000);
   await page.locator("#start").click({noWaitAfter:true});
@@ -129,7 +129,7 @@ const {chromium}=require("playwright"),fs=require("fs");
   // before Start. Avoid the rAF-polled waitForFunction under SwiftShader:
   // it sometimes starves while zombie AI is active.
   try{
-   report.prepared=await page.evaluate(()=>globalThis.__v707PrepareAudit());
+   report.prepared=await page.evaluate(()=>globalThis.__v708PrepareAudit());
   }catch(startError){
    report.startup=await page.evaluate(()=>({
     ready:document.documentElement.dataset.fpsArmsGlbReady,
