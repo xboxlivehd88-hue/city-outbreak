@@ -530,7 +530,9 @@ globalThis.__m17V698PreviewRestore=()=>{
       Math.abs(Number(o.orientationReported)-Math.PI)<.00001&&
       o.textured&&o.oldMeshes===0&&o.visible&&
       o.leftError<.26&&o.rightError<.26&&
-      o.rightPalm?.[0]<-.6&&
+      // Calibrated pistol has its original right palm turned downward (-Y);
+      // all six approved long-gun wrists keep their prior inward (-X) axis.
+      (o.w==="pistol"?o.rightPalm?.[1]<-.6:o.rightPalm?.[0]<-.6)&&
       (o.w==="pistol"?o.leftPalm?.[0]>.5:o.leftPalm?.[1]>.6)&&
       o.fingerAnimationMax>.03&&o.animation==="true"&&
       Math.abs(Number(o.handScale)-1.20)<.00001&&o.profile===o.w),
