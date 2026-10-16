@@ -1,3 +1,30 @@
+# v710 VERIFIED — PRESERVED 7-GUN CONTACT / BIGGER ORIGINAL HANDS / INDEX-ONLY FIRING / LAUNCHER GPU OPTIMIZATION — 2026-10-16
+
+**Playable:** https://xboxlivehd88-hue.github.io/city-outbreak/?v=710-seven-grips-trigger-launcher  
+**GitHub:** xboxlivehd88-hue/city-outbreak, branch main; **loader:** `./src/game.js?v=710`; **PROTECTED recovery v324 UNCHANGED**.
+
+## NEW USER VIDEO / VISUAL FINDING
+The user uploaded `2026-10-17 05-18-47(3).mp4` (73.233s, 1280×720 30 FPS), testing hip, ADS, fire and reload across seven guns. A time-sampled contact sheet (0–69s) clearly shows **OPEN HANDS / INSPECTION ONLY mode active during most of the video**; that mode intentionally extends the two source GLB arms beside the guns and prevents normal firing-hand gripping. Do NOT mistake the extended inspector reference as a failed actual normal grip. Press **H until the "INSPECTION ONLY — HANDS NOT GRIPPING" banner disappears** to view normal gun grips, and collect new normal-mode gameplay for visual alignment. The inspector's current banner is deliberately explicit about this.
+
+## SOURCE CHANGES ALREADY ON MAIN (v706–v707), VERIFIED BY v710
+- Actual original `assets/cartoon_fps_arms.glb` ONE textured 47-bone skinned mesh with 38 original finger/thumb joints. **Glove sizes raised** only on REAL native wrist/hand bones: normal left M17 `1.02`, other left `1.09`, right all guns `1.075`; reference inspection stays anatomically unmodified. Approved original weapon GLBs, DMR optics/ADS/reload, hip gun positions and recoil rays unchanged.
+- Native source animation sample for steady normal fire stays at t=.56, preventing a source-wide right-hand animation jump every time recoil rises. Each shot instead bends the actual original right index base/mid joints for about a tenth of a second. Actual 7-gun Chromium test measured ~**0.209 rad index-only pull** on each gun, without resampling the entire authored clip. The previously fixed accumulating finger spin remains stopped (38 original joints, worst repeated-pose drift ~0.000683 rad).
+- Launcher GPU burst work retained: 3 prewarmed 256-slot spark instance buffers, smoke/fire GPU batches and shared ONE persistent flash light (prevents light-count shader recompiles at consecutive impacts); launcher cosmetic particle density moderated without changing explosion/knockdown/damage/reload. Source audit reports three warmed spark pools, 154 live spark instances under tested graphics tier, no expired sparks rendered, reuse true, persistentFlash true. **User-observed launcher hitch may still need real-PC frame pacing validation**.
+- `src/game.js` original grip IK targets remain accurate. Experimental ADS sleeve shortening (v707 and v708/v709 scaled-parent inverse) was REJECTED after real Chromium identified displaced long-gun support wrists by up to ~30 cm and later ~3–14 cm respectively. Restore the APPROVED quaternion-space elbow aiming verbatim; done on `main` and shipped as **v710**. Do NOT reinstate the rejected virtual shoulder move or direction-as-world-position bug.
+
+## VERIFIED CURRENT BUILD — DO NOT CLAIM SLEEVES FULLY FIXED
+- **Seven-gun real Chromium geometry audit PASSED** [38954568510](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38954568510): `passed=true`, `errors=[]`. All seven left native ADS wrist points matched approved v706 true gun-local contact coordinates with **zero measured drift**. 7 original glove rigs; every firing index had ~0.209 rad pull with no change to the t=.56 source animation sample. Launcher pooled burst checks passed.
+- **Full Chromium gameplay regression PASSED** [38954568572](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38954568572): `HAZMAT_V599_REPORT.passed=true`, `errors=[]`; 7 original 47-bone skinned gun rigs with reference inspector toggles and original M17 checks.
+- **Pages deployment PASSED** [38954568304](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38954568304), Sprinter [38954568623](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38954568623) PASSED; Parasite run [38954568661](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38954568661) pending when this entry created—verify before reporting.
+- **Remaining ADS sleeve VISUAL issue:** Although wrists match their original weapon contacts, the upper source sleeves can stretch about **2.30× M4**, **2.00× MP5**, **2.83× M240**, **2.86× DMR** in actual normal ADS, because original root-to-elbow spacing from the procedural controllers exceeds the source art length. These are measured actual bone scale factors; no green regression proves aesthetically natural sleeves. Solve with a contact-preserving two-bone rig/visual sleeve solution rather than pushing wrist off receiver. Need NORMAL H-disabled ADS video as visual authority.
+- Other protected systems: temporary all-seven inventory, v692 mouse guard, zombie varieties, 19 rotating bosses, ragdolls/limbs/collision, original map, graphics switches, projectile effects and recovery v324.
+
+## v710 COMMITS
+- `083acb7921f81d46f784898acecbdeaf316e86be` diagnostic scaled-parent attempt (rejected); `e531186797124608870f376ae1ece0d7be824268` temporary v708 tested; `12a6e15fef8721dd90b3b2eb4ddeaed0db331d88` fixed mutated world point but still failed; `466970f7870380bdec99f0277812a2c2726297ac` v709 tested and rejected.
+- `6f5361203622f3985afdcdc4ce140bbe6bcde3ca` restored exact reliable original grip aiming; `ed9300a83c7af2a1338d3a0348a38908a8749ccc` v710 committed loader/test harnesses; v710 geometry and gameplay tests passed.
+
+---
+
 # v705 — ANATOMICAL FINGER SPIN FIX + RAPID-FIRE LAUNCHER GPU PREWARM — 2026-10-16
 
 **Current playable:** https://xboxlivehd88-hue.github.io/city-outbreak/?v=705-finger-stability-launcher  
