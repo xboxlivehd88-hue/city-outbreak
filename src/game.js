@@ -4015,6 +4015,11 @@ function poseOriginalFpsArms(){
   // The open-arm H inspector and hip-fire baseline are never affected.
   if(m17Ads>0) {
    s.x=THREE.MathUtils.lerp(s.x,w.x,.30*m17Ads);
+   // This is the SOURCE upper-arm root, not a weapon or hand position.
+   // Bring cloth origins 10 cm lower as sights reach full ADS so the
+   // original sleeves emerge from BELOW the player instead of ending as
+   // two hanging fabric spikes high in the middle of the picture.
+   s.y-=.10*m17Ads;
   }
   // Do not squeeze the actual coat sleeve a SECOND time in ADS: the geometry
   // taper above is already proportional to the original source glove width.
