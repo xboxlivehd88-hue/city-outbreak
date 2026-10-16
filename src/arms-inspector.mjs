@@ -3,7 +3,7 @@
 // H restores the exact existing grip controller; J reveals palm axes in 90° steps.
 export function createArmsInspector(onChanged){
  // Default to BOTH native ungripped hands and the unchanged real firearm on screen.
- let enabled=true,quarter=0,weaponVisible=true;
+ let enabled=false,quarter=0,weaponVisible=true; // v701 calibrated grips default; H for open source
  const el=document.createElement("div");
  el.id="fps-arms-orientation-reference";
  el.style.cssText="position:fixed;left:50%;top:10%;transform:translateX(-50%);z-index:250;pointer-events:none;background:rgba(8,15,20,.82);border:1px solid #9cabb9;border-radius:6px;color:white;font:600 13px/1.5 Arial,sans-serif;padding:7px 12px;text-align:center;text-shadow:0 1px 2px black;max-width:90vw";
