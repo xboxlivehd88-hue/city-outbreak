@@ -275,6 +275,23 @@ globalThis.__m17V698Preview=(ads)=>{
 globalThis.__m17V698PreviewRestore=()=>{
  weapon="dmr";aiming=false;aimBlend=0;pitch=0;
  reloading=false;reloadWeapon="";rebuildGun();move(.016);
+};
+// Anatomy sweep: preserve the LIVE v698 grip and examine which real firing-hand
+// wrist roll places original index above pinky and thumb toward pistol center.
+globalThis.__m17PalmSweep=(roll,ads)=>{
+ const old=FPS_NATIVE_GRIPS.pistol.right.roll;
+ FPS_NATIVE_GRIPS.pistol.right.roll=roll;
+ const jpeg=globalThis.__m17V698Preview(ads);
+ gun.updateMatrixWorld(true);
+ const rig=gun.getObjectByName("OriginalCartoonFPSArmsGLB");
+ const p=name=>{const b=rig?.getObjectByName(name);return b?gun.worldToLocal(b.getWorldPosition(new THREE.Vector3())).toArray():null};
+ const sample={
+  wrist:p("R_wrist_025"),thumb:p("R_thumb_3_028"),
+  index:p("R_point_4_033"),pink:p("R_pink_4_045"),
+  supportThumb:p("L_thumb_3_06"),jpeg
+ };
+ FPS_NATIVE_GRIPS.pistol.right.roll=old;
+ return sample;
 };`;
    const dmrShoulderAudit=`
 ;globalThis.__dmrV683ShoulderAudit=()=>{
@@ -439,6 +456,16 @@ globalThis.__m17V698PreviewRestore=()=>{
     report.m17Preview[key]=jpeg?.length||0;
     if(jpeg?.length>6000)console.log("M17_V698_"+key.toUpperCase()+"_JPEG="+jpeg);
    }catch(captureError){report.m17Preview[key]=String(captureError).slice(0,220)}
+  }
+  // v698 isolated rig calibration: source anatomy, NOT a live weapon edit.
+  report.m17OrientationSweep=[];
+  for(const [label,roll] of [["0",0],["90",Math.PI/2],["180",Math.PI],["270",Math.PI*1.5]]){
+   for(const ads of [false,true]){
+    const out=await page.evaluate(v=>globalThis.__m17PalmSweep(v.roll,v.ads),{roll,ads});
+    const {jpeg,...points}=out;
+    report.m17OrientationSweep.push({label,ads,...points});
+    if(jpeg?.length>6000)console.log("M17_ORIENT_"+label+"_"+(ads?"ADS":"HIP")+"_JPEG="+jpeg);
+   }
   }
   await page.evaluate(()=>globalThis.__m17V698PreviewRestore());
   report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
