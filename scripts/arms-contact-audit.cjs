@@ -36,7 +36,7 @@ const {chromium}=require("playwright"),fs=require("fs");
  return result;
 };
 `;
-  await page.route(/\\/src\\/game\\.js\\?v=700$/,async route=>{
+  await page.route(url=>url.href.includes("/src/game.js?v=700"),async route=>{
     const rsp=await route.fetch();const source=await rsp.text();
     await route.fulfill({response:rsp,body:source+addon,contentType:"application/javascript"});
   });
