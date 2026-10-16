@@ -4007,6 +4007,23 @@ function poseOriginalFpsArms(){
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(arm,elbow,e,chain.armRest);
   const upperLength=arm.getWorldPosition(new THREE.Vector3()).distanceTo(elbow.getWorldPosition(new THREE.Vector3()));
+  // v707: the REAL normal-mode ADS inspection found the long-gun upper
+  // source sleeve stretching 2.3x (M4) to 2.86x (DMR/M240). Keep the
+  // APPROVED elbow and wrist/optic positions, and tuck only the VIRTUAL
+  // source shoulder along its existing shoulder-to-elbow line in ADS.
+  // Not the destructive v688 hand/shoulder forcing or a weapon offset.
+  if(!fpsArmsInspector.enabled&&weapon!=="pistol"&&!reloading&&aimBlend>.01){
+   const span=s.distanceTo(e),sourceSpan=Math.max(.001,upperLength);
+   const maximum=1.62;
+   if(span/sourceSpan>maximum){
+    const blend=THREE.MathUtils.smoothstep(aimBlend,.14,.95);
+    const shorten=Math.max(0,span-maximum*sourceSpan)*blend;
+    s=s.clone().lerp(e,Math.min(.95,shorten/Math.max(.001,span)));
+    arm.position.copy(arm.parent.worldToLocal(gun.localToWorld(s.clone())));
+    arm.updateMatrixWorld(true);
+    rotateNativeBoneToward(arm,elbow,e,chain.armRest);
+   }
+  }
   arm.scale.z=THREE.MathUtils.clamp(s.distanceTo(e)/Math.max(.001,upperLength),.3,3.2);
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(elbow,wrist,w,chain.elbowRest);
