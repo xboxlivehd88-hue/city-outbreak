@@ -35,7 +35,8 @@ const {chromium}=require("playwright"),fs=require("fs");
   catch(error){hip.captureError=String(error)}
 
   aiming=true;aimBlend=1;move(.16);
-  const ads={lw:point("L_wrist_03"),rw:point("R_wrist_025"),ri:point("R_point_4_033"),lt:point("L_thumb_3_06")};
+  const ads={lw:point("L_wrist_03"),rw:point("R_wrist_025"),ri:point("R_point_4_033"),lt:point("L_thumb_3_06"),
+   scales:["L_arm_01","L_elbow_02","R_arm_023","R_elbow_024"].map(n=>[n,rig.getObjectByName(n)?.scale.z])};
   result.push({w,hip,ads});
  }
  weapon=previous.weapon;aiming=previous.aiming;pitch=previous.pitch;aimBlend=0;
@@ -59,7 +60,18 @@ const {chromium}=require("playwright"),fs=require("fs");
   const initial=names.map(n=>rig.getObjectByName(n)?.quaternion.clone());
   for(let i=0;i<240;i++)poseOriginalFpsArms();
   const drift=names.map((n,i)=>initial[i]?.angleTo(rig.getObjectByName(n).quaternion)||0);
-  spins.push({w,sourceBones:Number(document.documentElement.dataset.fpsArmsFingerRestCount),maxDrift:Math.max(...drift),drift});
+  // Holding the gun must keep the firing wrist STILL; only native index
+  // phalanges should respond to a shot, on all seven weapons.
+  const nativeIndex=rig.getObjectByName("R_point_030"),nativeWrist=rig.getObjectByName("R_wrist_025");
+  const previousRecoil=recoil,previousShot=lastNativeTriggerShotAt;
+  recoil=0;lastNativeTriggerShotAt=-1;poseOriginalFpsArms();
+  const restIndex=nativeIndex.quaternion.clone(),restWrist=nativeWrist.quaternion.clone();
+  const restSample=Number(document.documentElement.dataset.fpsArmsAnimatedFingerTime);
+  recoil=.18;lastNativeTriggerShotAt=performance.now()-72;poseOriginalFpsArms();
+  const indexPull=restIndex.angleTo(nativeIndex.quaternion),wristKick=restWrist.angleTo(nativeWrist.quaternion);
+  const firedSample=Number(document.documentElement.dataset.fpsArmsAnimatedFingerTime);
+  recoil=previousRecoil;lastNativeTriggerShotAt=previousShot;poseOriginalFpsArms();
+  spins.push({w,sourceBones:Number(document.documentElement.dataset.fpsArmsFingerRestCount),maxDrift:Math.max(...drift),drift,indexPull,wristKick,restSample,firedSample});
  }
  weapon=save.weapon;aiming=save.aiming;aimBlend=save.aimBlend;
  fpsArmsInspector.set(save.inspection);rebuildGun();move(.016);
@@ -90,7 +102,7 @@ const {chromium}=require("playwright"),fs=require("fs");
     console.log("V701_SOURCE_AUDIT_INJECTED",route.request().url());
     await route.fulfill({response:rsp,body:source+addon,contentType:"application/javascript"});
   });
-  await page.goto("http://127.0.0.1:4173/?v=705-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
+  await page.goto("http://127.0.0.1:4173/?v=706-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:90000});
   await page.waitForTimeout(9000);
   await page.locator("#start").click({noWaitAfter:true});
@@ -121,7 +133,9 @@ const {chromium}=require("playwright"),fs=require("fs");
 
   report.passed=report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0)&&
     report.handAndLauncher?.spins?.length===7&&
-    report.handAndLauncher.spins.every(x=>x.sourceBones>=20&&x.maxDrift<.002)&&
+    report.handAndLauncher.spins.every(x=>x.sourceBones>=20&&x.maxDrift<.002&&
+      x.indexPull>.12&&x.indexPull<.4&&x.wristKick<.002&&
+      Math.abs(x.restSample-x.firedSample)<.0001)&&
     report.handAndLauncher.launcher?.reused&&report.handAndLauncher.launcher?.stopped&&
     report.handAndLauncher.launcher?.count>100&&
     report.handAndLauncher.launcher?.prewarmedInstances>=3;
