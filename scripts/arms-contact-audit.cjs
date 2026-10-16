@@ -50,6 +50,10 @@ const {chromium}=require("playwright"),fs=require("fs");
   const names=["L_point_08","L_point_2_09","L_middle_012","L_ring_2_016",
    "L_pink_019","L_thumb_2_05","R_point_030","R_middle_034",
    "R_ring_2_039","R_pink_042","R_thumb_2_027"];
+  // Source AnimationMixer can establish its first PropertyMixer binding
+  // after a new GLB clone is attached. Judge steady-state drift only after
+  // four full authored-frame samples, not initial clip activation.
+  for(let i=0;i<4;i++)poseOriginalFpsArms();
   const initial=names.map(n=>rig.getObjectByName(n)?.quaternion.clone());
   for(let i=0;i<240;i++)poseOriginalFpsArms();
   const drift=names.map((n,i)=>initial[i]?.angleTo(rig.getObjectByName(n).quaternion)||0);
