@@ -1,3 +1,14 @@
+# v698 VERIFIED — COMMON SOURCE-GLB ARMS INSPECTION ON ALL SEVEN GUNS — 2026-10-16
+
+- **VERIFIED production v698 game:** [GitHub Pages run 38928554191](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38928554191) **SUCCESS**, loader `./src/game.js?v=698`. [PLAY v698](https://xboxlivehd88-hue.github.io/city-outbreak/?v=698-arms-open-inspection).
+- **VERIFIED actual Chromium browser regression:** [38928555067](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38928555067) **PASSED**, `HAZMAT_V599_REPORT.passed=true`, `errors=[]`. Measured the EXACT SAME extended original left wrist approx `[-.559438,-.270476,-1.498821]` and right wrist approx `[.559438,-.270476,-1.498821]` for each of **pistol, rifle, shotgun, SMG, M240, DMR and grenade launcher**; one original skinned mesh with **47 original bones** per viewmodel. Original source fingers sampled at clip time 0; gun-specific fingers/coat edits temporarily bypassed only in inspection. 180° wrist-turn control tested. After switching back to NORMAL, original v696 M17 wrist separation ~.08896m retained, 7 loaded weapons, DMR original ADS/reload, Hazmat, GPU grenades and performance assertions passed.
+- **Inspected real shaded screenshots in CI log**: `ARMS_V698_EXTENDED_PISTOL_JPEG` and `ARMS_V698_EXTENDED_DMR_JPEG` show BOTH original gloves and the broad sleeve fabric fully visible, with the pistol/rifle model hidden for unobstructed inspection. This is a diagnostic *observation baseline*, NOT a final attractive two-handed weapon grip.
+- **Controls to demonstrate to user:** Default ON at spawn; **H** toggles EXTENDED versus previous NORMAL grips; **J** turns native inspection palms/wrists by 90° each tap; **K** shows/hides the actual selected gun while in inspection (gun hidden by default so both hands are clearly visible); 1–7 / wheel still switch ALL guns. Top-center HUD states active gun and controls. Original arms stay as one skinned GLB, not artificial meshes.
+- **Other CI PASSED:** [Sprinter 38928555100](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38928555100), [Parasite 38928555002](https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/38928555002). Source commit `8b697918778d149b234d06b79e9a9ed0b5e95a7c`; debug harness commit before it fixed internal module tests. **Recovery checkpoint v324 remains untouched.**
+- **Next:** Ask for user observation of wrist/palm direction in reference mode while toggling J at 0/90/180/270; use consistent orientation data to calibrate grips on each gun, M17 first, rather than speculative wrist offsets.
+
+---
+
 # v698 — ORIGINAL ARMS EXTENDED FOR ALL 7 WEAPONS / UNOBSTRUCTED INSPECTION — 2026-10-16
 
 - **User request:** Extend both skinned GLB arms and examine palm/finger orientation before attempting future hand grip calibration; use same neutral pose for ALL seven weapons. v696 source (not outdated v694) was preserved while introducing a reusable test reference.
