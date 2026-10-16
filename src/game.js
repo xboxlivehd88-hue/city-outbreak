@@ -3985,6 +3985,16 @@ function poseOriginalFpsArms(){
  poseSide("left",{upper:playerHandRig.leftUpper,fore:playerHandRig.leftFore});
  poseSide("right",{upper:playerHandRig.rightUpper,fore:playerHandRig.rightFore});
  fpsNativeArms.visible=true;
+ // In the diagnostic only, hide weapon meshes while keeping the SAME original
+ // skinned GLB arms visible. K rebuilds and restores the weapon comparison.
+ // Gameplay and normal weapon rendering remain completely untouched.
+ if(fpsArmsInspector.enabled&&!fpsArmsInspector.weaponVisible){
+  gun.traverse(o=>{
+   if(!o.isMesh)return;
+   for(let p=o;p&&p!==gun;p=p.parent)if(p===fpsNativeArms)return;
+   o.visible=false;
+  });
+ }
  fpsNativePoseFrames++;
  document.documentElement.dataset.fpsArmsPoseFrames=String(fpsNativePoseFrames);
  document.documentElement.dataset.fpsArmsAnimatedFingerTime=fingerTime.toFixed(3);
@@ -11371,6 +11381,7 @@ const weaponHotkeys={Digit1:"pistol",Digit2:"rifle",Digit3:"shotgun",Digit4:"smg
 const onKeyDown=e=>{let k=e.key.toLowerCase();
  if(k==="h"&&!e.repeat&&running&&!paused&&!between&&!dying){fpsArmsInspector.set(!fpsArmsInspector.enabled);fpsArmsInspector.update(weapon);show(fpsArmsInspector.enabled?"SOURCE GLB ARMS EXTENDED — J TO ROTATE":"NORMAL WEAPON GRIPS RESTORED");e.preventDefault();return}
  if(k==="j"&&!e.repeat&&running&&!paused&&!between&&!dying){fpsArmsInspector.turn(fpsArmsInspector.quarter+1);fpsArmsInspector.update(weapon);e.preventDefault();return}
+ if(k==="k"&&!e.repeat&&running&&!paused&&!between&&!dying&&fpsArmsInspector.enabled){fpsArmsInspector.toggleWeapon();fpsArmsInspector.update(weapon);e.preventDefault();return}
  let hotWeapon=weaponHotkeys[e.code],gameKey=["w","a","s","d","r","g","n","shift"].includes(k)||!!hotWeapon;if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(hotWeapon&&!e.repeat)setWeapon(hotWeapon);if(gameKey)e.preventDefault()};
 setupKeyDown(onKeyDown);
 const onWeaponWheel=e=>{

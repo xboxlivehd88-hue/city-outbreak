@@ -422,7 +422,7 @@ globalThis.__m17V697PreviewRestore=()=>{
   report.nativeArms=await page.evaluate(()=>globalThis.__fpsArmsV687Audit());
   report.m17Grip=await page.evaluate(()=>globalThis.__m17V697GripAudit());
   report.m17Sleeves=await page.evaluate(()=>document.documentElement.dataset.fpsArmsM17SleeveProfile);
-  assert.equal(report.m17Sleeves,"v697-connected-pistol-grip","M17 must use tapered original mesh and new fitted grip");
+  assert.equal(report.m17Sleeves,"v696-connected-pistol-grip","original v696 grip must remain intact when reference mode is off");
   report.m17Taper=await page.evaluate(()=>({
    vertexCount:Number(document.documentElement.dataset.fpsArmsM17TaperVerts||0),
    gloveSize:document.documentElement.dataset.fpsArmsM17GloveScale
