@@ -40,6 +40,40 @@ const {chromium}=require("playwright"),fs=require("fs");
  fpsArmsInspector.set(previous.inspection);rebuildGun();move(.016);
  return result;
 };
+;globalThis.__v704FingerLauncherAudit=()=>{
+ const save={weapon,aiming,aimBlend,inspection:fpsArmsInspector.enabled};
+ fpsArmsInspector.set(false);aiming=false;aimBlend=0;reloading=false;reloadWeapon="";
+ const spins=[];
+ for(const w of ["pistol","rifle","shotgun","smg","m240","dmr","grenadeLauncher"]){
+  weapon=w;rebuildGun();move(.025);
+  const rig=gun.getObjectByName("OriginalCartoonFPSArmsGLB");
+  const names=["L_point_08","L_point_2_09","L_middle_012","L_ring_2_016",
+   "L_pink_019","L_thumb_2_05","R_point_030","R_middle_034",
+   "R_ring_2_039","R_pink_042","R_thumb_2_027"];
+  const initial=names.map(n=>rig.getObjectByName(n)?.quaternion.clone());
+  for(let i=0;i<240;i++)poseOriginalFpsArms();
+  const drift=names.map((n,i)=>initial[i]?.angleTo(rig.getObjectByName(n).quaternion)||0);
+  spins.push({w,sourceBones:Number(document.documentElement.dataset.fpsArmsFingerRestCount),maxDrift:Math.max(...drift),drift});
+ }
+ weapon=save.weapon;aiming=save.aiming;aimBlend=save.aimBlend;
+ fpsArmsInspector.set(save.inspection);rebuildGun();move(.016);
+ // Exercise the exact renderer-facing launcher effect path; no zombie damage.
+ clearExplosionGlbs();
+ const at=cam.position.clone().add(new THREE.Vector3(0,1,-3));
+ const t=performance.now();spawnExplosionBurst(at,true,.055);
+ const creationMs=performance.now()-t;
+ const first=activeExplosionBursts.at(-1)?.sparkMesh;
+ const count=first?.count||0;
+ for(let i=0;i<80;i++)updateExplosionGlbs(1/60);
+ const stopped=first?.count===0;
+ clearExplosionGlbs();
+ const t2=performance.now();spawnExplosionBurst(at,true,.055);
+ const nextMs=performance.now()-t2;
+ const second=activeExplosionBursts.at(-1)?.sparkMesh;
+ const reused=first===second;
+ clearExplosionGlbs();
+ return{spins,launcher:{creationMs,nextMs,count,stopped,reused},fingerStatus:document.documentElement.dataset.fpsArmsFingerStability};
+};
 `;
   await page.route(url=>url.pathname.endsWith("/src/game.js"),async route=>{
     const rsp=await route.fetch();const source=await rsp.text();
@@ -52,6 +86,9 @@ const {chromium}=require("playwright"),fs=require("fs");
   await page.locator("#start").click({noWaitAfter:true});
   await page.waitForFunction(()=>!!globalThis.__sourceWeaponGeometryAudit,null,{timeout:60000});
   report.models=await page.evaluate(()=>globalThis.__sourceWeaponGeometryAudit());
+  report.handAndLauncher=await page.evaluate(()=>globalThis.__v704FingerLauncherAudit());
+  console.log("V704_HAND_LAUNCHER_AUDIT="+JSON.stringify(report.handAndLauncher));
+
   for(const m of report.models){
    const jpeg=m.hip.jpeg;
    if(jpeg?.length>6000)console.log("V701_NATIVE_"+m.w.toUpperCase()+"_HIP_JPEG="+jpeg);
@@ -59,7 +96,11 @@ const {chromium}=require("playwright"),fs=require("fs");
    delete m.hip.jpeg;
   }
 
-  report.passed=report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0);
+  report.passed=report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0)&&
+    report.handAndLauncher?.spins?.length===7&&
+    report.handAndLauncher.spins.every(x=>x.sourceBones>=20&&x.maxDrift<.002)&&
+    report.handAndLauncher.launcher?.reused&&report.handAndLauncher.launcher?.stopped&&
+    report.handAndLauncher.launcher?.count>100;
  }catch(e){report.error=String(e.stack||e)}
  finally{console.log("SOURCE_GRIP_GEOMETRY="+JSON.stringify(report));fs.writeFileSync("V701_GRIP_GEOMETRY.json",JSON.stringify(report,null,2));await browser?.close().catch(()=>{})}
  if(!report.passed)process.exitCode=1;
