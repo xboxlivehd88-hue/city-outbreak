@@ -18,3 +18,34 @@ const tops=j.nodes?.map((n,i)=>({index:i,name:n.name,children:n.children,skin:n.
 console.log("M17_SOURCE_ANATOMY="+JSON.stringify({bytes:b.length,scenes:j.scenes?.length,
   animations:j.animations?.map(a=>({name:a.name,channels:a.channels?.length,samplers:a.samplers?.length})),
   joints:bones,meshes,meshNodes:tops,materials:j.materials?.map(m=>m.name)}));
+
+
+// v695 precise original-skinned-mesh audit: count source vertices per primary
+// bone and their X/Y/Z spans. Prevent another speculative transform tweak.
+const base=20+n+8,prim=j.meshes[0].primitives[0];
+const get=(name)=>{
+ const a=j.accessors[prim.attributes[name]],view=j.bufferViews[a.bufferView];
+ const start=base+(view.byteOffset||0)+(a.byteOffset||0);
+ const components=name==="JOINTS_0"||name==="WEIGHTS_0"?4:3;
+ const bytes=name==="JOINTS_0"?2:4,step=view.byteStride||components*bytes;
+ const out=[];
+ for(let i=0;i<a.count;i++){
+  let vals=[];
+  for(let k=0;k<components;k++){
+   let pos=start+i*step+k*bytes;
+   vals.push(name==="JOINTS_0"?b.readUInt16LE(pos):b.readFloatLE(pos));
+  }
+  out.push(vals);
+ }
+ return out;
+};
+const p=get("POSITION"),indices=get("JOINTS_0"),weights=get("WEIGHTS_0"),parts={};
+for(let i=0;i<p.length;i++){
+ let slot=weights[i].indexOf(Math.max(...weights[i])),joint=indices[i][slot],
+ name=bones[joint]?.name||"joint_"+joint;
+ const t=parts[name]||(parts[name]={n:0,min:[1e8,1e8,1e8],max:[-1e8,-1e8,-1e8],sum:[0,0,0]});
+ t.n++;
+ for(let k=0;k<3;k++){t.min[k]=Math.min(t.min[k],p[i][k]);t.max[k]=Math.max(t.max[k],p[i][k]);t.sum[k]+=p[i][k]}
+}
+for(const o of Object.values(parts))o.centroid=o.sum.map(v=>Math.round(v/o.n*100)/100);
+console.log("M17_SOURCE_SKIN_VERTEX_GROUPS="+JSON.stringify(parts));
