@@ -64,6 +64,7 @@ const {chromium}=require("playwright"),fs=require("fs");
  // Exercise the exact renderer-facing launcher effect path; no zombie damage.
  clearExplosionGlbs();
  const prewarmedInstances=explosionSparkPool.length;
+ const prewarmedBufferSet=new Set(explosionSparkPool);
  const at=cam.position.clone().add(new THREE.Vector3(0,1,-3));
  const t=performance.now();spawnExplosionBurst(at,true,.055);
  const creationMs=performance.now()-t;
@@ -75,7 +76,9 @@ const {chromium}=require("playwright"),fs=require("fs");
  const t2=performance.now();spawnExplosionBurst(at,true,.055);
  const nextMs=performance.now()-t2;
  const second=activeExplosionBursts.at(-1)?.sparkMesh;
- const reused=first===second;
+ // A three-slot pool rotates resources in FIFO order. Both bursts must
+ // come from the initial prewarmed pool; same pointer is NOT required.
+ const reused=prewarmedBufferSet.has(first)&&prewarmedBufferSet.has(second);
  clearExplosionGlbs();
  return{spins,launcher:{creationMs,nextMs,count,stopped,reused,prewarmedInstances},fingerStatus:document.documentElement.dataset.fpsArmsFingerStability};
 };
