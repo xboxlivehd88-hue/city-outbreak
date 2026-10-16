@@ -77,11 +77,15 @@ const {chromium}=require("playwright"),fs=require("fs");
   // Settle the authored source mixer/IK to the actual neutral firing hold,
   // not its first frame after rebuilding a GLB clone.
   for(let i=0;i<8;i++)poseOriginalFpsArms();
-  const restIndex=nativeIndex.quaternion.clone(),restWrist=nativeWrist.quaternion.clone();
+  // A wrist-local quaternion changes naturally when the parent elbow turns.
+  // Compare its actual WORLD orientation, which is what the player sees.
+  const restIndex=nativeIndex.quaternion.clone();
+  const restWrist=nativeWrist.getWorldQuaternion(new THREE.Quaternion());
   const restSample=Number(document.documentElement.dataset.fpsArmsAnimatedFingerTime);
   recoil=.18;lastNativeTriggerShotAt=performance.now()-72;
   for(let i=0;i<8;i++)poseOriginalFpsArms();
-  const indexPull=restIndex.angleTo(nativeIndex.quaternion),wristKick=restWrist.angleTo(nativeWrist.quaternion);
+  const indexPull=restIndex.angleTo(nativeIndex.quaternion);
+  const wristKick=restWrist.angleTo(nativeWrist.getWorldQuaternion(new THREE.Quaternion()));
   const firedSample=Number(document.documentElement.dataset.fpsArmsAnimatedFingerTime);
   recoil=previousRecoil;lastNativeTriggerShotAt=previousShot;poseOriginalFpsArms();
   spins.push({w,sourceBones:Number(document.documentElement.dataset.fpsArmsFingerRestCount),maxDrift:Math.max(...drift),drift,indexPull,wristKick,restSample,firedSample});
