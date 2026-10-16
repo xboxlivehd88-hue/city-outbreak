@@ -13,6 +13,7 @@ import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,h
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
+import {createArmsInspector} from "./arms-inspector.mjs?v=697";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
@@ -3719,6 +3720,9 @@ function updateDMRRightTriggerGrip(dt){
 // Retarget its original shoulder/elbow/wrist chains onto the existing hidden
 // hand controllers; preserves M4/MP5/shotgun/M17/DMR/M240/launcher paths.
 let fpsNativeArms=null,fpsNativeBoneChains=null,fpsNativePoseFrames=0,fpsNativeMixer=null;
+// Source-oriented open-arm reference is TEMPORARILY ON for all seven gun tests.
+const fpsArmsInspector=createArmsInspector(()=>{if(playerHandRig)rebuildGun()});
+globalThis.__cityArmsReference=fpsArmsInspector;
 // v687: the original GLB fingers ARE animated (64 channels / 2.167 seconds).
 // Native wrist aim was never solved in v684-v686: only the wrist POSITIONS were
 // targeted, while each hand retained its camera-incompatible bind rotation.
@@ -3765,7 +3769,7 @@ function attachOriginalFpsArms(){
   o.userData.externalWeaponAsset=true;
   if(o.isSkinnedMesh){
    o.castShadow=false;o.receiveShadow=false;o.frustumCulled=false;
-   if(weapon==="pistol"){
+   if(weapon==="pistol"&&!fpsArmsInspector.enabled){
     const geom=o.geometry.clone();
     const p=geom.getAttribute("position");
     const joints=geom.getAttribute("skinIndex"),weights=geom.getAttribute("skinWeight");
@@ -3858,7 +3862,7 @@ function poseOriginalFpsArms(){
  // its filmed camera arm motion on top of CITY OUTBREAK weapon transformations.
  // Wrist, shoulder and elbow are reattached to the actual gun targets below.
  const rp=reloadPoseProgress();
- const fingerTime=reloading
+ const fingerTime=fpsArmsInspector.enabled?0:reloading
    ?THREE.MathUtils.lerp(.12,Math.min(fpsArmsGripClip?.duration||2.167,2.0),rp.p)
    :recoil>.03?.88:.56;
  if(fpsNativeMixer)fpsNativeMixer.setTime(fingerTime);
@@ -3870,7 +3874,7 @@ function poseOriginalFpsArms(){
   const group=side==="left"?playerHandRig.left:playerHandRig.right;
   const upper=fpsJointEnds(controller.upper,group);
   const lower=fpsJointEnds(controller.fore,group);
-  const s=upper.a,e=lower.a;
+  let s=upper.a,e=lower.a;
   const preset=grip[side];
   const w=lower.b.clone().add(new THREE.Vector3(...preset.delta));
   // v691: M17 wrists were 22cm apart at hip but only 5cm apart in ADS.
@@ -3885,6 +3889,14 @@ function poseOriginalFpsArms(){
    w.x+=THREE.MathUtils.lerp(.12,.025,sightBlend)*holding;
    w.z-=.055*holding;
   }
+  if(fpsArmsInspector.enabled){
+   // Equal camera-space arm extension for EVERY weapon (actual GLB bones).
+   // Preserve original material, joint orientation and open source fingers.
+   const sign=side==="left"?-1:1;
+   s=new THREE.Vector3(sign*.48,-.92,-.22);
+   e=new THREE.Vector3(sign*.52,-.53,-.86);
+   w.set(sign*.56,-.30,-1.51);
+  }
   const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
   // Animating translations is fine for fingers, but keep elbow and wrist
   // lengths from the asset bind rig to maintain valid skinned segment spans.
@@ -3894,9 +3906,9 @@ function poseOriginalFpsArms(){
   arm.position.copy(arm.parent.worldToLocal(gun.localToWorld(s.clone())));
   // v693 M17: restrict ONLY native coat sleeve thickness, not bone lengths.
   // Smoothly reduce bulky ADS sleeves without forcing shoulder/elbow placement.
-  const m17Ads=weapon==="pistol"?THREE.MathUtils.smoothstep(aimBlend,0,1):0;
-  const sleeveUpper=weapon==="pistol"?THREE.MathUtils.lerp(.96,.82,m17Ads):1;
-  const sleeveFore=weapon==="pistol"?THREE.MathUtils.lerp(.96,.84,m17Ads):1;
+  const m17Ads=weapon==="pistol"&&!fpsArmsInspector.enabled?THREE.MathUtils.smoothstep(aimBlend,0,1):0;
+  const sleeveUpper=weapon==="pistol"&&!fpsArmsInspector.enabled?THREE.MathUtils.lerp(.96,.82,m17Ads):1;
+  const sleeveFore=weapon==="pistol"&&!fpsArmsInspector.enabled?THREE.MathUtils.lerp(.96,.84,m17Ads):1;
   arm.scale.set(sleeveUpper,sleeveUpper,1);
   elbow.scale.set(sleeveFore,sleeveFore,1);
   arm.updateMatrixWorld(true);
@@ -3914,14 +3926,16 @@ function poseOriginalFpsArms(){
   // Prior .72 shrink scaled only an invisible controller; the real support
   // glove never became smaller. Scale the authentic LEFT wrist/finger bones,
   // not a hidden guide or a new mesh. Leave trigger-hand size unchanged.
-  const nativeSupportSize=weapon==="pistol"&&side==="left"?.86:1;
+  const nativeSupportSize=weapon==="pistol"&&side==="left"&&!fpsArmsInspector.enabled?.86:1;
   wrist.scale.set(gloveRestore*nativeSupportSize,
                   gloveRestore*nativeSupportSize,nativeSupportSize);
   // SOURCE finger bases run down wrist-local -Z. Aim them FORWARD along the
   // barrel, then rotate each native palm toward its weapon grip. Previously
   // the original arbitrary bind wrist rotation pointed hands out of the gun.
   const desiredInGun=new THREE.Quaternion().setFromEuler(
-   new THREE.Euler(side==="left"?.08:-.08,side==="left"?-.12:.02,preset.roll,"XYZ")
+   fpsArmsInspector.enabled
+    ?new THREE.Euler(0,fpsArmsInspector.quarter*Math.PI*.5,0,"XYZ")
+    :new THREE.Euler(side==="left"?.08:-.08,side==="left"?-.12:.02,preset.roll,"XYZ")
   );
   const desiredWorld=gunWorldQuat.clone().multiply(desiredInGun);
   const parentWorld=elbow.getWorldQuaternion(new THREE.Quaternion());
@@ -3930,7 +3944,7 @@ function poseOriginalFpsArms(){
   // v693: video shows four M17 support fingers jutting SIDEWAYS from the grip.
   // Bend BOTH the original first knuckles and second phalanges as a real fist.
   // Ease this during the existing support-hand magazine fetch/reseat animation.
-  if(weapon==="pistol"){
+  if(weapon==="pistol"&&!fpsArmsInspector.enabled){
    const gripFlex=side==="left"?(reloading?THREE.MathUtils.clamp(1-rp.hand,0,1):1):.45;
    const baseNames=side==="left"
     ?["L_point_08","L_middle_012","L_ring_015","L_pink_019"]
@@ -3955,7 +3969,7 @@ function poseOriginalFpsArms(){
   }
   // v691: Curl the original SIG firing-hand index knuckle and middle joint
   // toward the trigger, without moving the wrist or replacing any mesh.
-  if(weapon==="pistol"&&side==="right"){
+  if(weapon==="pistol"&&side==="right"&&!fpsArmsInspector.enabled){
    // Keep this fingertip near the real trigger instead of projecting
    // nearly 25 cm forward into empty space alongside the slide.
    const indexFlex=reloading?.08:recoil>.03?.37:.31;
@@ -3963,7 +3977,7 @@ function poseOriginalFpsArms(){
    chain.indexMid.rotateX(-indexFlex);
   }
   // The DMR's original approved trigger finger movement remains unchanged.
-  if(side==="right"&&weapon==="dmr"&&!reloading){
+  if(side==="right"&&weapon==="dmr"&&!reloading&&!fpsArmsInspector.enabled){
    chain.index.rotateX(-.11);
    chain.indexMid.rotateX(-.09);
   }
@@ -3974,6 +3988,7 @@ function poseOriginalFpsArms(){
  fpsNativePoseFrames++;
  document.documentElement.dataset.fpsArmsPoseFrames=String(fpsNativePoseFrames);
  document.documentElement.dataset.fpsArmsAnimatedFingerTime=fingerTime.toFixed(3);
+ if(fpsArmsInspector.enabled)fpsArmsInspector.update(weapon);
  if(weapon==="pistol"){
   document.documentElement.dataset.fpsArmsM17SleeveProfile="v696-connected-pistol-grip";
   document.documentElement.dataset.fpsArmsM17GloveScale="0.86";
@@ -11353,7 +11368,10 @@ function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pa
 rebuildGun();setupResetButtons(reset);
 // Controls are now a tab in the shared SETTINGS dialog.
 const weaponHotkeys={Digit1:"pistol",Digit2:"rifle",Digit3:"shotgun",Digit4:"smg",Digit5:"m240",Digit6:"dmr",Digit7:"grenadeLauncher"};
-const onKeyDown=e=>{let k=e.key.toLowerCase(),hotWeapon=weaponHotkeys[e.code],gameKey=["w","a","s","d","r","g","n","shift"].includes(k)||!!hotWeapon;if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(hotWeapon&&!e.repeat)setWeapon(hotWeapon);if(gameKey)e.preventDefault()};
+const onKeyDown=e=>{let k=e.key.toLowerCase();
+ if(k==="h"&&!e.repeat&&running&&!paused&&!between&&!dying){fpsArmsInspector.set(!fpsArmsInspector.enabled);fpsArmsInspector.update(weapon);show(fpsArmsInspector.enabled?"SOURCE GLB ARMS EXTENDED — J TO ROTATE":"NORMAL WEAPON GRIPS RESTORED");e.preventDefault();return}
+ if(k==="j"&&!e.repeat&&running&&!paused&&!between&&!dying){fpsArmsInspector.turn(fpsArmsInspector.quarter+1);fpsArmsInspector.update(weapon);e.preventDefault();return}
+ let hotWeapon=weaponHotkeys[e.code],gameKey=["w","a","s","d","r","g","n","shift"].includes(k)||!!hotWeapon;if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(hotWeapon&&!e.repeat)setWeapon(hotWeapon);if(gameKey)e.preventDefault()};
 setupKeyDown(onKeyDown);
 const onWeaponWheel=e=>{
  if(!running||paused||dying||between||document.pointerLockElement!==cv)return;
