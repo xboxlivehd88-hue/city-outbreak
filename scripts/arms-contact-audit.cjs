@@ -40,7 +40,7 @@ const {chromium}=require("playwright"),fs=require("fs");
  fpsArmsInspector.set(previous.inspection);rebuildGun();move(.016);
  return result;
 };
-;globalThis.__v704FingerLauncherAudit=()=>{
+;globalThis.__v705FingerLauncherAudit=()=>{
  const save={weapon,aiming,aimBlend,inspection:fpsArmsInspector.enabled};
  fpsArmsInspector.set(false);aiming=false;aimBlend=0;reloading=false;reloadWeapon="";
  const spins=[];
@@ -84,13 +84,13 @@ const {chromium}=require("playwright"),fs=require("fs");
     console.log("V701_SOURCE_AUDIT_INJECTED",route.request().url());
     await route.fulfill({response:rsp,body:source+addon,contentType:"application/javascript"});
   });
-  await page.goto("http://127.0.0.1:4173/?v=704-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
+  await page.goto("http://127.0.0.1:4173/?v=705-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:90000});
   await page.waitForTimeout(9000);
   await page.locator("#start").click({noWaitAfter:true});
   await page.waitForFunction(()=>!!globalThis.__sourceWeaponGeometryAudit,null,{timeout:60000});
   report.models=await page.evaluate(()=>globalThis.__sourceWeaponGeometryAudit());
-  report.handAndLauncher=await page.evaluate(()=>globalThis.__v704FingerLauncherAudit());
+  report.handAndLauncher=await page.evaluate(()=>globalThis.__v705FingerLauncherAudit());
   console.log("V704_HAND_LAUNCHER_AUDIT="+JSON.stringify(report.handAndLauncher));
 
   for(const m of report.models){
