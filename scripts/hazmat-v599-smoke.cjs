@@ -36,7 +36,7 @@ try{
     errors.push("SHADER: "+msg.text().slice(0,500));
   });
   page.on("response",r=>{if(r.url().includes("/assets/zombie_hazmat.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=698$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=699$/,async route=>{
    const rsp=await route.fetch(),src=await rsp.text();
    const extraAudit="\n;globalThis.__hazmatLifecycleAudit=()=>{\n const all=zombies.filter(z=>z.kind===\"acidic\"&&!z.dead&&z.hazmatVisual);\n if(all.length<3)throw Error(\"Not enough Hazmat test actors\");\n const normal=all[0],crawler=all[1];\n // Release the first actor directly into the game PBD, never a canned pose.\n const origin=normal.g.position.clone().add(new THREE.Vector3(0,1,1));\n const initial=normal.hazmatVisual.position.clone();\n killZ(normal,false,origin,1.5);\n const isNative=normal.ragdoll?.bodyPbd?.holder===normal.hazmatVisual;\n const originalBones=normal.hazmatBones?.size||0;\n for(let i=0;i<24;i++)updateRagdoll(normal,1/60);\n const ragTravel=normal.hazmatVisual.position.distanceTo(initial);\n // Detaching each leg must not spawn the hidden generic leg debris.\n crawler.hp=Math.max(40,crawler.hp);const sameRoot=crawler.g,originalModel=crawler.hazmatModel;\n const beforeParts=parts.filter(p=>p.limb).length;\n detachLeg(crawler,\"left\");\n const afterOne={left:crawler.leftLegDetached,right:crawler.rightLegDetached,\n  nativeHidden:crawler.hazmatBones.get(\"L_UpperLeg\").scale.x<.001,\n  parts:parts.filter(p=>p.limb).length-beforeParts,modelSame:crawler.hazmatModel===originalModel};\n detachLeg(crawler,\"right\");\n hazmatZombie.sync(crawler,.016);\n const afterTwo={kind:crawler.kind,ownerStillPresent:zombies.includes(crawler),\n  sameRoot:crawler.g===sameRoot,modelSame:crawler.hazmatModel===originalModel,\n  crawler:crawler.hazmatCrawler,visual:crawler.hazmatVisual?.name,\n  bothHidden:crawler.hazmatBones.get(\"L_UpperLeg\").scale.x<.001&&\n   crawler.hazmatBones.get(\"R_UpperLeg\").scale.x<.001,\n  headHitbox:crawler.hitMeshes.some(o=>o.userData.isHead),\n  bodyHitbox:crawler.hitMeshes.some(o=>o.userData.part===\"torso\")};\n // Native user grenade GLB, no fake explosion geometry or extra damage code.\n const grenade=grenadeModelTemplate?.clone(true);\n let explosionMs=null;\n if(grenade){grenade.position.copy(crawler.g.position).add(new THREE.Vector3(0,1,.35));\n  scene.add(grenade);\n  const before=performance.now();\n  explodeGrenade({q:grenade});\n  explosionMs=performance.now()-before;\n }\n return {isNative,originalBones,ragTravel,afterOne,afterTwo,\n  explosionMs,reportedExplosionMs:document.documentElement.dataset.lastGrenadeLogicMs};\n};\n";
    const injected="\n;globalThis.__hazmatSmoke={\n ready:()=>newCityCollisionReady&&hazmatZombie.status().loaded,\n forceHazmats:()=>{for(let i=0;i<10;i++)makeZombie(px+8+i*.25,pz+8+i*.25,300+i,'acidic')},\n snapshot:()=>{\n  const live=zombies.filter(z=>!z.dead&&z.kind==='acidic'),hz=live.filter(z=>z.hazmatVisual),z=hz[0],meshes=[],bones=[];\n  z?.hazmatModel?.traverse(o=>{\n   if(o.isBone)bones.push(o.name);\n   if(o.isSkinnedMesh)meshes.push({name:o.name,map:!!o.material?.map,vertices:o.geometry?.getAttribute(\"position\")?.count||0});\n  });\n  const box=z?.hazmatVisual?new THREE.Box3().setFromObject(z.hazmatVisual,true):null;\n  return {\n   build:document.documentElement.dataset.cityOutbreakBuild,wave,waveTarget,waveSpawned,\n   live:live.length,kinds:[...new Set(live.map(z=>z.kind))],\n   acidic:live.filter(z=>z.kind===\"acidic\").length,boss:live.filter(z=>z.kind===\"boss\").length,\n   attached:hz.length,original:z?.hazmatModel?.name,meshes,bones:bones.length,\n   leftLeg:bones.some(n=>/leftleg/i.test(n)),rightLeg:bones.some(n=>/rightleg/i.test(n)),\n   height:box?.getSize(new THREE.Vector3()).y,scale:z?.hazmatVisual?.scale.x,\n   clips:Object.keys(z?.hazmatActions||{}),mist:hz.some(a=>a.hazardMist?.visible===true),mistObjects:hz.filter(a=>!!a.hazardMist).length,\n   hidden:z?.rigVisual?(()=>{let seen=0;z.rigVisual.traverse(o=>{if(o.isMesh&&o.visible)seen++});return seen===0})():false,\n   headHits:z?.hitMeshes?.filter(o=>o.userData?.part===\"head\").length,\n   torsoHits:z?.hitMeshes?.filter(o=>o.userData?.part===\"torso\").length,\n   pool:BOSS_NAME_POOL.length,armTuning:hazmatZombie.status().armTuning,attachStatus:hazmatZombie.status()\n  };\n },\n motion:()=>{\n  const z=zombies.find(z=>!z.dead&&z.kind===\"acidic\"&&z.hazmatMixer);\n  if(!z)return null;\n  const mixer=z.hazmatMixer,walk=z.hazmatActions.Zombie_Walk_Root,bones=[];\n  z.hazmatModel.traverse(o=>{if(o.isBone&&/leftleg|rightleg|leftupleg|rightupleg/i.test(o.name))bones.push(o)});\n  for(const action of Object.values(z.hazmatActions))action.stop();\n  walk.reset().play();walk.timeScale=1;\n  const pose=t=>{mixer.setTime(t);return bones.map(b=>b.quaternion.clone())};\n  const a=pose(.21),b=pose(1.35);\n  return {clip:walk.getClip().name,angles:a.map((q,i)=>q.angleTo(b[i]))};\n }\n};";
@@ -276,23 +276,7 @@ globalThis.__m17V698PreviewRestore=()=>{
  weapon="dmr";aiming=false;aimBlend=0;pitch=0;
  reloading=false;reloadWeapon="";rebuildGun();move(.016);
 };
-// Anatomy sweep: preserve the LIVE v698 grip and examine which real firing-hand
-// wrist roll places original index above pinky and thumb toward pistol center.
-globalThis.__m17PalmSweep=(roll,ads)=>{
- const old=FPS_NATIVE_GRIPS.pistol.right.roll;
- FPS_NATIVE_GRIPS.pistol.right.roll=roll;
- const jpeg=globalThis.__m17V698Preview(ads);
- gun.updateMatrixWorld(true);
- const rig=gun.getObjectByName("OriginalCartoonFPSArmsGLB");
- const p=name=>{const b=rig?.getObjectByName(name);return b?gun.worldToLocal(b.getWorldPosition(new THREE.Vector3())).toArray():null};
- const sample={
-  wrist:p("R_wrist_025"),thumb:p("R_thumb_3_028"),
-  index:p("R_point_4_033"),pink:p("R_pink_4_045"),
-  supportThumb:p("L_thumb_3_06"),jpeg
- };
- FPS_NATIVE_GRIPS.pistol.right.roll=old;
- return sample;
-};`;
+`;
    const dmrShoulderAudit=`
 ;globalThis.__dmrV683ShoulderAudit=()=>{
  const previousAim=aiming,previousPitch=pitch;
@@ -442,9 +426,9 @@ globalThis.__m17PalmSweep=(roll,ads)=>{
   assert.equal(report.m17Sleeves,"v696-connected-pistol-grip","original v696 grip must remain intact when reference mode is off");
   report.m17Taper=await page.evaluate(()=>({
    vertexCount:Number(document.documentElement.dataset.fpsArmsM17TaperVerts||0),
-   gloveSize:document.documentElement.dataset.fpsArmsM17GloveScale
+   gloveSize:document.documentElement.dataset.fpsArmsM17GloveScale,firingOrientation:document.documentElement.dataset.fpsArmsM17FiringOrientation
   }));
-  assert(report.m17Taper.vertexCount>=40&&report.m17Taper.gloveSize==="0.86",
+  assert(report.m17Taper.vertexCount>=40&&report.m17Taper.gloveSize==="0.86"&&report.m17Taper.firingOrientation==="source-calibrated-270",
    "M17 must actually modify original sleeve vertices and size its visible glove: "+JSON.stringify(report.m17Taper));
   // Visual capture is diagnostic, NOT allowed to make otherwise-correct
   // gameplay regression fail on headless SwiftShader screenshot stalls.
@@ -456,16 +440,6 @@ globalThis.__m17PalmSweep=(roll,ads)=>{
     report.m17Preview[key]=jpeg?.length||0;
     if(jpeg?.length>6000)console.log("M17_V698_"+key.toUpperCase()+"_JPEG="+jpeg);
    }catch(captureError){report.m17Preview[key]=String(captureError).slice(0,220)}
-  }
-  // v698 isolated rig calibration: source anatomy, NOT a live weapon edit.
-  report.m17OrientationSweep=[];
-  for(const [label,roll] of [["0",0],["90",Math.PI/2],["180",Math.PI],["270",Math.PI*1.5]]){
-   for(const ads of [false,true]){
-    const out=await page.evaluate(v=>globalThis.__m17PalmSweep(v.roll,v.ads),{roll,ads});
-    const {jpeg,...points}=out;
-    report.m17OrientationSweep.push({label,ads,...points});
-    if(jpeg?.length>6000)console.log("M17_ORIENT_"+label+"_"+(ads?"ADS":"HIP")+"_JPEG="+jpeg);
-   }
   }
   await page.evaluate(()=>globalThis.__m17V698PreviewRestore());
   report.dmrTest=await page.evaluate(()=>globalThis.__dmrV678Audit());
@@ -512,7 +486,7 @@ globalThis.__m17PalmSweep=(roll,ads)=>{
     report.m17Grip.hip.leftFingerJointNames?.length===4&&
     report.m17Grip.hip.gunModels===1&&report.m17Grip.hip.handPoseProfile==="pistol"&&
     report.m17Grip.pistolGrips?.left?.roll===.16&&
-    report.m17Grip.pistolGrips?.right?.roll===3.02&&
+    report.m17Grip.pistolGrips?.right?.roll===Math.PI*1.5&&
     report.m17Grip.pistolGrips?.left?.delta?.[0]===-.085&&
     report.m17Grip.pistolGrips?.right?.delta?.[2]===.03&&
     report.m17Grip.pistolGrips?.left?.delta?.[1]===-.065&&
@@ -524,6 +498,15 @@ globalThis.__m17PalmSweep=(roll,ads)=>{
     report.m17Grip.ads.separation>.035&&report.m17Grip.ads.separation<.17&&
     report.m17Grip.hip.supportThumbToFiringThumb<.195&&
     report.m17Grip.ads.supportThumbToFiringThumb<.195&&
+    // Source GLB calibration against 4 rendered wrist rolls: both HIP and ADS
+    // must put right index ABOVE little finger, with the right thumb on the
+    // exterior side and native fingertip reaching back across the pistol grip.
+    ["hip","ads"].every(mode=>{
+      const p=report.m17Grip[mode]?.originalFingers;
+      return p?.R_point_4_033?.[1]>p?.R_pink_4_045?.[1]+.025&&
+       p?.R_thumb_3_028?.[0]>p?.R_point_4_033?.[0]+.04&&
+       Math.abs(p?.R_point_4_033?.[0]-.36)<.1;
+    })&&
     // Restore v687's *authored* aiming transition, which legitimately
     // shifts skinned wrists by ~0.08-0.16 and elbows by ~0.07-0.10 units.
     // v688 forced these bones to remain still and stretched the sleeves.

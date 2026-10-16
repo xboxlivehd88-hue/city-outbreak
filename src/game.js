@@ -3737,7 +3737,11 @@ const FPS_NATIVE_GRIPS={
  // overextended v688 ADS sleeve/elbow and skinned wrist transforms.
  // v690: nudge ONLY the supporting wrist ~3.5 cm toward the real M17 grip.
  // Keep v687 elbow/shoulder motion and right trigger wrist completely intact.
- pistol:{left:{delta:[-.085,-.065,.07],roll:.16},right:{delta:[-.025,-.06,.03],roll:3.02}},
+ // v699: REAL SOURCE-RIG 0/90/180/270 Chromium sweep (run 38930894109).
+ // 270° keeps the authentic right index ABOVE pinky, and original right thumb
+ // outside the grip while native fingertips curve across the face of the M17.
+ // No change to shoulder/elbow/controller placement, sight or other six guns.
+ pistol:{left:{delta:[-.085,-.065,.07],roll:.16},right:{delta:[-.025,-.06,.03],roll:Math.PI*1.5}},
  dmr:{left:{delta:[.08,-.095,.045],roll:1.54},right:{delta:[-.035,-.07,.045],roll:3.14}},
  grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:1.55},right:{delta:[-.04,-.085,.04],roll:3.14}},
  m240:{left:{delta:[.09,-.08,.06],roll:1.51},right:{delta:[-.04,-.085,.05],roll:3.14}}
@@ -4002,6 +4006,7 @@ function poseOriginalFpsArms(){
  if(weapon==="pistol"){
   document.documentElement.dataset.fpsArmsM17SleeveProfile="v696-connected-pistol-grip";
   document.documentElement.dataset.fpsArmsM17GloveScale="0.86";
+  document.documentElement.dataset.fpsArmsM17FiringOrientation="source-calibrated-270";
  }
 }
 
