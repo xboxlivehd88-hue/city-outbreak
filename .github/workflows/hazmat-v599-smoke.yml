@@ -1,4 +1,4 @@
-name: v703 Original Hand Contact and Real Reload Return Regression
+name: v704 Original Hand Contact and Real Reload Return Regression
 on:
   push:
     paths:
@@ -33,7 +33,7 @@ jobs:
           python3 -m http.server 4173 >/tmp/hazmat-server.log 2>&1 &
           sleep 2
           node scripts/hazmat-v599-smoke.cjs
-      - name: Publish v703 browser regression status on this commit
+      - name: Publish v704 browser regression status on this commit
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
@@ -42,7 +42,7 @@ jobs:
           CI_RUN: ${{ github.run_id }}
           TEST_OUTCOME: ${{ steps.gameplay.outcome }}
         run: |
-          node -e 'const fs=require("fs"); const f="HAZMAT_V658_AUDIT.json"; const r=fs.existsSync(f)?JSON.parse(fs.readFileSync(f,"utf8")):null; const pass=process.env.TEST_OUTCOME==="success"&&r?.passed===true; const issue=r?.failure?String(r.failure).split("\\n")[0].slice(0,100):"Browser regression incomplete"; const data={state:pass?"success":"failure",context:"city-outbreak/arms-v703-browser",description:pass?"Hazmat, DMR ADS/recoil/reload and GLB smoke PASS":issue,target_url:"https://github.com/"+process.env.CI_REPO+"/actions/runs/"+process.env.CI_RUN}; fetch("https://api.github.com/repos/"+process.env.CI_REPO+"/statuses/"+process.env.CI_SHA,{method:"POST",headers:{Authorization:"Bearer "+process.env.GH_TOKEN,Accept:"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},body:JSON.stringify(data)}).then(async x=>{console.log("Browser status",x.status,JSON.stringify(data), (await x.text()).slice(0,200));if(!x.ok)process.exitCode=1}).catch(x=>{console.error(x);process.exitCode=1})'
+          node -e 'const fs=require("fs"); const f="HAZMAT_V658_AUDIT.json"; const r=fs.existsSync(f)?JSON.parse(fs.readFileSync(f,"utf8")):null; const pass=process.env.TEST_OUTCOME==="success"&&r?.passed===true; const issue=r?.failure?String(r.failure).split("\\n")[0].slice(0,100):"Browser regression incomplete"; const data={state:pass?"success":"failure",context:"city-outbreak/arms-v704-browser",description:pass?"Hazmat, DMR ADS/recoil/reload and GLB smoke PASS":issue,target_url:"https://github.com/"+process.env.CI_REPO+"/actions/runs/"+process.env.CI_RUN}; fetch("https://api.github.com/repos/"+process.env.CI_REPO+"/statuses/"+process.env.CI_SHA,{method:"POST",headers:{Authorization:"Bearer "+process.env.GH_TOKEN,Accept:"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},body:JSON.stringify(data)}).then(async x=>{console.log("Browser status",x.status,JSON.stringify(data), (await x.text()).slice(0,200));if(!x.ok)process.exitCode=1}).catch(x=>{console.error(x);process.exitCode=1})'
       - if: always()
         uses: actions/upload-artifact@v4
         with:
