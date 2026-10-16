@@ -3337,22 +3337,27 @@ async function prewarmExplosionGpu(){
  explosionGpuPrewarmPromise=(async()=>{
   const started=performance.now();
   document.documentElement.dataset.explosionGpuWarmup="running";
-  let burn=null,haze=null,warmTarget=null,warmSpark=null;
+  let burn=null,haze=null,warmTarget=null;const warmSparks=[];
   try{
    prepareExplosionTextures();
    burn=primeExplosionParticleBatch(explosionBurstTextures.fire,false,160);
    haze=primeExplosionParticleBatch(explosionBurstTextures.smoke,true,160);
-   // Prewarm 256 REAL instance slots, not the former single dummy spark.
-   warmSpark=acquireExplosionSparkMesh(256);
+   // The launcher can keep three bursts alive at its rate of fire.
+   // Prime all THREE 256-slot buffers while the menu is idle, so consecutive
+   // launched rounds do not allocate instance streams during combat.
    const hidden=new THREE.Object3D();hidden.scale.setScalar(.00001);hidden.updateMatrix();
-   for(let i=0;i<256;i++){
-    warmSpark.setMatrixAt(i,hidden.matrix);
-    warmSpark.setColorAt(i,new THREE.Color(explosionSparkColors[i%explosionSparkColors.length]));
+   for(let n=0;n<3;n++){
+    const warmSpark=acquireExplosionSparkMesh(256);
+    for(let i=0;i<256;i++){
+     warmSpark.setMatrixAt(i,hidden.matrix);
+     warmSpark.setColorAt(i,new THREE.Color(explosionSparkColors[i%explosionSparkColors.length]));
+    }
+    warmSpark.instanceMatrix.needsUpdate=true;
+    if(warmSpark.instanceColor)warmSpark.instanceColor.needsUpdate=true;
+    warmSparks.push(warmSpark);
    }
-   warmSpark.instanceMatrix.needsUpdate=true;
-   if(warmSpark.instanceColor)warmSpark.instanceColor.needsUpdate=true;
    const warmScene=new THREE.Scene();
-   warmScene.add(burn.mesh,haze.mesh,warmSpark);
+   warmScene.add(burn.mesh,haze.mesh,...warmSparks);
    // compileAsync avoids blocking the first grenade for shader linking.
    if(typeof ren.compileAsync==="function")await ren.compileAsync(warmScene,cam);
    else ren.compile(warmScene,cam);
@@ -3374,7 +3379,7 @@ async function prewarmExplosionGpu(){
   }finally{
    if(burn)disposeExplosionParticleBatch(burn);
    if(haze)disposeExplosionParticleBatch(haze);
-   if(warmSpark)recycleExplosionSparkMesh(warmSpark);
+   for(const warmSpark of warmSparks)recycleExplosionSparkMesh(warmSpark);
    warmTarget?.dispose();
    document.documentElement.dataset.explosionGpuWarmupMs=
     (performance.now()-started).toFixed(1);
@@ -10315,7 +10320,7 @@ function explodeLauncherRound(g){
    }
  }
  document.documentElement.dataset.lastLauncherLogicMs=(performance.now()-launcherBlastStart).toFixed(2);
- document.documentElement.dataset.launcherSparkGpuPool="v704-prewarmed-recycled";
+ document.documentElement.dataset.launcherSparkGpuPool="v705-triple-prewarmed-recycled";
 }
 function throwGrenade(){
  if(!running||paused||dying||between||grenades<=0)return;
