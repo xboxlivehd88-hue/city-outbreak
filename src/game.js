@@ -3999,6 +3999,24 @@ function poseOriginalFpsArms(){
    e=new THREE.Vector3(sign*.52,-.53,-.86);
    w.set(sign*.56,-.30,-1.51);
   }
+  // v715: real source-GLB arm proportions. Previously the hidden
+  // controller elbow sat too near the gripping wrist on long receivers.
+  // Chromium v714 measured DMR/M240 ADS upper bones at 2.86/2.83x
+  // and their forearms at only .70/.69x. Keep shoulder AND wrist world
+  // contacts EXACTLY as before; redistribute reach through the elbow.
+  // Blend gradually while entering ADS so the elbow never pops or snaps.
+  // This preserves the M17 v699 right-hand firing orientation, the DMR
+  // sight, and all original gun/reload animations.
+  if(!fpsArmsInspector.enabled){
+   const elbowBalance={
+    pistol:[.035,.12],
+    rifle:[.10,.30],smg:[.10,.28],shotgun:[.04,.13],
+    m240:[.11,.37],dmr:[.11,.37],grenadeLauncher:[.09,.28]
+   };
+   const blend=elbowBalance[weapon]||[.08,.24];
+   const amount=THREE.MathUtils.lerp(blend[0],blend[1],THREE.MathUtils.smoothstep(aimBlend,0,1));
+   e.lerp(s,amount);
+  }
   const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
   // Animating translations is fine for fingers, but keep elbow and wrist
   // lengths from the asset bind rig to maintain valid skinned segment spans.
@@ -4040,6 +4058,10 @@ function poseOriginalFpsArms(){
   const lowerLength=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
   elbow.scale.z=THREE.MathUtils.clamp(e.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
   elbow.updateMatrixWorld(true);
+  if(side==="left"){
+   document.documentElement.dataset.fpsArmsMeasuredLeftUpperStretch=arm.scale.z.toFixed(3);
+   document.documentElement.dataset.fpsArmsMeasuredLeftForeStretch=elbow.scale.z.toFixed(3);
+  }
   // Compensate inherited sleeve girth scale at the skinned original glove.
   // Authentic wrist/fingers remain visible and the original bone spans remain.
   const gloveRestore=1/(sleeveUpper*sleeveFore);
