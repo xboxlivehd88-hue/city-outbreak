@@ -3466,7 +3466,9 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  }
  // High now carries about 35% more airborne smoke/fire than v532;
  // effects scale smoothly with existing Custom particle density.
- const puffCount=Math.max(8,Math.round((isLauncher?85:110)*(1+.35*spectacle)*Math.pow(quality,1.65)));
+ // Launcher bursts can overlap under rapid fire; cap their *cosmetic*
+ // smoke density, not grenade damage, sound, projectile or ragdoll physics.
+ const puffCount=Math.max(8,Math.round((isLauncher?70:110)*(1+.35*spectacle)*Math.pow(quality,1.65)));
  for(let i=0;i<puffCount;i++){
    const smoke=i%5<3; // 60% smoke for a convincing rolling airborne plume
    const angle=Math.random()*Math.PI*2;
@@ -3475,7 +3477,7 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
    const y=.60+Math.random()*(smoke?1.7:1.25);
    const speed=((smoke?1.35:2.90)+Math.random()*(smoke?2.25:3.4))*(1+.14*spectacle);
    const up=((smoke?1.2:2.5)+Math.random()*(smoke?2.5:2.4))*(1+.11*spectacle);
-   const size=smoke?.85+Math.random()*1.10:.45+Math.random()*1.05;
+   const size=(smoke?.85+Math.random()*1.10:.45+Math.random()*1.05)*(isLauncher?.92:1);
    const color=smoke?
      (i%4===0?0xa29b90:i%3===0?0x675c53:0x393838):
      (i%7===0?0xfff0aa:i%3===0?0xffa33a:0xcc4218);
@@ -3488,7 +3490,7 @@ function spawnExplosionBurst(position,isLauncher,ruptureDelay=0){
  const smokeBatch=createExplosionParticleBatch(explosionBurstTextures.smoke,true,particles.filter(p=>p.smoke));
  const particleBatches=[fireBatch,smokeBatch].filter(Boolean);
  for(const batch of particleBatches)group.add(batch.mesh);
- const sparkCount=Math.max(14,Math.round((isLauncher?160:200)*(1+.28*spectacle)*Math.pow(quality,1.8)));
+ const sparkCount=Math.max(14,Math.round((isLauncher?120:200)*(1+.28*spectacle)*Math.pow(quality,1.8)));
  const sparkMesh=acquireExplosionSparkMesh(sparkCount);
  const sparks=[];
  for(let i=0;i<sparkCount;i++){
@@ -3756,6 +3758,8 @@ function updateDMRRightTriggerGrip(dt){
 // hand controllers; preserves M4/MP5/shotgun/M17/DMR/M240/launcher paths.
 let fpsNativeArms=null,fpsNativeBoneChains=null,fpsNativePoseFrames=0,fpsNativeMixer=null;
 let fpsNativeFingerRest=[]; // native GLB base quaternions prevent cumulative spins
+// Fire only the trigger joints. Keep the source hand/wrist/arm animation still.
+let lastNativeTriggerShotAt=-1;
 // Source-oriented open-arm reference is TEMPORARILY ON for all seven gun tests.
 const fpsArmsInspector=createArmsInspector(()=>{if(playerHandRig)rebuildGun()});
 globalThis.__cityArmsReference=fpsArmsInspector;
@@ -3916,7 +3920,7 @@ function poseOriginalFpsArms(){
  const rp=reloadPoseProgress();
  const fingerTime=fpsArmsInspector.enabled?0:reloading
    ?THREE.MathUtils.lerp(.12,Math.min(fpsArmsGripClip?.duration||2.167,2.0),rp.p)
-   :recoil>.03?.88:.56;
+   :.56; // recoil must NOT jump the entire animated firing hand to t=.88
  // Never accumulate incremental Euler finger curls across gameplay frames.
  // Restore the source pose before sampling its real authored animation;
  // only then apply the current frame's desired grip bend.
@@ -3995,7 +3999,11 @@ function poseOriginalFpsArms(){
   // Prior .72 shrink scaled only an invisible controller; the real support
   // glove never became smaller. Scale the authentic LEFT wrist/finger bones,
   // not a hidden guide or a new mesh. Leave trigger-hand size unchanged.
-  const nativeSupportSize=weapon==="pistol"&&side==="left"&&!fpsArmsInspector.enabled?.86:1;
+  // The GLB's original gloves looked small next to full-size receivers.
+  // Scale the actual wrist-weighted hand/fingers only; coat, elbow and
+  // approved gun/sight contacts remain at exactly their original targets.
+  const nativeSupportSize=fpsArmsInspector.enabled?1:
+   side==="left"?(weapon==="pistol"?1.02:1.09):1.075;
   wrist.scale.set(gloveRestore*nativeSupportSize,
                   gloveRestore*nativeSupportSize,nativeSupportSize);
   // SOURCE finger bases run down wrist-local -Z. Aim them FORWARD along the
@@ -4041,7 +4049,7 @@ function poseOriginalFpsArms(){
   if(weapon==="pistol"&&side==="right"&&!fpsArmsInspector.enabled){
    // Keep this fingertip near the real trigger instead of projecting
    // nearly 25 cm forward into empty space alongside the slide.
-   const indexFlex=reloading?.08:recoil>.03?.37:.31;
+   const indexFlex=reloading?.08:.31;
    chain.index.rotateX(reloading?-.10:-.25);
    chain.indexMid.rotateX(-indexFlex);
   }
@@ -4063,10 +4071,19 @@ function poseOriginalFpsArms(){
     chain.indexMid.rotateX(-.28*hold);
    }
   }
-  // The DMR's original approved trigger finger movement remains unchanged.
+  // Preserve approved DMR right-hand hold; firing moves ONLY its index.
   if(side==="right"&&weapon==="dmr"&&!reloading&&!fpsArmsInspector.enabled){
    chain.index.rotateX(-.11);
    chain.indexMid.rotateX(-.09);
+  }
+  if(side==="right"&&!reloading&&!fpsArmsInspector.enabled){
+   const age=performance.now()-lastNativeTriggerShotAt;
+   const pull=age>=0&&age<145?Math.sin(Math.PI*age/145):0;
+   // Pull the native first/second index phalanges through the trigger,
+   // never translate or re-sample the whole right glove on firing.
+   chain.index.rotateX(-.21*pull);
+   chain.indexMid.rotateX(-.17*pull);
+   document.documentElement.dataset.fpsArmsTriggerPull=pull.toFixed(3);
   }
  };
  poseSide("left",{upper:playerHandRig.leftUpper,fore:playerHandRig.leftFore});
@@ -4088,7 +4105,8 @@ function poseOriginalFpsArms(){
  if(fpsArmsInspector.enabled)fpsArmsInspector.update(weapon);
  if(weapon==="pistol"){
   document.documentElement.dataset.fpsArmsM17SleeveProfile="v696-connected-pistol-grip";
-  document.documentElement.dataset.fpsArmsM17GloveScale="0.86";
+  document.documentElement.dataset.fpsArmsM17GloveScale="1.02";
+  document.documentElement.dataset.fpsArmsRightGloveScale="1.075";
   document.documentElement.dataset.fpsArmsM17FiringOrientation="source-calibrated-270";
  }
 }
@@ -9996,7 +10014,9 @@ function fire(){
   if(weapon==="pistol"||A().reserve>0){autoReloadIfEmpty(weapon)}else show("EMPTY");
   return
  }
- A().mag--;weaponSound();if(weapon!=="grenadeLauncher")casing();recoil=Math.min(.3,recoil+wd().recoil);const flashMuzzle=muzzle;flashMuzzle.intensity=10;setTimeout(()=>{if(flashMuzzle)flashMuzzle.intensity=0},42);ui();
+ A().mag--;weaponSound();if(weapon!=="grenadeLauncher")casing();
+ lastNativeTriggerShotAt=performance.now();
+ recoil=Math.min(.3,recoil+wd().recoil);const flashMuzzle=muzzle;flashMuzzle.intensity=10;setTimeout(()=>{if(flashMuzzle)flashMuzzle.intensity=0},42);ui();
  if(weapon==="grenadeLauncher"){
   const firedWeapon=weapon;
   fireGrenadeLauncherRound();
