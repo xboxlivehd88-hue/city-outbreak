@@ -4009,7 +4009,10 @@ function poseOriginalFpsArms(){
   // sight, and all original gun/reload animations.
   if(!fpsArmsInspector.enabled){
    const elbowBalance={
-    pistol:[.035,.12],
+    // M17 wrist alignment was already within ~1.6 cm on v714. Larger
+    // ADS elbow redirection made its original sleeves hang even farther.
+    // Keep the natural trigger grip and use only a subtle forearm rebalance.
+    pistol:[0,.05],
     rifle:[.08,.22],smg:[.10,.28],shotgun:[.04,.13],
     m240:[.11,.35],dmr:[.11,.35],grenadeLauncher:[.09,.28]
    };
