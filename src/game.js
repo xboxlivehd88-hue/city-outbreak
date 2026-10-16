@@ -3924,10 +3924,14 @@ function rotateNativeBoneToward(bone,child,goalGun,restQuat){
  const current=bone.getWorldPosition(new THREE.Vector3());
  const goal=gun.localToWorld(goalGun.clone());
  const desired=goal.sub(current).normalize();
- const parentQuat=parent.getWorldQuaternion(new THREE.Quaternion());
- desired.applyQuaternion(parentQuat.invert());
+ // The source forearm inherits nonuniform upper-sleeve scale in ADS.
+ // A world QUATERNION ignores its parent's scale/shear, causing the native
+ // wrist to miss the genuine support grip by 6–30 cm on the long guns.
+ // Transform the destination through the FULL inverse parent matrix.
+ const goalParent=parent.worldToLocal(goal.clone());
+ const desiredLocal=goalParent.sub(bone.position).normalize();
  const restAxis=child.position.clone().applyQuaternion(restQuat).normalize();
- const delta=new THREE.Quaternion().setFromUnitVectors(restAxis,desired);
+ const delta=new THREE.Quaternion().setFromUnitVectors(restAxis,desiredLocal);
  bone.quaternion.copy(delta).multiply(restQuat);
  parent.updateMatrixWorld(true);
 }
