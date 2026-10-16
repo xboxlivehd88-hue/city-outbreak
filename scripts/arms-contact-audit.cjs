@@ -27,6 +27,11 @@ const {chromium}=require("playwright"),fs=require("fs");
   });
   geometry.sort((a,b)=>b.size.reduce((x,y)=>x+y,0)-a.size.reduce((x,y)=>x+y,0));
   const hip={lw:point("L_wrist_03"),rw:point("R_wrist_025"),lt:point("L_thumb_3_06"),rt:point("R_thumb_3_028"),ri:point("R_point_4_033"),rp:point("R_pink_4_045"),geometry:geometry.slice(0,18)};
+  // Record the ACTUAL in-engine held weapon with the corrected native skin.
+  // The model is neither hidden nor displaced, and screenshots don't mutate it.
+  try{ren.render(scene,cam);hip.jpeg=ren.domElement.toDataURL("image/jpeg",.42).slice(23)}
+  catch(error){hip.captureError=String(error)}
+
   aiming=true;aimBlend=1;move(.16);
   const ads={lw:point("L_wrist_03"),rw:point("R_wrist_025"),ri:point("R_point_4_033"),lt:point("L_thumb_3_06")};
   result.push({w,hip,ads});
@@ -46,6 +51,13 @@ const {chromium}=require("playwright"),fs=require("fs");
   await page.locator("#start").click({noWaitAfter:true});
   await page.waitForFunction(()=>!!globalThis.__sourceWeaponGeometryAudit,null,{timeout:15000});
   report.models=await page.evaluate(()=>globalThis.__sourceWeaponGeometryAudit());
+  for(const m of report.models){
+   const jpeg=m.hip.jpeg;
+   if(jpeg?.length>6000)console.log("V701_NATIVE_"+m.w.toUpperCase()+"_HIP_JPEG="+jpeg);
+   m.hip.imageBytes=jpeg?.length||0;
+   delete m.hip.jpeg;
+  }
+
   report.passed=report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0);
  }catch(e){report.error=String(e.stack||e)}
  finally{console.log("SOURCE_GRIP_GEOMETRY="+JSON.stringify(report));fs.writeFileSync("V701_GRIP_GEOMETRY.json",JSON.stringify(report,null,2));await browser?.close().catch(()=>{})}
