@@ -126,7 +126,7 @@ const {chromium}=require("playwright"),fs=require("fs");
     console.log("V701_SOURCE_AUDIT_INJECTED",route.request().url());
     await route.fulfill({response:rsp,body:source+addon,contentType:"application/javascript"});
   });
-  await page.goto("http://127.0.0.1:4173/?v=714-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
+  await page.goto("http://127.0.0.1:4173/?v=715-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:90000});
   await page.waitForTimeout(9000);
   await page.locator("#start").click({noWaitAfter:true});
@@ -185,6 +185,9 @@ const {chromium}=require("playwright"),fs=require("fs");
     report.handAndLauncher.launcher?.persistentFlash&&
     // Source-correct ADS positions remain identical to the approved 7-gun
     // v706 real contact survey; DO NOT "shorten" arms by moving grips away.
+    // v715 no longer stretches a long-gun source upper sleeve almost 3x.
+    // The original 47-bone wrist and approved gun-local ADS contacts stay fixed.
+    report.models.every(x=>x.ads.scales.filter(([n])=>n.includes("_arm_")).every(([n,z])=>z<2.45))&&
     report.models.every(x=>x.ads.scales.every(([n,z])=>Number.isFinite(z)&&z>0&&z<3.21)&&
       x.ads.originalContactError<.025)&&
     report.handAndLauncher.launcher?.prewarmedInstances>=3;
