@@ -4010,8 +4010,8 @@ function poseOriginalFpsArms(){
   if(!fpsArmsInspector.enabled){
    const elbowBalance={
     pistol:[.035,.12],
-    rifle:[.10,.30],smg:[.10,.28],shotgun:[.04,.13],
-    m240:[.11,.37],dmr:[.11,.37],grenadeLauncher:[.09,.28]
+    rifle:[.08,.22],smg:[.10,.28],shotgun:[.04,.13],
+    m240:[.11,.35],dmr:[.11,.35],grenadeLauncher:[.09,.28]
    };
    const blend=elbowBalance[weapon]||[.08,.24];
    const amount=THREE.MathUtils.lerp(blend[0],blend[1],THREE.MathUtils.smoothstep(aimBlend,0,1));
