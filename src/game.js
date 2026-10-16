@@ -3855,7 +3855,12 @@ function attachOriginalFpsArms(){
       // Real original elbow-weighted cloth spans ~246 source units wide,
       // while the glove is ~136. Reduce only the cloth cross-section; the
       // original texture, wrist, finger vertices and skeleton stay untouched.
-      const keep=1-(weapon==="pistol"?.84:.83)*Math.pow(influence,.80)*falloff;
+      // v711: screenshot feedback revealed thin, triangular sleeves on all seven
+      // guns. Real source elbow fabric is only ~1.8x glove width, so keep a
+      // minimum 55-58% of that authentic cross-section, not v703's 16-17%.
+      // Applies ONLY to elbow-weighted original cloth; hand/finger weights
+      // and the source GLB on disk are unmodified.
+      const keep=1-(weapon==="pistol"?.45:.42)*Math.pow(influence,.80)*falloff;
       if(keep>.995)continue;
       const side=leftWeight>rightWeight?1:-1;
       const centerX=side*(303+36*depth);
@@ -4000,12 +4005,22 @@ function poseOriginalFpsArms(){
   elbow.position.copy(chain.elbowTranslation);
   wrist.position.copy(chain.wristTranslation);
   arm.parent.updateMatrixWorld(true);
-  arm.position.copy(arm.parent.worldToLocal(gun.localToWorld(s.clone())));
+  // v711: root placement occurs AFTER M17 ADS screen-space spread repair.
   // v693 M17: restrict ONLY native coat sleeve thickness, not bone lengths.
   // Smoothly reduce bulky ADS sleeves without forcing shoulder/elbow placement.
   const m17Ads=weapon==="pistol"&&!fpsArmsInspector.enabled?THREE.MathUtils.smoothstep(aimBlend,0,1):0;
-  const sleeveUpper=weapon==="pistol"&&!fpsArmsInspector.enabled?THREE.MathUtils.lerp(.96,.82,m17Ads):1;
-  const sleeveFore=weapon==="pistol"&&!fpsArmsInspector.enabled?THREE.MathUtils.lerp(.96,.84,m17Ads):1;
+  // M17 ADS silhouette previously became an extreme V; pull only its left
+  // and right shoulder ROOTS toward the actual wrists in screen/gun space.
+  // The imported pistol, both controller elbows and WRIST CONTACTS DO NOT move.
+  // The open-arm H inspector and hip-fire baseline are never affected.
+  if(m17Ads>0) {
+   s.x=THREE.MathUtils.lerp(s.x,w.x,.30*m17Ads);
+  }
+  // Do not squeeze the actual coat sleeve a SECOND time in ADS: the geometry
+  // taper above is already proportional to the original source glove width.
+  const sleeveUpper=weapon==="pistol"&&!fpsArmsInspector.enabled?.99:1;
+  const sleeveFore=weapon==="pistol"&&!fpsArmsInspector.enabled?.99:1;
+  arm.position.copy(arm.parent.worldToLocal(gun.localToWorld(s.clone())));
   arm.scale.set(sleeveUpper,sleeveUpper,1);
   elbow.scale.set(sleeveFore,sleeveFore,1);
   arm.updateMatrixWorld(true);
