@@ -9,6 +9,15 @@ const {chromium}=require("playwright"),fs=require("fs");
   page.on("console",msg=>{if(msg.type()==="error")report.errors.push("console: "+msg.text().slice(0,450))});
   page.on("requestfailed",req=>report.errors.push("requestfailed: "+req.url()+" "+(req.failure()?.errorText||"")));
   const addon=`
+;globalThis.__v707PrepareAudit=()=>{
+ // Freeze only the automation's live zombie AI while we sample seven skinned
+ // rigs; keep the REAL map, camera, weapon meshes and renderer available.
+ health=1000000;paused=true;
+ for(const z of zombies){if(z?.g?.parent)z.g.parent.remove(z.g);}
+ zombies.length=0;
+ return{ready:document.documentElement.dataset.fpsArmsGlbReady,
+         hook:typeof globalThis.__sourceWeaponGeometryAudit};
+};
 ;globalThis.__sourceWeaponGeometryAudit=()=>{
  const previous={weapon,aiming,pitch,inspection:fpsArmsInspector.enabled};
  fpsArmsInspector.set(false);
@@ -112,8 +121,11 @@ const {chromium}=require("playwright"),fs=require("fs");
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:90000});
   await page.waitForTimeout(9000);
   await page.locator("#start").click({noWaitAfter:true});
+  // The imported arms are already READY and the injected hook was loaded
+  // before Start. Avoid the rAF-polled waitForFunction under SwiftShader:
+  // it sometimes starves while zombie AI is active.
   try{
-   await page.waitForFunction(()=>!!globalThis.__sourceWeaponGeometryAudit,null,{timeout:20000});
+   report.prepared=await page.evaluate(()=>globalThis.__v707PrepareAudit());
   }catch(startError){
    report.startup=await page.evaluate(()=>({
     ready:document.documentElement.dataset.fpsArmsGlbReady,
