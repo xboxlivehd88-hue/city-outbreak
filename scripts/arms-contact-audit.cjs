@@ -126,7 +126,7 @@ const {chromium}=require("playwright"),fs=require("fs");
     console.log("V701_SOURCE_AUDIT_INJECTED",route.request().url());
     await route.fulfill({response:rsp,body:source+addon,contentType:"application/javascript"});
   });
-  await page.goto("http://127.0.0.1:4173/?v=713-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
+  await page.goto("http://127.0.0.1:4173/?v=714-source-grips",{waitUntil:"domcontentloaded",timeout:65000});
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:90000});
   await page.waitForTimeout(9000);
   await page.locator("#start").click({noWaitAfter:true});

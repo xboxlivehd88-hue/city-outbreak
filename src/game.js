@@ -4015,11 +4015,10 @@ function poseOriginalFpsArms(){
   // The open-arm H inspector and hip-fire baseline are never affected.
   if(m17Ads>0) {
    s.x=THREE.MathUtils.lerp(s.x,w.x,.30*m17Ads);
-   // Real v712 screenshot review REJECTED downward sleeve roots:
-   // stretching rose from 1.11x to 1.28x even with acceptable wrist errors.
-   // Move the source roots 10cm UP instead, toward the existing elbow, which
-   // should compact the overly long visible coat without shifting the SIG.
-   s.y+=.10*m17Ads;
+   // v712 DOWN and v713 UP vertical root experiments both rejected:
+   // v712 increased upper-arm stretch, v713 moved the genuine support
+   // wrist 2.85cm off the approved contact and still showed a hanging V.
+   // Preserve the v711 verified shoulder height and glove placement.
   }
   // Do not squeeze the actual coat sleeve a SECOND time in ADS: the geometry
   // taper above is already proportional to the original source glove width.

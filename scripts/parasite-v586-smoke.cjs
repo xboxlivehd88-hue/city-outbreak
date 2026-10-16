@@ -1,6 +1,6 @@
 // v698 regression rerun: synchronized GPU timer, frame pacing warmup gate and original zombie source.
 // v698 verified-shader rerun on final loaded source and protected zombie tests.
-// v698 final synchronized loader: run against committed index.html game.js?v=713 and approved two-natural-crawler rotation.
+// v698 final synchronized loader: run against committed index.html game.js?v=714 and approved two-natural-crawler rotation.
 const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/strict");
 (async()=>{
  const report={version:"678",pass:false},errors=[];let browser,page;
@@ -9,7 +9,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
   page=await browser.newPage({viewport:{width:1200,height:800}});
   page.on("pageerror",e=>errors.push(String(e)));
   page.on("response",r=>{if(r.url().includes("parasite_des_zombie_monster_game_model_free.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=713$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=714$/,async route=>{
    const resp=await route.fetch(),source=await resp.text();
    const addon=`
 ;globalThis.__parasiteSmoke={
@@ -721,7 +721,7 @@ const {chromium}=require("playwright"),fs=require("fs"),assert=require("assert/s
 };`;
    await route.fulfill({response:resp,body:source+addon,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=713-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=714-rotation-regression",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__parasiteSmoke?.ready(),null,{timeout:110000});
   await page.locator("#start").click({noWaitAfter:true});
