@@ -13,7 +13,7 @@ import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,h
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
-import {createArmsInspector} from "./arms-inspector.mjs?v=698";
+import {createArmsInspector} from "./arms-inspector.mjs?v=700";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
@@ -3989,9 +3989,9 @@ function poseOriginalFpsArms(){
  poseSide("left",{upper:playerHandRig.leftUpper,fore:playerHandRig.leftFore});
  poseSide("right",{upper:playerHandRig.rightUpper,fore:playerHandRig.rightFore});
  fpsNativeArms.visible=true;
- // In the diagnostic only, hide weapon meshes while keeping the SAME original
- // skinned GLB arms visible. K rebuilds and restores the weapon comparison.
- // Gameplay and normal weapon rendering remain completely untouched.
+ // v700: gun models are now VISIBLE by default beside the ungripped,
+ // extended original GLB arms. Press K to hide a gun for anatomy inspection.
+ // H restores normal weapon grips; existing gun models never move.
  if(fpsArmsInspector.enabled&&!fpsArmsInspector.weaponVisible){
   gun.traverse(o=>{
    if(!o.isMesh)return;

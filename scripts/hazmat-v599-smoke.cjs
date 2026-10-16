@@ -36,7 +36,7 @@ try{
     errors.push("SHADER: "+msg.text().slice(0,500));
   });
   page.on("response",r=>{if(r.url().includes("/assets/zombie_hazmat.glb"))report.assetHttp=r.status()});
-  await page.route(/\/src\/game\.js\?v=699$/,async route=>{
+  await page.route(/\/src\/game\.js\?v=700$/,async route=>{
    const rsp=await route.fetch(),src=await rsp.text();
    const extraAudit="\n;globalThis.__hazmatLifecycleAudit=()=>{\n const all=zombies.filter(z=>z.kind===\"acidic\"&&!z.dead&&z.hazmatVisual);\n if(all.length<3)throw Error(\"Not enough Hazmat test actors\");\n const normal=all[0],crawler=all[1];\n // Release the first actor directly into the game PBD, never a canned pose.\n const origin=normal.g.position.clone().add(new THREE.Vector3(0,1,1));\n const initial=normal.hazmatVisual.position.clone();\n killZ(normal,false,origin,1.5);\n const isNative=normal.ragdoll?.bodyPbd?.holder===normal.hazmatVisual;\n const originalBones=normal.hazmatBones?.size||0;\n for(let i=0;i<24;i++)updateRagdoll(normal,1/60);\n const ragTravel=normal.hazmatVisual.position.distanceTo(initial);\n // Detaching each leg must not spawn the hidden generic leg debris.\n crawler.hp=Math.max(40,crawler.hp);const sameRoot=crawler.g,originalModel=crawler.hazmatModel;\n const beforeParts=parts.filter(p=>p.limb).length;\n detachLeg(crawler,\"left\");\n const afterOne={left:crawler.leftLegDetached,right:crawler.rightLegDetached,\n  nativeHidden:crawler.hazmatBones.get(\"L_UpperLeg\").scale.x<.001,\n  parts:parts.filter(p=>p.limb).length-beforeParts,modelSame:crawler.hazmatModel===originalModel};\n detachLeg(crawler,\"right\");\n hazmatZombie.sync(crawler,.016);\n const afterTwo={kind:crawler.kind,ownerStillPresent:zombies.includes(crawler),\n  sameRoot:crawler.g===sameRoot,modelSame:crawler.hazmatModel===originalModel,\n  crawler:crawler.hazmatCrawler,visual:crawler.hazmatVisual?.name,\n  bothHidden:crawler.hazmatBones.get(\"L_UpperLeg\").scale.x<.001&&\n   crawler.hazmatBones.get(\"R_UpperLeg\").scale.x<.001,\n  headHitbox:crawler.hitMeshes.some(o=>o.userData.isHead),\n  bodyHitbox:crawler.hitMeshes.some(o=>o.userData.part===\"torso\")};\n // Native user grenade GLB, no fake explosion geometry or extra damage code.\n const grenade=grenadeModelTemplate?.clone(true);\n let explosionMs=null;\n if(grenade){grenade.position.copy(crawler.g.position).add(new THREE.Vector3(0,1,.35));\n  scene.add(grenade);\n  const before=performance.now();\n  explodeGrenade({q:grenade});\n  explosionMs=performance.now()-before;\n }\n return {isNative,originalBones,ragTravel,afterOne,afterTwo,\n  explosionMs,reportedExplosionMs:document.documentElement.dataset.lastGrenadeLogicMs};\n};\n";
    const injected="\n;globalThis.__hazmatSmoke={\n ready:()=>newCityCollisionReady&&hazmatZombie.status().loaded,\n forceHazmats:()=>{for(let i=0;i<10;i++)makeZombie(px+8+i*.25,pz+8+i*.25,300+i,'acidic')},\n snapshot:()=>{\n  const live=zombies.filter(z=>!z.dead&&z.kind==='acidic'),hz=live.filter(z=>z.hazmatVisual),z=hz[0],meshes=[],bones=[];\n  z?.hazmatModel?.traverse(o=>{\n   if(o.isBone)bones.push(o.name);\n   if(o.isSkinnedMesh)meshes.push({name:o.name,map:!!o.material?.map,vertices:o.geometry?.getAttribute(\"position\")?.count||0});\n  });\n  const box=z?.hazmatVisual?new THREE.Box3().setFromObject(z.hazmatVisual,true):null;\n  return {\n   build:document.documentElement.dataset.cityOutbreakBuild,wave,waveTarget,waveSpawned,\n   live:live.length,kinds:[...new Set(live.map(z=>z.kind))],\n   acidic:live.filter(z=>z.kind===\"acidic\").length,boss:live.filter(z=>z.kind===\"boss\").length,\n   attached:hz.length,original:z?.hazmatModel?.name,meshes,bones:bones.length,\n   leftLeg:bones.some(n=>/leftleg/i.test(n)),rightLeg:bones.some(n=>/rightleg/i.test(n)),\n   height:box?.getSize(new THREE.Vector3()).y,scale:z?.hazmatVisual?.scale.x,\n   clips:Object.keys(z?.hazmatActions||{}),mist:hz.some(a=>a.hazardMist?.visible===true),mistObjects:hz.filter(a=>!!a.hazardMist).length,\n   hidden:z?.rigVisual?(()=>{let seen=0;z.rigVisual.traverse(o=>{if(o.isMesh&&o.visible)seen++});return seen===0})():false,\n   headHits:z?.hitMeshes?.filter(o=>o.userData?.part===\"head\").length,\n   torsoHits:z?.hitMeshes?.filter(o=>o.userData?.part===\"torso\").length,\n   pool:BOSS_NAME_POOL.length,armTuning:hazmatZombie.status().armTuning,attachStatus:hazmatZombie.status()\n  };\n },\n motion:()=>{\n  const z=zombies.find(z=>!z.dead&&z.kind===\"acidic\"&&z.hazmatMixer);\n  if(!z)return null;\n  const mixer=z.hazmatMixer,walk=z.hazmatActions.Zombie_Walk_Root,bones=[];\n  z.hazmatModel.traverse(o=>{if(o.isBone&&/leftleg|rightleg|leftupleg|rightupleg/i.test(o.name))bones.push(o)});\n  for(const action of Object.values(z.hazmatActions))action.stop();\n  walk.reset().play();walk.timeScale=1;\n  const pose=t=>{mixer.setTime(t);return bones.map(b=>b.quaternion.clone())};\n  const a=pose(.21),b=pose(1.35);\n  return {clip:walk.getClip().name,angles:a.map((q,i)=>q.angleTo(b[i]))};\n }\n};";
@@ -151,20 +151,45 @@ try{
    return b?gun.worldToLocal(b.getWorldPosition(new THREE.Vector3())).toArray():null;
   };
   const meshes=[];rig?.traverse(o=>{if(o.isSkinnedMesh)meshes.push(o)});
+  // Count actual firearm meshes, excluding all source-arm meshes,
+  // magazine-only actors and any geometries under invisible ancestors.
+  let visibleGunMeshes=0;
+  gun.traverse(o=>{
+   if(!o.isMesh||!o.visible)return;
+   for(let a=o;a&&a!==gun;a=a.parent){
+    if(a===rig||!a.visible)return;
+   }
+   visibleGunMeshes++;
+  });
   list.push({w,left:p("L_wrist_03"),right:p("R_wrist_025"),
    skins:meshes.length,bones:meshes[0]?.skeleton?.bones?.length,
+   visibleGunMeshes,gunShown:inspector.weaponVisible,
+   fingerTime:Number(document.documentElement.dataset.fpsArmsAnimatedFingerTime),
    noTaper:Number(document.documentElement.dataset.fpsArmsM17TaperVerts||0)===0});
-  if(w==="pistol"||w==="dmr"){
+  if(inspector.weaponVisible){
    try{ren.render(scene,cam);screens[w]=ren.domElement.toDataURL("image/jpeg",.35).slice(23)}
    catch(e){screens[w]="CAPTURE_ERROR:"+String(e)}
   }
  }
+ // K must hide ONLY gun geometry, without changing the hand targets.
+ inspector.toggleWeapon();move(.03);
+ let hiddenGunMeshes=0;
+ gun.traverse(o=>{
+  if(!o.isMesh||!o.visible)return;
+  for(let a=o;a&&a!==gun;a=a.parent){
+   if(a===fpsNativeArms||!a.visible)return;
+  }
+  hiddenGunMeshes++;
+ });
+ const hidden=inspector.state();
+ inspector.toggleWeapon();move(.03);
+ const restored=inspector.state();
  inspector.turn(2);move(.06);
  const turned=inspector.state();
  inspector.turn(0);inspector.set(false);
  weapon="dmr";rebuildGun();move(.09);
  globalThis.__extendedArmsV698Screens=screens;
- return{list,turned,modeAfter:inspector.state().mode};
+ return{list,hidden,hiddenGunMeshes,restored,turned,modeAfter:inspector.state().mode};
 };`;
    const fpsArmsAudit=`
 ;globalThis.__fpsArmsV687Audit=()=>{
@@ -385,7 +410,7 @@ globalThis.__m17V698PreviewRestore=()=>{
 };`;
    await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+allWeaponsTestAudit+fpsArmsAudit+extendedReferenceAudit+m17GripAudit+dmrShoulderAudit+dmrMechanicsAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
   });
-  const rsp=await page.goto("http://127.0.0.1:4173/?v=698-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
+  const rsp=await page.goto("http://127.0.0.1:4173/?v=700-open-hands-gun-visual",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
   await page.waitForFunction(()=>globalThis.__hazmatSmoke?.ready(),null,{timeout:110000});
   // Shaders, textures and actual pooled instance buffers must be initialized
@@ -410,16 +435,19 @@ globalThis.__m17V698PreviewRestore=()=>{
   assert.equal(report.mouseLookProtection,"v692-active","preserve passing v692 mouse-look protection");
   // The extended ORIGINAL 47-bone reference must be IDENTICAL for all 7 guns.
   report.extendedArms=await page.evaluate(()=>globalThis.__extendedArmsV698Audit());
-  for(const w of ["pistol","dmr"]){
+  for(const w of ["pistol","rifle","shotgun","smg","m240","dmr","grenadeLauncher"]){
    const jpeg=await page.evaluate(name=>globalThis.__extendedArmsV698Screens?.[name]||"",w);
-   if(jpeg?.length>8000)console.log("ARMS_V698_EXTENDED_"+w.toUpperCase()+"_JPEG="+jpeg);
+   if(jpeg?.length>8000)console.log("ARMS_V700_OPEN_WITH_GUN_"+w.toUpperCase()+"_JPEG="+jpeg);
    report.extendedArms[w+"JpegLength"]=jpeg?.length||0;
   }
   assert(report.extendedArms.list.length===7&&report.extendedArms.modeAfter==="normal"&&
-   report.extendedArms.turned.turn===180&&
-   report.extendedArms.list.every(a=>a.skins===1&&a.bones===47&&
+   report.extendedArms.hidden?.weaponVisible===false&&report.extendedArms.hiddenGunMeshes===0&&
+   report.extendedArms.restored?.weaponVisible===true&&report.extendedArms.turned.turn===180&&
+   report.extendedArms.list.every(a=>a.skins===1&&a.bones===47&&a.visibleGunMeshes>0&&
+    a.gunShown===true&&a.fingerTime===0&&
+    report.extendedArms[a.w+"JpegLength"]>6000&&
     a.left?.[0]<-.27&&a.right?.[0]>.27&&a.left?.[2]<-1.0&&a.right?.[2]<-1.0),
-   "ALL seven original GLB arms should be extended with the same 47-bone source skeleton: "+JSON.stringify(report.extendedArms));
+   "Seven ACTUAL visible guns and original open 47-bone arms must render together, with K hide/show working: "+JSON.stringify(report.extendedArms));
   report.nativeArms=await page.evaluate(()=>globalThis.__fpsArmsV687Audit());
   report.m17Grip=await page.evaluate(()=>globalThis.__m17V698GripAudit());
   report.m17Sleeves=await page.evaluate(()=>document.documentElement.dataset.fpsArmsM17SleeveProfile);
