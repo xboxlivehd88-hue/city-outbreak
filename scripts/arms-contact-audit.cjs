@@ -63,6 +63,7 @@ const {chromium}=require("playwright"),fs=require("fs");
  fpsArmsInspector.set(save.inspection);rebuildGun();move(.016);
  // Exercise the exact renderer-facing launcher effect path; no zombie damage.
  clearExplosionGlbs();
+ const prewarmedInstances=explosionSparkPool.length;
  const at=cam.position.clone().add(new THREE.Vector3(0,1,-3));
  const t=performance.now();spawnExplosionBurst(at,true,.055);
  const creationMs=performance.now()-t;
@@ -76,7 +77,7 @@ const {chromium}=require("playwright"),fs=require("fs");
  const second=activeExplosionBursts.at(-1)?.sparkMesh;
  const reused=first===second;
  clearExplosionGlbs();
- return{spins,launcher:{creationMs,nextMs,count,stopped,reused},fingerStatus:document.documentElement.dataset.fpsArmsFingerStability};
+ return{spins,launcher:{creationMs,nextMs,count,stopped,reused,prewarmedInstances},fingerStatus:document.documentElement.dataset.fpsArmsFingerStability};
 };
 `;
   await page.route(url=>url.pathname.endsWith("/src/game.js"),async route=>{
@@ -104,7 +105,8 @@ const {chromium}=require("playwright"),fs=require("fs");
     report.handAndLauncher?.spins?.length===7&&
     report.handAndLauncher.spins.every(x=>x.sourceBones>=20&&x.maxDrift<.002)&&
     report.handAndLauncher.launcher?.reused&&report.handAndLauncher.launcher?.stopped&&
-    report.handAndLauncher.launcher?.count>100;
+    report.handAndLauncher.launcher?.count>100&&
+    report.handAndLauncher.launcher?.prewarmedInstances>=3;
  }catch(e){report.error=String(e.stack||e)}
  finally{console.log("SOURCE_GRIP_GEOMETRY="+JSON.stringify(report));fs.writeFileSync("V701_GRIP_GEOMETRY.json",JSON.stringify(report,null,2));await browser?.close().catch(()=>{})}
  if(!report.passed)process.exitCode=1;
