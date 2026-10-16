@@ -3922,8 +3922,10 @@ function rotateNativeBoneToward(bone,child,goalGun,restQuat){
  const parent=bone.parent;
  parent.updateMatrixWorld(true);
  const current=bone.getWorldPosition(new THREE.Vector3());
+ // Keep the gun target as a world POINT; never mutate it into a unit
+ // direction before converting back through the scaled arm parent.
  const goal=gun.localToWorld(goalGun.clone());
- const desired=goal.sub(current).normalize();
+ const desired=goal.clone().sub(current).normalize();
  // The source forearm inherits nonuniform upper-sleeve scale in ADS.
  // A world QUATERNION ignores its parent's scale/shear, causing the native
  // wrist to miss the genuine support grip by 6–30 cm on the long guns.
