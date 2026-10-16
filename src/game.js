@@ -13,6 +13,7 @@ import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,h
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
 import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
+import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
 import {createExplosionParticleBatch,drawExplosionParticleBatch,disposeExplosionParticleBatch,primeExplosionParticleBatch} from "./explosion-batch.js?v=676";
@@ -11277,9 +11278,12 @@ const onWeaponWheel=e=>{
 document.addEventListener("wheel",onWeaponWheel,{passive:false});
 const onKeyUp=e=>{let k=e.key.toLowerCase();if(k in keys)keys[k]=false};
 setupKeyUp(onKeyUp);
-const onInputFocusLost=()=>{clearKeys();stopAuto();setAim(false);if(running&&!dying&&!between&&!paused)setGamePaused(true)};
+const mouseLookGuard=createMouseLookGuard();
+document.documentElement.dataset.mouseLookProtection="v692-active";
+const onInputFocusLost=()=>{mouseLookGuard.reset();clearKeys();stopAuto();setAim(false);if(running&&!dying&&!between&&!paused)setGamePaused(true)};
 setupFocusSafety({onFocusLost:onInputFocusLost});
 const onPointerLockChanged=()=>{
+ mouseLookGuard.reset(); // discard stale pointer-lock recenters
  if(document.pointerLockElement!==cv){
    stopAuto();setAim(false);
    if(between){document.body.style.cursor="default";shop.style.cursor="default"}
@@ -11290,7 +11294,21 @@ const onPointerLockChanged=()=>{
  }
 };
 setupPointerLockChange(onPointerLockChanged);
-const onMouseMove=e=>{if(!paused&&document.pointerLockElement===cv){const adsLook=aiming?.72:1;yaw-=e.movementX*lookSensitivity*adsLook;pitch-=e.movementY*lookSensitivity*.9*adsLook;pitch=Math.max(-1.05,Math.min(1.05,pitch));aimX=0;aimY=0;}};
+// v692: sanitize occasional outsized movementX/Y from browser Pointer Lock.
+const onMouseMove=e=>{
+ if(!running||paused||dying||between||document.pointerLockElement!==cv)return;
+ const delta=mouseLookGuard.sample(e.movementX,e.movementY);
+ if(!delta){
+  document.documentElement.dataset.mouseLookDroppedSpikes=String(mouseLookGuard.dropped);
+  return;
+ }
+ if(delta.limited)document.documentElement.dataset.mouseLookLimitedEvents=String(mouseLookGuard.limited);
+ const adsLook=aiming?.72:1;
+ yaw-=delta.x*lookSensitivity*adsLook;
+ pitch-=delta.y*lookSensitivity*.9*adsLook;
+ pitch=THREE.MathUtils.clamp(pitch,-1.05,1.05);
+ aimX=0;aimY=0;
+};
 setupMouseMove(onMouseMove);
 const onMouseDown=e=>{
  if(paused)return;

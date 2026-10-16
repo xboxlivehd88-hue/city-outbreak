@@ -1,3 +1,13 @@
+# v692 — POINTER-LOCK MOUSE CAMERA WHIP PROTECTION — 2026-10-16
+
+- **User report:** Several different mice cause intermittent camera whip/spinning ONLY in CITY OUTBREAK. The sole v691 player `onMouseMove` directly applied raw `e.movementX/Y` to yaw/pitch, with no sanity checking. Browser pointer-lock or polling anomalies may occasionally report a giant one-off delta; this is the concrete vulnerability, though the origin of each spike cannot yet be proven.
+- **Fix scoped to input:** New `src/mouse-look-guard.mjs` imported in `src/game.js`. Ordinary and fast plausible deltas remain 1:1 with existing sensitivity `.0024` and ADS modifier `.72`. Single-event deltas over 180 units are proportionally capped (about 25 degrees max at hip), absurd >=1000-unit events are dropped; during the 180ms after locking the mouse, deltas over 120 are dropped as possible cursor recenter spikes. Nonfinite deltas dropped. Guard resets on pointer lock change and lost focus. Diagnostic root datasets `mouseLookProtection=v692-active`, `mouseLookDroppedSpikes`, `mouseLookLimitedEvents`. No camera smoothing or mouse acceleration.
+- **Tests:** New standalone `scripts/mouse-look-guard-test.mjs` checks unaltered normal/fast movement, proportional cap, absurd rejection, NaN, relock spike and recovery; CI workflow runs test before Chromium. Browser smoke also asserts the live guard is active. Existing Sprinter and Parasite regression loaders synced to v692. Must check CI / Pages results before asserting passing.
+- **Build:** `index.html` uses `./src/game.js?v=692`. Test URL https://xboxlivehd88-hue.github.io/city-outbreak/?v=692-mouse-look-guard . No changes to 7-gun test loadout, M17 original skinned GLB, DMR, zombies, bosses, GPU grenade FX, graphics, map or shot physics. Existing v691 ADS sleeve visual issue still open.
+- **Protected recovery v324 unchanged.**
+
+---
+
 # v691 VERIFIED — M17 IMPROVED TWO-HAND GRIP; ADS SLEEVE SHAPE STILL OPEN — 2026-10-15
 
 - **Current tested game code:** v691, loader `./src/game.js?v=691`, `main` game commit `40071d6bab76ed727e3d5c733c1f5a5dd651c3fd`. Minor CI-only follow-up commits through `272f99db5dcaeecfc8577168be8baa322f2c1798` corrected the browser-preview harness and restored DMR state after screenshot capture; **these did not modify actual gameplay code.**

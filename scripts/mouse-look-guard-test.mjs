@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import {createMouseLookGuard} from "../src/mouse-look-guard.mjs";
+const guard=createMouseLookGuard();
+assert.deepEqual(guard.sample(18,-9,1000),{x:18,y:-9,limited:false},"normal input 1:1");
+assert.deepEqual(guard.sample(-140,95,1001),{x:-140,y:95,limited:false},"fast flick 1:1");
+assert.deepEqual(guard.sample(600,-300,1002),{x:180,y:-90,limited:true},"large hitch bounded");
+assert.equal(guard.sample(10000,-1600,1003),null,"absurd event rejected");
+assert.equal(guard.sample(NaN,10,1004),null,"malformed motion rejected");
+guard.reset(1100);
+assert.equal(guard.sample(185,0,1120),null,"pointer lock recenter spike rejected");
+assert.deepEqual(guard.sample(35,-22,1121),{x:35,y:-22,limited:false},"recovery without lag");
+assert.deepEqual(guard.sample(150,0,1300),{x:150,y:0,limited:false},"normal turns after relock");
+assert.equal(guard.dropped,3);
+assert.equal(guard.limited,1);
+assert.deepEqual(createMouseLookGuard().sample(-80,3,800),{x:-80,y:3,limited:false});
+console.log("MOUSE_LOOK_V692_TEST=PASS: normal motion, flick, clamp, warp, lock recovery");
