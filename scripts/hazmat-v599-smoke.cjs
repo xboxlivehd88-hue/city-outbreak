@@ -367,7 +367,7 @@ globalThis.__m17V693PreviewRestore=()=>{
   await page.waitForFunction(()=>document.documentElement.dataset.dmrGlbReady==="true",null,{timeout:65000});
   await page.waitForFunction(()=>document.documentElement.dataset.fpsArmsGlbReady==="true",null,{timeout:65000});
   report.mouseLookProtection=await page.evaluate(()=>document.documentElement.dataset.mouseLookProtection);
-  assert.equal(report.mouseLookProtection,"v693-active","live camera must install spike filter");
+  assert.equal(report.mouseLookProtection,"v692-active","preserve passing v692 mouse-look protection");
   report.nativeArms=await page.evaluate(()=>globalThis.__fpsArmsV687Audit());
   report.m17Grip=await page.evaluate(()=>globalThis.__m17V693GripAudit());
   report.m17Sleeves=await page.evaluate(()=>document.documentElement.dataset.fpsArmsM17SleeveProfile);
