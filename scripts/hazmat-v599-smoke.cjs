@@ -136,6 +136,36 @@ try{
  setWeapon("dmr");move(.016);
  return state;
 };`;
+   // v697 run inside the game module, where weapon/rebuildGun/move are scoped.
+   const extendedReferenceAudit=`
+;globalThis.__extendedArmsV697Audit=()=>{
+ const inspector=globalThis.__cityArmsReference;
+ if(inspector?.state()?.mode!=="extended")throw Error("Extended GLB reference not enabled on start");
+ const weapons=["pistol","rifle","shotgun","smg","m240","dmr","grenadeLauncher"];
+ const list=[],screens={};
+ for(const w of weapons){
+  weapon=w;rebuildGun();move(.09);gun.updateMatrixWorld(true);
+  const rig=gun.getObjectByName("OriginalCartoonFPSArmsGLB");
+  const p=name=>{
+   const b=rig?.getObjectByName(name);
+   return b?gun.worldToLocal(b.getWorldPosition(new THREE.Vector3())).toArray():null;
+  };
+  const meshes=[];rig?.traverse(o=>{if(o.isSkinnedMesh)meshes.push(o)});
+  list.push({w,left:p("L_wrist_03"),right:p("R_wrist_025"),
+   skins:meshes.length,bones:meshes[0]?.skeleton?.bones?.length,
+   noTaper:Number(document.documentElement.dataset.fpsArmsM17TaperVerts||0)===0});
+  if(w==="pistol"||w==="dmr"){
+   try{ren.render(scene,cam);screens[w]=ren.domElement.toDataURL("image/jpeg",.35).slice(23)}
+   catch(e){screens[w]="CAPTURE_ERROR:"+String(e)}
+  }
+ }
+ inspector.turn(2);move(.06);
+ const turned=inspector.state();
+ inspector.turn(0);inspector.set(false);
+ weapon="dmr";rebuildGun();move(.09);
+ globalThis.__extendedArmsV697Screens=screens;
+ return{list,turned,modeAfter:inspector.state().mode};
+};`;
    const fpsArmsAudit=`
 ;globalThis.__fpsArmsV687Audit=()=>{
  const old=weapon,oldAim=aiming,oldPitch=pitch;
@@ -352,7 +382,7 @@ globalThis.__m17V697PreviewRestore=()=>{
  const unsupported=createGpuFrameTimer({getContext:()=>({getExtension:()=>null})}).snapshot();
  return {measured,begins,ends,deleted,unsupported,live:cityGpuTimer.snapshot()};
 };`;
-   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+allWeaponsTestAudit+fpsArmsAudit+m17GripAudit+dmrShoulderAudit+dmrMechanicsAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
+   await route.fulfill({response:rsp,body:src+injected+extraAudit+postureAudit+greenAudit+eyeAudit+dmrAudit+allWeaponsTestAudit+fpsArmsAudit+extendedReferenceAudit+m17GripAudit+dmrShoulderAudit+dmrMechanicsAudit+profileAudit+staticAudit+gpuFrameAudit,contentType:"application/javascript"});
   });
   const rsp=await page.goto("http://127.0.0.1:4173/?v=697-hazmat-visual-test",{waitUntil:"domcontentloaded",timeout:63100});
   report.http=rsp?.status();
@@ -378,26 +408,12 @@ globalThis.__m17V697PreviewRestore=()=>{
   report.mouseLookProtection=await page.evaluate(()=>document.documentElement.dataset.mouseLookProtection);
   assert.equal(report.mouseLookProtection,"v692-active","preserve passing v692 mouse-look protection");
   // The extended ORIGINAL 47-bone reference must be IDENTICAL for all 7 guns.
-  report.extendedArms=await page.evaluate(()=>{
-   const inspector=globalThis.__cityArmsReference;
-   if(inspector?.state()?.mode!=="extended")throw Error("Extended diagnostic not default");
-   const weapons=["pistol","rifle","shotgun","smg","m240","dmr","grenadeLauncher"],list=[];
-   for(const w of weapons){
-    weapon=w;rebuildGun();move(.033);gun.updateMatrixWorld(true);
-    const rig=gun.getObjectByName("OriginalCartoonFPSArmsGLB");
-    const p=name=>{
-     const b=rig?.getObjectByName(name);
-     return b?gun.worldToLocal(b.getWorldPosition(new THREE.Vector3())).toArray():null;
-    };
-    const meshes=[];rig?.traverse(o=>{if(o.isSkinnedMesh)meshes.push(o)});
-    list.push({w,left:p("L_wrist_03"),right:p("R_wrist_025"),skins:meshes.length,bones:meshes[0]?.skeleton?.bones?.length});
-   }
-   inspector.turn(2);move(.05);
-   const turned=inspector.state();
-   inspector.turn(0);inspector.set(false);
-   weapon="dmr";rebuildGun();move(.05);
-   return{list,turned,modeAfter:inspector.state().mode};
-  });
+  report.extendedArms=await page.evaluate(()=>globalThis.__extendedArmsV697Audit());
+  for(const w of ["pistol","dmr"]){
+   const jpeg=await page.evaluate(name=>globalThis.__extendedArmsV697Screens?.[name]||"",w);
+   if(jpeg?.length>8000)console.log("ARMS_V697_EXTENDED_"+w.toUpperCase()+"_JPEG="+jpeg);
+   report.extendedArms[w+"JpegLength"]=jpeg?.length||0;
+  }
   assert(report.extendedArms.list.length===7&&report.extendedArms.modeAfter==="normal"&&
    report.extendedArms.turned.turn===180&&
    report.extendedArms.list.every(a=>a.skins===1&&a.bones===47&&
