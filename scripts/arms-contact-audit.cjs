@@ -64,10 +64,14 @@ const {chromium}=require("playwright"),fs=require("fs");
   // phalanges should respond to a shot, on all seven weapons.
   const nativeIndex=rig.getObjectByName("R_point_030"),nativeWrist=rig.getObjectByName("R_wrist_025");
   const previousRecoil=recoil,previousShot=lastNativeTriggerShotAt;
-  recoil=0;lastNativeTriggerShotAt=-1;poseOriginalFpsArms();
+  recoil=0;lastNativeTriggerShotAt=-1;
+  // Settle the authored source mixer/IK to the actual neutral firing hold,
+  // not its first frame after rebuilding a GLB clone.
+  for(let i=0;i<8;i++)poseOriginalFpsArms();
   const restIndex=nativeIndex.quaternion.clone(),restWrist=nativeWrist.quaternion.clone();
   const restSample=Number(document.documentElement.dataset.fpsArmsAnimatedFingerTime);
-  recoil=.18;lastNativeTriggerShotAt=performance.now()-72;poseOriginalFpsArms();
+  recoil=.18;lastNativeTriggerShotAt=performance.now()-72;
+  for(let i=0;i<8;i++)poseOriginalFpsArms();
   const indexPull=restIndex.angleTo(nativeIndex.quaternion),wristKick=restWrist.angleTo(nativeWrist.quaternion);
   const firedSample=Number(document.documentElement.dataset.fpsArmsAnimatedFingerTime);
   recoil=previousRecoil;lastNativeTriggerShotAt=previousShot;poseOriginalFpsArms();
@@ -93,8 +97,10 @@ const {chromium}=require("playwright"),fs=require("fs");
  // A three-slot pool rotates resources in FIFO order. Both bursts must
  // come from the initial prewarmed pool; same pointer is NOT required.
  const reused=prewarmedBufferSet.has(first)&&prewarmedBufferSet.has(second);
+ const persistentFlash=sharedExplosionFlash.parent===scene&&
+   !activeExplosionBursts.some(fx=>fx.group.children.some(x=>x.isPointLight));
  clearExplosionGlbs();
- return{spins,launcher:{creationMs,nextMs,count,stopped,reused,prewarmedInstances},fingerStatus:document.documentElement.dataset.fpsArmsFingerStability};
+ return{spins,launcher:{creationMs,nextMs,count,stopped,reused,prewarmedInstances,persistentFlash},fingerStatus:document.documentElement.dataset.fpsArmsFingerStability};
 };
 `;
   await page.route(url=>url.pathname.endsWith("/src/game.js"),async route=>{
@@ -138,6 +144,8 @@ const {chromium}=require("playwright"),fs=require("fs");
       Math.abs(x.restSample-x.firedSample)<.0001)&&
     report.handAndLauncher.launcher?.reused&&report.handAndLauncher.launcher?.stopped&&
     report.handAndLauncher.launcher?.count>100&&
+    report.handAndLauncher.launcher?.persistentFlash&&
+    report.models.every(x=>x.ads.scales.every(([n,z])=>Number.isFinite(z)&&z<=1.80))&&
     report.handAndLauncher.launcher?.prewarmedInstances>=3;
  }catch(e){report.error=String(e.stack||e)}
  finally{console.log("SOURCE_GRIP_GEOMETRY="+JSON.stringify(report));fs.writeFileSync("V701_GRIP_GEOMETRY.json",JSON.stringify(report,null,2));await browser?.close().catch(()=>{})}
