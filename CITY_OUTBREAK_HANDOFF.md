@@ -1,3 +1,12 @@
+# v739 — PHOTO-GUIDED SOURCE FINGER GRIP — 2026-10-17
+
+- User's v738 screenshots show the M17 left support fingers and right firing fingers still splayed across the gun; wrist-only corrections did not resolve the actual bone articulation.
+- Updated original target skinned source finger clip: stronger M17 grip curl for right middle/ring/pinky root and middle joints; stronger left supporting index/middle/ring/pinky root/middle joints. Retains right index-only trigger pull and magazine reload animation from the user's uploaded source pistol clip. No M17 firearm model swap, ADS camera move, or other six weapon hand changes.
+- Bump authored finger import to v739 AND main game loader to v739 so browser cannot reuse v738 source code. Protected recovery v324 unchanged.
+- This is a source-level correction; screenshot visual approval remains pending. Test https://xboxlivehd88-hue.github.io/city-outbreak/?v=739-source-finger-grip
+
+---
+
 # v738 — PHOTO-GUIDED M17 HAND POSITION REVISION — 2026-10-17
 
 - User supplied two live screenshots from v737 (ADS and shouldered). In both, support glove sits outside the SIG grip and hand/finger pose reads as twisted/unsupported. Not visually approved.

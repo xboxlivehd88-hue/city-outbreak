@@ -57,17 +57,17 @@ export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading,tr
  // then blend the same grip back as the source clip returns to time zero.
  const leftHold=reloading?THREE.MathUtils.clamp(1-smooth(.075,.32)+smooth(.77,.99),0,1):1;
  for(const name of ["L_point_08","L_middle_012","L_ring_015","L_pink_019"])
-  rotate(name,X,-.48*leftHold);
+  rotate(name,X,-.75*leftHold);
  for(const name of ["L_point_2_09","L_middle_2_00","L_ring_2_016","L_pink_2_020"])
-  rotate(name,X,-.64*leftHold);
+  rotate(name,X,-.87*leftHold);
  rotate("L_thumb_04",X,-.11*leftHold);
  rotate("L_thumb_04",Y,.15*leftHold);
  rotate("L_thumb_2_05",X,-.22*leftHold);
  // The SIG firing hand stays on the trigger throughout reloading.
  for(const name of ["R_middle_034","R_ring_038","R_pink_042"])
-  rotate(name,X,-.036);
+  rotate(name,X,-.65);
  for(const name of ["R_middle_2_035","R_ring_2_039","R_pink_2_043"])
-  rotate(name,X,-.068);
+  rotate(name,X,-.79);
  // Keep the base extended into the trigger guard and let the next joint
  // rest gently on the trigger; firing still adds its original index-only curl.
  rotate("R_point_030",X,-.18);
