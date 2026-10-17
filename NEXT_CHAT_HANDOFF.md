@@ -1,3 +1,12 @@
+# v728 — SOURCE-ANIMATION WRIST + NO DOUBLE-PLAY, AND v727 ADS REGRESSION FIX — 2026-10-17
+
+- **Build v728**, loader `./src/game.js?v=728`. Current user video `2026-10-17 10-37-02.mp4`, ~44s, still shows unnatural M17 sleeves and hand placement. User correctly says animation fit keeps worsening. Retain exact user original SIG + original 47-bone cartoon arms; no pistol mesh from uploaded `animated_pistol.glb` is used.
+- Investigated true 8.8s, 101-channel source clip. v725 had transferred 40 original finger curves, v723 wrist *position* but NEVER the source left wrist rotation, and old cartoon_fps_arms finger mixer simultaneously played a *different* reload animation. **v728 fixes both problems**: M17 original arm mixer holds fixed original 0.56s grip pose in reload (other 6 weapons unchanged), then the 40 source finger curves **plus genuine 31-frame LEFT wrist quaternion deltas** (0–2.75 sec of source), up to ~34° source wrist motion, are applied after M17 wrist IK only during reload. Right wrist/trigger firing grip, existing magazine, SIG sights, FPS ray, main camera are unchanged. Runtime diagnostic `fpsArmsM17AuthoredWristDegrees` shows real source wrist travel; no incremental quaternion spin because IK rewrites wrist each frame.
+- v727 latest CI geometry check failed: pistol ADS support-wrist contact deviated 3.24cm from approved 2.5cm threshold after shoulder .085m/elbow .105m offsets. v728 reduces those to .040m/.045m and lowers elbow downward offset from .055m to .025m, with modest original-root ADS blending .16; preserve sleeve separation while restoring contact.
+- H/J/K inspector controls ALREADY REMOVED in v726; performance HUD ALREADY a collapsed dropdown, no further changes. v324 protected recovery unchanged; both handoffs updated. **Run complete seven-weapon geometry; inspect real rendered M17 ADS/reload frames; user visual signoff still pending**. Browser global Sprinter/Parasite smoke may fail independent scene-readiness timeout.
+
+---
+
 # v727 — CONSOLIDATED M17 ADS ARM SHAPE + CLEAN GAMEPLAY HUD — 2026-10-17
 
 - **Current build v727**, loader `./src/game.js?v=727`. User provided new `2026-10-17 09-57-58.mp4` 41.4s recording: M17 still exhibits undersupported hands and visible long sleeve/ADS distortion. Must visually approve before calling these fully fixed.

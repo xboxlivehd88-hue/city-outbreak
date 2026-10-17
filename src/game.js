@@ -15,7 +15,7 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
-import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=725";
+import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=728";
 import {getM17SourceReloadTravel,m17SourceReloadMotion} from "./pistol-source-travel.mjs?v=723";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
@@ -3976,9 +3976,12 @@ function poseOriginalFpsArms(){
  // its filmed camera arm motion on top of CITY OUTBREAK weapon transformations.
  // Wrist, shoulder and elbow are reattached to the actual gun targets below.
  const rp=reloadPoseProgress();
- const fingerTime=fpsArmsInspector.enabled?0:reloading
-   ?THREE.MathUtils.lerp(.12,Math.min(fpsArmsGripClip?.duration||2.167,2.0),rp.p)
-   :.56; // recoil must NOT jump the entire animated firing hand to t=.88
+ // v728: M17 uses the UPLOADED pistol clip for reload finger motion.
+ // Keep the original cartoon arm clip in its stable grip pose instead of
+ // simultaneously playing a second incompatible finger animation.
+ const fingerTime=fpsArmsInspector.enabled?0:
+   weapon==="pistol"?.56:
+   reloading?THREE.MathUtils.lerp(.12,Math.min(fpsArmsGripClip?.duration||2.167,2.0),rp.p):.56; // recoil must NOT jump the entire animated firing hand to t=.88
  // Never accumulate incremental Euler finger curls across gameplay frames.
  // Restore the source pose before sampling its real authored animation;
  // only then apply the current frame's desired grip bend.
@@ -4079,9 +4082,12 @@ function poseOriginalFpsArms(){
    // are never altered. Fade continuously in/out of ADS.
    const sign=side==="left"?-1:1;
    const startX=s.x;
-   s.x=THREE.MathUtils.lerp(startX,w.x,.12*m17Ads)+sign*.085*m17Ads;
-   e.x+=sign*.105*m17Ads;
-   e.y-=.055*m17Ads;
+   // v728: correct the v727 3.24cm ADS support contact regression.
+   // Reduce unnatural shoulder/elbow outward displacement while preserving
+   // the TWO original arm sleeves' separation and original sight.
+   s.x=THREE.MathUtils.lerp(startX,w.x,.16*m17Ads)+sign*.040*m17Ads;
+   e.x+=sign*.045*m17Ads;
+   e.y-=.025*m17Ads;
   }
   // Do not squeeze the actual coat sleeve a SECOND time in ADS: the geometry
   // taper above is already proportional to the original source glove width.
@@ -4206,6 +4212,7 @@ function poseOriginalFpsArms(){
  // the EXISTING original skinned hands only; no uploaded gun/model is loaded.
  if(weapon==="pistol"&&!fpsArmsInspector.enabled){
    const authored=applyM17AuthoredPistolFingerClip(THREE,fpsNativeArms,rp.p,reloading);
+   document.documentElement.dataset.fpsArmsM17AuthoredWristDegrees=authored.wristDegrees.toFixed(1);
    document.documentElement.dataset.fpsArmsM17AuthoredClipReady=String(authored.ready);
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
