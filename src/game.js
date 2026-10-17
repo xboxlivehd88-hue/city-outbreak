@@ -4275,22 +4275,19 @@ function poseOriginalFpsArms(){
    // v743: curl the SOURCE-retargeted right thumb behind the SIG grip.
    // Adjust thumb joints only; never touch trigger index, forearm or wrists.
    if(sourceGripActive){
-    fpsNativeArms.getObjectByName("R_thumb_026")?.rotateY(-.58);
-    fpsNativeArms.getObjectByName("R_thumb_026")?.rotateZ(.24);
-    fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateX(-.60);
-    fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateY(-.20);
-    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.40);
-    // v745: close original right middle/ring/little finger chains on frontstrap.
-    // Source animation remains the baseline, and the index trigger chain is untouched.
-    for(const n of ["R_middle_034","R_ring_038","R_pink_042"])
-     fpsNativeArms.getObjectByName(n)?.rotateX(-.34);
+    for(const n of ["R_middle_034","R_ring_038","R_pink_042"]){
+     const bone=fpsNativeArms.getObjectByName(n);
+     bone?.rotateY(-.46);bone?.rotateX(-.57);
+    }
     for(const n of ["R_middle_2_035","R_ring_2_039","R_pink_2_043"])
-     fpsNativeArms.getObjectByName(n)?.rotateX(-.43);
+     fpsNativeArms.getObjectByName(n)?.rotateX(-.72);
     for(const n of ["R_middle_3_036","R_ring_3_040","R_pink_3_044"])
-     fpsNativeArms.getObjectByName(n)?.rotateX(-.19);
-    fpsNativeArms.getObjectByName("R_thumb_026")?.rotateY(-.24);
-    fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateZ(.26);
-    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.18);
+     fpsNativeArms.getObjectByName(n)?.rotateX(-.32);
+    const thumb=fpsNativeArms.getObjectByName("R_thumb_026");
+    thumb?.rotateY(.52);thumb?.rotateZ(-.36);thumb?.rotateX(-.18);
+    const thumb2=fpsNativeArms.getObjectByName("R_thumb_2_027");
+    thumb2?.rotateY(.30);thumb2?.rotateX(-.53);
+    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.44);
    }
    document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
    document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
