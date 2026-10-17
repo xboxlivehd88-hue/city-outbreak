@@ -1,4 +1,4 @@
-// CITY OUTBREAK v725: ACTUAL user-uploaded animated_pistol.glb finger animation.
+// CITY OUTBREAK v730: ACTUAL user-uploaded animated_pistol.glb finger animation.
 // Extracted from 101 source GLB channels, full 51-joint skeleton, clip
 // 'allanimations' at 31 samples over genuine 0–2.75s magazine sequence.
 // 40 authored finger-joint quaternion curves are retargeted by bone name,
@@ -37,99 +37,102 @@ const loading=(async()=>{
   error=String(e);console.warn("M17 source clip unavailable",e);
  }
 })();
+// One deterministic target-pose owner for all M17 fingers. Every pose begins
+// from the original target GLB mixer sampled at its frozen .56s neutral hold.
+// This function never resamples that mixer or modifies the gun or palm position.
 export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading,triggerPulse=0){
- if(!data)return {ready:false,error,applied:0,maxDegrees:0,wristDegrees:0,forearmDegrees:0,triggerDegrees:0};
+ if(!data)return{ready:false,error,applied:0,maxDegrees:0,wristDegrees:0,forearmDegrees:0,triggerDegrees:0};
  if(!rig)return{ready:true,error:"",applied:0,maxDegrees:0,wristDegrees:0,forearmDegrees:0,triggerDegrees:0};
+ let bones=targetCache.get(rig);
+ if(!bones){bones=BONES.map(name=>rig.getObjectByName(name));targetCache.set(rig,bones)}
+ const rotate=(name,axis,angle)=>{
+  if(Math.abs(angle)<1e-7)return;
+  const bone=rig.getObjectByName(name);
+  if(bone)bone.rotateOnAxis(axis,angle);
+ };
+ const X=new THREE.Vector3(1,0,0),Y=new THREE.Vector3(0,1,0);
+ const smooth=(a,b)=>THREE.MathUtils.smoothstep(progress,a,b);
+ // Never pop the hand open on reload start or suddenly clench on finish:
+ // blend out original source-rig gripping as the uploaded fingers animate,
+ // then blend the same grip back as the source clip returns to time zero.
+ const leftHold=reloading?THREE.MathUtils.clamp(1-smooth(.075,.32)+smooth(.77,.99),0,1):1;
+ for(const name of ["L_point_08","L_middle_012","L_ring_015","L_pink_019"])
+  rotate(name,X,-.48*leftHold);
+ for(const name of ["L_point_2_09","L_middle_2_00","L_ring_2_016","L_pink_2_020"])
+  rotate(name,X,-.64*leftHold);
+ rotate("L_thumb_04",X,-.11*leftHold);
+ rotate("L_thumb_04",Y,.15*leftHold);
+ rotate("L_thumb_2_05",X,-.22*leftHold);
+ // The SIG firing hand stays on the trigger throughout reloading.
+ for(const name of ["R_middle_034","R_ring_038","R_pink_042"])
+  rotate(name,X,-.036);
+ for(const name of ["R_middle_2_035","R_ring_2_039","R_pink_2_043"])
+  rotate(name,X,-.068);
+ rotate("R_point_030",X,-.25);
+ rotate("R_point_2_031",X,-.31);
+ let triggerDegrees=0,applied=0,maxDegrees=0,wristDegrees=0,forearmDegrees=0;
+ const signed=n=>n>127?n-256:n;
+ const read=(bytes,f,index)=>signed(bytes[f*3+index]);
+ const q=new THREE.Quaternion(),axis=new THREE.Vector3();
  if(!reloading){
-  // The real uploaded source trigger finger bends ~65–70 degrees at .5s.
-  // Apply ONLY the index phalanges during a shot; never move the trigger
-  // wrist, whole palm, slide, camera, or SIG gun geometry.
-  let triggerDegrees=0;
-  if(triggerPulse>0){
-   const index=rig.getObjectByName("R_point_2_031");
-   if(index){
-    const midIndex=BONES.indexOf("R_point_2_031");
-    const fFire=6; // authored ~.55 seconds, trigger fully depressed
-    const dx=data[fFire*STRIDE+midIndex*3],dy=data[fFire*STRIDE+midIndex*3+1],dz=data[fFire*STRIDE+midIndex*3+2];
-    const signed=n=>n>127?n-256:n;
-    const axis=new THREE.Vector3(signed(dx),signed(dy),signed(dz));
-    if(axis.lengthSq()>0){
-     triggerDegrees=Math.min(27,axis.length()*.43)*Math.min(1,Math.max(0,triggerPulse));
-     index.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(axis.normalize(),
-      THREE.MathUtils.degToRad(triggerDegrees))).normalize();
-    }
+  // One firing beat: use the uploader's source-index articulation, NOT
+  // another recoil-based hand/wrist transform. Both index joints respond.
+  const pulse=THREE.MathUtils.clamp(triggerPulse,0,1);
+  if(pulse>0){
+   for(const [name,weight] of [["R_point_030",.72],["R_point_2_031",1]]){
+    const idx=BONES.indexOf(name),f=6;
+    const dx=signed(data[f*STRIDE+idx*3]),dy=signed(data[f*STRIDE+idx*3+1]),dz=signed(data[f*STRIDE+idx*3+2]);
+    const magnitude=Math.hypot(dx,dy,dz);
+    const degrees=Math.min(27,Math.max(14,magnitude*.43))*weight*pulse;
+    const bone=bones[idx];
+    if(!bone)continue;
+    // Original source axes are clip-local; preserve the calibrated natural
+    // trigger-flex axis of target bone (local X), with authored amplitude.
+    bone.rotateX(-THREE.MathUtils.degToRad(degrees));
+    triggerDegrees=Math.max(triggerDegrees,degrees);applied++;
    }
   }
-  return{ready:true,error:"",applied:triggerDegrees>0?1:0,maxDegrees:triggerDegrees,
-    wristDegrees:0,forearmDegrees:0,triggerDegrees};
+  return{ready:true,error:"",applied,maxDegrees:triggerDegrees,
+   wristDegrees,forearmDegrees,triggerDegrees};
  }
- let bones=targetCache.get(rig);
- if(!bones){bones=BONES.map(name=>rig.getObjectByName(name));targetCache.set(rig,bones);}
  const srcFrame=THREE.MathUtils.clamp(progress,0,1)*(FRAMES-1);
- const f=Math.min(FRAMES-2,Math.floor(srcFrame));
- const blend=srcFrame-f;
- const axis=new THREE.Vector3(),q=new THREE.Quaternion();
- // Retarget real local source wrist motion only while the left hand is
- // reaching for/reseating the magazine. Original FPS IK already set the
- // wrist's correct POSITION/hold orientation on the actual SIG model.
- let wristDegrees=0,forearmDegrees=0;
+ const f=Math.min(FRAMES-2,Math.floor(srcFrame)),blend=srcFrame-f;
+ const readInterp=(bytes,i)=>THREE.MathUtils.lerp(read(bytes,f,i),read(bytes,f+1,i),blend);
+ // Wrist orientation is authored, while native IK owns its actual contact
+ // position. No source gun mesh or alternate arm skeleton is attached.
  const wrist=rig.getObjectByName("L_wrist_03");
  if(wrist){
-  const read=(frame,component)=>{
-   const value=LEFT_WRIST_BYTES[frame*3+component];
-   return value>127?value-256:value;
-  };
-  const x=THREE.MathUtils.lerp(read(f,0),read(f+1,0),blend);
-  const y=THREE.MathUtils.lerp(read(f,1),read(f+1,1),blend);
-  const z=THREE.MathUtils.lerp(read(f,2),read(f+1,2),blend);
-  const mag=Math.hypot(x,y,z);
-  if(mag>.01){
-   wristDegrees=mag*.76;
+  const x=readInterp(LEFT_WRIST_BYTES,0),y=readInterp(LEFT_WRIST_BYTES,1),z=readInterp(LEFT_WRIST_BYTES,2);
+  const magnitude=Math.hypot(x,y,z);
+  if(magnitude>.01){
+   wristDegrees=magnitude*.76;
    axis.set(x,y,z).normalize();
-   q.setFromAxisAngle(axis,THREE.MathUtils.degToRad(wristDegrees));
-   wrist.quaternion.multiply(q).normalize();
+   wrist.quaternion.multiply(q.setFromAxisAngle(axis,THREE.MathUtils.degToRad(wristDegrees))).normalize();
   }
-  // Transfer the genuine SOURCE L_forearm_02 twist absent from our older
-  // original arm skeleton. Apply AFTER native IK in wrist LOCAL space.
-  // This preserves the original SIG contact position and does not stretch
-  // the arm: rotation only, finite 0–2.75s clip, no frame accumulation.
-  const readFore=(frame,component)=>{
-   const v=LEFT_FOREARM_BYTES[frame*3+component];
-   return v>127?v-256:v;
-  };
-  const fx=THREE.MathUtils.lerp(readFore(f,0),readFore(f+1,0),blend);
-  const fy=THREE.MathUtils.lerp(readFore(f,1),readFore(f+1,1),blend);
-  const fz=THREE.MathUtils.lerp(readFore(f,2),readFore(f+1,2),blend);
-  const fMag=Math.hypot(fx,fy,fz);
-  if(fMag>.01){
-   forearmDegrees=Math.min(32,fMag)*.58;
+  // 51-joint source has forearm twist absent in the 47-joint target. Transfer
+  // only twist rotation to the wrist; never scale or rotate the whole arm.
+  const fx=readInterp(LEFT_FOREARM_BYTES,0),fy=readInterp(LEFT_FOREARM_BYTES,1),fz=readInterp(LEFT_FOREARM_BYTES,2);
+  const magnitudeFore=Math.hypot(fx,fy,fz);
+  if(magnitudeFore>.01){
+   forearmDegrees=Math.min(32,magnitudeFore)*.58;
    axis.set(fx,fy,fz).normalize();
-   q.setFromAxisAngle(axis,THREE.MathUtils.degToRad(forearmDegrees));
-   wrist.quaternion.multiply(q).normalize();
+   wrist.quaternion.multiply(q.setFromAxisAngle(axis,THREE.MathUtils.degToRad(forearmDegrees))).normalize();
   }
  }
- let applied=0,maxDegrees=0;
- for(let i=0;i<BONES.length;i++){
+ // The uploaded left-hand magazine sequence owns the entire support
+ // finger chain. Do not simultaneously animate the right shooting hand.
+ for(let i=0;i<20;i++){
   const bone=bones[i];if(!bone)continue;
-  const at=(frame,component)=>{
-   const n=data[frame*STRIDE+i*3+component];
-   return n>127?n-256:n;
-  };
+  const at=(f,j)=>signed(data[f*STRIDE+i*3+j]);
   const dx=THREE.MathUtils.lerp(at(f,0),at(f+1,0),blend);
   const dy=THREE.MathUtils.lerp(at(f,1),at(f+1,1),blend);
   const dz=THREE.MathUtils.lerp(at(f,2),at(f+1,2),blend);
   const deg=Math.hypot(dx,dy,dz);
   if(deg<.01)continue;
-  // Left hand reaches for the real SIG magazine; use the full source
-  // 3-joint finger articulation. Right hand stays on the pistol trigger:
-  // its 70-degree scripted source-index bend is restrained during reload.
-  const weight=i<20?.92:i>=24&&i<=27?.12:.32;
-  const angle=THREE.MathUtils.degToRad(deg*weight);
+  const weight=.92;
   axis.set(dx,dy,dz).normalize();
-  q.setFromAxisAngle(axis,angle);
-  bone.quaternion.multiply(q).normalize();
-  applied++;
-  maxDegrees=Math.max(maxDegrees,deg*weight);
+  bone.quaternion.multiply(q.setFromAxisAngle(axis,THREE.MathUtils.degToRad(deg*weight))).normalize();
+  applied++;maxDegrees=Math.max(maxDegrees,deg*weight);
  }
  return{ready:true,error:"",applied,maxDegrees,wristDegrees,forearmDegrees,triggerDegrees:0};
 }

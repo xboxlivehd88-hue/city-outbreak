@@ -15,7 +15,7 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
-import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=729";
+import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=730";
 import {getM17SourceReloadTravel,m17SourceReloadMotion} from "./pistol-source-travel.mjs?v=723";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
@@ -3969,6 +3969,38 @@ function rotateNativeBoneToward(bone,child,goalGun,restQuat){
  bone.quaternion.copy(delta).multiply(restQuat);
  parent.updateMatrixWorld(true);
 }
+// PISTOL ONLY: solve the 47-bone original source upper-arm and forearm as
+// a constant-length two-link chain. Previously arm.scale.z and elbow.scale.z
+// varied by up to 3.2x and physically stretched the skinned sleeves in ADS.
+// This changes no gun, sights, other six weapon IKs, or contact coordinates.
+function solveM17ConstantLengthElbow(s,e,w,chain,side){
+ const unit=fpsNativeArms.scale.x;
+ const upper=chain.elbowTranslation.length()*unit;
+ const lower=chain.wristTranslation.length()*unit;
+ if(!Number.isFinite(upper+lower)||upper<.01||lower<.01)return;
+ const travel=w.clone().sub(s);
+ let d=travel.length();
+ if(d<.0001)return;
+ const maxReach=(upper+lower)*.992;
+ const minReach=Math.abs(upper-lower)+.012;
+ // The reload hand can leave the weapon. Let the upper arm follow only as
+ // far as anatomical reach requires, rather than extending its mesh.
+ if(d>maxReach){
+  s.addScaledVector(travel,(d-maxReach)/d);
+  d=maxReach;
+ }else if(d<minReach){
+  s.addScaledVector(travel,-(minReach-d)/d);
+  d=minReach;
+ }
+ const direction=w.clone().sub(s).normalize();
+ const along=THREE.MathUtils.clamp((upper*upper-lower*lower+d*d)/(2*d),-upper,upper);
+ const height=Math.sqrt(Math.max(0,upper*upper-along*along));
+ let bow=e.clone().sub(s);
+ bow.addScaledVector(direction,-bow.dot(direction));
+ if(bow.lengthSq()<.0001)bow.set(side==="left"?-.6:.6,-.4,.1);
+ bow.normalize();
+ e.copy(s).addScaledVector(direction,along).addScaledVector(bow,height);
+}
 function poseOriginalFpsArms(){
  if(!fpsNativeArms||!fpsNativeBoneChains||!playerHandRig)return;
  // Sample ORIGINAL authored 2.167s animation before retargeting the arms.
@@ -4089,6 +4121,10 @@ function poseOriginalFpsArms(){
    e.x+=sign*.045*m17Ads;
    e.y-=.025*m17Ads;
   }
+  // The actual 47-bone M17 stays at its original bind lengths; solve
+  // the elbow from source lengths before aiming the two bone segments.
+  if(weapon==="pistol"&&!fpsArmsInspector.enabled)
+   solveM17ConstantLengthElbow(s,e,w,chain,side);
   // Do not squeeze the actual coat sleeve a SECOND time in ADS: the geometry
   // taper above is already proportional to the original source glove width.
   const sleeveUpper=weapon==="pistol"&&!fpsArmsInspector.enabled?.99:1;
@@ -4103,11 +4139,13 @@ function poseOriginalFpsArms(){
   // up to 30 cm off their grips; geometry regression rejected and reverted it.
   // Open-arm inspection stretches by design, and H returns to REAL grips.
   const upperLength=arm.getWorldPosition(new THREE.Vector3()).distanceTo(elbow.getWorldPosition(new THREE.Vector3()));
-  arm.scale.z=THREE.MathUtils.clamp(s.distanceTo(e)/Math.max(.001,upperLength),.3,3.2);
+  arm.scale.z=weapon==="pistol"&&!fpsArmsInspector.enabled?1:
+   THREE.MathUtils.clamp(s.distanceTo(e)/Math.max(.001,upperLength),.3,3.2);
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(elbow,wrist,w,chain.elbowRest);
   const lowerLength=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
-  elbow.scale.z=THREE.MathUtils.clamp(e.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
+  elbow.scale.z=weapon==="pistol"&&!fpsArmsInspector.enabled?1:
+   THREE.MathUtils.clamp(e.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
   elbow.updateMatrixWorld(true);
   if(side==="left"){
    document.documentElement.dataset.fpsArmsMeasuredLeftUpperStretch=arm.scale.z.toFixed(3);
@@ -4138,43 +4176,8 @@ function poseOriginalFpsArms(){
   const parentWorld=elbow.getWorldQuaternion(new THREE.Quaternion());
   wrist.quaternion.copy(parentWorld.invert().multiply(desiredWorld));
   wrist.updateMatrixWorld(true);
-  // v693: video shows four M17 support fingers jutting SIDEWAYS from the grip.
-  // Bend BOTH the original first knuckles and second phalanges as a real fist.
-  // Ease this during the existing support-hand magazine fetch/reseat animation.
-  if(weapon==="pistol"&&!fpsArmsInspector.enabled){
-   // Only ONE animation controls the support-hand fingers on reload.
-   // The v693 procedural fist was fighting the genuine authored clip.
-   const gripFlex=side==="left"?(reloading?0:1):.45;
-   const baseNames=side==="left"
-    ?["L_point_08","L_middle_012","L_ring_015","L_pink_019"]
-    :["R_middle_034","R_ring_038","R_pink_042"];
-   const tipNames=side==="left"
-    ?["L_point_2_09","L_middle_2_00","L_ring_2_016","L_pink_2_020"]
-    :["R_middle_2_035","R_ring_2_039","R_pink_2_043"];
-   for(const name of baseNames){
-    const finger=fpsNativeArms.getObjectByName(name);
-    if(finger)finger.rotateX(-(side==="left"?.48:.08)*gripFlex);
-   }
-   for(const name of tipNames){
-    const finger=fpsNativeArms.getObjectByName(name);
-    if(finger)finger.rotateX(-(side==="left"?.64:.15)*gripFlex);
-   }
-   if(side==="left"){
-    const thumb=fpsNativeArms.getObjectByName("L_thumb_04");
-    const thumbMid=fpsNativeArms.getObjectByName("L_thumb_2_05");
-    if(thumb){thumb.rotateX(-.11*gripFlex);thumb.rotateY(.15*gripFlex)}
-    if(thumbMid)thumbMid.rotateX(-.22*gripFlex);
-   }
-  }
-  // v691: Curl the original SIG firing-hand index knuckle and middle joint
-  // toward the trigger, without moving the wrist or replacing any mesh.
-  if(weapon==="pistol"&&side==="right"&&!fpsArmsInspector.enabled){
-   // Keep this fingertip near the real trigger instead of projecting
-   // nearly 25 cm forward into empty space alongside the slide.
-   const indexFlex=reloading?.08:.31;
-   chain.index.rotateX(reloading?-.10:-.25);
-   chain.indexMid.rotateX(-indexFlex);
-  }
+  // M17 finger, thumb and trigger rotations now all come from ONE
+  // authored controller below, never from parallel procedural layers.
   // Original first and second phalanges now wrap the grip/fore-end on all
   // six long weapons. M17 keeps its independently tuned v696 finger movement.
   if(weapon!=="pistol"&&!fpsArmsInspector.enabled){
@@ -4198,7 +4201,7 @@ function poseOriginalFpsArms(){
    chain.index.rotateX(-.11);
    chain.indexMid.rotateX(-.09);
   }
-  if(side==="right"&&!reloading&&!fpsArmsInspector.enabled){
+  if(side==="right"&&weapon!=="pistol"&&!reloading&&!fpsArmsInspector.enabled){
    const age=performance.now()-lastNativeTriggerShotAt;
    const pull=age>=0&&age<145?Math.sin(Math.PI*age/145):0;
    // Pull the native first/second index phalanges through the trigger,
@@ -4213,16 +4216,9 @@ function poseOriginalFpsArms(){
  // v719: authentic upload-derived source pistol finger keys, retargeted onto
  // the EXISTING original skinned hands only; no uploaded gun/model is loaded.
  if(weapon==="pistol"&&!fpsArmsInspector.enabled){
-   // Original 47-bone authored grab comes from the sampled user clip.
-   // Release competing native GLB finger poses smoothly on the left when
-   // reaching to the magazine, and restore once the hand reseats.
-   if(reloading){
-    const release=THREE.MathUtils.smoothstep(rp.p,.07,.31)*
-      (1-THREE.MathUtils.smoothstep(rp.p,.78,1));
-    for(const {bone,quat} of fpsNativeFingerRest){
-     if(bone.name.startsWith("L_"))bone.quaternion.slerp(quat,release);
-    }
-   }
+   // The original mixer is frozen at the stable hold reference.
+   // All M17 hand articulation, release, magazine grip and trigger
+   // are applied exactly once by the source-clip retarget below.
    const shotAge=performance.now()-lastNativeTriggerShotAt;
    const shotPulse=shotAge>=0&&shotAge<145?Math.sin(Math.PI*shotAge/145):0;
    const authored=applyM17AuthoredPistolFingerClip(THREE,fpsNativeArms,rp.p,reloading,shotPulse);
@@ -4233,7 +4229,7 @@ function poseOriginalFpsArms(){
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
    if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
-   document.documentElement.dataset.fpsArmsM17Retarget="v729-40-source-fingers-plus-forearm-and-real-trigger";
+   document.documentElement.dataset.fpsArmsM17Retarget="v730-single-source-controller-and-constant-length-IK";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
@@ -10950,7 +10946,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      playerHandRig.left.position.set(ro[0]*h-.10*pouch,ro[1]*h-.24*pull-.48*pouch,ro[2]*h+.05*pull+.22*pouch);
      playerHandRig.left.rotation.set(.10*h+.11*pouch,0,-.18*h-.09*pouch);
    }
-   if(reloading&&(reloadWeapon==="rifle"||reloadWeapon==="shotgun")){
+   if(reloading&&(reloadWeapon==="rifle"||reloadWeapon==="shotgun"||reloadWeapon==="pistol")){
      playerHandRig.right.position.set(0,0,0);playerHandRig.right.rotation.set(0,0,0);
    }else{
      playerHandRig.right.position.set(0,-.025*rp.arch,.02*rp.arch);

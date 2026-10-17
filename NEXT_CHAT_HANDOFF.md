@@ -1,3 +1,13 @@
+# v730 — M17 SINGLE-OWNER FINGER RETARGET + NON-STRETCH ARM CHAIN — 2026-10-17
+
+- Starting from verified v729 `8b123152d8995c5b43b995a366d6e35718bf96ac`. No restored old gameplay. Source user's actual 8.8s animated_pistol.glb 31-frame/40-joint extracted curves only; **no uploaded gun or arm meshes**. Actual in-game SIG `assets/low-poly_sig_sauer_m17.glb` and original arms `assets/cartoon_fps_arms.glb` unchanged.
+- M17-only original 47-bone arm chain now resolves a two-link shoulder/elbow/wrist target with **constant original bind bone lengths** rather than applying up to 3.2x Z-axis arm/elbow scaling. Support hand still follows the existing source-derived reload wrist path. Sights, firearm, gun controller, and six other weapon rigs untouched.
+- The M17 has a SINGLE owning source-curve finger controller, holding the original authored arm mixer at its stable hold time. Removed parallel procedural curls in `poseSide`, the extra fired-index kick, and the prior conflicting source-finger rest lerp. Transition from grip to left-magazine source animation and back is eased rather than snapping; only target finger phalanges pull the trigger.
+- Firing-hand support stays fixed during reload; left source wrist and missing source forearm twist remain transferred. Game H/J/K shortcuts remain removed and performance remains a collapsed dropdown; v324 checkpoint untouched.
+- **Important honesty**: The playable integration requires actual Chromium frame inspection for hip, ADS and reload. Do not call this visually approved before looking at test screenshots/user footage; actual source GLB binary is not stored in repo so this retarget is based on the already extracted source animation curves, not runtime GLB loading. Broad scene smoke tests may time out independently.
+
+---
+
 # v729 — ONE AUTHORED M17 HAND CONTROLLER + MISSING SOURCE FOREARM/TARGET TRIGGER — 2026-10-17
 
 - **Build v729**, loader `./src/game.js?v=729`, M17 source `m17-authored-fingers.mjs?v=729`. User's repeated video feedback is correct: hand movements remain unnatural even when geometry tests pass. Their exact request is to play the real uploaded animation on the in-game arms without importing any gun model. No replacement SIG gun or source Beretta mesh.
