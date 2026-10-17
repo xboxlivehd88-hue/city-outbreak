@@ -1,3 +1,14 @@
+# v734 — CHROMIUM REVIEWED RESULT AND CURRENT MAIN — 2026-10-17
+
+- **v734 M17 ADS and arms revision committed at** `260acd7dedef9015543c0d2b47d9ea2e31ba24aa`. M17 actual user-recorded v732 defect: super-far/small ADS pistol, sleeves missing, fingers incorrectly held. Source original `animated_pistol.glb` motion samples only; original SIG `assets/low-poly_sig_sauer_m17.glb` and 47-bone `assets/cartoon_fps_arms.glb` remain, no source pistol mesh used.
+- **GitHub Pages PASSED**, workflow **39047433227**. **Original seven-weapon Chromium + M17 reload/trigger audit PASSED**, workflow **39047433490**. The full-world/Hazmat regression **39047433559**, Sprinter **39047433511**, Parasite **39047433541** all **FAILED**, consistent with existing scene-readiness failures; DO NOT call them passing.
+- ACTUAL v734 Chromium hip screenshot, ADS screenshot, M17 reload p=.38 screenshot, M17 reload p=.75 screenshot visually inspected. ADS SIG clearly larger/closer than v732 (M17-only ADS Z moved -.32 -> +.10 and canceled 16% viewmodel shrink); elongated original textured sleeves now occupy lower ADS frame rather than disappearing. Screenshot still shows some unnatural left finger/grip relationships and right arm partly obscured behind the pistol; **user visual acceptance pending**. No magic geometry-pass=visual-perfect claim.
+- Measured real seven-gun contacts within baseline tolerance: M17 ADS left wrist [.3056,-.3649,-.8737], right [.3032,-.3516,-.8138] **0.000m left error**, all 6 other gun ADS grip errors under 2.5cm. M17 has 150 original source-unit sleeve shortening (was 315 at v732). Source reload support wrist travelled ~.643m, right firing wrist only ~.020m in reload. Original source trigger-index joint pull ~0.175 radians; authored 13–14 left-finger curves continue.
+- v734 right firing trigger curve, sight/hit/ballistics, DMR, six other weapons, zombie systems, camera input guard, grenade GPU prewarming and H/J/K removal, collapsed PERFORMANCE dropdown, v324 protected checkpoint unaffected. Current game loader `./src/game.js?v=734`.
+- Play: https://xboxlivehd88-hue.github.io/city-outbreak/?v=734-m17-ads-hands-test
+
+---
+
 # v734 — VIDEO-CORRECTED M17 LEFT FINGERS AND RIGHT ORIGINAL ARM — 2026-10-17
 
 - Actual new user recording `2026-10-17 11-45-24.mp4` was inspected. v733 workflow **39046944333 seven-gun geometry PASSED**; v733 Pages **39046943835 PASSED**. M17 ADS display is visually much closer/bigger than v732, with its original textured left forearm now extending toward camera. The M17 firing index still pulls independently and passed Chromium source audit (indexPull 0.175 radians), 7 weapons preserve measured grips, and the M17 reload firing-hand wrist moved only 1.1 cm during the sample. v733 video screenshot review nevertheless shows left fingertips still sticking OUT from the pistol and an obscured right sleeve. Not visually approved yet.
