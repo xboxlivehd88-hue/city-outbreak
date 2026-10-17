@@ -1,3 +1,14 @@
+# v735 — M17 firing hand orientation adjustment — 2026-10-17
+
+- User says v734 is now very close. Requested exactly 90 degrees of rotation to the left for the RIGHT hand so the palm sits toward the M17, and for the right index to rest on the trigger.
+- Changed only the pistol-specific right palm roll from 3π/2 to π (−90°); all seven other weapon-specific grip entries untouched. Right hand position, ADS and pistol model unchanged.
+- Refined original right index resting joint rotations from −.25/−.31 to −.18/−.43 radians; the original index-only firing curve is preserved, with no palm movement during firing.
+- Original SIG and original 47-bone arms unchanged; uploaded animation continues to provide retargeted source motion without substituting its pistol mesh. v324 protected recovery unchanged.
+- Loader now `./src/game.js?v=735`.
+- Tests and visual acceptance still need verification after deployment. The test results below refer to v734, not v735.
+
+---
+
 # v734 — CHROMIUM REVIEWED RESULT AND CURRENT MAIN — 2026-10-17
 
 - **v734 M17 ADS and arms revision committed at** `260acd7dedef9015543c0d2b47d9ea2e31ba24aa`. M17 actual user-recorded v732 defect: super-far/small ADS pistol, sleeves missing, fingers incorrectly held. Source original `animated_pistol.glb` motion samples only; original SIG `assets/low-poly_sig_sauer_m17.glb` and 47-bone `assets/cartoon_fps_arms.glb` remain, no source pistol mesh used.

@@ -1,3 +1,13 @@
+# v735 — M17 right-hand palm and index refinement — 2026-10-17
+
+- User confirms v734 hand placement very close. Current priority: rotate the RIGHT palm 90 degrees LEFT toward the M17 and place the right index at rest on the trigger. Keep the already working index-only firing pulse.
+- Pistol-specific right wrist roll changes 270° → 180°. Original right index's first/second resting articulations change −.25/−.31 → −.18/−.43 radians. No right hand translation; preserve original M17, arms, and source animation controller; six other weapons' controls remain untouched.
+- Increment `index.html` loader to `./src/game.js?v=735`, update both handoff documents; protect checkpoint v324.
+- **v735 CI and rendered Chromium frame review PENDING.** Do not claim visual success until screenshots checked. Broader regressions were failing independently as of v734.
+- Play link once deployed: https://xboxlivehd88-hue.github.io/city-outbreak/?v=735-m17-right-palm
+
+---
+
 # v734 — CHROMIUM REVIEWED RESULT AND CURRENT MAIN — 2026-10-17
 
 - **v734 M17 ADS and arms revision committed at** `260acd7dedef9015543c0d2b47d9ea2e31ba24aa`. M17 actual user-recorded v732 defect: super-far/small ADS pistol, sleeves missing, fingers incorrectly held. Source original `animated_pistol.glb` motion samples only; original SIG `assets/low-poly_sig_sauer_m17.glb` and 47-bone `assets/cartoon_fps_arms.glb` remain, no source pistol mesh used.

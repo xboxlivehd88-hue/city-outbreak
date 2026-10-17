@@ -1,4 +1,4 @@
-// CITY OUTBREAK v730: ACTUAL user-uploaded animated_pistol.glb finger animation.
+// CITY OUTBREAK v735: ACTUAL user-uploaded animated_pistol.glb finger animation.
 // Extracted from 101 source GLB channels, full 51-joint skeleton, clip
 // 'allanimations' at 31 samples over genuine 0–2.75s magazine sequence.
 // 40 authored finger-joint quaternion curves are retargeted by bone name,
@@ -68,8 +68,10 @@ export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading,tr
   rotate(name,X,-.036);
  for(const name of ["R_middle_2_035","R_ring_2_039","R_pink_2_043"])
   rotate(name,X,-.068);
- rotate("R_point_030",X,-.25);
- rotate("R_point_2_031",X,-.31);
+ // Keep the base extended into the trigger guard and let the next joint
+ // rest gently on the trigger; firing still adds its original index-only curl.
+ rotate("R_point_030",X,-.18);
+ rotate("R_point_2_031",X,-.43);
  let triggerDegrees=0,applied=0,maxDegrees=0,wristDegrees=0,forearmDegrees=0;
  const signed=n=>n>127?n-256:n;
  const read=(bytes,f,index)=>signed(bytes[f*3+index]);
