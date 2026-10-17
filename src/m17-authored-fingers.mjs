@@ -14,6 +14,13 @@ const DEFLATE="eNrV1l1v0zAUBuDjY+fDSfq1bgMxEPySARv8fLgBccMFQmiIVZuWpcuaxImNaydpu
 // wrist articulation: previously fixed-game-wrist IK erased it completely.
 // No gun objects, camera movement, right trigger-hand positions or meshes.
 const LEFT_WRIST_SOURCE="AAAABP4ADPH/Av4AAAAA/P39+/j5/vP1BPH0B/HrAfDqAOjnBt/i9+/g8Pfg7vrg8vTh9e7j/Pb4/Pb4/Pb4//j6/vr7/vn7/vn7/fj8/vn8//r+Afv/AvwBAAAA";
+// The uploaded clip has a 51-joint source hierarchy, including L_forearm_02.
+// The game's earlier 47-joint arms have no matching forearm-twist bone.
+// Preserve that authentic 0–2.75s forearm rotation as a calibrated wrist
+// twist only while RELOADING; the native wrist POSITION stays at its gun goal.
+const SOURCE_LEFT_FOREARM="AAAAAAAAAAD/AAAAAAAAAAD9AAD5AAD1AAD0AADrAADqAADnAADiAADgAADhAADhAADiAADkAAD5AAD5AAD5AAD6AAD7AAD7AAD8AAD8AAD9AAD+AAD/AAAAAAAA";
+const LEFT_FOREARM_BYTES=Uint8Array.from(atob(SOURCE_LEFT_FOREARM),c=>c.charCodeAt(0));
+if(LEFT_FOREARM_BYTES.length!==FRAMES*3)throw Error("Source pistol forearm samples wrong length");
 const LEFT_WRIST_BYTES=Uint8Array.from(atob(LEFT_WRIST_SOURCE),c=>c.charCodeAt(0));
 if(LEFT_WRIST_BYTES.length!==FRAMES*3)throw Error("Source pistol wrist animation has wrong length");
 let data=null,error="",targetCache=new WeakMap();
@@ -30,9 +37,32 @@ const loading=(async()=>{
   error=String(e);console.warn("M17 source clip unavailable",e);
  }
 })();
-export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading){
- if(!data)return {ready:false,error,applied:0,maxDegrees:0,wristDegrees:0};
- if(!rig||!reloading)return{ready:true,error:"",applied:0,maxDegrees:0,wristDegrees:0};
+export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading,triggerPulse=0){
+ if(!data)return {ready:false,error,applied:0,maxDegrees:0,wristDegrees:0,forearmDegrees:0,triggerDegrees:0};
+ if(!rig)return{ready:true,error:"",applied:0,maxDegrees:0,wristDegrees:0,forearmDegrees:0,triggerDegrees:0};
+ if(!reloading){
+  // The real uploaded source trigger finger bends ~65–70 degrees at .5s.
+  // Apply ONLY the index phalanges during a shot; never move the trigger
+  // wrist, whole palm, slide, camera, or SIG gun geometry.
+  let triggerDegrees=0;
+  if(triggerPulse>0){
+   const index=rig.getObjectByName("R_point_2_031");
+   if(index){
+    const midIndex=BONES.indexOf("R_point_2_031");
+    const fFire=6; // authored ~.55 seconds, trigger fully depressed
+    const dx=data[fFire*STRIDE+midIndex*3],dy=data[fFire*STRIDE+midIndex*3+1],dz=data[fFire*STRIDE+midIndex*3+2];
+    const signed=n=>n>127?n-256:n;
+    const axis=new THREE.Vector3(signed(dx),signed(dy),signed(dz));
+    if(axis.lengthSq()>0){
+     triggerDegrees=Math.min(27,axis.length()*.43)*Math.min(1,Math.max(0,triggerPulse));
+     index.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(axis.normalize(),
+      THREE.MathUtils.degToRad(triggerDegrees))).normalize();
+    }
+   }
+  }
+  return{ready:true,error:"",applied:triggerDegrees>0?1:0,maxDegrees:triggerDegrees,
+    wristDegrees:0,forearmDegrees:0,triggerDegrees};
+ }
  let bones=targetCache.get(rig);
  if(!bones){bones=BONES.map(name=>rig.getObjectByName(name));targetCache.set(rig,bones);}
  const srcFrame=THREE.MathUtils.clamp(progress,0,1)*(FRAMES-1);
@@ -42,7 +72,7 @@ export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading){
  // Retarget real local source wrist motion only while the left hand is
  // reaching for/reseating the magazine. Original FPS IK already set the
  // wrist's correct POSITION/hold orientation on the actual SIG model.
- let wristDegrees=0;
+ let wristDegrees=0,forearmDegrees=0;
  const wrist=rig.getObjectByName("L_wrist_03");
  if(wrist){
   const read=(frame,component)=>{
@@ -57,6 +87,24 @@ export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading){
    wristDegrees=mag*.76;
    axis.set(x,y,z).normalize();
    q.setFromAxisAngle(axis,THREE.MathUtils.degToRad(wristDegrees));
+   wrist.quaternion.multiply(q).normalize();
+  }
+  // Transfer the genuine SOURCE L_forearm_02 twist absent from our older
+  // original arm skeleton. Apply AFTER native IK in wrist LOCAL space.
+  // This preserves the original SIG contact position and does not stretch
+  // the arm: rotation only, finite 0–2.75s clip, no frame accumulation.
+  const readFore=(frame,component)=>{
+   const v=LEFT_FOREARM_BYTES[frame*3+component];
+   return v>127?v-256:v;
+  };
+  const fx=THREE.MathUtils.lerp(readFore(f,0),readFore(f+1,0),blend);
+  const fy=THREE.MathUtils.lerp(readFore(f,1),readFore(f+1,1),blend);
+  const fz=THREE.MathUtils.lerp(readFore(f,2),readFore(f+1,2),blend);
+  const fMag=Math.hypot(fx,fy,fz);
+  if(fMag>.01){
+   forearmDegrees=Math.min(32,fMag)*.58;
+   axis.set(fx,fy,fz).normalize();
+   q.setFromAxisAngle(axis,THREE.MathUtils.degToRad(forearmDegrees));
    wrist.quaternion.multiply(q).normalize();
   }
  }
@@ -83,7 +131,7 @@ export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading){
   applied++;
   maxDegrees=Math.max(maxDegrees,deg*weight);
  }
- return{ready:true,error:"",applied,maxDegrees,wristDegrees};
+ return{ready:true,error:"",applied,maxDegrees,wristDegrees,forearmDegrees,triggerDegrees:0};
 }
 export const m17ActualSourceInfo=Object.freeze({
  file:"animated_pistol.glb",sourceClip:"allanimations",sourceDuration:8.8,

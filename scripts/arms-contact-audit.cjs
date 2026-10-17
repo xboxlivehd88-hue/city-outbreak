@@ -145,7 +145,8 @@ const {chromium}=require("playwright"),fs=require("fs");
     controllerMotionY:Number(document.documentElement.dataset.fpsArmsM17ReloadHandY),
     actualSourceClipReady:document.documentElement.dataset.fpsArmsM17AuthoredClipReady,
     actualSourceBonesApplied:Number(document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied||0),
-    actualSourceMaxDegrees:Number(document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees||0)};
+    actualSourceMaxDegrees:Number(document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees||0),
+    sourceForearmDegrees:Number(document.documentElement.dataset.fpsArmsM17SourceForearmDegrees||0)};
  };
  const frames=[0,.18,.38,.52,.75,.94].map(snapshot);
  const dist=(a,b)=>Math.hypot(...a.map((x,i)=>x-b[i]));
@@ -204,6 +205,11 @@ const {chromium}=require("playwright"),fs=require("fs");
   // v723: capture REAL in-engine hip vs reload hand positions and renderer
   // frames, rather than accepting numeric static hip/ADS grips as animation QA.
   report.m17Motion=await page.evaluate(()=>globalThis.__v723M17SourceReloadAudit());
+  // v729: verify missing authored source forearm motion is actually rendered
+  // in the M17 during reload and never confuses all-seven static grip test.
+  report.m17Motion.forearmRetargetActive=report.m17Motion.frames
+   .some(f=>f.sourceForearmDegrees>8);
+
   for(const f of report.m17Motion.frames){
     if(f.jpeg){
       console.log("V723_SOURCE_M17_RELOAD_"+String(f.p).replace(".","_")+"_JPEG="+f.jpeg);
@@ -225,6 +231,7 @@ const {chromium}=require("playwright"),fs=require("fs");
   }
 
   report.passed=report.m17Motion?.sourceMotionApplied===true&&
+    report.m17Motion.forearmRetargetActive===true&&
     report.m17Motion.performanceCollapsed&&report.m17Motion.maxMotion>.15&&report.m17Motion.rightMax<.30&&
     report.m17Motion.shortenedVertices>10&&report.m17Motion.reductionUnits>260&&
     report.m17Motion.frames.filter(f=>f.p>.3&&f.p<.8).some(f=>f.actualSourceClipReady==="true"&&f.actualSourceBonesApplied>=15&&f.actualSourceMaxDegrees>20)&&

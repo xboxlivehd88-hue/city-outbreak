@@ -1,3 +1,13 @@
+# v729 — ONE AUTHORED M17 HAND CONTROLLER + MISSING SOURCE FOREARM/TARGET TRIGGER — 2026-10-17
+
+- **Build v729**, loader `./src/game.js?v=729`, M17 source `m17-authored-fingers.mjs?v=729`. User's repeated video feedback is correct: hand movements remain unnatural even when geometry tests pass. Their exact request is to play the real uploaded animation on the in-game arms without importing any gun model. No replacement SIG gun or source Beretta mesh.
+- The SOURCE `animated_pistol.glb` has 51 joints, including `L_forearm_02`, while the ORIGINAL game cartoon-fps arm rig has only 47 joints and no matching forearm-twist bone. The v725–728 clip imported 40 finger curves and source left wrist rotation but accidentally DROPPED original animated forearm twist, and the source left fingers were layered over a second independent v693 procedural fist bend and static 0.56s original arm mixer pose. It is not enough to move the hand target numerically.
+- v729 M17 reload: stop adding the old procedural support-finger fist to the 40 authored source curves. Blend existing base glove-finger poses toward the original rig's captured rest pose as the hand reaches down and back to the new magazine, then let the true extracted source curves operate. Read source `L_forearm_02` joint rotation from the GLB (31 source frames; up to 32°) and retarget onto the original target wrist local quaternion at 58% only during reload. Native IK still sets original wrist POSITION/contact every frame and source wrist never accumulates rotation.
+- v729 M17 firing: apply original uploaded source right index-middle trigger articulation from its authored firing beat to ONLY the original index-middle phalanx on actual shots (max ~27°), without moving the right palm, pistol or camera. Other weapons retain the existing shot animation.
+- H/J/K inspection hotkeys remain removed; performance HUD remains a closed-by-default details dropdown from v726. Do NOT regress these. Other six weapon geometry, map, zombies, grenade FX, graphics unchanged. Recovery v324 unchanged. User has NOT approved visual hand/arm behavior; inspect rendered hip/ADS/reload/fire rather than treating CI geometry PASS as visual success. Broad full-scene smoke has existing timeouts and should be reported honestly.
+
+---
+
 # v728 — SOURCE-ANIMATION WRIST + NO DOUBLE-PLAY, AND v727 ADS REGRESSION FIX — 2026-10-17
 
 - **Build v728**, loader `./src/game.js?v=728`. Current user video `2026-10-17 10-37-02.mp4`, ~44s, still shows unnatural M17 sleeves and hand placement. User correctly says animation fit keeps worsening. Retain exact user original SIG + original 47-bone cartoon arms; no pistol mesh from uploaded `animated_pistol.glb` is used.

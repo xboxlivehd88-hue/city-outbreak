@@ -15,7 +15,7 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
-import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=728";
+import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=729";
 import {getM17SourceReloadTravel,m17SourceReloadMotion} from "./pistol-source-travel.mjs?v=723";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
@@ -4142,7 +4142,9 @@ function poseOriginalFpsArms(){
   // Bend BOTH the original first knuckles and second phalanges as a real fist.
   // Ease this during the existing support-hand magazine fetch/reseat animation.
   if(weapon==="pistol"&&!fpsArmsInspector.enabled){
-   const gripFlex=side==="left"?(reloading?THREE.MathUtils.clamp(1-rp.hand,0,1):1):.45;
+   // Only ONE animation controls the support-hand fingers on reload.
+   // The v693 procedural fist was fighting the genuine authored clip.
+   const gripFlex=side==="left"?(reloading?0:1):.45;
    const baseNames=side==="left"
     ?["L_point_08","L_middle_012","L_ring_015","L_pink_019"]
     :["R_middle_034","R_ring_038","R_pink_042"];
@@ -4211,13 +4213,27 @@ function poseOriginalFpsArms(){
  // v719: authentic upload-derived source pistol finger keys, retargeted onto
  // the EXISTING original skinned hands only; no uploaded gun/model is loaded.
  if(weapon==="pistol"&&!fpsArmsInspector.enabled){
-   const authored=applyM17AuthoredPistolFingerClip(THREE,fpsNativeArms,rp.p,reloading);
+   // Original 47-bone authored grab comes from the sampled user clip.
+   // Release competing native GLB finger poses smoothly on the left when
+   // reaching to the magazine, and restore once the hand reseats.
+   if(reloading){
+    const release=THREE.MathUtils.smoothstep(rp.p,.07,.31)*
+      (1-THREE.MathUtils.smoothstep(rp.p,.78,1));
+    for(const {bone,quat} of fpsNativeFingerRest){
+     if(bone.name.startsWith("L_"))bone.quaternion.slerp(quat,release);
+    }
+   }
+   const shotAge=performance.now()-lastNativeTriggerShotAt;
+   const shotPulse=shotAge>=0&&shotAge<145?Math.sin(Math.PI*shotAge/145):0;
+   const authored=applyM17AuthoredPistolFingerClip(THREE,fpsNativeArms,rp.p,reloading,shotPulse);
    document.documentElement.dataset.fpsArmsM17AuthoredWristDegrees=authored.wristDegrees.toFixed(1);
+   document.documentElement.dataset.fpsArmsM17SourceForearmDegrees=authored.forearmDegrees.toFixed(1);
+   document.documentElement.dataset.fpsArmsM17SourceTriggerDegrees=authored.triggerDegrees.toFixed(1);
    document.documentElement.dataset.fpsArmsM17AuthoredClipReady=String(authored.ready);
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
    if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
-   document.documentElement.dataset.fpsArmsM17Retarget="v725-40-genuine-source-finger-quaternion-curves";
+   document.documentElement.dataset.fpsArmsM17Retarget="v729-40-source-fingers-plus-forearm-and-real-trigger";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
