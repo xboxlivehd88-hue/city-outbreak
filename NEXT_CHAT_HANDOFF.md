@@ -1,3 +1,12 @@
+# v738 — PHOTO-GUIDED M17 HAND POSITION REVISION — 2026-10-17
+
+- User supplied two live screenshots from v737 (ADS and shouldered). In both, support glove sits outside the SIG grip and hand/finger pose reads as twisted/unsupported. Not visually approved.
+- M17-only v738: support wrist moves +0.055 gun-local x, -0.045 y, +0.015 z in the calibrated hip/ADS wrist contact controller, to tuck glove closer and underneath the grip. This extra shift is suppressed during reload to preserve authored magazine motion. Original left wrist roll 1.18 → 0.48 rad to reduce sideways fingers. Original right wrist roll 360° → 315° intermediate palm correction, retaining same original firing-wrist target and source trigger-index pull. These are photo-guided first-pass adjustments; visual acceptance NOT yet proven.
+- Original user-uploaded SIG M17, textured 47-bone skinned arms, DMR and other six weapons, sight/ballistics, camera, grenade effects, protected recovery v324 untouched. Game loader v738. GitHub commit f1a26e372745ec8c5e58698e02dd9e68b07237b9; Pages deployment/rendered QA not yet confirmed.
+- Test https://xboxlivehd88-hue.github.io/city-outbreak/?v=738-m17-photo-grip . Compare screenshots hip and ADS before judging; do not claim fixed from code alone.
+
+---
+
 # v737 — RIGHT-HAND PALM MUST FACE RIGHT SIDE OF SIG GRIP — 2026-10-17
 
 - User corrected Toby's v735/v736 mistake: rotating M17 RIGHT hand from old roll 270° to 180° was **the wrong way**. Correct direction is to turn the original right palm +90° from the prior 270° reference, i.e. **360° (0°)** so its palm faces the RIGHT SIDE of the grip.
