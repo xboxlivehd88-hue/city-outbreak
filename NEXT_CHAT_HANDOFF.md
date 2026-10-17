@@ -1,3 +1,9 @@
+# v746 M17 right fingers — 2026-10-17
+
+User v745 image: fingers should cross frontstrap below trigger guard and thumb around backstrap. Right-only bone changes to finger yaw/curl and thumb swing, trigger index and other hand positions unchanged. Loader v746. Visual approval pending. Protected v324 untouched.
+
+---
+
 # v745 — M17 right grip fingers (2026-10-17)
 
 - Gun placement locked. Source GLB poses retained. Three gripping right fingers now curl at each phalanx after retarget; right thumb wrapped farther behind grip; right index trigger and left hand untouched.
