@@ -1,3 +1,12 @@
+# v732 — RESTORE TRUE M17 HIP/ADS TRIGGER AND SUPPORT HAND CONTACT — 2026-10-17
+
+- v731 Chromium screenshots confirm sleeve flare was substantially reduced, but seven-weapon source audit **FAILED**: M17 ADS support wrist still 17.02 cm from approved contact even with constant arm lengths. Firing-hand wrist also stayed near hip rather than moving to the true ADS grip. Do not call this visually acceptable.
+- Correct M17-only static holding/ADS wrist goals to interpolate between measured original-game GLB contact anchors from the v729 Chromium real geometry survey: left HIP [.3093,-.488,-.8012] → ADS [.3056,-.3649,-.8737], right HIP [.3866,-.4686,-.7665] → ADS [.3032,-.3516,-.8138]. The arm IK retarget now aims at real SIG hand positions instead of inaccurate hidden controller goals during ADS.
+- Keep exact old 47-bone original arms and original low-poly SIG GLB, monotonic original sleeve fabric correction, downward elbow anatomy, constant arm segment proportions, one source-finger/trigger controller, and original magazine/source reload path. No other six weapon optics, recoil, loading, graphics or test-user UI regressions; v324 recovery unchanged.
+- Await new v732 CI report AND hip/ADS/reload screenshot review. It is not enough that GitHub Pages passes.
+
+---
+
 # v731 — CHROMIUM M17 ADS SLEEVE, ANATOMICAL ELBOW AND WRIST-CONTACT REVISION — 2026-10-17
 
 - Actual v730 Chromium screenshot review proved sleeves still flare horizontally during M17 ADS and 17.47 cm support-wrist contact regression against the approved 2.5cm tolerance. v730 Pages passed but the geometry audit **FAILED** and the visuals were NOT accepted.

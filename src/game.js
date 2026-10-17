@@ -4065,6 +4065,18 @@ function poseOriginalFpsArms(){
    w.x+=THREE.MathUtils.lerp(.12,.025,sightBlend)*holding;
    w.z-=.055*holding;
   }
+  if(weapon==="pistol"&&!fpsArmsInspector.enabled&&!reloading){
+   // The old variable-length IK accidentally compensated for a bad ADS
+   // target. With anatomical constant lengths the error became visible:
+   // v731 measured 17 cm off the approved in-game SIG wrist anchors.
+   // Use the REAL original-mesh Chromium hip and ADS contact samples for
+   // both palms. Do not change the firearm/camera or six other weapons.
+   const t=THREE.MathUtils.smoothstep(aimBlend,0,1);
+   const references=side==="left"
+     ?{hip:[.3093,-.488,-.8012],ads:[.3056,-.3649,-.8737]}
+     :{hip:[.3866,-.4686,-.7665],ads:[.3032,-.3516,-.8138]};
+   w.fromArray(references.hip).lerp(new THREE.Vector3(...references.ads),t);
+  }
   if(fpsArmsInspector.enabled){
    // Equal camera-space arm extension for EVERY weapon (actual GLB bones).
    // Preserve original material, joint orientation and open source fingers.
@@ -4251,7 +4263,7 @@ function poseOriginalFpsArms(){
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
    if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
-   document.documentElement.dataset.fpsArmsM17Retarget="v730-single-source-controller-and-constant-length-IK";
+   document.documentElement.dataset.fpsArmsM17Retarget="v732-approved-m17-hip-ads-grips-and-authored-fingers";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
