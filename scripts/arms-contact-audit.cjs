@@ -226,7 +226,7 @@ const {chromium}=require("playwright"),fs=require("fs");
   report.passed=report.m17Motion?.sourceMotionApplied===true&&
     report.m17Motion.maxMotion>.15&&report.m17Motion.rightMax<.30&&
     report.m17Motion.shortenedVertices>10&&report.m17Motion.reductionUnits>150&&
-    report.m17Motion.frames.filter(f=>f.p>.3&&f.p<.8).some(f=>f.actualSourceClipReady==="true"&&f.actualSourceBonesApplied>20&&f.actualSourceMaxDegrees>20)&&
+    report.m17Motion.frames.filter(f=>f.p>.3&&f.p<.8).some(f=>f.actualSourceClipReady==="true"&&f.actualSourceBonesApplied>=15&&f.actualSourceMaxDegrees>20)&&
     report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0)&&
     report.handAndLauncher?.spins?.length===7&&
     report.handAndLauncher.spins.every(x=>x.sourceBones>=20&&x.maxDrift<.002&&

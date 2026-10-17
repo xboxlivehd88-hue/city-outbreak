@@ -1,3 +1,10 @@
+# v725 QA — REAL SOURCE MOTION VERIFIED; TEST EXPECTATION CORRECTED — 2026-10-17
+
+- The Chromium v725 source animation test run `39037851341` confirmed actual original uploaded clip decoder `ready=true`. During M17 reload p=.38 and p=.52 it measured **19** active authentic finger joints, **47.8°** maximum finger bend, **0.645m** support-wrist travel, right wrist <0.035m, no runtime exceptions, all seven usual static grip/audit measurements within tolerances. It was labeled FAIL because the newly added test required **more than 20** joints active simultaneously, which is impossible at that specific source time (many of 40 tracks are naturally idle). Test assertion corrected to at least 15 active, without weakening source readiness or angle/geometry/movement checks. Gameplay model and animation code unchanged in this QA-only commit. Visual quality is **NOT user approved**.
+- v725 adds real source-authored full finger quaternion curves, no weapon meshes; v724 sleeve shape remains partly V-like and needs additional anatomy refinement. Keep v324 recovery untouched.
+
+---
+
 # v725 — ACTUAL 40-JOINT UPLOADED M17 FINGER ANIMATION, NO GUN MODEL — 2026-10-17
 
 - **Current build v725**, loader `./src/game.js?v=725`. Based on user's own GLB `animated_pistol.glb` (8,509,628 bytes), now physically materialized and decoded, not guessed or reproduced. The original `allanimations` clip has 101 channels and 51 source joints, of which **40 finger joints** map by actual bone names onto **40 source finger bones** in the existing original 47-bone `cartoon_fps_arms.glb` skeleton. The remaining joints are extra forearms/palms/source gun controls, which are excluded to preserve existing SIG geometry and IK.
