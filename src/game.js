@@ -4280,6 +4280,17 @@ function poseOriginalFpsArms(){
     fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateX(-.60);
     fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateY(-.20);
     fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.40);
+    // v745: close original right middle/ring/little finger chains on frontstrap.
+    // Source animation remains the baseline, and the index trigger chain is untouched.
+    for(const n of ["R_middle_034","R_ring_038","R_pink_042"])
+     fpsNativeArms.getObjectByName(n)?.rotateX(-.34);
+    for(const n of ["R_middle_2_035","R_ring_2_039","R_pink_2_043"])
+     fpsNativeArms.getObjectByName(n)?.rotateX(-.43);
+    for(const n of ["R_middle_3_036","R_ring_3_040","R_pink_3_044"])
+     fpsNativeArms.getObjectByName(n)?.rotateX(-.19);
+    fpsNativeArms.getObjectByName("R_thumb_026")?.rotateY(-.24);
+    fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateZ(.26);
+    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.18);
    }
    document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
    document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
