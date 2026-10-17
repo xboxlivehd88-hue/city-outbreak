@@ -1,3 +1,13 @@
+# v731 — CHROMIUM M17 ADS SLEEVE, ANATOMICAL ELBOW AND WRIST-CONTACT REVISION — 2026-10-17
+
+- Actual v730 Chromium screenshot review proved sleeves still flare horizontally during M17 ADS and 17.47 cm support-wrist contact regression against the approved 2.5cm tolerance. v730 Pages passed but the geometry audit **FAILED** and the visuals were NOT accepted.
+- Reoriented original 47-bone M17-only elbow bend downward rather than sideways. Original target has a disproportionately long bind forearm; calibrate fixed 1.035 upper and .67 forearm lengths, then correct small grip residual by translating the real shoulder/root as one skinned chain, never variable per-frame bone stretching. Six other weapon poses, real SIG mesh/sights, DMR, ammo, reload mechanics unchanged.
+- Corrected folded oversized sleeve geometry by using a strictly monotonic M17 distal cloth mapping; old smoothstep shortened long source fabric but folded it backward on itself, creating bunched V-shaped folds. Preserve original skinned sleeve mesh/textures/bone weights. Six other weapons retain original mapping.
+- New seven-gun source audit measures a minimum of 12 actually moving LEFT fingers from the 20-source-joint support reload (rather than counting static right trigger fingers), and right-wrist movement under 3cm. Keep original 2.5cm SIG ADS wrist-contact threshold.
+- **Pending new CI/screenshot visual evaluation; DO NOT call natural animation approved yet.** v324 protected; H/J/K removed; PERFORMANCE dropdown remains collapsed.
+
+---
+
 # v730 — M17 SINGLE-OWNER FINGER RETARGET + NON-STRETCH ARM CHAIN — 2026-10-17
 
 - Starting from verified v729 `8b123152d8995c5b43b995a366d6e35718bf96ac`. No restored old gameplay. Source user's actual 8.8s animated_pistol.glb 31-frame/40-joint extracted curves only; **no uploaded gun or arm meshes**. Actual in-game SIG `assets/low-poly_sig_sauer_m17.glb` and original arms `assets/cartoon_fps_arms.glb` unchanged.

@@ -3884,7 +3884,12 @@ function attachOriginalFpsArms(){
        // not the bones or glove. Elbow cloth reaches z=-598 in the user's
        // uploaded GLB, making a giant doubled V in the M17 ADS video.
        // Long guns receive a smaller correction to protect approved grips.
-       const distal=THREE.MathUtils.smoothstep(-z,245,590);
+       // The earlier smoothstep displacement DERIVATIVE exceeded one and
+       // folded vertices backward into a huge V of overlapping fabric.
+       // Keep M17 cloth mapping monotonic, six long guns unaffected.
+       const distal=weapon==="pistol"
+        ?THREE.MathUtils.clamp((-z-245)/345,0,1)
+        :THREE.MathUtils.smoothstep(-z,245,590);
        const change=(weapon==="pistol"?315:155)*distal*Math.pow(influence,.28);
        p.setZ(i,z+change);
        if(weapon==="pistol"){
@@ -3975,8 +3980,10 @@ function rotateNativeBoneToward(bone,child,goalGun,restQuat){
 // This changes no gun, sights, other six weapon IKs, or contact coordinates.
 function solveM17ConstantLengthElbow(s,e,w,chain,side){
  const unit=fpsNativeArms.scale.x;
- const upper=chain.elbowTranslation.length()*unit;
- const lower=chain.wristTranslation.length()*unit;
+ // Calibrate the original 47-bone disproportionate forearm bind span ONCE,
+ // never rescale per gameplay frame. Other six weapon IKs stay unchanged.
+ const upper=chain.elbowTranslation.length()*unit*1.035;
+ const lower=chain.wristTranslation.length()*unit*1.035*.67;
  if(!Number.isFinite(upper+lower)||upper<.01||lower<.01)return;
  const travel=w.clone().sub(s);
  let d=travel.length();
@@ -3995,9 +4002,12 @@ function solveM17ConstantLengthElbow(s,e,w,chain,side){
  const direction=w.clone().sub(s).normalize();
  const along=THREE.MathUtils.clamp((upper*upper-lower*lower+d*d)/(2*d),-upper,upper);
  const height=Math.sqrt(Math.max(0,upper*upper-along*along));
- let bow=e.clone().sub(s);
+ // v730 lateral bend flared BOTH sleeves horizontally. Aim each elbow
+ // down toward the torso with just a slight outward anatomical bow.
+ const sign=side==="left"?-1:1;
+ let bow=new THREE.Vector3(sign*.30,-1,.16);
  bow.addScaledVector(direction,-bow.dot(direction));
- if(bow.lengthSq()<.0001)bow.set(side==="left"?-.6:.6,-.4,.1);
+ if(bow.lengthSq()<.0001)bow.set(sign*.20,-1,.1);
  bow.normalize();
  e.copy(s).addScaledVector(direction,along).addScaledVector(bow,height);
 }
@@ -4139,13 +4149,25 @@ function poseOriginalFpsArms(){
   // up to 30 cm off their grips; geometry regression rejected and reverted it.
   // Open-arm inspection stretches by design, and H returns to REAL grips.
   const upperLength=arm.getWorldPosition(new THREE.Vector3()).distanceTo(elbow.getWorldPosition(new THREE.Vector3()));
-  arm.scale.z=weapon==="pistol"&&!fpsArmsInspector.enabled?1:
+  arm.scale.z=weapon==="pistol"&&!fpsArmsInspector.enabled?1.035:
    THREE.MathUtils.clamp(s.distanceTo(e)/Math.max(.001,upperLength),.3,3.2);
   arm.updateMatrixWorld(true);
   rotateNativeBoneToward(elbow,wrist,w,chain.elbowRest);
   const lowerLength=elbow.getWorldPosition(new THREE.Vector3()).distanceTo(wrist.getWorldPosition(new THREE.Vector3()));
-  elbow.scale.z=weapon==="pistol"&&!fpsArmsInspector.enabled?1:
+  elbow.scale.z=weapon==="pistol"&&!fpsArmsInspector.enabled?.67:
    THREE.MathUtils.clamp(e.distanceTo(w)/Math.max(.001,lowerLength),.3,3.2);
+  if(weapon==="pistol"&&!fpsArmsInspector.enabled){
+   // Correct the remaining SIG wrist contact error by moving the original
+   // shoulder/root as one skinned chain, NOT stretching its bones.
+   const targetWorld=gun.localToWorld(w.clone());
+   const correction=targetWorld.sub(wrist.getWorldPosition(new THREE.Vector3()));
+   const maxCorrection=reloading?.27:1;
+   if(correction.length()>maxCorrection)correction.setLength(maxCorrection);
+   const shoulderWorld=arm.getWorldPosition(new THREE.Vector3());
+   arm.position.copy(arm.parent.worldToLocal(shoulderWorld.add(correction)));
+   arm.updateMatrixWorld(true);
+   document.documentElement.dataset.fpsArmsM17IKCorrection=correction.length().toFixed(4);
+  }
   elbow.updateMatrixWorld(true);
   if(side==="left"){
    document.documentElement.dataset.fpsArmsMeasuredLeftUpperStretch=arm.scale.z.toFixed(3);
