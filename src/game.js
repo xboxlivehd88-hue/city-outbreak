@@ -4071,12 +4071,17 @@ function poseOriginalFpsArms(){
   // and right shoulder ROOTS toward the actual wrists in screen/gun space.
   // The imported pistol, both controller elbows and WRIST CONTACTS DO NOT move.
   // The open-arm H inspector and hip-fire baseline are never affected.
-  if(m17Ads>0) {
-   s.x=THREE.MathUtils.lerp(s.x,w.x,.30*m17Ads);
-   // v712 DOWN and v713 UP vertical root experiments both rejected:
-   // v712 increased upper-arm stretch, v713 moved the genuine support
-   // wrist 2.85cm off the approved contact and still showed a hanging V.
-   // Preserve the v711 verified shoulder height and glove placement.
+  if(m17Ads>0){
+   // v727: a true TWO-ARM silhouette. The old .30 pull collapsed BOTH
+   // shoulders toward the centered pistol into crossing cloth panels.
+   // Instead place each original shoulder slightly outside its real elbow,
+   // and bow each elbow outward and down. The ORIGINAL wrists/grips/sights
+   // are never altered. Fade continuously in/out of ADS.
+   const sign=side==="left"?-1:1;
+   const startX=s.x;
+   s.x=THREE.MathUtils.lerp(startX,w.x,.12*m17Ads)+sign*.085*m17Ads;
+   e.x+=sign*.105*m17Ads;
+   e.y-=.055*m17Ads;
   }
   // Do not squeeze the actual coat sleeve a SECOND time in ADS: the geometry
   // taper above is already proportional to the original source glove width.

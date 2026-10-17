@@ -1,3 +1,13 @@
+# v727 — CONSOLIDATED M17 ADS ARM SHAPE + CLEAN GAMEPLAY HUD — 2026-10-17
+
+- **Current build v727**, loader `./src/game.js?v=727`. User provided new `2026-10-17 09-57-58.mp4` 41.4s recording: M17 still exhibits undersupported hands and visible long sleeve/ADS distortion. Must visually approve before calling these fully fixed.
+- **M17 real skinned ADS arm geometry:** Previous ADS code moved both shoulder joints 30% toward the narrow firearm wrist target, collapsing jacket fabric into two flat crossing sleeves. Replaced with only 12% aim-convergence, plus side-specific native shoulder offsets ±0.085m and lateral elbow bow ±0.105m, elbow y -.055m, smoothly weighted by ADS. Both original wrist/grip goals, SIG model, sight and firing mechanics are unchanged. Retains actual `animated_pistol.glb` 40-finger-joint reload curves from v725 and actual wrist/elbow reload path from v723; no gun or arms mesh from source pistol imported.
+- **UI completed in v726 baseline:** H/J/K open-arm/hidden-gun debug shortcuts are removed from gameplay input; automatic QA hooks remain. Always-on performance HUD replaced with native collapsible `PERFORMANCE` details dropdown in `src/performance-hud.js?v=726`, closed by default, profiler continues to collect data when hidden. No duplicate overlay or redundant key action in v727.
+- All other six weapons preserved, original 47-bone player arm mesh/texture retained, initial seven-gun test inventory preserved, and protected v324 recovery checkpoint unchanged. User wants broad, visible improvement and minor follow-up adjustments: **verify ADS image visually and seven-gun contact check; do not claim natural hands entirely approved just from automated tests.** Prior broad smoke tests regularly time out on large GLB readiness.
+- GitHub Pages and geometry audit links/results must be verified before handoff.
+
+---
+
 # v726 — CONSOLIDATED HAND/SLEEVE AND CLEAN UI PASS — 2026-10-17
 
 - **Build v726**, index loader `./src/game.js?v=726`. User explicitly requested one major correction pass and removing the H and K inspect keys, plus move the large corner performance overlay into a dropdown. Reviewed new user video `2026-10-17 09-57-58.mp4` (41.4 sec); pistol still has overlong coat silhouettes and small grips.
