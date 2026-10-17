@@ -1,3 +1,12 @@
+# v744 — M17 farther forward and right-thumb correction — 2026-10-17
+
+- User says v743 nearly correct but thumb still outside grip; advance pistol mesh another 2 cm in ADS and 4 cm in hip (gun z = home.z-.065-.110*hip). Hip vertical unchanged, original SIG and weapon sights retained.
+- Right thumb source-retargeted finger bones only: thumb base Y -0.58 and Z +0.24; middle X -0.60 and Y -0.20; tip X -0.40 radians. Preserve index-only trigger pull, other finger poses, reload and six other weapons.
+- Source commit 6957670515781e952c918e04116ec4444977aafc; cache loader v744, protected v324 checkpoint untouched. Visual thumb contact needs user confirmation.
+- Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=744-m17-thumb-grip
+
+---
+
 # v743 — M17 slightly forward and source-thumb wrap — 2026-10-17
 
 - User approved v742 hip and ADS positions and requested a little more forward in BOTH; source right thumb should wrap behind grip. Keep existing source retarget, two-hand pose, original SIG and 47-bone arms.
