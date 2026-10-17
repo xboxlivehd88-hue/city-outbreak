@@ -3810,7 +3810,7 @@ const FPS_NATIVE_GRIPS={
  // v737: correct palm to RIGHT SIDE of SIG grip. v735/736 -90 degrees
  // from 270 -> 180 was opposite the player's requested direction.
  // Go +90 from 270 -> 360 (same as 0), leave right wrist LOCATION intact.
- pistol:{left:{delta:[-.085,-.065,.07],roll:1.18},right:{delta:[-.025,-.06,.03],roll:Math.PI*2}},
+ pistol:{left:{delta:[-.085,-.065,.07],roll:.48},right:{delta:[-.025,-.06,.03],roll:Math.PI*1.75}},
  dmr:{left:{delta:[.08,-.095,.045],roll:.16},right:{delta:[-.035,-.07,.045],roll:Math.PI*1.5}},
  grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:.16},right:{delta:[-.04,-.085,.04],roll:Math.PI*1.5}},
  m240:{left:{delta:[.09,-.08,.06],roll:.16},right:{delta:[-.04,-.085,.05],roll:Math.PI*1.5}}
@@ -4079,6 +4079,9 @@ function poseOriginalFpsArms(){
      ?{hip:[.3093,-.488,-.8012],ads:[.3056,-.3649,-.8737]}
      :{hip:[.3866,-.4686,-.7665],ads:[.3032,-.3516,-.8138]};
    w.fromArray(references.hip).lerp(new THREE.Vector3(...references.ads),t);
+   // v738 photo alignment: tuck support glove under/around grip instead of floating left.
+   // Fade this out during reload using existing source controller (block excludes reload).
+   if(side==="left"){w.x+=.055;w.y-=.045;w.z+=.015;}
   }
   if(fpsArmsInspector.enabled){
    // Equal camera-space arm extension for EVERY weapon (actual GLB bones).
@@ -4266,7 +4269,7 @@ function poseOriginalFpsArms(){
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
    if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
-   document.documentElement.dataset.fpsArmsM17Retarget="v737-right-palm-right-side-of-grip";
+   document.documentElement.dataset.fpsArmsM17Retarget="v738-screenshot-grip-alignment";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
