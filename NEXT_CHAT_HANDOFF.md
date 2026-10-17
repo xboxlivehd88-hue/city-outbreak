@@ -1,3 +1,12 @@
+# v737 — RIGHT-HAND PALM MUST FACE RIGHT SIDE OF SIG GRIP — 2026-10-17
+
+- User corrected Toby's v735/v736 mistake: rotating M17 RIGHT hand from old roll 270° to 180° was **the wrong way**. Correct direction is to turn the original right palm +90° from the prior 270° reference, i.e. **360° (0°)** so its palm faces the RIGHT SIDE of the grip.
+- Target-only change in `FPS_NATIVE_GRIPS.pistol.right.roll` from `Math.PI` to `Math.PI*2`. Do not move firing wrist contact, gun/ADS, right elbow, source 47-bone original arm mesh, left grip, or other six weapon poses. Keep v736 `src/m17-authored-fingers.mjs?v=736` index resting rotations −.18/−.43 and the existing source-index-only trigger pull.
+- Loader now `./src/game.js?v=737`, both handoffs updated, protected checkpoint v324 untouched, removed H/J/K and collapsed PERFORMANCE preserved.
+- **Verify real Chromium hip/ADS screenshots and right palm orientation** after deployment, not numeric wrist contact alone. User must judge final finger/palm contact. Broad world/sprinter/parasite scene-readiness failures are separate.
+
+---
+
 # v736 — VERIFIED AFTER RIGHT PALM CORRECTION — 2026-10-17
 
 - Current v736 gameplay commit `f2c6b393ab64e94d8914755e514eaa96b6a78be4` (right wrist/trigger adjustment plus cached animation-module version). Original v735 gameplay change `defe0235379380fdf820e39c7f1c136b4400bedd`; v736 only changed the imported module and loader URLs to guarantee freshness.

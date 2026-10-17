@@ -3807,7 +3807,10 @@ const FPS_NATIVE_GRIPS={
  // 270° keeps the authentic right index ABOVE pinky, and original right thumb
  // outside the grip while native fingertips curve across the face of the M17.
  // No change to shoulder/elbow/controller placement, sight or other six guns.
- pistol:{left:{delta:[-.085,-.065,.07],roll:1.18},right:{delta:[-.025,-.06,.03],roll:Math.PI}},
+ // v737: correct palm to RIGHT SIDE of SIG grip. v735/736 -90 degrees
+ // from 270 -> 180 was opposite the player's requested direction.
+ // Go +90 from 270 -> 360 (same as 0), leave right wrist LOCATION intact.
+ pistol:{left:{delta:[-.085,-.065,.07],roll:1.18},right:{delta:[-.025,-.06,.03],roll:Math.PI*2}},
  dmr:{left:{delta:[.08,-.095,.045],roll:.16},right:{delta:[-.035,-.07,.045],roll:Math.PI*1.5}},
  grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:.16},right:{delta:[-.04,-.085,.04],roll:Math.PI*1.5}},
  m240:{left:{delta:[.09,-.08,.06],roll:.16},right:{delta:[-.04,-.085,.05],roll:Math.PI*1.5}}
@@ -4263,7 +4266,7 @@ function poseOriginalFpsArms(){
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
    if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
-   document.documentElement.dataset.fpsArmsM17Retarget="v736-right-palm-rest-source-cache";
+   document.documentElement.dataset.fpsArmsM17Retarget="v737-right-palm-right-side-of-grip";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,

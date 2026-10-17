@@ -1,3 +1,12 @@
+# v737 — M17 RIGHT PALM DIRECTION CORRECTION — 2026-10-17
+
+- User immediately clarified v736 rotates the RIGHT hand **the wrong direction**: the palm must face the RIGHT side of the real SIG M17 grip. Treat this correction as authoritative; v736 visual wrist direction was not accepted.
+- M17-only right wrist Euler roll corrected from **180° to 360° (=0°)**. This is the opposite direction from the original 270° wrist roll compared with the mistaken v735 change 270°→180°: now it turns **+90° instead of −90°**. The right wrist contact *position*, actual M17 model, 47-bone original player arms, trigger-index resting curl and working index-only firing animation stay intact. Left hand and all other 6 gun poses untouched.
+- Changed loader to `./src/game.js?v=737`; original source-finger controller is still imported as `src/m17-authored-fingers.mjs?v=736` because its contents are unchanged, so the existing trigger-rest curl remains correctly cache-versioned.
+- Need focus on **actual rendered palm/glove facing the RIGHT side** rather than numeric wrist geometry only. Await v737 Chromium screenshots/audit. Do not describe user-approved until user tests. Protected v324 recovery untouched; H/J/K removed and collapsed PERFORMANCE retained.
+
+---
+
 # v736 — VERIFIED AFTER RIGHT PALM CORRECTION — 2026-10-17
 
 - Current v736 gameplay commit `f2c6b393ab64e94d8914755e514eaa96b6a78be4` (right wrist/trigger adjustment plus cached animation-module version). Original v735 gameplay change `defe0235379380fdf820e39c7f1c136b4400bedd`; v736 only changed the imported module and loader URLs to guarantee freshness.
