@@ -1,3 +1,14 @@
+# v740 — ORIGINAL UPLOADED PISTOL CLIP RUNTIME GRIP — 2026-10-17
+
+- Verified original full `assets/animated_pistol.glb` is now on main (8,509,628 bytes). Prior v739 screens show both hands mashed together around SIG in ADS and hip view.
+- New `src/m17-source-grip.mjs` asynchronously loads the actual user-uploaded animated pistol GLB **off scene**; samples its original `allanimations` clip t=0 grip and maps actual named bone-quaternion deltas onto target `cartoon_fps_arms.glb` skinned fingers. Uploaded source gun, mesh, textures are NEVER displayed; original low-poly SIG M17 remains.
+- When source is ready, suppress previous guessed authored static finger curls in source controller; leave right index resting/trigger pull and original magazine reload sequence in place. Source unavailable falls back to prior hand grip rather than crashing.
+- v731 contact targets put two ADS wrists only ~5 mm apart in gun x: correct positional overlap by 8.5 cm outward LEFT and 7.5 cm outward RIGHT for pistol-only regular holds; do not alter M17 gun sights/ADS camera, shots, DMR, other 6 guns, or protected v324 checkpoint.
+- v740 game loader + original source animation module cache versions changed. GitHub source committed; visual Chromium QA and Pages completion/user validation still required. Do not call visual-perfect until actual frame inspection.
+- Test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=740-original-source-grip
+
+---
+
 # v739 — PHOTO-GUIDED SOURCE FINGER GRIP — 2026-10-17
 
 - User's v738 screenshots show the M17 left support fingers and right firing fingers still splayed across the gun; wrist-only corrections did not resolve the actual bone articulation.

@@ -40,7 +40,7 @@ const loading=(async()=>{
 // One deterministic target-pose owner for all M17 fingers. Every pose begins
 // from the original target GLB mixer sampled at its frozen .56s neutral hold.
 // This function never resamples that mixer or modifies the gun or palm position.
-export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading,triggerPulse=0){
+export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading,triggerPulse=0,sourceGrip=false){
  if(!data)return{ready:false,error,applied:0,maxDegrees:0,wristDegrees:0,forearmDegrees:0,triggerDegrees:0};
  if(!rig)return{ready:true,error:"",applied:0,maxDegrees:0,wristDegrees:0,forearmDegrees:0,triggerDegrees:0};
  let bones=targetCache.get(rig);
@@ -56,17 +56,17 @@ export function applyM17AuthoredPistolFingerClip(THREE,rig,progress,reloading,tr
  // blend out original source-rig gripping as the uploaded fingers animate,
  // then blend the same grip back as the source clip returns to time zero.
  const leftHold=reloading?THREE.MathUtils.clamp(1-smooth(.075,.32)+smooth(.77,.99),0,1):1;
- for(const name of ["L_point_08","L_middle_012","L_ring_015","L_pink_019"])
+ if(!sourceGrip)for(const name of ["L_point_08","L_middle_012","L_ring_015","L_pink_019"])
   rotate(name,X,-.75*leftHold);
- for(const name of ["L_point_2_09","L_middle_2_00","L_ring_2_016","L_pink_2_020"])
+ if(!sourceGrip)for(const name of ["L_point_2_09","L_middle_2_00","L_ring_2_016","L_pink_2_020"])
   rotate(name,X,-.87*leftHold);
- rotate("L_thumb_04",X,-.11*leftHold);
- rotate("L_thumb_04",Y,.15*leftHold);
- rotate("L_thumb_2_05",X,-.22*leftHold);
+ if(!sourceGrip)rotate("L_thumb_04",X,-.11*leftHold);
+ if(!sourceGrip)rotate("L_thumb_04",Y,.15*leftHold);
+ if(!sourceGrip)rotate("L_thumb_2_05",X,-.22*leftHold);
  // The SIG firing hand stays on the trigger throughout reloading.
- for(const name of ["R_middle_034","R_ring_038","R_pink_042"])
+ if(!sourceGrip)for(const name of ["R_middle_034","R_ring_038","R_pink_042"])
   rotate(name,X,-.65);
- for(const name of ["R_middle_2_035","R_ring_2_039","R_pink_2_043"])
+ if(!sourceGrip)for(const name of ["R_middle_2_035","R_ring_2_039","R_pink_2_043"])
   rotate(name,X,-.79);
  // Keep the base extended into the trigger guard and let the next joint
  // rest gently on the trigger; firing still adds its original index-only curl.

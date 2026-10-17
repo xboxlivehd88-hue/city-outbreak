@@ -15,7 +15,8 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
-import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=739";
+import {createM17SourceGrip} from "./m17-source-grip.mjs?v=740";
+import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=740";
 import {getM17SourceReloadTravel,m17SourceReloadMotion} from "./pistol-source-travel.mjs?v=723";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
@@ -3782,6 +3783,7 @@ function updateDMRRightTriggerGrip(dt){
 // The 47-bone source rig is a single SKINNED mesh, not static prop arms.
 // Retarget its original shoulder/elbow/wrist chains onto the existing hidden
 // hand controllers; preserves M4/MP5/shotgun/M17/DMR/M240/launcher paths.
+const m17OriginalSourceGrip=createM17SourceGrip(THREE,GLTFLoader);
 let fpsNativeArms=null,fpsNativeBoneChains=null,fpsNativePoseFrames=0,fpsNativeMixer=null;
 let fpsNativeFingerRest=[]; // native GLB base quaternions prevent cumulative spins
 // Fire only the trigger joints. Keep the source hand/wrist/arm animation still.
@@ -4079,6 +4081,10 @@ function poseOriginalFpsArms(){
      ?{hip:[.3093,-.488,-.8012],ads:[.3056,-.3649,-.8737]}
      :{hip:[.3866,-.4686,-.7665],ads:[.3032,-.3516,-.8138]};
    w.fromArray(references.hip).lerp(new THREE.Vector3(...references.ads),t);
+   // v740: the previous 5mm ADS cross-hand spacing physically overlapped
+   // two real gloves. Separate the original source grip wrists around the SIG.
+   // No gun sight/controller or magazine reload changes.
+   w.x+=side==="left"?-.085:.075;
    // v738 photo alignment: tuck support glove under/around grip instead of floating left.
    // Fade this out during reload using existing source controller (block excludes reload).
    if(side==="left"){w.x+=.055;w.y-=.045;w.z+=.015;}
@@ -4261,7 +4267,14 @@ function poseOriginalFpsArms(){
    // are applied exactly once by the source-clip retarget below.
    const shotAge=performance.now()-lastNativeTriggerShotAt;
    const shotPulse=shotAge>=0&&shotAge<145?Math.sin(Math.PI*shotAge/145):0;
-   const authored=applyM17AuthoredPistolFingerClip(THREE,fpsNativeArms,rp.p,reloading,shotPulse);
+   const sourceGripActive=m17OriginalSourceGrip.ready&&!reloading;
+   const authored=applyM17AuthoredPistolFingerClip(THREE,fpsNativeArms,rp.p,reloading,shotPulse,sourceGripActive);
+   // Real original 51-joint clip finger pose replaces the hand-authored curl.
+   // The existing target hands and original SIG remain the ONLY visible meshes.
+   if(sourceGripActive)m17OriginalSourceGrip.apply(fpsNativeArms);
+   document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
+   document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
+   if(m17OriginalSourceGrip.error)document.documentElement.dataset.fpsArmsM17SourceError=m17OriginalSourceGrip.error;
    document.documentElement.dataset.fpsArmsM17AuthoredWristDegrees=authored.wristDegrees.toFixed(1);
    document.documentElement.dataset.fpsArmsM17SourceForearmDegrees=authored.forearmDegrees.toFixed(1);
    document.documentElement.dataset.fpsArmsM17SourceTriggerDegrees=authored.triggerDegrees.toFixed(1);
@@ -4269,7 +4282,7 @@ function poseOriginalFpsArms(){
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
    if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
-   document.documentElement.dataset.fpsArmsM17Retarget="v738-screenshot-grip-alignment";
+   document.documentElement.dataset.fpsArmsM17Retarget="v740-original-glb-runtime-source-grip";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
