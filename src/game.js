@@ -15,7 +15,7 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
-import {applyPistolSourceMotion,getPistolReloadElbowOffset,pistolSourceMotionInfo} from "./pistol-source-motion.mjs?v=721";
+import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=725";
 import {getM17SourceReloadTravel,m17SourceReloadMotion} from "./pistol-source-travel.mjs?v=723";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
@@ -4197,10 +4197,12 @@ function poseOriginalFpsArms(){
  // v719: authentic upload-derived source pistol finger keys, retargeted onto
  // the EXISTING original skinned hands only; no uploaded gun/model is loaded.
  if(weapon==="pistol"&&!fpsArmsInspector.enabled){
-   const sourceAge=performance.now()-lastNativeTriggerShotAt;
-   const sourceTrigger=sourceAge>=0&&sourceAge<145?Math.sin(Math.PI*sourceAge/145):0;
-   applyPistolSourceMotion(THREE,fpsNativeArms,{reloading,progress:rp.p,triggerPulse:sourceTrigger});
-   document.documentElement.dataset.fpsArmsM17Retarget="v723-source-51joint-finger-and-measured-wrist-elbow-reload";
+   const authored=applyM17AuthoredPistolFingerClip(THREE,fpsNativeArms,rp.p,reloading);
+   document.documentElement.dataset.fpsArmsM17AuthoredClipReady=String(authored.ready);
+   document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
+   document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
+   if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
+   document.documentElement.dataset.fpsArmsM17Retarget="v725-40-genuine-source-finger-quaternion-curves";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
