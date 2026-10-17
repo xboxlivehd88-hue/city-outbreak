@@ -1,3 +1,14 @@
+# v732 VERIFIED CHROMIUM RESULTS — 2026-10-17 (same game loader v732)
+
+- **Accepted automated M17 / seven-original-weapon geometry audit: PASSED**, GitHub Actions run **39044986162** for gameplay commit `fa3a44158b07dd5ee961294bbb7c826356b9d2a7`. v732 Pages deployment run **39044985655**: **PASSED**. The v730 and v731 iterations both FAILED M17 ADS contact and were superseded by v732, NOT represented as passing.
+- Actual rendered HIP, ADS, reload p=.38 and reload p=.75 Chromium screenshots reviewed. The excessive horizontally flaring v730 sleeve has been corrected; original pistol and arms used. LEFT original hand ADS contact [.3056,-.3649,-.8737] exactly matches approved source reference, RIGHT [.3032,-.3516,-.8138]; original 47-bone M17 upper/forearm segment scales constant at 1.035/.67; all other six weapons still pass original ADS <2.5cm tolerances.
+- M17 real-source extracted support hand travelled **0.646m** during reload while trigger/right hand moved **0.00276m**, with 13–14 original authored support-finger joints animated and source forearm twist measured 15–18 degrees in main magazine beat. Native index-only firing impulse audit passed, original right-hand mixer stayed at 0.56s.
+- **Visual caveat**: The ADS image still has an arguably bulky left cuff. Treat geometry pass as correctness check, NOT user approval or fully natural/faithful visual animation. The user should play v732 and decide which further visual improvements remain. The raw uploaded `animated_pistol.glb` and latest user videos are not in active file/tool view; runtime retarget uses already extracted source animation samples, NEVER source gun meshes.
+- The full-world/Hazmat regression run **39044986070**, Sprinter run **39044986082**, and Parasite run **39044986151** all **FAILED**, consistent with prior broader scene-readiness timeouts; investigate separately without masking their results. Original guns, zombies, collisions, GPU grenade batching, HUD and v324 recovery protected.
+- Playable: https://xboxlivehd88-hue.github.io/city-outbreak/?v=732-m17-verified
+
+---
+
 # v732 — RESTORE TRUE M17 HIP/ADS TRIGGER AND SUPPORT HAND CONTACT — 2026-10-17
 
 - v731 Chromium screenshots confirm sleeve flare was substantially reduced, but seven-weapon source audit **FAILED**: M17 ADS support wrist still 17.02 cm from approved contact even with constant arm lengths. Firing-hand wrist also stayed near hip rather than moving to the true ADS grip. Do not call this visually acceptable.
