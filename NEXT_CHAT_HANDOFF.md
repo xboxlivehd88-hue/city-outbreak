@@ -1,3 +1,11 @@
+# v721 — M17 ANIMATION DECODE FIX (LIVE BLOCKER) — 2026-10-17
+
+- **Build v721**: `./src/game.js?v=721`, `./src/pistol-source-motion.mjs?v=721`. v720 was deployed but **FAILED** Chromium seven-gun geometry due to a runtime exception `Invalid M17 source third-finger-joint key data`. Uploaded source GLB-derived extra 8-joint key payload was accidentally copied at 479 Base64 characters instead of 480; a final zero byte encoding character was missing. Restored the exact final `A` character, making 360 decoded bytes (15 frames × 8 joints × 3 signed rotation components). No tuning or geometry changes in v721.
+- This is an urgent runtime fix needed before the v720 actual original-arm M17 reload/elbow/finger/trigger animation is playable. v720 was NOT visually verified; do not claim full release readiness until v721 gameplay and geometry check pass.
+- Original SIG weapon GLB, existing 47-bone player arms, gun sight alignment, other six guns, map and graphics untouched; no supplied Beretta/animation gun mesh imported. Protected recovery checkpoint **v324 unchanged**.
+
+---
+
 # v720 — VISIBLE USER PISTOL ANIMATION RETARGET — 2026-10-17
 
 - **Current v720**, loader `./src/game.js?v=720`. User correctly reported v719 barely appeared changed; only 13 original hand joints at 17% resting blend and 48% during reload were used, with no source elbow motion. v719 Pages+seven-weapon geometry PASS, heavy Sprinter/Parasite/Chromium regression timed out at scene-ready check even on retry (do not label those green).
