@@ -5263,6 +5263,8 @@ function rebuildGun(){
      const longest=Math.max(size.x,size.y,size.z)||1;m17Root.scale.setScalar(.53/longest);
      const scaledBounds=new THREE.Box3().setFromObject(m17Root),center=new THREE.Vector3();scaledBounds.getCenter(center);
      m17Root.position.set(x-center.x,-.30-center.y,-1.02-center.z);
+     // v741: store original ADS-aligned root pose; lower only the hip pistol.
+     m17Root.userData.adsAlignedHome=m17Root.position.clone();
      m17Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
      gun.add(m17Root);
      // The visible pistol stays clean. A hidden clone of the real GLB magazine is
@@ -10783,6 +10785,15 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  const shotgunCant=weapon==="shotgun"?shotgunReloadCant:0;
  const reloadTilt=(weapon==="grenadeLauncher"?.34:weapon==="pistol"?.28:weapon==="shotgun"||weapon==="dmr"?0:.20)*rp.arch;
  gun.scale.setScalar(adsScale);
+ // v741: pistol mesh ONLY. Do not move gun-group arms or change ADS sights.
+ // Full ADS (aimBlend=1) recovers the precise v740 original M17 position.
+ if(weapon==="pistol"){
+  const sig=gun.getObjectByName("ExternalM17SIG");
+  const home=sig?.userData.adsAlignedHome;
+  if(home){const hip=1-THREE.MathUtils.smoothstep(aimBlend,0,1);
+   sig.position.set(home.x,home.y-.19*hip,home.z-.055*hip);
+  }
+ }
  // DMR ADS looks through the actual red-dot rather than the old sniper pose.
  const dmrAds=weapon==="dmr"&&dmrOpticPose?dmrOpticPose:null;
  gun.position.x=(dmrAds?dmrAds.x:ac2.x)*adsScale*aimBlend+(weapon==="dmr"?0:weapon==="shotgun"?.095*shotgunCant:rp.arch*(weapon==="pistol"?.05:.10));

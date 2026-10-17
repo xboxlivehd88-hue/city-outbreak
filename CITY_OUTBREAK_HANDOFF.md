@@ -1,3 +1,12 @@
+# v741 — M17 HIP-ONLY PISTOL MODEL ALIGNMENT — 2026-10-17
+
+- User approves v740 source-driven grip orientation and ADS, but screenshot shows the M17 firearm above both correctly posed hands in HIP stance. User confirms adjust hip only; do not change ADS, wrists, animation, or other weapons.
+- Save original SIG model local position during rebuild; each frame subtract 0.19 gun-local Y (down) and 0.055 gun-local Z (forward along barrel) scaled by (1 - smoothstep(aimBlend)), on ExternalM17SIG ONLY. At full ADS correction = 0, original v740 sights unchanged. Entire gun group and original skinned arms unchanged. Existing trigger and reload routines untouched.
+- Increment HTML main JS loader to v741. Protected recovery checkpoint v324 unchanged. Code committed, rendered hip/ADS visual result remains pending until tested.
+- Link https://xboxlivehd88-hue.github.io/city-outbreak/?v=741-m17-hip-grip
+
+---
+
 # v740 — ORIGINAL UPLOADED PISTOL CLIP RUNTIME GRIP — 2026-10-17
 
 - Verified original full `assets/animated_pistol.glb` is now on main (8,509,628 bytes). Prior v739 screens show both hands mashed together around SIG in ADS and hip view.
