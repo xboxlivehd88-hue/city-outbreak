@@ -1,3 +1,13 @@
+# v722 — FIX STALE v631 GAME BUILD LABEL — 2026-10-17
+
+- **Current live build v722**, loader `./src/game.js?v=722`. User reported the open game/browser title still reads `v631` despite the verified v721 Pages deployment. Root cause confirmed in latest `src/game.js`: `document.title="CITY OUTBREAK — v631";` and `document.documentElement.dataset.cityOutbreakBuild="631";` were hard-coded long before the actual loader reached v721.
+- Replaced both stale constants with **the actual loaded game-module query version**, `new URL(import.meta.url).searchParams.get("v")`, falling back to `722`. The browser title will now say `CITY OUTBREAK — v722`, and game diagnostic DOM dataset matches it. Future loader bumps will keep displayed build in sync automatically.
+- **Version label only**: source M17 pistol animation retarget from v721, original SIG gun and original cartoon arm GLBs, weapon alignment, seven-gun test loadout, zombies, launcher, graphics, gameplay untouched. No animation or other asset changes, no source gun model import.
+- v721 seven-gun Chromium geometry regression PASSED and Pages deployed successfully; the three heavy full-world smoke tests timed out waiting for scene readiness (do not mark them passed). v722 Pages plus seven-gun geometry to be verified after publishing.
+- **Protected recovery v324 remains unchanged.**
+
+---
+
 # v721 — M17 ANIMATION DECODE FIX (LIVE BLOCKER) — 2026-10-17
 
 - **Build v721**: `./src/game.js?v=721`, `./src/pistol-source-motion.mjs?v=721`. v720 was deployed but **FAILED** Chromium seven-gun geometry due to a runtime exception `Invalid M17 source third-finger-joint key data`. Uploaded source GLB-derived extra 8-joint key payload was accidentally copied at 479 Base64 characters instead of 480; a final zero byte encoding character was missing. Restored the exact final `A` character, making 360 decoded bytes (15 frames × 8 joints × 3 signed rotation components). No tuning or geometry changes in v721.

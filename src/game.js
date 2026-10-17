@@ -60,8 +60,12 @@ new GLTFLoader().load("assets/parasite_des_zombie_monster_game_model_free.glb?v=
 // post-animation world-space mesh bounds, not the source GLB rest-pose bounds.
 const PANZER_VISUAL_HEIGHT=3.20;
 // Visible source fingerprint, without the temporary Panzer-only test mode.
-document.title="CITY OUTBREAK — v631";
-document.documentElement.dataset.cityOutbreakBuild="631";
+// The browser tab and diagnostic build flag must reflect the game module
+// ACTUALLY loaded by index.html, not a stale hard-coded label (formerly v631).
+// v722+ automatically follows the versioned module URL on every release.
+const cityOutbreakBuild=new URL(import.meta.url).searchParams.get("v")||"722";
+document.title="CITY OUTBREAK — v"+cityOutbreakBuild;
+document.documentElement.dataset.cityOutbreakBuild=cityOutbreakBuild;
 let panzerBossAsset=null,panzerBossFallbackTemplate=null,panzerBossLoadError=null,panzerBossRigAudit=null;
 new GLTFLoader().load("assets/panzer_zombie.glb?v=584",gltf=>{
  panzerBossAsset=gltf;
