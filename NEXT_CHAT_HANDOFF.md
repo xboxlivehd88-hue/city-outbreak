@@ -1,3 +1,10 @@
+# v723 AUDIT — TRUE RENDERED M17 ANIMATION CHECK — 2026-10-17
+
+- Added real Chromium M17 reload audit to `scripts/arms-contact-audit.cjs` (runs on same v723 main source). Simulates normal hold and p=.18/.38/.52/.75/.94 source reload frames on authentic Seven Gun controller and original SIG viewmodel. Captures rendered images at p=0/.38/.75, measures actual skinned wrist/elbow movement plus firing wrist anchored. Requires M17 left wrist >.15m displacement, source path Y <-.30m, firing wrist <.30m travel, in addition to existing 7-gun test. Verify PASS and inspect screenshots; no graphical asset/models modified.
+- The user specifically reported previous uploads made no visible difference. A static ADS contact PASS does not prove animation. QA now distinguishes the two. Original model, other guns, protected v324 unchanged.
+
+---
+
 # v723 — M17 UPLOADED PISTOL FULL SUPPORT-HAND MOTION (REAL WRIST + ELBOW) — 2026-10-17
 
 - **Build v723** loader `./src/game.js?v=723`; new module `./src/pistol-source-travel.mjs?v=723`. User reports hands hardly changing even at v722. Root cause: the v719–721 user-uploaded `animated_pistol.glb` retarget moved finger joints during reload, but the original procedural FPS IK/controller **overwrote source shoulder, elbow and wrist motion every frame**. Therefore only tiny rotations were noticeable; prior assistant incorrectly treated passing hand-contact audit as visual success.

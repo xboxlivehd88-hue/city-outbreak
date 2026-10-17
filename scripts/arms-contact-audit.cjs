@@ -120,6 +120,40 @@ const {chromium}=require("playwright"),fs=require("fs");
  clearExplosionGlbs();
  return{spins,launcher:{creationMs,nextMs,count,stopped,reused,prewarmedInstances,persistentFlash},fingerStatus:document.documentElement.dataset.fpsArmsFingerStability};
 };
+
+;globalThis.__v723M17SourceReloadAudit=()=>{
+ const prior={weapon,aiming,aimBlend,pitch,reloading,reloadWeapon,reloadDurationMs,reloadStartedAt,inspection:fpsArmsInspector.enabled};
+ fpsArmsInspector.set(false);
+ weapon="pistol";aiming=false;aimBlend=0;pitch=0;reloading=false;reloadWeapon="";
+ rebuildGun();move(.016);
+ const rig=()=>gun.getObjectByName("OriginalCartoonFPSArmsGLB");
+ const world=n=>{
+  const b=rig()?.getObjectByName(n);
+  return b?gun.worldToLocal(b.getWorldPosition(new THREE.Vector3())).toArray().map(x=>+x.toFixed(4)):null;
+ };
+ const snapshot=p=>{
+  reloading=p>0;reloadWeapon=p>0?"pistol":"";
+  if(p>0){reloadDurationMs=100000;reloadStartedAt=gameTimeNow()-p*100000;}
+  move(.016);gun.updateMatrixWorld(true);
+  const hand=world("L_wrist_03"),elbow=world("L_elbow_02"),trigger=world("R_wrist_025");
+  ren.render(scene,cam);
+  const jpeg=(p===0||p===.38||p===.75)
+   ?ren.domElement.toDataURL("image/jpeg",.5).split(",")[1]:null;
+  return{p,hand,elbow,trigger,jpeg,
+    sourceClipTime:document.documentElement.dataset.fpsArmsM17SourceTime||"",
+    sourceMotionY:Number(document.documentElement.dataset.fpsArmsM17SourceWristY),
+    controllerMotionY:Number(document.documentElement.dataset.fpsArmsM17ReloadHandY)};
+ };
+ const frames=[0,.18,.38,.52,.75,.94].map(snapshot);
+ const dist=(a,b)=>Math.hypot(...a.map((x,i)=>x-b[i]));
+ const maxMotion=Math.max(...frames.slice(1).map(f=>dist(f.hand,frames[0].hand)));
+ const rightMax=Math.max(...frames.slice(1).map(f=>dist(f.trigger,frames[0].trigger)));
+ weapon=prior.weapon;aiming=prior.aiming;aimBlend=prior.aimBlend;pitch=prior.pitch;
+ reloading=prior.reloading;reloadWeapon=prior.reloadWeapon;reloadDurationMs=prior.reloadDurationMs;reloadStartedAt=prior.reloadStartedAt;
+ fpsArmsInspector.set(prior.inspection);
+ rebuildGun();move(.016);
+ return {frames,maxMotion,rightMax,sourceMotionApplied:frames.some(f=>f.sourceMotionY<-.30)};
+};
 `;
   await page.route(url=>url.pathname.endsWith("/src/game.js"),async route=>{
     const rsp=await route.fetch();const source=await rsp.text();
@@ -161,6 +195,17 @@ const {chromium}=require("playwright"),fs=require("fs");
    const contact=approvedADS[m.w];
    m.ads.originalContactError=Math.hypot(...m.ads.lw.map((v,i)=>v-contact[i]));
   }
+  // v723: capture REAL in-engine hip vs reload hand positions and renderer
+  // frames, rather than accepting numeric static hip/ADS grips as animation QA.
+  report.m17Motion=await page.evaluate(()=>globalThis.__v723M17SourceReloadAudit());
+  for(const f of report.m17Motion.frames){
+    if(f.jpeg){
+      console.log("V723_SOURCE_M17_RELOAD_"+String(f.p).replace(".","_")+"_JPEG="+f.jpeg);
+      f.imageBytes=f.jpeg.length;
+      delete f.jpeg;
+    }
+  }
+  console.log("V723_SOURCE_M17_MOTION="+JSON.stringify(report.m17Motion));
   report.handAndLauncher=await page.evaluate(()=>globalThis.__v705FingerLauncherAudit());
   console.log("V704_HAND_LAUNCHER_AUDIT="+JSON.stringify(report.handAndLauncher));
 
@@ -173,7 +218,9 @@ const {chromium}=require("playwright"),fs=require("fs");
    delete m.hip.jpeg;delete m.ads.jpeg;
   }
 
-  report.passed=report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0)&&
+  report.passed=report.m17Motion?.sourceMotionApplied===true&&
+    report.m17Motion.maxMotion>.15&&report.m17Motion.rightMax<.30&&
+    report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0)&&
     report.handAndLauncher?.spins?.length===7&&
     report.handAndLauncher.spins.every(x=>x.sourceBones>=20&&x.maxDrift<.002&&
       x.indexPull>.12&&x.indexPull<.4&&
