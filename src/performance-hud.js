@@ -10,10 +10,20 @@ export function createPerformanceGuard({
 }){
  let perfTick=0,perfFrames=0,perfTime=0,perfMaxMs=0,perfHud=null;
  if(enabled){
-  perfHud=document.createElement("div");
-  perfHud.style.cssText="position:fixed;left:14px;top:14px;z-index:99998;background:#050708dd;color:#dfe7ea;border:1px solid #ffffff25;border-radius:9px;padding:8px 10px;font:12px/1.45 monospace;pointer-events:none;white-space:pre";
-  perfHud.textContent="PERFORMANCE\ncollecting...";
-  document.body.appendChild(perfHud);
+  // v726: diagnostics should be accessible, not cover gameplay.
+  // Keep the GPU/CPU profiler alive behind a collapsed native dropdown.
+  const wrap=document.createElement("details");
+  wrap.id="city-performance-dropdown";
+  wrap.style.cssText="position:fixed;left:12px;top:12px;z-index:99998;color:#ecf3f5;background:#080d12df;border:1px solid #aab7c144;border-radius:7px;font:12px/1.45 monospace;max-width:min(92vw,570px);";
+  const label=document.createElement("summary");
+  label.textContent="PERFORMANCE";
+  label.style.cssText="cursor:pointer;user-select:none;padding:5px 9px;outline-offset:2px;font:600 11px/1.3 Arial,sans-serif;letter-spacing:.08em;";
+  label.setAttribute("aria-label","Show or hide performance statistics");
+  perfHud=document.createElement("pre");
+  perfHud.style.cssText="margin:0;padding:8px 10px;border-top:1px solid #ffffff22;white-space:pre-wrap;word-break:break-word;font:12px/1.45 monospace;max-height:65vh;overflow:auto;";
+  perfHud.textContent="Collecting...";
+  wrap.append(label,perfHud);
+  document.body.appendChild(wrap);
  }
  return function perfGuard(dt){
   if(!enabled)return;

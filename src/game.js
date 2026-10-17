@@ -7,7 +7,7 @@ import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
-import {createPerformanceGuard} from "./performance-hud.js?v=677";
+import {createPerformanceGuard} from "./performance-hud.js?v=726";
 import {createGpuFrameTimer} from "./gpu-frame-timer.js?v=677";
 import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=464";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
@@ -3866,7 +3866,7 @@ function attachOriginalFpsArms(){
       // minimum 55-58% of that authentic cross-section, not v703's 16-17%.
       // Applies ONLY to elbow-weighted original cloth; hand/finger weights
       // and the source GLB on disk are unmodified.
-      const keep=1-(weapon==="pistol"?.45:.42)*Math.pow(influence,.80)*falloff;
+      const keep=1-(weapon==="pistol"?.40:.37)*Math.pow(influence,.80)*falloff;
       if(keep>.995)continue;
       const side=leftWeight>rightWeight?1:-1;
       const centerX=side*(303+36*depth);
@@ -3879,15 +3879,18 @@ function attachOriginalFpsArms(){
       // Contract only the SOURCE fabric longitudinally from the elbow end,
       // not the original bone lengths, glove or finger geometry. The real
       // firing/support wrist positions, sight picture and firearm don't move.
-      if(weapon==="pistol"&&z < -245){
-       // v724: source elbows end at z≈-598. The old 115-unit shortening
-       // left huge V-shaped sleeve tails in the user's real 10.9s ADS frame.
-       // Preserve the sleeve's actual width, imported texture, gloves and IK.
+      if(z < -245){
+       // v726: shorten the actual long elbow-weighted original cloth panel,
+       // not the bones or glove. Elbow cloth reaches z=-598 in the user's
+       // uploaded GLB, making a giant doubled V in the M17 ADS video.
+       // Long guns receive a smaller correction to protect approved grips.
        const distal=THREE.MathUtils.smoothstep(-z,245,590);
-       const change=235*distal*Math.pow(influence,.32);
+       const change=(weapon==="pistol"?315:155)*distal*Math.pow(influence,.28);
        p.setZ(i,z+change);
-       if(change>m17SleeveMaxReduction)m17SleeveMaxReduction=change;
-       if(change>8)m17SleeveShortenedVertices++;
+       if(weapon==="pistol"){
+        if(change>m17SleeveMaxReduction)m17SleeveMaxReduction=change;
+        if(change>8)m17SleeveShortenedVertices++;
+       }
       }
       m17SleeveVerts++;
      }
@@ -4109,7 +4112,7 @@ function poseOriginalFpsArms(){
   // Scale the actual wrist-weighted hand/fingers only; coat, elbow and
   // approved gun/sight contacts remain at exactly their original targets.
   const nativeSupportSize=fpsArmsInspector.enabled?1:
-   side==="left"?(weapon==="pistol"?1.02:1.09):1.075;
+   side==="left"?(weapon==="pistol"?1.10:1.09):(weapon==="pistol"?1.11:1.075);
   wrist.scale.set(gloveRestore*nativeSupportSize,
                   gloveRestore*nativeSupportSize,nativeSupportSize);
   // SOURCE finger bases run down wrist-local -Z. Aim them FORWARD along the
@@ -4221,8 +4224,8 @@ function poseOriginalFpsArms(){
  if(fpsArmsInspector.enabled)fpsArmsInspector.update(weapon);
  if(weapon==="pistol"){
   document.documentElement.dataset.fpsArmsM17SleeveProfile="v696-connected-pistol-grip";
-  document.documentElement.dataset.fpsArmsM17GloveScale="1.02";
-  document.documentElement.dataset.fpsArmsRightGloveScale="1.075";
+  document.documentElement.dataset.fpsArmsM17GloveScale="1.10";
+  document.documentElement.dataset.fpsArmsRightGloveScale="1.11";
   document.documentElement.dataset.fpsArmsM17FiringOrientation="source-calibrated-270";
  }
 }
@@ -11622,9 +11625,8 @@ rebuildGun();setupResetButtons(reset);
 // Controls are now a tab in the shared SETTINGS dialog.
 const weaponHotkeys={Digit1:"pistol",Digit2:"rifle",Digit3:"shotgun",Digit4:"smg",Digit5:"m240",Digit6:"dmr",Digit7:"grenadeLauncher"};
 const onKeyDown=e=>{let k=e.key.toLowerCase();
- if(k==="h"&&!e.repeat&&running&&!paused&&!between&&!dying){fpsArmsInspector.set(!fpsArmsInspector.enabled);fpsArmsInspector.update(weapon);show(fpsArmsInspector.enabled?"SOURCE GLB ARMS EXTENDED — J TO ROTATE":"NORMAL WEAPON GRIPS RESTORED");e.preventDefault();return}
- if(k==="j"&&!e.repeat&&running&&!paused&&!between&&!dying){fpsArmsInspector.turn(fpsArmsInspector.quarter+1);fpsArmsInspector.update(weapon);e.preventDefault();return}
- if(k==="k"&&!e.repeat&&running&&!paused&&!between&&!dying&&fpsArmsInspector.enabled){fpsArmsInspector.toggleWeapon();fpsArmsInspector.update(weapon);e.preventDefault();return}
+ // v726: H/J/K developer inspection controls removed from gameplay.
+ // Keep programmatic open-arm inspection exclusively for automated QA.
  let hotWeapon=weaponHotkeys[e.code],gameKey=["w","a","s","d","r","g","n","shift"].includes(k)||!!hotWeapon;if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(hotWeapon&&!e.repeat)setWeapon(hotWeapon);if(gameKey)e.preventDefault()};
 setupKeyDown(onKeyDown);
 const onWeaponWheel=e=>{
