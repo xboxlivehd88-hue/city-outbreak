@@ -1,3 +1,11 @@
+# v746 — Original M17 right grip correction — 2026-10-17
+
+- User screenshot of v745 clarifies lower right middle/ring/little fingers must cross the front strap beneath trigger guard, and right thumb must extend around backstrap. Right index trigger must remain working. No gun relocation requested.
+- v746 changes only post-source-retarget right gripping phalanges: roots yaw -0.46 and curl -0.57; mid curl -0.72; tips curl -0.32. Thumb base yaw +0.52 roll -0.36 bend -0.18, second yaw +0.30 bend -0.53, tip bend -0.44. Existing original SIG model position, arms, ADS and reload unaffected. Full source GLB remains loaded off-scene.
+- Loader ./src/game.js?v=746. Protected recovery v324 untouched. Gameplay visually unverified and must be reviewed by user. https://xboxlivehd88-hue.github.io/city-outbreak/?v=746-m17-grip
+
+---
+
 # v745 — M17 RIGHT HAND GRIP — 2026-10-17
 
 - User approved current forward pistol position in hip and ADS; do not change gun transform or left-hand wrists.
