@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'scripts/arms-contact-audit.cjs'
+      - 'src/game.js' # verify each actual weapon/contact gameplay edit
       - 'src/pistol-source-motion.mjs' # M17 source key retarget deserves the full seven-gun audit
       - '.github/workflows/arms-contact-audit.yml'
 permissions:
