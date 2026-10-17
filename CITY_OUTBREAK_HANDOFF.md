@@ -1,3 +1,12 @@
+# v745 — M17 RIGHT HAND GRIP — 2026-10-17
+
+- User approved current forward pistol position in hip and ADS; do not change gun transform or left-hand wrists.
+- Added right hand only finger curls after uploaded GLB source retarget for middle, ring, pinky primary/middle/distal joint chains, plus extra thumb rotations behind grip. Right trigger index unchanged.
+- Pushed on main: gameplay commit 42daa8d576a7fc51e3dbb29dbaa00440f9bda86e. Loader index updated to v745. Protected checkpoint v324 unchanged. User visual acceptance and deployed QA pending.
+- Test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=745-m17-right-grip
+
+---
+
 # v744 — M17 farther forward and right-thumb correction — 2026-10-17
 
 - User says v743 nearly correct but thumb still outside grip; advance pistol mesh another 2 cm in ADS and 4 cm in hip (gun z = home.z-.065-.110*hip). Hip vertical unchanged, original SIG and weapon sights retained.
