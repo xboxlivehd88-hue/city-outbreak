@@ -3728,7 +3728,7 @@ function addPlayerHands(){
  // Move ONLY the hidden pistol shoulder-controller origins away from the
  // camera. Existing arm/elbow/wrist solver follows naturally—no forced
  // bone translation, no source skin replacement or unnatural ADS freeze.
- const rs=weapon==="pistol"?new THREE.Vector3(.64,-1.17,-.24):new THREE.Vector3(.80,-1.12,.08);
+ const rs=weapon==="pistol"?new THREE.Vector3(.76,-1.09,-.14):new THREE.Vector3(.80,-1.12,.08);
  const ls=weapon==="pistol"?new THREE.Vector3(-.26,-1.15,-.24):
   weapon==="shotgun"?new THREE.Vector3(-.27,-.99,-.43):new THREE.Vector3(-.35,-1.08,.06);
  const rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
@@ -3807,7 +3807,7 @@ const FPS_NATIVE_GRIPS={
  // 270° keeps the authentic right index ABOVE pinky, and original right thumb
  // outside the grip while native fingertips curve across the face of the M17.
  // No change to shoulder/elbow/controller placement, sight or other six guns.
- pistol:{left:{delta:[-.085,-.065,.07],roll:-.82},right:{delta:[-.025,-.06,.03],roll:Math.PI*1.5}},
+ pistol:{left:{delta:[-.085,-.065,.07],roll:1.18},right:{delta:[-.025,-.06,.03],roll:Math.PI*1.5}},
  dmr:{left:{delta:[.08,-.095,.045],roll:.16},right:{delta:[-.035,-.07,.045],roll:Math.PI*1.5}},
  grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:.16},right:{delta:[-.04,-.085,.04],roll:Math.PI*1.5}},
  m240:{left:{delta:[.09,-.08,.06],roll:.16},right:{delta:[-.04,-.085,.05],roll:Math.PI*1.5}}
@@ -3866,7 +3866,7 @@ function attachOriginalFpsArms(){
       // minimum 55-58% of that authentic cross-section, not v703's 16-17%.
       // Applies ONLY to elbow-weighted original cloth; hand/finger weights
       // and the source GLB on disk are unmodified.
-      const keep=1-(weapon==="pistol"?.40:.37)*Math.pow(influence,.80)*falloff;
+      const keep=1-(weapon==="pistol"?.44:.37)*Math.pow(influence,.80)*falloff;
       if(keep>.995)continue;
       const side=leftWeight>rightWeight?1:-1;
       const centerX=side*(303+36*depth);
@@ -4263,7 +4263,7 @@ function poseOriginalFpsArms(){
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
    if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
-   document.documentElement.dataset.fpsArmsM17Retarget="v733-closer-ads-original-sleeves-and-support-wrist-roll";
+   document.documentElement.dataset.fpsArmsM17Retarget="v734-supported-ads-hands-and-right-sleeve";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,

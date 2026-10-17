@@ -1,3 +1,13 @@
+# v734 — VIDEO-CORRECTED M17 LEFT FINGERS AND RIGHT ORIGINAL ARM — 2026-10-17
+
+- Actual new user recording `2026-10-17 11-45-24.mp4` was inspected. v733 workflow **39046944333 seven-gun geometry PASSED**; v733 Pages **39046943835 PASSED**. M17 ADS display is visually much closer/bigger than v732, with its original textured left forearm now extending toward camera. The M17 firing index still pulls independently and passed Chromium source audit (indexPull 0.175 radians), 7 weapons preserve measured grips, and the M17 reload firing-hand wrist moved only 1.1 cm during the sample. v733 video screenshot review nevertheless shows left fingertips still sticking OUT from the pistol and an obscured right sleeve. Not visually approved yet.
+- v734 M17 ONLY: reverse the v733 left wrist-roll direction from -.82 to **+1.18 radians** (v732 +.16 was too far left, v733 negative made it farther left). This is evidence-led by actual screen-space observation, intended to wrap the source left fingers toward the right-hand SIG grip. Original right hand wrist and index trigger code untouched.
+- Make the original right upper arm emerge at a more natural screen-right/toward-shoulder point by moving only M17 right shoulder controller (.64,-1.17,-.24) to (.76,-1.09,-.14); keep original 47-bone arm skinned rig, bind lengths, source original material. Narrow original M17 coat cross section slightly (.40→.44 elbow-weighted taper) while retaining original 150-unit longitudinal shortening. Other six original weapons, their grips, optics, firing, reloads and full world remain unchanged.
+- Preserve v733 ADS camera-space gun Z +.10 and ADS full original viewmodel scale 1, original uploaded SIG `assets/low-poly_sig_sauer_m17.glb`, original player arms `assets/cartoon_fps_arms.glb`, source-animation finger curves, grenade effect pooling, optional collapsed PERFORMANCE HUD, and v324 protected checkpoint.
+- v733 full-world/Hazmat, Sprinter and Parasite broader regressions FAILED independently. **Check v734 Chromium geometry AND screenshot visual results before declaring work correct or offering user acceptance.**
+
+---
+
 # v733 — M17 ADS DISTANCE / VISIBLE ORIGINAL SLEEVES / SUPPORT-HAND ORIENTATION — 2026-10-17
 
 - User's NEW 34.3-second first-person gameplay video `2026-10-17 11-45-24.mp4` from **v732** shows the trigger-index works correctly (MUST keep), but ADS shows a very small/distant SIG with only gloved hands and short cuffs and a sideways left hand. The user did not approve v732 visuals. Video was inspected frame-by-frame, including hip at 2.35s and ADS at 3.5s.
