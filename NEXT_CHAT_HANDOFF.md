@@ -1,3 +1,11 @@
+# v745 — M17 right grip fingers (2026-10-17)
+
+- Gun placement locked. Source GLB poses retained. Three gripping right fingers now curl at each phalanx after retarget; right thumb wrapped farther behind grip; right index trigger and left hand untouched.
+- Gameplay commit 42daa8d576a7fc51e3dbb29dbaa00440f9bda86e; HTML loader v745; checkpoint v324 untouched. Visual acceptance pending.
+- https://xboxlivehd88-hue.github.io/city-outbreak/?v=745-m17-right-grip
+
+---
+
 # v744 — M17 farther forward and right-thumb correction — 2026-10-17
 
 - User says v743 nearly correct but thumb still outside grip; advance pistol mesh another 2 cm in ADS and 4 cm in hip (gun z = home.z-.065-.110*hip). Hip vertical unchanged, original SIG and weapon sights retained.
