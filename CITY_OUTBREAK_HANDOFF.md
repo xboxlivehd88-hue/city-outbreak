@@ -1,3 +1,13 @@
+# v719 — UPLOADED M17 PISTOL MOTION, ORIGINAL ARMS RETAINED — 2026-10-17
+
+- **Current build v719** loader `./src/game.js?v=719`. User's `animated_pistol.glb` verified: 8,509,628 bytes, one `allanimations` clip (8.8s), 101 animated channels, 51 source skeleton joints, 13 meshes (12 Beretta weapon parts, 1 source arms mesh). The Beretta/source pistol geometry, slide, trigger, magazine, textures and source arms mesh are **NOT IMPORTED**.
+- Extracted 15 sampled keyframes over the first 0–2.75s magazine-hand cycle, retaining 13 source hand rotational track deltas (left wrist + 10 finger joints + right index base/middle) and remapped them to source-identifiable bones on existing `cartoon_fps_arms.glb`. Data is 585 signed rotation samples in `src/pistol-source-motion.mjs`, no duplicate gun models. Original `assets/low-poly_sig_sauer_m17.glb` stays the ONLY M17 weapon GLB.
+- M17-only runtime retarget applies source-derived finger curls **after** old 47-bone IK and current v704 finger quaternion reset, with restrained amplitude (17% normal hold, 48% reload left-hand fingers, 22% right index reload, 17% left-wrist reload twist). Reload sample timing follows existing `reloadPoseProgress().p`. Right wrist, weapon models, hip and ADS sight, aim ray, ammo, original magazine actor, original sleeve, source arm lengths, other six weapons and finger-only firing pull remain unchanged. Source camera/weapon movements intentionally excluded to avoid detaching hand contacts.
+- **Visual user approval pending.** This is a conservative retargeted hand-animation pass, not full 51-bone arm-swapping. Verify M17 hip/ADS, trigger stability and reload visually; automated tests are necessary but not sufficient. Last approved original seven-weapon v718 is the unchanged foundation.
+- All other gameplay, launcher effects, bosses/zombies, graphics, temporary all-seven-guns test loadout unchanged. **Protected recovery v324 remains untouched.**
+
+---
+
 # v718 — ORIGINAL M17 ADS SLEEVE-LENGTH CALIBRATION; ALL SEVEN v717 GUN CONTACTS PRESERVED — 2026-10-17
 
 - **Latest playable build v718**; loader `./src/game.js?v=718`. [PLAY v718](https://xboxlivehd88-hue.github.io/city-outbreak/?v=718-source-cloth-length). Changes: gameplay commit `a26bd086224ba858ef4e88826795f8c1805cf099`, source and test loader `739e023b1fdb305bed5d8abc895fc0b6b4581c77`. GitHub main is authoritative. **PROTECTED v324 recovery pointer UNCHANGED.**

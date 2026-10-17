@@ -15,6 +15,7 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
+import {applyPistolSourceMotion,pistolSourceMotionInfo} from "./pistol-source-motion.mjs?v=719";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
@@ -4170,6 +4171,12 @@ function poseOriginalFpsArms(){
  };
  poseSide("left",{upper:playerHandRig.leftUpper,fore:playerHandRig.leftFore});
  poseSide("right",{upper:playerHandRig.rightUpper,fore:playerHandRig.rightFore});
+ // v719: authentic upload-derived source pistol finger keys, retargeted onto
+ // the EXISTING original skinned hands only; no uploaded gun/model is loaded.
+ if(weapon==="pistol"&&!fpsArmsInspector.enabled){
+   applyPistolSourceMotion(THREE,fpsNativeArms,{reloading,progress:rp.p});
+   document.documentElement.dataset.fpsArmsM17Retarget="animated_pistol.glb:hand-rotation-keys-only";
+ }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
  // extended original GLB arms. Press K to hide a gun for anatomy inspection.
