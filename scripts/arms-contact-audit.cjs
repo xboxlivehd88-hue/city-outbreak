@@ -57,6 +57,25 @@ const {chromium}=require("playwright"),fs=require("fs");
  fpsArmsInspector.set(previous.inspection);rebuildGun();move(.016);
  return result;
 };
+;globalThis.__v718SleeveShapePreview=()=>{
+ const save={weapon,aiming,aimBlend,inspection:fpsArmsInspector.enabled,depth:globalThis.__sourceSleeveDepth||0};
+ fpsArmsInspector.set(false);weapon="pistol";aiming=true;aimBlend=1;pitch=0;
+ const out=[];
+ for(const ratio of [0,.65,1.30]){
+  globalThis.__sourceSleeveDepth=ratio;
+  rebuildGun();move(.2);ren.render(scene,cam);
+  const rig=gun.getObjectByName("OriginalCartoonFPSArmsGLB");
+  const left=rig.getObjectByName("L_wrist_03").getWorldPosition(new THREE.Vector3());
+  const right=rig.getObjectByName("R_wrist_025").getWorldPosition(new THREE.Vector3());
+  out.push({ratio,jpeg:ren.domElement.toDataURL("image/jpeg",.56).slice(23),
+   wrists:[gun.worldToLocal(left).toArray(),gun.worldToLocal(right).toArray()],
+   scales:["L_arm_01","L_elbow_02","R_arm_023","R_elbow_024"].map(n=>[n,rig.getObjectByName(n).scale.z])});
+ }
+ globalThis.__sourceSleeveDepth=save.depth;
+ weapon=save.weapon;aiming=save.aiming;aimBlend=save.aimBlend;
+ fpsArmsInspector.set(save.inspection);rebuildGun();move(.016);
+ return out;
+};
 ;globalThis.__v705FingerLauncherAudit=()=>{
  const save={weapon,aiming,aimBlend,inspection:fpsArmsInspector.enabled};
  fpsArmsInspector.set(false);aiming=false;aimBlend=0;reloading=false;reloadWeapon="";
@@ -122,7 +141,17 @@ const {chromium}=require("playwright"),fs=require("fs");
 };
 `;
   await page.route(url=>url.pathname.endsWith("/src/game.js"),async route=>{
-    const rsp=await route.fetch();const source=await rsp.text();
+    const rsp=await route.fetch();const raw=await rsp.text();
+    // Preview only: do NOT modify the deployed gameplay source. Shorten
+    // actual elbow-weighted SOURCE sleeve cloth in the shader-rendered rig,
+    // never move wrist, camera, gun, skeleton joint lengths or sights.
+    const source=raw.replace("m17SleeveVerts++;",
+     `if(weapon==="pistol"&&z<-260){
+       const u=THREE.MathUtils.smoothstep(-z,260,600);
+       p.setZ(i,z+(globalThis.__sourceSleeveDepth||0)*100*u);
+      }
+      m17SleeveVerts++;`);
+
     console.log("V701_SOURCE_AUDIT_INJECTED",route.request().url());
     await route.fulfill({response:rsp,body:source+addon,contentType:"application/javascript"});
   });
@@ -147,6 +176,8 @@ const {chromium}=require("playwright"),fs=require("fs");
    }));
    throw startError;
   }
+  report.sleevePreviews=await page.evaluate(()=>globalThis.__v718SleeveShapePreview());
+  for(const p of report.sleevePreviews){console.log("V718_M17_ADS_SLEEVE_"+p.ratio+"_JPEG="+p.jpeg);delete p.jpeg}
   report.models=await page.evaluate(()=>globalThis.__sourceWeaponGeometryAudit());
   // Ground-truth normal ADS original support-wrist contacts captured in
   // Chromium v706 BEFORE ADS sleeve retraction. The shorter sleeve must
