@@ -4272,6 +4272,13 @@ function poseOriginalFpsArms(){
    // Real original 51-joint clip finger pose replaces the hand-authored curl.
    // The existing target hands and original SIG remain the ONLY visible meshes.
    if(sourceGripActive)m17OriginalSourceGrip.apply(fpsNativeArms);
+   // v743: curl the SOURCE-retargeted right thumb behind the SIG grip.
+   // Adjust thumb joints only; never touch trigger index, forearm or wrists.
+   if(sourceGripActive){
+    fpsNativeArms.getObjectByName("R_thumb_026")?.rotateY(-.28);
+    fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateX(-.38);
+    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.24);
+   }
    document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
    document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
    if(m17OriginalSourceGrip.error)document.documentElement.dataset.fpsArmsM17SourceError=m17OriginalSourceGrip.error;
@@ -10791,7 +10798,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
   const sig=gun.getObjectByName("ExternalM17SIG");
   const home=sig?.userData.adsAlignedHome;
   if(home){const hip=1-THREE.MathUtils.smoothstep(aimBlend,0,1);
-   sig.position.set(home.x,home.y-.19*hip,home.z-.025-.070*hip);
+   sig.position.set(home.x,home.y-.19*hip,home.z-.045-.090*hip);
   }
  }
  // DMR ADS looks through the actual red-dot rather than the old sniper pose.

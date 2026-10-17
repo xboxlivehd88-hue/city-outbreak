@@ -1,3 +1,12 @@
+# v743 — M17 slightly forward and source-thumb wrap — 2026-10-17
+
+- User approved v742 hip and ADS positions and requested a little more forward in BOTH; source right thumb should wrap behind grip. Keep existing source retarget, two-hand pose, original SIG and 47-bone arms.
+- Original pistol mesh only: position z is home.z - .045 - .090*hip, versus v742 home.z - .025 - .070*hip. Adds 2 cm forward at ADS and 4 cm forward in hip. Vertical, other weapon and gun-group transforms unchanged.
+- After original animated_pistol.glb retarget, apply small right thumb ONLY adjustments: R_thumb_026 rotateY(-.28), R_thumb_2_027 rotateX(-.38), R_thumb_3_028 rotateX(-.24). No index-finger or reload code changes.
+- HTML loader v743, checkpoint v324 unchanged. Needs user visual evaluation; source push does not prove perfect thumb contact. Test https://xboxlivehd88-hue.github.io/city-outbreak/?v=743-m17-forward-thumb
+
+---
+
 # v742 — M17 slight forward shift in hip and ADS — 2026-10-17
 
 - User approved v741 grips/vertical seating and requested slightly forward in both hip and ADS.
