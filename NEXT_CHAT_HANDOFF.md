@@ -1,3 +1,12 @@
+# v742 — M17 slight forward shift in hip and ADS — 2026-10-17
+
+- User approved v741 grips/vertical seating and requested slightly forward in both hip and ADS.
+- Change only original SIG ExternalM17SIG local z, preserving the parent gun group, original textured skinned hands, source animation, trigger and reload. v741 z = home.z - .055*hip; v742 z = home.z - .025 - .070*hip (2.5 cm forward ADS and 9.5 cm total forward hip from original home; 4 cm further hip than v741). Hip vertical -0.19 retained; full ADS vertical unchanged.
+- Loader v742; recovery v324 untouched. User screenshot approval pending; do not state visually proven.
+- Play https://xboxlivehd88-hue.github.io/city-outbreak/?v=742-m17-forward-fit
+
+---
+
 # v741 — M17 HIP-ONLY PISTOL MODEL ALIGNMENT — 2026-10-17
 
 - User approves v740 source-driven grip orientation and ADS, but screenshot shows the M17 firearm above both correctly posed hands in HIP stance. User confirms adjust hip only; do not change ADS, wrists, animation, or other weapons.

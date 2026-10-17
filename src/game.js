@@ -10791,7 +10791,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
   const sig=gun.getObjectByName("ExternalM17SIG");
   const home=sig?.userData.adsAlignedHome;
   if(home){const hip=1-THREE.MathUtils.smoothstep(aimBlend,0,1);
-   sig.position.set(home.x,home.y-.19*hip,home.z-.055*hip);
+   sig.position.set(home.x,home.y-.19*hip,home.z-.025-.070*hip);
   }
  }
  // DMR ADS looks through the actual red-dot rather than the old sniper pose.
