@@ -3867,6 +3867,16 @@ function attachOriginalFpsArms(){
       const centerY=-36.5;
       p.setXY(i,centerX+(p.getX(i)-centerX)*keep,
                 centerY+(p.getY(i)-centerY)*keep);
+      // v718 source-anatomy calibrated from three real Chromium ADS renders:
+      // Original elbow-weighted coat fabric protruded 500+ GLB units as
+      // two flat, overlong V-shaped tails under the M17 iron sight.
+      // Contract only the SOURCE fabric longitudinally from the elbow end,
+      // not the original bone lengths, glove or finger geometry. The real
+      // firing/support wrist positions, sight picture and firearm don't move.
+      if(weapon==="pistol"&&z< -260){
+       const distal=THREE.MathUtils.smoothstep(-z,260,600);
+       p.setZ(i,z+115*distal);
+      }
       m17SleeveVerts++;
      }
      p.needsUpdate=true;
