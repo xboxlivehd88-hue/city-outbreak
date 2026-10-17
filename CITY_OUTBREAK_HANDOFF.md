@@ -1,3 +1,14 @@
+# v736 — VERIFIED AFTER RIGHT PALM CORRECTION — 2026-10-17
+
+- Current v736 gameplay commit `f2c6b393ab64e94d8914755e514eaa96b6a78be4` (right wrist/trigger adjustment plus cached animation-module version). Original v735 gameplay change `defe0235379380fdf820e39c7f1c136b4400bedd`; v736 only changed the imported module and loader URLs to guarantee freshness.
+- **GitHub Pages PASSED** in run **39048773343**. **Focused original seven-weapon Chromium geometry/trigger and reload audit PASSED** in run **39048774029**. Both ADS and magazine reload screenshots from that exact run were inspected, not merely numerical geometry values.
+- M17 original wrist ADS contact remained EXACTLY [.3056,-.3649,-.8737] left, [.3032,-.3516,-.8138] right; no change in gun pose, left hand, or other six gun geometry. M17 right index joint performed additional ~0.173 radians of curl on shot, right wrist moved ~0.020m across the reload sample (same as prechange). Underlying right M17 palm was rotated **90 degrees left** (270° to 180° roll), and original index resting phalanges extended/curled differently for trigger.
+- **Visual caveat:** Screens show the right hand now turned and mostly behind the pistol grip, but exact finger pad contact with the trigger isn't conclusively visible from ADS screenshots. This is ready for user gameplay review, not a claim of final natural placement.
+- Separate **full-world/Hazmat 39048774046, Sprinter 39048774243, Parasite 39048774085 FAILED**, consistent with pre-existing scene tests. Don't portray those as passed. Protected v324 untouched; original SIG and arms remain.
+- Link: https://xboxlivehd88-hue.github.io/city-outbreak/?v=736-m17-right-hand
+
+---
+
 # v736 — M17 right palm + finger module cache invalidation — 2026-10-17
 
 - v735 included exactly the user-requested −90° rotation of the **right M17 palm** (right gun-local wrist roll 270° → 180°) and a mild change to the original right-index neutral bend to rest on the trigger. The working index-only firing pull, M17 geometry/ADS, original 47-bone arms, left-hand position, reload, all six other weapons and v324 checkpoint remain intact.
