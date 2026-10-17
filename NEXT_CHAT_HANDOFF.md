@@ -1,3 +1,13 @@
+# v724 — USER VIDEO PROVED M17 SLEEVES STILL A GIANT V — 2026-10-17
+
+- **Build v724**, loader `./src/game.js?v=724`. User's uploaded `2026-10-17 09-23-18.mp4` is 42.9s, confirms browser tab says **CITY OUTBREAK — v723**. The visual issue is **not caching**. At 10.9s ADS the gray sleeves still form a giant crossed V under the SIG despite v718–723 finger and wrist changes. At 25s reload the support hand moves but doesn't naturally handle magazine. Do not claim original hand/arms visually approved.
+- Independent original `cartoon_fps_arms.glb` binary skin audit: 47 bones, 888 mesh vertices, elbow-weighted source fabric extends to z=-598 GLB units vs near-cuff z≈-215. Prior v718 only removed 115 source units from long distal cloth, leaving very large panels.
+- Corrected original skinned M17 sleeve geometry on PISTOL clone only: smooth longitudinal shortening up to **235 source units** from z=-245 through -590, weight-based falloff. **No change to glove, fingers, sleeve width, authored original textures/materials, source 47-bone skeleton, wrist IK positions, original SIG GLB, game shooting or reload actors**. Added measurable vertex-reduction diagnostics; the same v723 original uploaded M17 reload motion remains.
+- Updated real Chromium seven-gun QA to require actual M17 sleeve vertices shorten >10 and reduction >150 source units, besides original motion and contact checks. Inspect rendered ADS/hip screenshots after commit before claiming visual success.
+- Six other weapons, zombies, launcher, map unaffected; protected recovery v324 unchanged. Full-world browser smoke may still fail at scene-ready timeout; separate from weapon geometry QA.
+
+---
+
 # v723 AUDIT — TRUE RENDERED M17 ANIMATION CHECK — 2026-10-17
 
 - Added real Chromium M17 reload audit to `scripts/arms-contact-audit.cjs` (runs on same v723 main source). Simulates normal hold and p=.18/.38/.52/.75/.94 source reload frames on authentic Seven Gun controller and original SIG viewmodel. Captures rendered images at p=0/.38/.75, measures actual skinned wrist/elbow movement plus firing wrist anchored. Requires M17 left wrist >.15m displacement, source path Y <-.30m, firing wrist <.30m travel, in addition to existing 7-gun test. Verify PASS and inspect screenshots; no graphical asset/models modified.

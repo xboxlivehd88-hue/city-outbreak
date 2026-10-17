@@ -3834,7 +3834,7 @@ function attachOriginalFpsArms(){
  // Taper ONLY the sleeve vertices in this PISTOL clone. Retain the original
  // textured skinned mesh, 47 original bones, finger animation and skin weights.
  // The other six weapons continue sharing the unmodified imported geometry.
- let m17SleeveVerts=0;
+ let m17SleeveVerts=0,m17SleeveShortenedVertices=0,m17SleeveMaxReduction=0;
  rig.traverse(o=>{
   o.userData.externalWeaponAsset=true;
   if(o.isSkinnedMesh){
@@ -3879,9 +3879,15 @@ function attachOriginalFpsArms(){
       // Contract only the SOURCE fabric longitudinally from the elbow end,
       // not the original bone lengths, glove or finger geometry. The real
       // firing/support wrist positions, sight picture and firearm don't move.
-      if(weapon==="pistol"&&z< -260){
-       const distal=THREE.MathUtils.smoothstep(-z,260,600);
-       p.setZ(i,z+115*distal);
+      if(weapon==="pistol"&&z < -245){
+       // v724: source elbows end at z≈-598. The old 115-unit shortening
+       // left huge V-shaped sleeve tails in the user's real 10.9s ADS frame.
+       // Preserve the sleeve's actual width, imported texture, gloves and IK.
+       const distal=THREE.MathUtils.smoothstep(-z,245,590);
+       const change=235*distal*Math.pow(influence,.32);
+       p.setZ(i,z+change);
+       if(change>m17SleeveMaxReduction)m17SleeveMaxReduction=change;
+       if(change>8)m17SleeveShortenedVertices++;
       }
       m17SleeveVerts++;
      }
@@ -3893,6 +3899,10 @@ function attachOriginalFpsArms(){
   }
  });
  if(weapon==="pistol")document.documentElement.dataset.fpsArmsM17TaperVerts=String(m17SleeveVerts);
+ if(weapon==="pistol"){
+  document.documentElement.dataset.fpsArmsM17SleeveShortenedVertices=String(m17SleeveShortenedVertices);
+  document.documentElement.dataset.fpsArmsM17SleeveReductionGlbUnits=m17SleeveMaxReduction.toFixed(1);
+ }
  gun.add(rig);
  const chain=(prefix)=>{
   const names=prefix==="L"?["L_arm_01","L_elbow_02","L_wrist_03","L_point_08","L_point_2_09"]:

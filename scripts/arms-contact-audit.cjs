@@ -152,7 +152,9 @@ const {chromium}=require("playwright"),fs=require("fs");
  reloading=prior.reloading;reloadWeapon=prior.reloadWeapon;reloadDurationMs=prior.reloadDurationMs;reloadStartedAt=prior.reloadStartedAt;
  fpsArmsInspector.set(prior.inspection);
  rebuildGun();move(.016);
- return {frames,maxMotion,rightMax,sourceMotionApplied:frames.some(f=>f.sourceMotionY<-.30)};
+ return {frames,maxMotion,rightMax,sourceMotionApplied:frames.some(f=>f.sourceMotionY<-.30),
+  shortenedVertices:Number(document.documentElement.dataset.fpsArmsM17SleeveShortenedVertices||0),
+  reductionUnits:Number(document.documentElement.dataset.fpsArmsM17SleeveReductionGlbUnits||0)};
 };
 `;
   await page.route(url=>url.pathname.endsWith("/src/game.js"),async route=>{
@@ -220,6 +222,7 @@ const {chromium}=require("playwright"),fs=require("fs");
 
   report.passed=report.m17Motion?.sourceMotionApplied===true&&
     report.m17Motion.maxMotion>.15&&report.m17Motion.rightMax<.30&&
+    report.m17Motion.shortenedVertices>10&&report.m17Motion.reductionUnits>150&&
     report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0)&&
     report.handAndLauncher?.spins?.length===7&&
     report.handAndLauncher.spins.every(x=>x.sourceBones>=20&&x.maxDrift<.002&&
