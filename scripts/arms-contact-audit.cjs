@@ -236,7 +236,9 @@ const {chromium}=require("playwright"),fs=require("fs");
   report.passed=report.m17Motion?.sourceMotionApplied===true&&
     report.m17Motion.forearmRetargetActive===true&&
     report.m17Motion.performanceCollapsed&&report.m17Motion.maxMotion>.15&&report.m17Motion.rightMax<.03&&
-    report.m17Motion.shortenedVertices>10&&report.m17Motion.reductionUnits>260&&
+    // M17 source sleeve is intentionally longer again (v733 150-unit taper,
+    // rather than v732 315-unit amputated coat). Don't require old truncation.
+    report.m17Motion.shortenedVertices>10&&report.m17Motion.reductionUnits>125&&
     report.m17Motion.frames.filter(f=>f.p>.3&&f.p<.8).some(f=>f.actualSourceClipReady==="true"&&f.actualSourceBonesApplied>=12&&f.actualSourceMaxDegrees>20)&&
     report.models.length===7&&report.models.every(x=>x.hip.geometry.length>0)&&
     report.handAndLauncher?.spins?.length===7&&

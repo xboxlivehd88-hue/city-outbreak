@@ -1,3 +1,13 @@
+# v733 — M17 ADS DISTANCE / VISIBLE ORIGINAL SLEEVES / SUPPORT-HAND ORIENTATION — 2026-10-17
+
+- User's NEW 34.3-second first-person gameplay video `2026-10-17 11-45-24.mp4` from **v732** shows the trigger-index works correctly (MUST keep), but ADS shows a very small/distant SIG with only gloved hands and short cuffs and a sideways left hand. The user did not approve v732 visuals. Video was inspected frame-by-frame, including hip at 2.35s and ADS at 3.5s.
+- **v733 M17 only:** remove 16% ADS gun/arm group scale reduction (was .84 at full ADS), advance the pistol toward camera by changing pistol ADS Z from -.32 to +.10 (constant camera-space shift, *not* model replacement), and restore original sleeve reach by limiting elbow-weighted coat shortening to 150 native GLB units (was 315). Preserve monotonic original-skinned-mesh shortening from v731.
+- Orient the original left support-hand wrist **-.82 rad** instead of +.16 around gun-forward roll, to turn the left fingers toward the SIG grip, while leaving the approved right wrist's 270-degree firing hold and genuine source trigger animation entirely unchanged. Move original M17 controller shoulder anchors slightly toward the camera (local z -.24 versus -.43) so the longer original sleeve can be seen; no new cylinders, replacement arm meshes, source-animation pistol mesh, or debug controls.
+- Non-pistol weapons, DMR optics/reload, attached original SIG mesh, 51-to-47 original source finger retarget, trigger pulls, 7-weapon test loadout, grenade GPU prewarming, and v324 recovery remain untouched. v733 script asserts real ADS contact and firing index, original 7-gun geometry; sleeve-shortening threshold updated to reflect intentional longer arms.
+- **Pending v733 GitHub Actions and actual Chromium hip/ADS/reload screenshots.** Geometry PASS is not user visual approval. Old broad scene-readiness regressions independent.
+
+---
+
 # v732 VERIFIED CHROMIUM RESULTS — 2026-10-17 (same game loader v732)
 
 - **Accepted automated M17 / seven-original-weapon geometry audit: PASSED**, GitHub Actions run **39044986162** for gameplay commit `fa3a44158b07dd5ee961294bbb7c826356b9d2a7`. v732 Pages deployment run **39044985655**: **PASSED**. The v730 and v731 iterations both FAILED M17 ADS contact and were superseded by v732, NOT represented as passing.

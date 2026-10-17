@@ -3627,7 +3627,7 @@ const ADS={
  rifle:{x:-.36,y:.030,z:.72,fov:48,rx:0},
  smg:{x:-.36,y:-.050,z:1.28,fov:55,rx:-.01},
  shotgun:{x:-.36,y:.025,z:-.30,fov:56,rx:0},
- pistol:{x:-.36,y:.058,z:-.32,fov:55,rx:.045},
+ pistol:{x:-.36,y:.058,z:.10,fov:55,rx:.045},
  dmr:{x:-.36,y:.010,z:-1.00,fov:48,rx:0},
  grenadeLauncher:{x:-.36,y:.040,z:-.45,fov:56,rx:0},
  m240:{x:-.36,y:.01,z:1.20,fov:56,rx:0}
@@ -3728,8 +3728,8 @@ function addPlayerHands(){
  // Move ONLY the hidden pistol shoulder-controller origins away from the
  // camera. Existing arm/elbow/wrist solver follows naturally—no forced
  // bone translation, no source skin replacement or unnatural ADS freeze.
- const rs=weapon==="pistol"?new THREE.Vector3(.64,-1.17,-.43):new THREE.Vector3(.80,-1.12,.08);
- const ls=weapon==="pistol"?new THREE.Vector3(-.26,-1.15,-.43):
+ const rs=weapon==="pistol"?new THREE.Vector3(.64,-1.17,-.24):new THREE.Vector3(.80,-1.12,.08);
+ const ls=weapon==="pistol"?new THREE.Vector3(-.26,-1.15,-.24):
   weapon==="shotgun"?new THREE.Vector3(-.27,-.99,-.43):new THREE.Vector3(-.35,-1.08,.06);
  const rh=new THREE.Vector3(...pose.right),lh=new THREE.Vector3(...pose.left);
  const rm=new THREE.Vector3().lerpVectors(rs,rh,.58),lm=new THREE.Vector3().lerpVectors(ls,lh,.58);
@@ -3807,7 +3807,7 @@ const FPS_NATIVE_GRIPS={
  // 270° keeps the authentic right index ABOVE pinky, and original right thumb
  // outside the grip while native fingertips curve across the face of the M17.
  // No change to shoulder/elbow/controller placement, sight or other six guns.
- pistol:{left:{delta:[-.085,-.065,.07],roll:.16},right:{delta:[-.025,-.06,.03],roll:Math.PI*1.5}},
+ pistol:{left:{delta:[-.085,-.065,.07],roll:-.82},right:{delta:[-.025,-.06,.03],roll:Math.PI*1.5}},
  dmr:{left:{delta:[.08,-.095,.045],roll:.16},right:{delta:[-.035,-.07,.045],roll:Math.PI*1.5}},
  grenadeLauncher:{left:{delta:[.08,-.08,.05],roll:.16},right:{delta:[-.04,-.085,.04],roll:Math.PI*1.5}},
  m240:{left:{delta:[.09,-.08,.06],roll:.16},right:{delta:[-.04,-.085,.05],roll:Math.PI*1.5}}
@@ -3890,7 +3890,7 @@ function attachOriginalFpsArms(){
        const distal=weapon==="pistol"
         ?THREE.MathUtils.clamp((-z-245)/345,0,1)
         :THREE.MathUtils.smoothstep(-z,245,590);
-       const change=(weapon==="pistol"?315:155)*distal*Math.pow(influence,.28);
+       const change=(weapon==="pistol"?150:155)*distal*Math.pow(influence,.28);
        p.setZ(i,z+change);
        if(weapon==="pistol"){
         if(change>m17SleeveMaxReduction)m17SleeveMaxReduction=change;
@@ -4263,7 +4263,7 @@ function poseOriginalFpsArms(){
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
    if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
-   document.documentElement.dataset.fpsArmsM17Retarget="v732-approved-m17-hip-ads-grips-and-authored-fingers";
+   document.documentElement.dataset.fpsArmsM17Retarget="v733-closer-ads-original-sleeves-and-support-wrist-roll";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
@@ -10751,7 +10751,7 @@ resolvePlayerZombieContact(oldx,oldz);
 const targetGroundY=samplePlayerGroundY(px,pz,playerGroundY);
 const groundFollowRate=targetGroundY>playerGroundY?18:13;
 playerGroundY=THREE.MathUtils.lerp(playerGroundY,targetGroundY,Math.min(1,dt*groundFollowRate));
-stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,playerGroundY+PLAYER_EYE_HEIGHT,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="smg"?.05:weapon==="rifle"?.04:weapon==="shotgun"?.045:.16);const rp=reloadPoseProgress();
+stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}else stepTimer=0;playerVX=(px-lastPX)/Math.max(dt,.001);playerVZ=(pz-lastPZ)/Math.max(dt,.001);lastPX=px;lastPZ=pz;cam.position.set(px,playerGroundY+PLAYER_EYE_HEIGHT,pz);cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;recoil=Math.max(0,recoil-dt*1.35);const ac2=ads();const adsScale=1-aimBlend*(weapon==="pistol"?0:weapon==="smg"?.05:weapon==="rifle"?.04:weapon==="shotgun"?.045:.16);const rp=reloadPoseProgress();
  // Expose the side chamber ONLY for the FIRST shotgun shell. After it
  // seats, smoothly roll back to the normal level orientation while all
  // following shells feed through the BOTTOM gate. Do not use rp.arch.
