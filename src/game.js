@@ -4275,9 +4275,11 @@ function poseOriginalFpsArms(){
    // v743: curl the SOURCE-retargeted right thumb behind the SIG grip.
    // Adjust thumb joints only; never touch trigger index, forearm or wrists.
    if(sourceGripActive){
-    fpsNativeArms.getObjectByName("R_thumb_026")?.rotateY(-.28);
-    fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateX(-.38);
-    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.24);
+    fpsNativeArms.getObjectByName("R_thumb_026")?.rotateY(-.58);
+    fpsNativeArms.getObjectByName("R_thumb_026")?.rotateZ(.24);
+    fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateX(-.60);
+    fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateY(-.20);
+    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.40);
    }
    document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
    document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
@@ -10798,7 +10800,7 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
   const sig=gun.getObjectByName("ExternalM17SIG");
   const home=sig?.userData.adsAlignedHome;
   if(home){const hip=1-THREE.MathUtils.smoothstep(aimBlend,0,1);
-   sig.position.set(home.x,home.y-.19*hip,home.z-.045-.090*hip);
+   sig.position.set(home.x,home.y-.19*hip,home.z-.065-.110*hip);
   }
  }
  // DMR ADS looks through the actual red-dot rather than the old sniper pose.
