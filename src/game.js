@@ -16,6 +16,7 @@ import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLoc
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
 import {applyPistolSourceMotion,getPistolReloadElbowOffset,pistolSourceMotionInfo} from "./pistol-source-motion.mjs?v=721";
+import {getM17SourceReloadTravel,m17SourceReloadMotion} from "./pistol-source-travel.mjs?v=723";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
@@ -4037,8 +4038,12 @@ function poseOriginalFpsArms(){
   }
   // v720: original uploaded pistol source elbow travel during M17 reload;
   // native IK still holds the original calibrated pistol wrist contacts.
-  if(weapon==="pistol"&&reloading&&!fpsArmsInspector.enabled)
-   e.add(getPistolReloadElbowOffset(THREE,side,rp.p));
+  if(weapon==="pistol"&&reloading&&!fpsArmsInspector.enabled&&side==="left"){
+   // v723: the uploaded source pistol clip moves the supporting ELBOW as
+   // well as its hand. The former sampled source Euler values shifted the
+   // target elbow by almost nothing. This is measured pistol-relative IK.
+   e.add(getM17SourceReloadTravel(THREE,rp.p).elbow);
+  }
   const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
   // Animating translations is fine for fingers, but keep elbow and wrist
   // lengths from the asset bind rig to maintain valid skinned segment spans.
@@ -4185,7 +4190,7 @@ function poseOriginalFpsArms(){
    const sourceAge=performance.now()-lastNativeTriggerShotAt;
    const sourceTrigger=sourceAge>=0&&sourceAge<145?Math.sin(Math.PI*sourceAge/145):0;
    applyPistolSourceMotion(THREE,fpsNativeArms,{reloading,progress:rp.p,triggerPulse:sourceTrigger});
-   document.documentElement.dataset.fpsArmsM17Retarget="v720-animated_pistol:21-joints-elbows-trigger";
+   document.documentElement.dataset.fpsArmsM17Retarget="v723-source-51joint-finger-and-measured-wrist-elbow-reload";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
@@ -10886,7 +10891,17 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
      else if(p<.72){t=smoothReload01((p-.48)/.24);lx=-.24+.36*t;ly=-.72+.52*t;lz=.25-.19*t;rz=-.24+.12*t}
      else if(p<.90){lx=.12;ly=-.20;lz=.06;rz=-.12}
      else{t=smoothReload01((p-.90)/.10);lx=.12*(1-t);ly=-.11*(1-t);lz=.06*(1-t);rz=-.12*(1-t)}
-     playerHandRig.left.position.set(lx,ly,lz);playerHandRig.left.rotation.set(.08,0,rz);
+     // v723: play the real uploaded animation's measured pistol-relative
+     // LEFT WRIST travel. v721 used only small finger rotations; old procedural
+     // reach overrode almost all visible arm motion each frame. Blend the
+     // original magazine pick-up staging with 82% actual animated wrist path.
+     // Preserves the exact SIG viewmodel, reload actor and trigger-side grip.
+     const uploaded=getM17SourceReloadTravel(THREE,p);
+     playerHandRig.left.position.set(lx,ly,lz).lerp(uploaded.wrist,.82);
+     playerHandRig.left.rotation.set(.08,0,rz);
+     document.documentElement.dataset.fpsArmsM17SourceTime=uploaded.sourceTime.toFixed(3);
+     document.documentElement.dataset.fpsArmsM17SourceWristY=uploaded.wrist.y.toFixed(3);
+     document.documentElement.dataset.fpsArmsM17ReloadHandY=playerHandRig.left.position.y.toFixed(3);
    }else{
      const ro=playerHandRig.pose.reload,h=rp.hand,pull=rp.pull||0,pouch=rp.pouch||0;
      playerHandRig.left.position.set(ro[0]*h-.10*pouch,ro[1]*h-.24*pull-.48*pouch,ro[2]*h+.05*pull+.22*pouch);
