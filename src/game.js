@@ -15,7 +15,7 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
-import {applyPistolSourceMotion,pistolSourceMotionInfo} from "./pistol-source-motion.mjs?v=719";
+import {applyPistolSourceMotion,getPistolReloadElbowOffset,pistolSourceMotionInfo} from "./pistol-source-motion.mjs?v=720";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
 import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
@@ -4031,6 +4031,10 @@ function poseOriginalFpsArms(){
    const amount=THREE.MathUtils.lerp(blend[0],blend[1],THREE.MathUtils.smoothstep(aimBlend,0,1));
    e.lerp(s,amount);
   }
+  // v720: original uploaded pistol source elbow travel during M17 reload;
+  // native IK still holds the original calibrated pistol wrist contacts.
+  if(weapon==="pistol"&&reloading&&!fpsArmsInspector.enabled)
+   e.add(getPistolReloadElbowOffset(THREE,side,rp.p));
   const arm=chain.arm,elbow=chain.elbow,wrist=chain.wrist;
   // Animating translations is fine for fingers, but keep elbow and wrist
   // lengths from the asset bind rig to maintain valid skinned segment spans.
@@ -4174,8 +4178,10 @@ function poseOriginalFpsArms(){
  // v719: authentic upload-derived source pistol finger keys, retargeted onto
  // the EXISTING original skinned hands only; no uploaded gun/model is loaded.
  if(weapon==="pistol"&&!fpsArmsInspector.enabled){
-   applyPistolSourceMotion(THREE,fpsNativeArms,{reloading,progress:rp.p});
-   document.documentElement.dataset.fpsArmsM17Retarget="animated_pistol.glb:hand-rotation-keys-only";
+   const sourceAge=performance.now()-lastNativeTriggerShotAt;
+   const sourceTrigger=sourceAge>=0&&sourceAge<145?Math.sin(Math.PI*sourceAge/145):0;
+   applyPistolSourceMotion(THREE,fpsNativeArms,{reloading,progress:rp.p,triggerPulse:sourceTrigger});
+   document.documentElement.dataset.fpsArmsM17Retarget="v720-animated_pistol:21-joints-elbows-trigger";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,

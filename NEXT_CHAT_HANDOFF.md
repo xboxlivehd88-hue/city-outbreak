@@ -1,3 +1,13 @@
+# v720 — VISIBLE USER PISTOL ANIMATION RETARGET — 2026-10-17
+
+- **Current v720**, loader `./src/game.js?v=720`. User correctly reported v719 barely appeared changed; only 13 original hand joints at 17% resting blend and 48% during reload were used, with no source elbow motion. v719 Pages+seven-weapon geometry PASS, heavy Sprinter/Parasite/Chromium regression timed out at scene-ready check even on retry (do not label those green).
+- **This pass** uses 21 original target hand/thumb/finger bones and both actual elbow movement trajectories extracted from user `animated_pistol.glb` 8.8s clip, first 2.75s magazine cycle. Existing v719 585 signed key bytes plus 360 additional SOURCE third-joint bytes, 15 times; source elbow translations are 15 measured source-key world-space offsets interpolated into real gun-local target during M17 reload at 0.009m/source unit.
+- Visible M17-only motion: left original hand bends fingers 74% of source during reload, left wrist twists 42%, firing hand remains on the actual M17 grip; the **authored source ~70° right index-tip trigger motion** is applied at up to 0.39rad (22°) only during actual M17 shots on the existing target finger's inward axis. Normal holding no longer samples mid-reload (v719 inadvertently did); original 47-bone player arm texture/rig and v718 sleeve silhouette unchanged. Full magazine actor/timing/ADS/recoil/sights, original `assets/low-poly_sig_sauer_m17.glb`, 7-gun test loadout and v704 finger stability protected.
+- **No source pistol/weapon/source-arm meshes imported**—numeric source animation data only. No other weapon changed, launcher effects and zombies/bosses untouched. **Protected v324 recovery unchanged**.
+- Perform complete original seven-gun Chromium geometry and full game smoke; inspect M17 reload visually in Chromium, not just wrist distance. User visual approval still pending.
+
+---
+
 # v719 — UPLOADED M17 PISTOL MOTION, ORIGINAL ARMS RETAINED — 2026-10-17
 
 - **Current build v719** loader `./src/game.js?v=719`. User's `animated_pistol.glb` verified: 8,509,628 bytes, one `allanimations` clip (8.8s), 101 animated channels, 51 source skeleton joints, 13 meshes (12 Beretta weapon parts, 1 source arms mesh). The Beretta/source pistol geometry, slide, trigger, magazine, textures and source arms mesh are **NOT IMPORTED**.
