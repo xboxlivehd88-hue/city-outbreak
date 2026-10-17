@@ -1,3 +1,12 @@
+# v736 — M17 right palm + finger module cache invalidation — 2026-10-17
+
+- v735 included exactly the user-requested −90° rotation of the **right M17 palm** (right gun-local wrist roll 270° → 180°) and a mild change to the original right-index neutral bend to rest on the trigger. The working index-only firing pull, M17 geometry/ADS, original 47-bone arms, left-hand position, reload, all six other weapons and v324 checkpoint remain intact.
+- **Important v736 cache correction:** the `src/game.js` import of `src/m17-authored-fingers.mjs` was still versioned `?v=730`. Bump the imported module URL to `?v=736` **and** the HTML loader to `./src/game.js?v=736` so an existing player's browser cannot reuse the old right-index neutral pose. Source logic is otherwise identical to v735.
+- Pending GitHub Pages and focused Chromium visual QA for **v736**. Do not confuse previous v734 passed CI or v735 run with v736. Broad world smoke tests may independently fail on scene readiness.
+- Playable after Pages deployment: https://xboxlivehd88-hue.github.io/city-outbreak/?v=736-m17-right-hand
+
+---
+
 # v735 — M17 firing hand orientation adjustment — 2026-10-17
 
 - User says v734 is now very close. Requested exactly 90 degrees of rotation to the left for the RIGHT hand so the palm sits toward the M17, and for the right index to rest on the trigger.

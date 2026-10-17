@@ -15,7 +15,7 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
-import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=730";
+import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=736";
 import {getM17SourceReloadTravel,m17SourceReloadMotion} from "./pistol-source-travel.mjs?v=723";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
@@ -4263,7 +4263,7 @@ function poseOriginalFpsArms(){
    document.documentElement.dataset.fpsArmsM17AuthoredBonesApplied=String(authored.applied);
    document.documentElement.dataset.fpsArmsM17AuthoredMaxDegrees=authored.maxDegrees.toFixed(1);
    if(authored.error)document.documentElement.dataset.fpsArmsM17AuthoredClipError=authored.error;
-   document.documentElement.dataset.fpsArmsM17Retarget="v735-right-palm-rest";
+   document.documentElement.dataset.fpsArmsM17Retarget="v736-right-palm-rest-source-cache";
  }
  fpsNativeArms.visible=true;
  // v700: gun models are now VISIBLE by default beside the ungripped,
