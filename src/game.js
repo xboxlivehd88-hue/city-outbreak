@@ -4273,7 +4273,10 @@ function poseOriginalFpsArms(){
    if(sourceGripActive)m17OriginalSourceGrip.apply(fpsNativeArms);
    // v743: curl the SOURCE-retargeted right thumb behind the SIG grip.
    // Adjust thumb joints only; never touch trigger index, forearm or wrists.
-   if(sourceGripActive){
+   // v750: Always apply the corrected M17 firing grip. Previously this
+   // entire block was skipped whenever the optional source GLB was not ready.
+   // The source clip remains an optional pose layer, not a gate for the grip.
+   {
     // v747: Three separate grip arcs. The knuckles turn toward the frontstrap
     // before the proximal/middle/distal phalanges close under the trigger guard.
     // Apply AFTER source retargeting; never change wrist, palm, index, gun or ADS.
@@ -4300,6 +4303,8 @@ function poseOriginalFpsArms(){
     thumb2?.rotateY(.39);thumb2?.rotateX(-.61);
     fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.49);
    }
+   document.documentElement.dataset.fpsArmsM17GripCorrection="v750-always-applied";
+   document.documentElement.dataset.fpsArmsM17ActiveWeapon=weapon;
    document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
    document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
    if(m17OriginalSourceGrip.error)document.documentElement.dataset.fpsArmsM17SourceError=m17OriginalSourceGrip.error;
