@@ -1,3 +1,12 @@
+# Playwright visual CI — 2026-10-19
+
+- Added `.github/workflows/playwright-visual.yml` and `tests/visual/game-smoke.test.mjs` on main. A push to game/source/assets/test files or manual workflow_dispatch starts Chromium against the exact checked-out commit served locally.
+- Screenshots are saved as CI artifacts: start menu, hip, ADS, reload, firing; diagnostics capture JS page errors and game build ID. Test suite does NOT alter gameplay, version loader, or protected v324 checkpoint.
+- IMPORTANT: Automated visual snapshots are diagnostic, not proof of correct M17 hand anatomy; user approval still required. Test run status has not been independently confirmed yet.
+- GitHub Actions: https://github.com/xboxlivehd88-hue/city-outbreak/actions/workflows/playwright-visual.yml
+
+---
+
 # v746 — Original M17 right grip correction — 2026-10-17
 
 - User screenshot of v745 clarifies lower right middle/ring/little fingers must cross the front strap beneath trigger guard, and right thumb must extend around backstrap. Right index trigger must remain working. No gun relocation requested.
