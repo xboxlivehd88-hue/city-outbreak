@@ -4280,30 +4280,30 @@ function poseOriginalFpsArms(){
     // v747: Three separate grip arcs. The knuckles turn toward the frontstrap
     // before the proximal/middle/distal phalanges close under the trigger guard.
     // Apply AFTER source retargeting; never change wrist, palm, index, gun or ADS.
-    for(const [root,mid,tip,tipEnd,yaw,knuckleCurl,midCurl,tipCurl] of [
-     ["R_middle_034","R_middle_2_035","R_middle_3_036","R_middle_4_037",-.62,-.78,-.97,-.43],
-     ["R_ring_038","R_ring_2_039","R_ring_3_040","R_ring_4_041",-.73,-.86,-1.04,-.49],
-     ["R_pink_042","R_pink_2_043","R_pink_3_044","R_pink_4_045",-.83,-.92,-1.09,-.53]
+    // v751: the right glove's skinned finger bases require an inward *splay*
+    // before flexion. Avoid the large Z roll from v748 which exaggerated the
+    // side-facing silhouette. Keep every bone's scale and the palm unchanged.
+    for(const [root,mid,tip,tipEnd,splay,curl,middleCurl,distalCurl] of [
+     ["R_middle_034","R_middle_2_035","R_middle_3_036","R_middle_4_037",-.85,-.68,-1.04,-.42],
+     ["R_ring_038","R_ring_2_039","R_ring_3_040","R_ring_4_041",-1.02,-.75,-1.10,-.47],
+     ["R_pink_042","R_pink_2_043","R_pink_3_044","R_pink_4_045",-1.16,-.82,-1.15,-.52]
     ]){
      const base=fpsNativeArms.getObjectByName(root);
-     // The v747 yaw-and-curl remained parallel to the grip's visible
-     // right side. Sweep the knuckle chains across the frontstrap by rolling
-     // each root toward the pistol's inward side BEFORE curling the joints.
-     // The right index, wrist transform and source clip remain untouched.
-     base?.rotateZ(root==="R_middle_034"?.39:root==="R_ring_038"?.47:.54);
-     base?.rotateY(yaw);base?.rotateX(knuckleCurl);
-     fpsNativeArms.getObjectByName(mid)?.rotateX(midCurl);
-     fpsNativeArms.getObjectByName(tip)?.rotateX(tipCurl);
-     fpsNativeArms.getObjectByName(tipEnd)?.rotateX(-.14);
+     base?.rotateY(splay);
+     base?.rotateX(curl);
+     fpsNativeArms.getObjectByName(mid)?.rotateX(middleCurl);
+     fpsNativeArms.getObjectByName(tip)?.rotateX(distalCurl);
+     fpsNativeArms.getObjectByName(tipEnd)?.rotateX(-.10);
     }
-    // Thumb opposes those fingers across the backstrap rather than lying flat.
+    // v750 screenshots: over-rotated thumb visibly sticks far outside grip.
+    // Relax its base and phalanges while retaining a light backstrap opposition.
     const thumb=fpsNativeArms.getObjectByName("R_thumb_026");
-    thumb?.rotateY(.69);thumb?.rotateZ(-.47);thumb?.rotateX(-.22);
+    thumb?.rotateY(.20);thumb?.rotateZ(-.11);thumb?.rotateX(-.10);
     const thumb2=fpsNativeArms.getObjectByName("R_thumb_2_027");
-    thumb2?.rotateY(.39);thumb2?.rotateX(-.61);
-    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.49);
+    thumb2?.rotateY(.12);thumb2?.rotateX(-.25);
+    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.22);
    }
-   document.documentElement.dataset.fpsArmsM17GripCorrection="v750-always-applied";
+   document.documentElement.dataset.fpsArmsM17GripCorrection="v751-relaxed-thumb-inward-fingers";
    document.documentElement.dataset.fpsArmsM17ActiveWeapon=weapon;
    document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
    document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
