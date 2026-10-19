@@ -1,3 +1,11 @@
+# v750 — Right grip source readiness bug / visible build check — 2026-10-19
+
+- User reports NO changes in visual grip. Found correction block gated by `sourceGripActive`, defined as `m17OriginalSourceGrip.ready && !reloading`. If optional GLB never loads, ALL v745-v748 right knuckle/thumb corrections were skipped. v750 applies right-finger/thumb correction on pistol normal hold regardless of source readiness; still layers original source grip if ready. This fix does not prove geometry correct.
+- Temporary visible top-left `M17 GRIP TEST v750` marker confirms current index markup is served, plus DOM dataset `fpsArmsM17GripCorrection=v750-always-applied`, `fpsArmsM17ActiveWeapon=pistol` while using pistol. M17-only loadout from v749 preserved. No gun/ADS/left wrist/reload timing changes. Check deployed Pages and Playwright before claiming visually fixed. Protected v324 untouched.
+- URL https://xboxlivehd88-hue.github.io/city-outbreak/?v=750-grip-verify
+
+---
+
 # v749 — M17-only start loadout for grip isolation — 2026-10-19
 
 - User correctly requested player spawn with ONLY the M17 to eliminate uncertainty about which weapon is being adjusted. Previous v748 started and reset with DMR and every gun unlocked. Now start and reset select `weapon="pistol"` and unlock ONLY `pistol`; other six weapons can still be unlocked normally through shop. No M17 geometry/finger code, ADS, trigger, reload, or left-hand changes.
