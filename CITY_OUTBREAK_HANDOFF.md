@@ -1,3 +1,12 @@
+# v751 — M17 visible thumb correction, finger reorientation — 2026-10-19
+
+- User supplied v750 hip/ADS screenshots proving v750 marker and M17-only spawn. Actual right thumb projects dramatically outside glove; the lower fingers remain outside grip. v751 removes v748 large Z roll and replaces it with stronger inward Y splay per finger and separate curl by segment. Thumb base/middle/tip rotations are backed off substantially to avoid oversized visual projection. No scaling changes to mesh, gun or bones; no gun/ADS/wrist/left hand/trigger/reload modifications.
+- v751 is a **new unverified pose candidate**, not confirmed geometrically correct. Playwright visual CI will trigger through `src/game.js` push and images must be inspected; no Playwright screenshot claim until available.
+- Visible `M17 GRIP TEST v751` and loader `./src/game.js?v=751` verify deployment. Protected checkpoint v324 preserved.
+- https://xboxlivehd88-hue.github.io/city-outbreak/?v=751-right-hand-pose
+
+---
+
 # v750 — Right grip source readiness bug / visible build check — 2026-10-19
 
 - User reports NO changes in visual grip. Found correction block gated by `sourceGripActive`, defined as `m17OriginalSourceGrip.ready && !reloading`. If optional GLB never loads, ALL v745-v748 right knuckle/thumb corrections were skipped. v750 applies right-finger/thumb correction on pistol normal hold regardless of source readiness; still layers original source grip if ready. This fix does not prove geometry correct.
