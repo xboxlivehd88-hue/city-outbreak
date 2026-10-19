@@ -1,3 +1,11 @@
+# v752 — M17 distorted-fingers recovery (needs visual QA) — 2026-10-19
+
+- User v751 hip/ADS screenshots show clearly distorted right fingers and sight picture obscuration. Replaced high-amplitude root Y splay and excessive curls on right middle/ring/pinky with modest X flex without changing any gun, camera, sights, wrists, left hand, trigger index, source animation, or reload timing. Removed exaggerated thumb splay in favor of small distal flex.
+- This is a REGRESSION RECOVERY, not a solved frontstrap grip. ADS aim alignment cannot be declared restored until screenshots confirm it; do not present as visually accepted.
+- M17-only spawn retained, loader v752, visible marker v752; protected v324 checkpoint untouched. https://xboxlivehd88-hue.github.io/city-outbreak/?v=752-pose-recovery
+
+---
+
 # v751 — M17 visible thumb correction, finger reorientation — 2026-10-19
 
 - User supplied v750 hip/ADS screenshots proving v750 marker and M17-only spawn. Actual right thumb projects dramatically outside glove; the lower fingers remain outside grip. v751 removes v748 large Z roll and replaces it with stronger inward Y splay per finger and separate curl by segment. Thumb base/middle/tip rotations are backed off substantially to avoid oversized visual projection. No scaling changes to mesh, gun or bones; no gun/ADS/wrist/left hand/trigger/reload modifications.
