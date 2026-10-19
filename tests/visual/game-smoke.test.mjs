@@ -18,7 +18,11 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     await page.screenshot({ path: `${out}/01-start-menu.png`, fullPage: true });
     const build = await page.locator('html').getAttribute('data-city-outbreak-build', { timeout: 30000 }).catch(() => null);
     assert.ok(build, 'Game module must load and publish a version');
-    await page.locator('#start').click({ timeout: 15000 });
+    // Start is a same-page action; don't wait for navigation after clicking.
+    await page.locator('#start').click({ timeout: 30000, noWaitAfter: true });
+    await page.waitForFunction(() => document.querySelector('#startScreen')?.style.display === 'none', null, { timeout: 30000 });
+    assert.match(await page.locator('#weaponName').textContent(), /M17/i, 'M17 must be the spawned weapon');
+    assert.equal(await page.locator('html').getAttribute('data-fps-arms-weapon-test-loadout'), 'm17-only');
     await page.waitForTimeout(4500);
     await page.screenshot({ path: `${out}/02-after-start-hip.png` });
     await page.mouse.move(800, 450);
@@ -26,6 +30,8 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${out}/03-ads.png` });
     await page.mouse.up({ button: 'right' });
+    // Consume some ammunition before testing reload; otherwise R can be a no-op.
+    await page.mouse.click(800, 450);
     await page.keyboard.press('r');
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${out}/04-reload.png` });
