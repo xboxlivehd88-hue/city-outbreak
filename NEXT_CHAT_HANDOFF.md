@@ -1,3 +1,13 @@
+# v747 — M17 right firing-hand frontstrap wrap — 2026-10-19
+
+- Right firing hand ONLY: after original source-GLB retarget, apply separate, progressive inward yaw and phalanx curls to middle/ring/pinky (including distal tips) so they close toward the frontstrap under the trigger guard; thumb base/mid/tip oppose around the backstrap.
+- Right index/trigger animation, left hand, palm/wrist placement, gun position, ADS alignment, reload path/timing and all other weapons UNCHANGED. Grip tweaks run only when source is active and not reloading.
+- Game loader `./src/game.js?v=747`. Protected v324 checkpoint untouched.
+- Playwright visual CI configured to capture hip, ADS, reload and firing when workflow runs. Screenshots must be inspected; not yet proof of anatomical correctness.
+- Test URL: https://xboxlivehd88-hue.github.io/city-outbreak/?v=747-m17-right-frontstrap
+
+---
+
 # Playwright visual CI — 2026-10-19
 
 - Added `.github/workflows/playwright-visual.yml` and `tests/visual/game-smoke.test.mjs` on main. A push to game/source/assets/test files or manual workflow_dispatch starts Chromium against the exact checked-out commit served locally.
