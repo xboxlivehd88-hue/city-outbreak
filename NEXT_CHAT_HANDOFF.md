@@ -1,3 +1,11 @@
+# v749 — M17-only start loadout for grip isolation — 2026-10-19
+
+- User correctly requested player spawn with ONLY the M17 to eliminate uncertainty about which weapon is being adjusted. Previous v748 started and reset with DMR and every gun unlocked. Now start and reset select `weapon="pistol"` and unlock ONLY `pistol`; other six weapons can still be unlocked normally through shop. No M17 geometry/finger code, ADS, trigger, reload, or left-hand changes.
+- v747 screenshot visibly displayed `M17 SIG` in HUD, proving this was indeed the rendered pistol; incorrect starting weapon was not sufficient to explain failed finger contact. v748 finger pose remains unverified. Loader v749. v324 checkpoint untouched.
+- Test: https://xboxlivehd88-hue.github.io/city-outbreak/?v=749-m17-only
+
+---
+
 # v748 — M17 right knuckle inward sweep from user screenshot — 2026-10-19
 
 - User screenshot of v747 confirms lower three right fingers STILL lie on side of SIG M17; previous pure yaw/X curls insufficient. Apply additional LOCAL Z rotation to right middle (.39), ring (.47), pinky (.54) proximal knuckles before existing individually weighted yaw/curl; no adjustments to wrist/palm translation or index.
