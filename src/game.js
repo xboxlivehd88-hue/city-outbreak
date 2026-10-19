@@ -4280,30 +4280,23 @@ function poseOriginalFpsArms(){
     // v747: Three separate grip arcs. The knuckles turn toward the frontstrap
     // before the proximal/middle/distal phalanges close under the trigger guard.
     // Apply AFTER source retargeting; never change wrist, palm, index, gun or ADS.
-    // v751: the right glove's skinned finger bases require an inward *splay*
-    // before flexion. Avoid the large Z roll from v748 which exaggerated the
-    // side-facing silhouette. Keep every bone's scale and the palm unchanged.
-    for(const [root,mid,tip,tipEnd,splay,curl,middleCurl,distalCurl] of [
-     ["R_middle_034","R_middle_2_035","R_middle_3_036","R_middle_4_037",-.85,-.68,-1.04,-.42],
-     ["R_ring_038","R_ring_2_039","R_ring_3_040","R_ring_4_041",-1.02,-.75,-1.10,-.47],
-     ["R_pink_042","R_pink_2_043","R_pink_3_044","R_pink_4_045",-1.16,-.82,-1.15,-.52]
+    // v752 recovery: remove v751's high-amplitude splay and terminal-joint
+    // overcurl, which deformed the textured fingers in hip and ADS.
+    // Preserve the source's anatomical rest orientation; modest local bends
+    // only until measured grip targets can be confirmed with rendered QA.
+    for(const [baseName,midName,tipName] of [
+     ["R_middle_034","R_middle_2_035","R_middle_3_036"],
+     ["R_ring_038","R_ring_2_039","R_ring_3_040"],
+     ["R_pink_042","R_pink_2_043","R_pink_3_044"]
     ]){
-     const base=fpsNativeArms.getObjectByName(root);
-     base?.rotateY(splay);
-     base?.rotateX(curl);
-     fpsNativeArms.getObjectByName(mid)?.rotateX(middleCurl);
-     fpsNativeArms.getObjectByName(tip)?.rotateX(distalCurl);
-     fpsNativeArms.getObjectByName(tipEnd)?.rotateX(-.10);
+     fpsNativeArms.getObjectByName(baseName)?.rotateX(-.25);
+     fpsNativeArms.getObjectByName(midName)?.rotateX(-.35);
+     fpsNativeArms.getObjectByName(tipName)?.rotateX(-.12);
     }
-    // v750 screenshots: over-rotated thumb visibly sticks far outside grip.
-    // Relax its base and phalanges while retaining a light backstrap opposition.
-    const thumb=fpsNativeArms.getObjectByName("R_thumb_026");
-    thumb?.rotateY(.20);thumb?.rotateZ(-.11);thumb?.rotateX(-.10);
-    const thumb2=fpsNativeArms.getObjectByName("R_thumb_2_027");
-    thumb2?.rotateY(.12);thumb2?.rotateX(-.25);
-    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.22);
+    // No thumb splay: keep original source grip and a small natural flex.
+    fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateX(-.12);
    }
-   document.documentElement.dataset.fpsArmsM17GripCorrection="v751-relaxed-thumb-inward-fingers";
+   document.documentElement.dataset.fpsArmsM17GripCorrection="v752-recovery-small-flex";
    document.documentElement.dataset.fpsArmsM17ActiveWeapon=weapon;
    document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
    document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
