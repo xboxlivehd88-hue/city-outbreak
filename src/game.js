@@ -4275,19 +4275,26 @@ function poseOriginalFpsArms(){
    // v743: curl the SOURCE-retargeted right thumb behind the SIG grip.
    // Adjust thumb joints only; never touch trigger index, forearm or wrists.
    if(sourceGripActive){
-    for(const n of ["R_middle_034","R_ring_038","R_pink_042"]){
-     const bone=fpsNativeArms.getObjectByName(n);
-     bone?.rotateY(-.46);bone?.rotateX(-.57);
+    // v747: Three separate grip arcs. The knuckles turn toward the frontstrap
+    // before the proximal/middle/distal phalanges close under the trigger guard.
+    // Apply AFTER source retargeting; never change wrist, palm, index, gun or ADS.
+    for(const [root,mid,tip,tipEnd,yaw,knuckleCurl,midCurl,tipCurl] of [
+     ["R_middle_034","R_middle_2_035","R_middle_3_036","R_middle_4_037",-.62,-.78,-.97,-.43],
+     ["R_ring_038","R_ring_2_039","R_ring_3_040","R_ring_4_041",-.73,-.86,-1.04,-.49],
+     ["R_pink_042","R_pink_2_043","R_pink_3_044","R_pink_4_045",-.83,-.92,-1.09,-.53]
+    ]){
+     const base=fpsNativeArms.getObjectByName(root);
+     base?.rotateY(yaw);base?.rotateX(knuckleCurl);
+     fpsNativeArms.getObjectByName(mid)?.rotateX(midCurl);
+     fpsNativeArms.getObjectByName(tip)?.rotateX(tipCurl);
+     fpsNativeArms.getObjectByName(tipEnd)?.rotateX(-.14);
     }
-    for(const n of ["R_middle_2_035","R_ring_2_039","R_pink_2_043"])
-     fpsNativeArms.getObjectByName(n)?.rotateX(-.72);
-    for(const n of ["R_middle_3_036","R_ring_3_040","R_pink_3_044"])
-     fpsNativeArms.getObjectByName(n)?.rotateX(-.32);
+    // Thumb opposes those fingers across the backstrap rather than lying flat.
     const thumb=fpsNativeArms.getObjectByName("R_thumb_026");
-    thumb?.rotateY(.52);thumb?.rotateZ(-.36);thumb?.rotateX(-.18);
+    thumb?.rotateY(.69);thumb?.rotateZ(-.47);thumb?.rotateX(-.22);
     const thumb2=fpsNativeArms.getObjectByName("R_thumb_2_027");
-    thumb2?.rotateY(.30);thumb2?.rotateX(-.53);
-    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.44);
+    thumb2?.rotateY(.39);thumb2?.rotateX(-.61);
+    fpsNativeArms.getObjectByName("R_thumb_3_028")?.rotateX(-.49);
    }
    document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
    document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
