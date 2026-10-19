@@ -1,3 +1,12 @@
+# Playwright visual CI — 2026-10-19
+
+- Added `.github/workflows/playwright-visual.yml` and `tests/visual/game-smoke.test.mjs` on main. A push to game/source/assets/test files or manual workflow_dispatch starts Chromium against the exact checked-out commit served locally.
+- Screenshots are saved as CI artifacts: start menu, hip, ADS, reload, firing; diagnostics capture JS page errors and game build ID. Test suite does NOT alter gameplay, version loader, or protected v324 checkpoint.
+- IMPORTANT: Automated visual snapshots are diagnostic, not proof of correct M17 hand anatomy; user approval still required. Test run status has not been independently confirmed yet.
+- GitHub Actions: https://github.com/xboxlivehd88-hue/city-outbreak/actions/workflows/playwright-visual.yml
+
+---
+
 # v746 M17 right fingers — 2026-10-17
 
 User v745 image: fingers should cross frontstrap below trigger guard and thumb around backstrap. Right-only bone changes to finger yaw/curl and thumb swing, trigger index and other hand positions unchanged. Loader v746. Visual approval pending. Protected v324 untouched.
