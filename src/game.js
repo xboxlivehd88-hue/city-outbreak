@@ -4284,6 +4284,11 @@ function poseOriginalFpsArms(){
      ["R_pink_042","R_pink_2_043","R_pink_3_044","R_pink_4_045",-.83,-.92,-1.09,-.53]
     ]){
      const base=fpsNativeArms.getObjectByName(root);
+     // The v747 yaw-and-curl remained parallel to the grip's visible
+     // right side. Sweep the knuckle chains across the frontstrap by rolling
+     // each root toward the pistol's inward side BEFORE curling the joints.
+     // The right index, wrist transform and source clip remain untouched.
+     base?.rotateZ(root==="R_middle_034"?.39:root==="R_ring_038"?.47:.54);
      base?.rotateY(yaw);base?.rotateX(knuckleCurl);
      fpsNativeArms.getObjectByName(mid)?.rotateX(midCurl);
      fpsNativeArms.getObjectByName(tip)?.rotateX(tipCurl);
