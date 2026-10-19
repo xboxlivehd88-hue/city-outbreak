@@ -1,3 +1,11 @@
+# v748 — M17 right knuckle inward sweep from user screenshot — 2026-10-19
+
+- User screenshot of v747 confirms lower three right fingers STILL lie on side of SIG M17; previous pure yaw/X curls insufficient. Apply additional LOCAL Z rotation to right middle (.39), ring (.47), pinky (.54) proximal knuckles before existing individually weighted yaw/curl; no adjustments to wrist/palm translation or index.
+- Locked: pistol transform, left hand, ADS, reload animation and all other weapons. This is a targeted unverified test candidate, **NOT visually confirmed as fixed**. Screenshot review is required; if the roots sweep the wrong way, do not increase angles blindly—inspect source rig axis and use anatomical contact points.
+- Loader v748; checkpoint v324 untouched. https://xboxlivehd88-hue.github.io/city-outbreak/?v=748-m17-knuckle-sweep
+
+---
+
 # v747 — M17 right firing-hand frontstrap wrap — 2026-10-19
 
 - Right firing hand ONLY: after original source-GLB retarget, apply separate, progressive inward yaw and phalanx curls to middle/ring/pinky (including distal tips) so they close toward the frontstrap under the trigger guard; thumb base/mid/tip oppose around the backstrap.
