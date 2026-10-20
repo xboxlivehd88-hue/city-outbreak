@@ -11791,6 +11791,17 @@ const onKeyDown=e=>{let k=e.key.toLowerCase();
  // Keep programmatic open-arm inspection exclusively for automated QA.
  let hotWeapon=weaponHotkeys[e.code],gameKey=["w","a","s","d","r","g","n","shift"].includes(k)||!!hotWeapon;if(k==="p"&&!e.repeat){setGamePaused(!paused);e.preventDefault();return}if(paused||between){if(gameKey)e.preventDefault();return}if(k in keys)keys[k]=true;if(k==="r"&&!e.repeat)reload();if(k==="g"&&!e.repeat)throwGrenade();if(k==="n"&&!e.repeat)detonateNuke();if(hotWeapon&&!e.repeat)setWeapon(hotWeapon);if(gameKey)e.preventDefault()};
 setupKeyDown(onKeyDown);
+ // CI-only deterministic reload trigger. Under software WebGL a short
+ // synthetic mouse-down can finish without a rendered shot, leaving a full
+ // magazine and making keyboard R a no-op. Real players never get this hook.
+ if(navigator.webdriver){
+   window.__cityM17VisualTestStart=()=>{
+     if(!running||weapon!=="pistol"||dying)return false;
+     if(reloading)return true;
+     ammoState.pistol.mag=Math.min(ammoState.pistol.mag,maxMag("pistol")-1);
+     return reload("pistol");
+   };
+ }
 const onWeaponWheel=e=>{
  if(!running||paused||dying||between||document.pointerLockElement!==cv)return;
  if(Math.abs(e.deltaY)<1)return;
