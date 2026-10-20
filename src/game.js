@@ -5302,9 +5302,15 @@ function rebuildGun(){
      // Imported source has a seated empty magazine and a separately laid-out
      // loaded magazine. Use the seated prop's LOCAL pose as the actual magwell
      // calibration, and the loaded prop's genuine 4-mesh geometry/materials.
-     const glbMagParent=m17Root.getObjectByName("GLTF_SceneRootNode");
-     const seatedMagSource=m17Root.getObjectByName("919 p320 17rnd empty mag_0");
-     const loadedMagSource=m17Root.getObjectByName("919 p320 17rnd mag_3");
+     // Three.js GLTFLoader may sanitize exported spaces into underscores.
+     // Resolve by normalized source identity, not brittle literal names.
+     const m17MagNodes=[];
+     m17Root.traverse(o=>{if(/17rnd/i.test(o.name||""))m17MagNodes.push(o)});
+     const compact=n=>(n||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+     const seatedMagSource=m17MagNodes.find(o=>compact(o.name).includes("17rndemptymag0"));
+     const loadedMagSource=m17MagNodes.find(o=>compact(o.name).includes("17rndmag3")&&
+       !compact(o.name).includes("empty"));
+     const glbMagParent=seatedMagSource?.parent;
      const originalMag=loadedMagSource?.clone(true)||null;
      const m17LooseProps=[];
      m17Root.traverse(o=>{
@@ -5364,7 +5370,7 @@ function rebuildGun(){
      }else{
        // No fabricated substitute. Surface an explicit asset failure.
        document.documentElement.dataset.m17MagazineCarrier="missing";
-       document.documentElement.dataset.m17MagazineSourceError="M17 original seated/loaded magazine hierarchy unavailable";
+       document.documentElement.dataset.m17MagazineSourceError="M17 GLB magazine node unavailable; found: "+m17MagNodes.map(o=>o.name).join(",");
        playerReloadPart=null;
      }
    }
