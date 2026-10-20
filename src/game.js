@@ -5295,8 +5295,10 @@ function rebuildGun(){
      });
      // Save the ORIGINAL GLB magazine mesh before removing its loose
      // presentation layout. Nested magazine children must not be counted twice.
-     const sourceMag=m17LooseProps.find(o=>/mag/i.test(o.name)&&
-       !m17LooseProps.some(p=>p!==o&&/mag/i.test(p.name)&&p.getObjectById(o.id)));
+     // The GLB has TWO distinct magazine props: "empty mag_0" and
+     // "mag_3". The old first-match lookup always chose EMPTY mag_0.
+     const sourceMag=m17LooseProps.find(o=>/17rnd mag_3/i.test(o.name))
+       ||m17LooseProps.find(o=>/mag/i.test(o.name)&&!/empty/i.test(o.name));
      const originalMag=sourceMag?.clone(true)||null;
      for(const prop of m17LooseProps)if(prop.parent)prop.parent.remove(prop);
      // Preserve the complete assembled M17 hierarchy; only the four loose display props above are removed.
@@ -5324,7 +5326,8 @@ function rebuildGun(){
          // Normalize only this detached magazine, preserving its mesh/materials.
          const visual=originalMag;
          m17ReloadMag.add(visual);
-         visual.position.set(0,0,0);visual.rotation.set(0,0,0);visual.scale.set(1,1,1);
+         // Never discard the GLB node's original transforms: its child meshes
+         // inherit the source magazine orientation and layout.
          visual.updateMatrixWorld(true);
          const box=new THREE.Box3().setFromObject(visual,true);
          const sz=box.getSize(new THREE.Vector3());
@@ -5354,7 +5357,7 @@ function rebuildGun(){
        document.documentElement.dataset.m17SourceMagNodes=String(m17LooseProps.length);
        document.documentElement.dataset.m17MagazineCarrier="ready";
        document.documentElement.dataset.m17MagazineMeshCount=String(originalMag?1:0);
-       document.documentElement.dataset.m17MagazineSource=originalMag?"original-glb":"missing";
+       document.documentElement.dataset.m17MagazineSource=sourceMag?.name||"missing";
      }
    }
  }else if(weapon==='dmr'){
