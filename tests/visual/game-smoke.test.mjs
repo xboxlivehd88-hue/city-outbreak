@@ -95,6 +95,12 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }
     assert.match(await page.locator('#weaponName').textContent(), /M17/i, 'M17 must be the spawned weapon');
     assert.equal(await page.locator('html').getAttribute('data-fps-arms-weapon-test-loadout'), 'm17-only');
+    // v753 fix is real only if the ORIGINAL imported source clip retargets.
+    // Either readiness or an explicit error ends waiting; an error fails QA.
+    await page.waitForFunction(() => {
+      const d = document.documentElement.dataset;
+      return d.fpsArmsM17SourceRig === 'true' || !!d.fpsArmsM17SourceError;
+    }, null, { timeout: 16000, polling: 250 });
     await page.waitForTimeout(1200);
     await capture('02-after-start-hip');
     // Pointer lock is already active after Start. Moving the mouse to an
@@ -116,8 +122,13 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     await page.waitForTimeout(80);
     await capture('05-firing');
     await page.mouse.up({ button: 'left' });
-    await writeFile(`${out}/diagnostics.json`, JSON.stringify({ build, errors, url: page.url(), m17Grip: await page.locator('html').getAttribute('data-fps-arms-m17-grip-correction'), sourceReady: await page.locator('html').getAttribute('data-fps-arms-m17-source-rig'), sourceError: await page.locator('html').getAttribute('data-fps-arms-m17-source-error') }, null, 2));
+    await writeFile(`${out}/diagnostics.json`, JSON.stringify({ build, errors, url: page.url(), m17Grip: await page.locator('html').getAttribute('data-fps-arms-m17-grip-correction'), sourceReady: await page.locator('html').getAttribute('data-fps-arms-m17-source-rig'), sourceError: await page.locator('html').getAttribute('data-fps-arms-m17-source-error'), sourceBones: await page.locator('html').getAttribute('data-fps-arms-m17-source-bones'), sourceDeltaDegrees: await page.locator('html').getAttribute('data-fps-arms-m17-source-delta-degrees') }, null, 2));
     assert.equal(errors.length, 0, `Unhandled JavaScript errors: ${errors.join('; ')}`);
+    const sourceReady = await page.locator('html').getAttribute('data-fps-arms-m17-source-rig');
+    const sourceError = await page.locator('html').getAttribute('data-fps-arms-m17-source-error');
+    assert.equal(sourceReady, 'true', `Original M17 grip not active: ${sourceError}`);
+    assert.ok(Number(await page.locator('html').getAttribute('data-fps-arms-m17-source-bones')) >= 12,
+      'Expected at least 12 mapped original right-grip joints');
   } finally {
     await page.close();
   }
