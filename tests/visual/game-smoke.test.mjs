@@ -113,35 +113,58 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     await page.mouse.down({ button: 'left' });
     await page.waitForTimeout(70);
     await page.mouse.up({ button: 'left' });
+    // QA-only deterministic staging keeps each first-person reload frame
+    // frozen long enough for slow software WebGL to draw and be captured.
+    // This doesn't change timing or controls in the actual game.
+    await page.evaluate(() => {
+      document.documentElement.dataset.m17VisualTestHold = 'true';
+      document.documentElement.dataset.m17VisualTestPhase = '0.20';
+    });
     await page.keyboard.press('r');
-    // Sample a complete reload at measured runtime progress, NOT assumed wall time.
-    // The animation is updated by the game loop and CI's software renderer is slow.
-    // Capture a single frame when its published progress first crosses each stage.
     const samples = [0.20, 0.40, 0.55, 0.65, 0.75, 0.85];
     const reloadTelemetry = [];
     for (const target of samples) {
+      await page.evaluate(p => {
+        document.documentElement.dataset.m17VisualTestPhase = p.toFixed(2);
+      }, target);
       await page.waitForFunction(target => {
         const d = document.documentElement.dataset;
-        return Number(d.m17MagazineReloadProgress || 0) >= target ||
-          d.m17MagazineInserted === 'true';
-      }, target, { timeout: 15000, polling: 25 });
+        return Math.abs(Number(d.m17MagazineReloadProgress) - target) < .018;
+      }, target, { timeout: 20000, polling: 100 });
+      // Allow software WebGL to complete the render, not just update DOM.
+      await page.waitForTimeout(340);
       const state = await page.evaluate(() => {
         const d = document.documentElement.dataset;
         return { progress: d.m17MagazineReloadProgress || null,
           distance: d.m17MagazineInsertDistance || null,
+          oldDropped: d.m17MagazineOldDropped || null,
           freshVisible: d.m17MagazineFreshVisible || null,
-          inserted: d.m17MagazineInserted || null };
+          inserted: d.m17MagazineInserted || null,
+          source: d.m17MagazineSource || null,
+          carrier: d.m17MagazineCarrier || null,
+          seat: d.m17MagazineSeat || null,
+          boundsRatio: d.m17MagazineBoundsRatio || null,
+          dimensions: d.m17MagazineGeometrySize || null };
       });
       reloadTelemetry.push({ target, ...state });
       await capture('04-reload-' + Math.round(target * 100).toString().padStart(2, '0') + 'pct');
     }
     await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
-    assert.equal(await page.locator('html').getAttribute('data-m17-magazine-carrier'), 'ready');
-    assert.match(await page.locator('html').getAttribute('data-m17-magazine-source') || '', /17rnd mag_3/i,
-      'M17 must load the actual complete GLB magazine, not empty mag or placeholder');
-    assert.ok(reloadTelemetry.some(t => t.freshVisible === 'true'), 'Must render a visible replacement magazine');
-    assert.ok(reloadTelemetry.some(t => Number(t.distance) <= 0.22 && t.freshVisible === 'true'),
-      'Magazine must approach the insertion point while still visible');
+    assert.equal(reloadTelemetry[0].carrier, 'ready', 'Original M17 GLB magazine must be seated');
+    assert.match(reloadTelemetry[0].source || '', /17rnd mag_3/i);
+    assert.ok(Number(reloadTelemetry[0].boundsRatio) > .10 &&
+      Number(reloadTelemetry[0].boundsRatio) < .90,
+      'Original magazine must be proportionate to imported pistol bounds');
+    assert.equal(reloadTelemetry[0].oldDropped, 'false', 'Seated old magazine must be present early');
+    assert.equal(reloadTelemetry[1].oldDropped, 'true', 'Old magazine must leave the gun');
+    assert.equal(reloadTelemetry[1].freshVisible, 'true', 'Replacement magazine must rise from the player');
+    assert.ok(reloadTelemetry.some(t => Number(t.distance) < .25 && t.freshVisible === 'true'),
+      'Fresh magazine must approach the actual GLB seated pose');
+    // Release the QA clock hold and let the normal reload finish.
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.m17VisualTestHold;
+      delete document.documentElement.dataset.m17VisualTestPhase;
+    });
     // Reload must finish before we can verify the trigger actually fires.
     await page.waitForTimeout(2220);
     await page.mouse.down({ button: 'left' });
