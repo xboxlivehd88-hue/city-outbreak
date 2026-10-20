@@ -4911,6 +4911,9 @@ function updateReloadMagazineFX(rp){
        playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadMagInserted=true;
      }
    }
+   document.documentElement.dataset.m17MagazineOldDropped=String(reloadOldMagDropped);
+   document.documentElement.dataset.m17MagazineFreshVisible=String(!!reloadFreshMag&&!!reloadFreshMag.parent&&reloadFreshMag.visible);
+   document.documentElement.dataset.m17MagazineInserted=String(reloadMagInserted);
    return;
  }
  // Shared detachable-magazine animation for the other weapons.
@@ -5268,12 +5271,8 @@ function rebuildGun(){
      // Remove its loose presentation props first, then rotate +X -> game forward (-Z).
      // All four named nodes are loose presentation props in this GLB. Remove them
      // from the displayed pistol, including the loaded magazine that was hanging below it.
-     const m17SourceMag=m17Root.getObjectByName("919 p320 17rnd mag_3");
-     let m17ReloadTemplate=null;
-     if(m17SourceMag){
-       m17ReloadTemplate=m17SourceMag.clone(true);
-       m17ReloadTemplate.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
-     }
+     // v754: no exact-name source magazine node is required for reload.
+     // The uploaded GLB may rename/delete that loose presentation prop.
      // Hard guarantee: no magazine mesh from the source GLB is allowed to remain on
      // the idle first-person pistol. Collect first, then remove, so nested nodes cannot
      // survive because a parent was detached earlier in the loop.
@@ -5297,7 +5296,7 @@ function rebuildGun(){
      // The visible pistol stays clean. A hidden clone of the real GLB magazine is
      // the reload actor: reveal at reload start, pull/drop it, then clone it from the
      // pouch and insert the replacement. It is never part of the idle pistol hierarchy.
-     if(m17ReloadTemplate){
+     { // v754 guaranteed reload magazine carrier — independent of source node names
        // Use a dedicated first-person reload magazine. The source GLB magazine node
        // has presentation transforms that have repeatedly made it unreliable as an
        // animation actor. Keep the real pistol model, but use simple visible geometry
@@ -5319,7 +5318,9 @@ function rebuildGun(){
        playerReloadPart=m17ReloadMag;
        document.documentElement.dataset.m17IdleMagazine="hidden";
        document.documentElement.dataset.m17SourceMagNodes=String(m17LooseProps.length);
-     }else playerReloadPart=null;
+       document.documentElement.dataset.m17MagazineCarrier="ready";
+       document.documentElement.dataset.m17MagazineMeshCount=String(m17ReloadMag.children.filter(o=>o.isMesh).length);
+     }
    }
  }else if(weapon==='dmr'){
   if(dmrModelTemplate){
