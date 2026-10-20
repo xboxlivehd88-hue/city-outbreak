@@ -115,6 +115,11 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     await page.mouse.up({ button: 'left' });
     await page.keyboard.press('r');
     await page.waitForTimeout(600);
+    // Regression: the reload actor must exist and a fresh mag must appear.
+    assert.equal(await page.locator('html').getAttribute('data-m17-magazine-carrier'), 'ready',
+      'M17 detachable reload actor must not depend on a source GLB magazine name');
+    assert.equal(await page.locator('html').getAttribute('data-m17-magazine-fresh-visible'), 'true',
+      'Fresh M17 magazine must be parented and visible by mid-reload');
     await capture('04-reload');
     // Reload must finish before we can verify the trigger actually fires.
     await page.waitForTimeout(2900);
