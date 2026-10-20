@@ -20,37 +20,31 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     const nativeRaf = window.requestAnimationFrame.bind(window);
     window.requestAnimationFrame = callback =>
       window.setTimeout(() => nativeRaf(callback), 160);
+    // Only in CI, retain the last actual WebGL frame so canvas.toDataURL()
+    // can capture pixels without Chromium's unreliable compositor screenshot.
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, attributes) {
+      if (['webgl', 'webgl2', 'experimental-webgl'].includes(type)) {
+        return originalGetContext.call(this, type, { ...attributes, preserveDrawingBuffer: true });
+      }
+      return originalGetContext.call(this, type, attributes);
+    };
   });
   page.on('console', message => { if (message.type() === 'error') errors.push('console: '+message.text()); });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const capture = async name => {
-    // Use Chromium's direct compositor capture; avoids Playwright's layout
-    // stability/font waits. Retry while software WebGL produces a fresh frame.
-    const failures = [];
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const session = await page.context().newCDPSession(page);
-      try {
-        const data = await Promise.race([
-          session.send('Page.captureScreenshot', {
-            format: 'png', fromSurface: true, captureBeyondViewport: false
-          }),
-          new Promise((_, reject) => setTimeout(() =>
-            reject(new Error('CDP screenshot timeout')), 12000))
-        ]);
-        await writeFile(`${out}/${name}.png`, Buffer.from(data.data, 'base64'));
-        return;
-      } catch (error) {
-        failures.push(`Attempt ${attempt}: ${String(error)}`);
-      } finally {
-        // Detach asynchronously; never let cleanup block the next attempt.
-        session.detach().catch(() => {});
-      }
-      await page.waitForTimeout(400);
+    // Read the preserved WebGL framebuffer through the DOM. No Playwright
+    // screenshots, element-stability waits, or CDP compositor round trips.
+    try {
+      const dataUrl = await page.locator('#cv').evaluate(canvas => canvas.toDataURL('image/png'), { timeout: 25000 });
+      if (!dataUrl?.startsWith('data:image/png;base64,') || dataUrl.length < 1000)
+        throw new Error('Canvas produced no PNG pixel data');
+      await writeFile(`${out}/${name}.png`, Buffer.from(dataUrl.split(',')[1], 'base64'));
+    } catch (error) {
+      errors.push(`Canvas framebuffer ${name}: ${String(error)}`);
+      await writeFile(`${out}/${name}-capture-error.txt`, String(error));
     }
-    const error = `Screenshot ${name} failed: ${failures.join('; ')}`;
-    errors.push(error);
-    await writeFile(`${out}/${name}-capture-error.txt`, error);
   };
   try {
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
