@@ -18,10 +18,11 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const capture = async (name) => {
-    // Capture the actual WebGL canvas, excluding HUD/overlays. Bound every
-    // attempt so a stalled GPU screenshot cannot consume the whole test.
+    // Screen-space capture: locator.screenshot waits for animated canvas
+    // geometry to become stable and timed out in v752 CI. page.screenshot
+    // bypasses the element-stability/scroll-into-view check and includes HUD.
     try {
-      await page.locator('#cv').screenshot({ path: `${out}/${name}.png`, timeout: 15000, animations: 'disabled' });
+      await page.screenshot({ path: `${out}/${name}.png`, timeout: 15000, animations: 'disabled', fullPage: false });
     } catch (error) {
       errors.push(`Canvas capture ${name}: ${error.message}`);
       // Retain diagnostics even if the software WebGL renderer stalls.
