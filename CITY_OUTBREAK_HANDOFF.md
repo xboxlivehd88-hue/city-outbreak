@@ -1,3 +1,9 @@
+# v760 — urgent v759 startup syntax repair — 2026-10-20
+
+- User correctly reported v759 could not start. Actual cause was literal backslash-n characters between two dataset assignments in `src/game.js` M17 magazine build, producing JavaScript syntax error, preventing game module execution. Replaced with real line break. Bumped loader to v760 and build marker. Do not claim v759 GLB magazine alignment visually approved; still needs screenshot verification. Protected v324 unchanged.
+
+---
+
 # v759 — restore actual M17 GLB magazine — 2026-10-20
 
 - User correctly rejects fabricated box magazine (v754-v758) and says it floats behind pistol. Replaced procedural carrier geometry with magazine hierarchy cloned from original `low-poly_sig_sauer_m17.glb` BEFORE removing loose presentation props; normalize detached copy to vertical gun-local magazine for reload. Do not create placeholder if source absent; emit `m17MagazineSource` diagnostic. v758 extraction and v757 insertion timing retained pending screenshot approval. No hand/ADS adjustments. Protected v324 unchanged. Needs Playwright screenshot inspection, not verified simply by CI pass.
