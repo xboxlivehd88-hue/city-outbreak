@@ -1,3 +1,11 @@
+# v755 — M17 reload magazine single gun-space path — 2026-10-20
+
+- User reports magazine moves far from pistol during reload. Inspected real Playwright v754 hip/ADS/reload/insertion captures in run 39459541688: reload frames looked skyward and did not establish correct mag alignment. Passing smoke test only checked actor visibility.
+- Root cause: fresh mag was parented to left hand, scaled 1/.72, then `gun.attach()` and interpolated to a gun-local home; incompatible coordinate transformations. v755 keeps the fresh magazine parented to `gun` from creation, keeps original scale, and interpolates fixed offsets near the gun-local magwell to home. Same reload timing and original hand/controller/ADS transforms. Requires rendered QA, not yet visually accepted.
+- Loader v755, checkpoint v324 unchanged.
+
+---
+
 # v754 — Fix missing M17 reload magazine — 2026-10-20
 
 - User reports no magazine visible during reload of v753. Found source bug: M17 reload carrier was constructed **only if** the imported SIG contained a node named exactly `919 p320 17rnd mag_3`. If the node is absent or renamed, `playerReloadPart=null` disables all M17 detachable-magazine FX.
