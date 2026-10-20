@@ -5322,26 +5322,28 @@ function rebuildGun(){
        // for the moving magazine so the reload always reads clearly.
        const m17ReloadMag=new THREE.Group();m17ReloadMag.name="M17OriginalGLBMagazineCarrier";
        if(originalMag){
-         // The imported GLB ships the magazine in a presentation pose.
-         // Normalize only this detached magazine, preserving its mesh/materials.
+         // Preserve source child geometry, but discard the loose prop's
+         // presentation placement. Normalize in magazine-carrier local space.
          const visual=originalMag;
+         visual.position.set(0,0,0);
+         visual.quaternion.identity();
+         visual.scale.set(1,1,1);
          m17ReloadMag.add(visual);
-         // Never discard the GLB node's original transforms: its child meshes
-         // inherit the source magazine orientation and layout.
-         visual.updateMatrixWorld(true);
-         const box=new THREE.Box3().setFromObject(visual,true);
-         const sz=box.getSize(new THREE.Vector3());
-         // Longest magazine dimension is its insertion axis. Align that axis
-         // with the M17's vertical grip; never change the pistol GLB itself.
-         if(sz.x>=sz.y&&sz.x>=sz.z)visual.rotation.z=Math.PI/2;
-         else if(sz.z>=sz.x&&sz.z>=sz.y)visual.rotation.x=Math.PI/2;
-         visual.updateMatrixWorld(true);
-         const alignedBox=new THREE.Box3().setFromObject(visual,true);
-         const alignedSize=alignedBox.getSize(new THREE.Vector3());
-         visual.scale.multiplyScalar(.48/Math.max(.00001,alignedSize.y));
-         visual.updateMatrixWorld(true);
-         const center=new THREE.Box3().setFromObject(visual,true).getCenter(new THREE.Vector3());
+         m17ReloadMag.updateMatrixWorld(true);
+         let bounds=new THREE.Box3().setFromObject(visual,true);
+         let dims=bounds.getSize(new THREE.Vector3());
+         if(dims.x>=dims.y&&dims.x>=dims.z)visual.rotation.z=Math.PI/2;
+         else if(dims.z>=dims.x&&dims.z>=dims.y)visual.rotation.x=Math.PI/2;
+         m17ReloadMag.updateMatrixWorld(true);
+         bounds=new THREE.Box3().setFromObject(visual,true);
+         dims=bounds.getSize(new THREE.Vector3());
+         const scale=.48/Math.max(.001,dims.y);
+         visual.scale.setScalar(scale);
+         m17ReloadMag.updateMatrixWorld(true);
+         bounds=new THREE.Box3().setFromObject(visual,true);
+         const center=bounds.getCenter(new THREE.Vector3());
          visual.position.sub(center);
+         document.documentElement.dataset.m17MagazineGeometrySize=dims.toArray().map(v=>v.toFixed(3)).join(",");
        }else{
          // Never silently substitute fabricated magazine geometry.
          document.documentElement.dataset.m17MagazineSourceError="GLB magazine node unavailable";
