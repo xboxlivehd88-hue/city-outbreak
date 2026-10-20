@@ -1,3 +1,9 @@
+# v758 — M17 old magazine visible, spare rises from player — 2026-10-20
+
+- User says v757 insertion very close but fresh mag materializes in air and empty mag is invisible. Root cause: M17 reload-only carrier meshes were set invisible whenever idle, so there was no visible loaded magazine to extract. v758 shows carrier when loaded, lowers old magazine 0.46 along grip before dropping at p=.29, and starts fresh magazine lower, in the player-side belt area, at p=.36 before preserving v757 coaxial insertion from p=.52 to .85. Seated mag appears after insertion. Other weapons, hands, ADS, and reload duration unchanged. Requires visual approval; automated CI is not visual proof. Protected v324 unchanged.
+
+---
+
 # v757 — M17 full magazine insertion stroke (visual verification pending) — 2026-10-20
 
 - User continues to report v756 magazine broken. Targeted change in `updateReloadMagazineFX`: replacement magazine first approaches a point directly 0.42 units under `reloadHome` by p=.52; then inserts straight along the mag axis and reaches home at p=.85. Previously reached home at p=.74 after shallow 0.105 unit stroke and hovered there. All M17 animation duration/weapon/ADS/hands and other weapons unchanged. Progress telemetry now published from start of reload to prevent the first 20% Playwright sample timing out before the magazine spawns.
