@@ -1,3 +1,10 @@
+# v766 — eliminate Playwright skyward camera regression — 2026-10-20
+
+- Playwright v764 run 39490385837 PASSED geometry/stage checks and logged screenshot JPEGs, but actual 20/55/75% reload frames looked straight UP at sky. Cause: pointer-locked Playwright right-click for ADS and synthetic left-click prior to reload changed camera aim. Thus no useful visual validation, despite green test.
+- v766 adds webdriver-only ADS wrapper invoking real `setAim()`, removes ALL synthetic mouse interactions before reload, and keeps simulated trigger only AFTER reload photo series. Test logs ADS as well as hip/20/55/75 screenshots; screenshots must be visually inspected. No ordinary gameplay camera/ADS behavior touched; original magwell GLB alignment from v763 and normalized node lookup v765 retained. Protected checkpoint v324 unchanged.
+
+---
+
 # v765 — robust loaded/seated GLB magazine node lookup — 2026-10-20
 
 - CI run v764 timed out at first staged reload frame despite game start. Cause: `GLTFLoader` normalizes exported object names (spaces may become underscores), but v763 looked up literal `919 p320 ...` names. This makes `playerReloadPart` missing and `updateReloadMagazineFX` silently exit, while fake loaded-mag objects stay gone. Fixed by matching compacted alphanumeric source names, using seated magazine's parent, and failing CI quickly if actor missing.
