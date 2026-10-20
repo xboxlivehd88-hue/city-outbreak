@@ -5353,7 +5353,8 @@ function rebuildGun(){
        document.documentElement.dataset.m17IdleMagazine="seated-visible";
        document.documentElement.dataset.m17SourceMagNodes=String(m17LooseProps.length);
        document.documentElement.dataset.m17MagazineCarrier="ready";
-       document.documentElement.dataset.m17MagazineMeshCount=String(originalMag?1:0);\n       document.documentElement.dataset.m17MagazineSource=originalMag?"original-glb":"missing";
+       document.documentElement.dataset.m17MagazineMeshCount=String(originalMag?1:0);
+       document.documentElement.dataset.m17MagazineSource=originalMag?"original-glb":"missing";
      }
    }
  }else if(weapon==='dmr'){
