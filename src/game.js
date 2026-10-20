@@ -4886,29 +4886,32 @@ function updateReloadMagazineFX(rp){
      if(rp.p>=.24)tossOldReloadMagazine();
    }
    // Start retrieving the fresh magazine while the old one is still visibly falling.
-   if(rp.p>=.30&&!reloadFreshMag&&!reloadMagInserted)spawnFreshReloadMagazine();
-   if(reloadFreshMag&&!reloadFreshAttached){
-     // Hold the replacement by its bottom/base plate so the long body of the
-     // magazine projects clearly above the support hand instead of being buried in it.
-     // Offset above the hand so the fingers appear to hold the base plate.
-     // With the M17 support-hand group scaled to 72%, compensate the magazine
-     // locally and offset it toward the thumb side so the hand holds the base instead of covering it.
-     reloadFreshMag.scale.setScalar(1/.72);
-     reloadFreshMag.position.set(.15,.34,-.02);
+   // v755: Do not mix the left hand's local coordinates and the gun's.
+   // Fresh M17 magazine is born under gun and follows one gun-local path.
+   if(rp.p>=.30&&!reloadFreshMag&&!reloadMagInserted){
+     const fresh=playerReloadPart.clone(true);
+     fresh.name="M17FreshGunSpaceMagazine";
+     fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+     gun.add(fresh);
+     fresh.scale.copy(playerReloadPart.scale);
+     fresh.quaternion.copy(targetQ);
+     reloadFreshMag=fresh;
+   }
+   if(reloadFreshMag&&!reloadMagInserted){
+     const from=home.clone().add(new THREE.Vector3(-.07,-.55,.10));
+     const near=home.clone().add(new THREE.Vector3(-.025,-.25,.025));
+     if(rp.p<.64){
+       reloadFreshMag.position.lerpVectors(from,near,smoothReload01((rp.p-.30)/.34));
+     }else{
+       reloadFreshMag.position.lerpVectors(near,home,smoothReload01((rp.p-.64)/.25));
+     }
      reloadFreshMag.quaternion.copy(targetQ);
-   }
-   if(rp.p>=.64&&reloadFreshMag&&!reloadFreshAttached){
-     playerHandRig.left.updateMatrixWorld(true);gun.attach(reloadFreshMag);
-     reloadFreshInsertStart=reloadFreshMag.position.clone();reloadFreshInsertQuat=reloadFreshMag.quaternion.clone();reloadFreshAttached=true;
-   }
-   if(reloadFreshMag&&reloadFreshAttached&&reloadFreshInsertStart){
-     const t=smoothReload01((rp.p-.64)/.23);
-     reloadFreshMag.position.lerpVectors(reloadFreshInsertStart,home,t);
-     reloadFreshMag.quaternion.slerpQuaternions(reloadFreshInsertQuat,targetQ,t);
      if(rp.p>=.89){
-       if(reloadFreshMag.parent)reloadFreshMag.parent.remove(reloadFreshMag);
+       reloadFreshMag.parent?.remove(reloadFreshMag);
        reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
-       playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});reloadMagInserted=true;
+       playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
+       playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});
+       reloadMagInserted=true;
      }
    }
    document.documentElement.dataset.m17MagazineOldDropped=String(reloadOldMagDropped);
