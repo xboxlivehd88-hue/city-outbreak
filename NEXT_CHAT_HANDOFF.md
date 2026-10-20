@@ -1,3 +1,10 @@
+# v765 — robust loaded/seated GLB magazine node lookup — 2026-10-20
+
+- CI run v764 timed out at first staged reload frame despite game start. Cause: `GLTFLoader` normalizes exported object names (spaces may become underscores), but v763 looked up literal `919 p320 ...` names. This makes `playerReloadPart` missing and `updateReloadMagazineFX` silently exit, while fake loaded-mag objects stay gone. Fixed by matching compacted alphanumeric source names, using seated magazine's parent, and failing CI quickly if actor missing.
+- Playwright now dumps actor/source/staging status immediately and on timeout; source assertion accepts space/underscore. v763 accurate model-seat transform remains; only runtime lookup/CI hardened. Still requires screenshot inspection and user approval; v324 protected.
+
+---
+
 # v764 — stabilize original-M17 reload QA under software rendering — 2026-10-20
 
 - Root cause of CI reload test hangs: 70-ms synthetic shot may never be processed under slow software WebGL, leaving magazine full; pressing R then silently no-ops. v764 adds `navigator.webdriver`-only `__cityM17VisualTestStart()` which leaves 1 bullet missing, invokes the actual game reload, and returns success. Test uses that hook and still stages 20,40,55,65,75,85% of the real reload with QA-only phase override. Real player ammo/reload mechanics unchanged. Screenshots emitted to job log for actual viewing. v763 GLB magwell pose correction retained. Visual verification pending; don't claim approved. v324 unchanged.
