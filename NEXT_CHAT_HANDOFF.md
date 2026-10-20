@@ -1,3 +1,9 @@
+# v761 — actual GLB loaded magazine selection — 2026-10-20
+
+- Directly decoded the real `assets/low-poly_sig_sauer_m17.glb` hierarchy: node 3 = `919 p320 17rnd empty mag_0`; node 11 = `919 p320 17rnd mag_3`. v759/v760 `find(/mag/)` chose EMPTY node 3 as its first hit, explaining ghost/incorrect magazine. v761 selects specifically loaded node `17rnd mag_3`, keeps source node local transform rather than zeroing it, and records exact source node name in DOM diagnostics. Procedural magazine still removed, v757/v758 timing retained; visual proof pending. Protected v324 unchanged.
+
+---
+
 # v760 — urgent v759 startup syntax repair — 2026-10-20
 
 - User correctly reported v759 could not start. Actual cause was literal backslash-n characters between two dataset assignments in `src/game.js` M17 magazine build, producing JavaScript syntax error, preventing game module execution. Replaced with real line break. Bumped loader to v760 and build marker. Do not claim v759 GLB magazine alignment visually approved; still needs screenshot verification. Protected v324 unchanged.
