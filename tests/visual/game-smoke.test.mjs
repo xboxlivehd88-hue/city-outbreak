@@ -69,6 +69,18 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
       if (!dataUrl?.startsWith('data:image/png;base64,') || dataUrl.length < 1000)
         throw new Error('Canvas produced no PNG pixel data');
       await writeFile(`${out}/${name}.png`, Buffer.from(dataUrl.split(',')[1], 'base64'));
+      // Human visual review without relying on the GitHub artifact viewer:
+      // publish compact actual WebGL frame thumbnails in the job log. Retain
+      // the original full-resolution PNG files in the artifact as well.
+      if (['02-after-start-hip','04-reload-20pct','04-reload-55pct','04-reload-75pct'].includes(name)) {
+        const jpg = await page.locator('#cv').evaluate(canvas => {
+          const t = document.createElement('canvas');
+          t.width = 640; t.height = 360;
+          t.getContext('2d').drawImage(canvas, 0, 0, t.width, t.height);
+          return t.toDataURL('image/jpeg', .62).split(',')[1];
+        });
+        console.log('M17_QA_JPEG_' + name + ':' + jpg);
+      }
     } catch (error) {
       errors.push(`Canvas framebuffer ${name}: ${String(error)}`);
       await writeFile(`${out}/${name}-capture-error.txt`, String(error));
