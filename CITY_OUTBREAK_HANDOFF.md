@@ -1,3 +1,9 @@
+# v764 — stabilize original-M17 reload QA under software rendering — 2026-10-20
+
+- Root cause of CI reload test hangs: 70-ms synthetic shot may never be processed under slow software WebGL, leaving magazine full; pressing R then silently no-ops. v764 adds `navigator.webdriver`-only `__cityM17VisualTestStart()` which leaves 1 bullet missing, invokes the actual game reload, and returns success. Test uses that hook and still stages 20,40,55,65,75,85% of the real reload with QA-only phase override. Real player ammo/reload mechanics unchanged. Screenshots emitted to job log for actual viewing. v763 GLB magwell pose correction retained. Visual verification pending; don't claim approved. v324 unchanged.
+
+---
+
 # v763 — measured GLB magazine seat and controlled visual QA — 2026-10-20
 
 - User authorized whatever it takes to fix recurring M17 magazine regressions. Inspected ORIGINAL GLB node hierarchy: seated `919 p320 17rnd empty mag_0` has source-model magwell pose; separate loaded `919 p320 17rnd mag_3` is stored sideways in display layout, not seated. This invalidated all prior guessed `x,-.70,-.73` placements and scale guesses.
