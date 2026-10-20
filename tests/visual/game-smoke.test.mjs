@@ -15,35 +15,42 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
   // This affects only the temporary CI browser, NEVER saved player settings.
   await page.addInitScript(() => {
     localStorage.setItem('city-outbreak-graphics-v1', 'veryLow');
-    // Freeze only the CI browser's animation loop while screenshots run.
-    // This avoids fighting a continuously-rendering software WebGL context.
+    // Pace the software renderer instead of freezing it. A fully frozen
+    // compositor can itself prevent Chrome screenshot frames being produced.
     const nativeRaf = window.requestAnimationFrame.bind(window);
-    window.__cityCiFreezeFrames = false;
-    window.requestAnimationFrame = function (callback) {
-      const tick = time => {
-        if (window.__cityCiFreezeFrames) nativeRaf(tick);
-        else callback(time);
-      };
-      return nativeRaf(tick);
-    };
+    window.requestAnimationFrame = callback =>
+      window.setTimeout(() => nativeRaf(callback), 160);
   });
   page.on('console', message => { if (message.type() === 'error') errors.push('console: '+message.text()); });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  const capture = async (name) => {
-    // Screen-space capture: locator.screenshot waits for animated canvas
-    // geometry to become stable and timed out in v752 CI. page.screenshot
-    // bypasses the element-stability/scroll-into-view check and includes HUD.
-    await page.evaluate(() => { window.__cityCiFreezeFrames = true; });
-    await page.waitForTimeout(300);
-    try {
-      await page.screenshot({ path: `${out}/${name}.png`, timeout: 15000, animations: 'disabled', fullPage: false });
-    } catch (error) {
-      errors.push(`Viewport capture ${name}: ${error.message}`);
-      await writeFile(`${out}/${name}-capture-error.txt`, String(error));
-    } finally {
-      await page.evaluate(() => { window.__cityCiFreezeFrames = false; });
+  const capture = async name => {
+    // Use Chromium's direct compositor capture; avoids Playwright's layout
+    // stability/font waits. Retry while software WebGL produces a fresh frame.
+    const failures = [];
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const session = await page.context().newCDPSession(page);
+      try {
+        const data = await Promise.race([
+          session.send('Page.captureScreenshot', {
+            format: 'png', fromSurface: true, captureBeyondViewport: false
+          }),
+          new Promise((_, reject) => setTimeout(() =>
+            reject(new Error('CDP screenshot timeout')), 12000))
+        ]);
+        await writeFile(`${out}/${name}.png`, Buffer.from(data.data, 'base64'));
+        return;
+      } catch (error) {
+        failures.push(`Attempt ${attempt}: ${String(error)}`);
+      } finally {
+        // Detach asynchronously; never let cleanup block the next attempt.
+        session.detach().catch(() => {});
+      }
+      await page.waitForTimeout(400);
     }
+    const error = `Screenshot ${name} failed: ${failures.join('; ')}`;
+    errors.push(error);
+    await writeFile(`${out}/${name}-capture-error.txt`, error);
   };
   try {
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -82,7 +89,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     await page.waitForTimeout(250);
     await capture('05-firing');
     await page.mouse.up({ button: 'left' });
-    await writeFile(`${out}/diagnostics.json`, JSON.stringify({ build, errors, url: page.url(), m17Grip: await page.locator('html').getAttribute('data-fps-arms-m17-grip-correction'), sourceReady: await page.locator('html').getAttribute('data-fps-arms-m17-source-rig') }, null, 2));
+    await writeFile(`${out}/diagnostics.json`, JSON.stringify({ build, errors, url: page.url(), m17Grip: await page.locator('html').getAttribute('data-fps-arms-m17-grip-correction'), sourceReady: await page.locator('html').getAttribute('data-fps-arms-m17-source-rig'), sourceError: await page.locator('html').getAttribute('data-fps-arms-m17-source-error') }, null, 2));
     assert.equal(errors.length, 0, `Unhandled JavaScript errors: ${errors.join('; ')}`);
   } finally {
     await page.close();
