@@ -137,6 +137,8 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }
     await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
     assert.equal(await page.locator('html').getAttribute('data-m17-magazine-carrier'), 'ready');
+    assert.match(await page.locator('html').getAttribute('data-m17-magazine-source') || '', /17rnd mag_3/i,
+      'M17 must load the actual complete GLB magazine, not empty mag or placeholder');
     assert.ok(reloadTelemetry.some(t => t.freshVisible === 'true'), 'Must render a visible replacement magazine');
     assert.ok(reloadTelemetry.some(t => Number(t.distance) <= 0.22 && t.freshVisible === 'true'),
       'Magazine must approach the insertion point while still visible');
