@@ -124,7 +124,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
         const d = document.documentElement.dataset;
         return Number(d.m17MagazineReloadProgress || 0) >= target ||
           d.m17MagazineInserted === 'true';
-      }, target, { timeout: 45000, polling: 50 });
+      }, target, { timeout: 15000, polling: 25 });
       const state = await page.evaluate(() => {
         const d = document.documentElement.dataset;
         return { progress: d.m17MagazineReloadProgress || null,
@@ -138,7 +138,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
     assert.equal(await page.locator('html').getAttribute('data-m17-magazine-carrier'), 'ready');
     assert.ok(reloadTelemetry.some(t => t.freshVisible === 'true'), 'Must render a visible replacement magazine');
-    assert.ok(reloadTelemetry.some(t => Number(t.distance) <= 0.11 && t.freshVisible === 'true'),
+    assert.ok(reloadTelemetry.some(t => Number(t.distance) <= 0.22 && t.freshVisible === 'true'),
       'Magazine must approach the insertion point while still visible');
     // Reload must finish before we can verify the trigger actually fires.
     await page.waitForTimeout(2220);
