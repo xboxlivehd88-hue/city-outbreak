@@ -3605,6 +3605,10 @@ function gameTimeNow(){
 function gameTimeout(fn,ms){
  const deadline=gameTimeNow()+ms;
  const check=()=>{
+   if(navigator.webdriver&&reloading&&reloadWeapon==="pistol"&&
+      document.documentElement.dataset.m17VisualTestHold==="true"){
+      setTimeout(check,80);return;
+   }
    const remaining=deadline-gameTimeNow();
    const timeFrozen=paused||shopLowPower;
    if(timeFrozen||remaining>1){setTimeout(check,timeFrozen?180:Math.min(180,Math.max(4,remaining)));return}
@@ -4339,7 +4343,14 @@ const DETACHABLE_RELOAD_WEAPONS=new Set(["rifle","smg","pistol","dmr","m240"]);
 function detachableMagazineReload(w=reloadWeapon||weapon){return DETACHABLE_RELOAD_WEAPONS.has(w)&&!!playerReloadPart}
 function reloadPoseProgress(){
  if(!reloading||reloadDurationMs<=0)return{p:0,arch:0,hand:0,pull:0,pouch:0,grab:0};
- const p=Math.max(0,Math.min(1,(gameTimeNow()-reloadStartedAt)/reloadDurationMs));
+ // In headless visual QA, stage the ORIGINAL animation deterministically.
+ // The game clock and duration are unchanged for real players.
+ const qaStage=(navigator.webdriver&&reloadWeapon==="pistol"&&
+   document.documentElement.dataset.m17VisualTestHold==="true")
+   ?Number(document.documentElement.dataset.m17VisualTestPhase):NaN;
+ const p=Number.isFinite(qaStage)
+   ?THREE.MathUtils.clamp(qaStage,0,.98)
+   :Math.max(0,Math.min(1,(gameTimeNow()-reloadStartedAt)/reloadDurationMs));
  const arch=Math.sin(Math.PI*p);
  if(!detachableMagazineReload()){
    const hand=p<.25?smoothReload01(p/.25):p<.76?1:smoothReload01((1-p)/.24);
@@ -5288,78 +5299,73 @@ function rebuildGun(){
      // Hard guarantee: no magazine mesh from the source GLB is allowed to remain on
      // the idle first-person pistol. Collect first, then remove, so nested nodes cannot
      // survive because a parent was detached earlier in the loop.
+     // Imported source has a seated empty magazine and a separately laid-out
+     // loaded magazine. Use the seated prop's LOCAL pose as the actual magwell
+     // calibration, and the loaded prop's genuine 4-mesh geometry/materials.
+     const glbMagParent=m17Root.getObjectByName("GLTF_SceneRootNode");
+     const seatedMagSource=m17Root.getObjectByName("919 p320 17rnd empty mag_0");
+     const loadedMagSource=m17Root.getObjectByName("919 p320 17rnd mag_3");
+     const originalMag=loadedMagSource?.clone(true)||null;
      const m17LooseProps=[];
      m17Root.traverse(o=>{
        const n=(o.name||"").toLowerCase();
        if(n.includes("mag")||n==="9x19_1"||n==="919_2")m17LooseProps.push(o);
      });
-     // Save the ORIGINAL GLB magazine mesh before removing its loose
-     // presentation layout. Nested magazine children must not be counted twice.
-     // The GLB has TWO distinct magazine props: "empty mag_0" and
-     // "mag_3". The old first-match lookup always chose EMPTY mag_0.
-     const sourceMag=m17LooseProps.find(o=>/17rnd mag_3/i.test(o.name))
-       ||m17LooseProps.find(o=>/mag/i.test(o.name)&&!/empty/i.test(o.name));
-     const originalMag=sourceMag?.clone(true)||null;
      for(const prop of m17LooseProps)if(prop.parent)prop.parent.remove(prop);
-     // Preserve the complete assembled M17 hierarchy; only the four loose display props above are removed.
+     // Normalize the assembled pistol ONLY; loose Sketchfab presentation
+     // objects must not affect its first-person scale or ADS coordinates.
      m17Root.rotation.set(0,Math.PI/2,0);
-     // Normalize only the assembled pistol, after applying its correct axis rotation.
-     const bounds=new THREE.Box3().setFromObject(m17Root),size=new THREE.Vector3();bounds.getSize(size);
-     const longest=Math.max(size.x,size.y,size.z)||1;m17Root.scale.setScalar(.53/longest);
-     const scaledBounds=new THREE.Box3().setFromObject(m17Root),center=new THREE.Vector3();scaledBounds.getCenter(center);
+     const bounds=new THREE.Box3().setFromObject(m17Root),size=new THREE.Vector3();
+     bounds.getSize(size);
+     const longest=Math.max(size.x,size.y,size.z)||1;
+     m17Root.scale.setScalar(.53/longest);
+     const scaledBounds=new THREE.Box3().setFromObject(m17Root),center=new THREE.Vector3();
+     scaledBounds.getCenter(center);
      m17Root.position.set(x-center.x,-.30-center.y,-1.02-center.z);
-     // v741: store original ADS-aligned root pose; lower only the hip pistol.
      m17Root.userData.adsAlignedHome=m17Root.position.clone();
-     m17Root.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+     m17Root.traverse(o=>{o.userData.externalWeaponAsset=true;
+       if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
      gun.add(m17Root);
-     // The visible pistol stays clean. A hidden clone of the real GLB magazine is
-     // the reload actor: reveal at reload start, pull/drop it, then clone it from the
-     // pouch and insert the replacement. It is never part of the idle pistol hierarchy.
-     { // v754 guaranteed reload magazine carrier — independent of source node names
-       // Use a dedicated first-person reload magazine. The source GLB magazine node
-       // has presentation transforms that have repeatedly made it unreliable as an
-       // animation actor. Keep the real pistol model, but use simple visible geometry
-       // for the moving magazine so the reload always reads clearly.
-       const m17ReloadMag=new THREE.Group();m17ReloadMag.name="M17OriginalGLBMagazineCarrier";
-       if(originalMag){
-         // Preserve source child geometry, but discard the loose prop's
-         // presentation placement. Normalize in magazine-carrier local space.
-         const visual=originalMag;
-         visual.position.set(0,0,0);
-         visual.quaternion.identity();
-         visual.scale.set(1,1,1);
-         m17ReloadMag.add(visual);
-         m17ReloadMag.updateMatrixWorld(true);
-         let bounds=new THREE.Box3().setFromObject(visual,true);
-         let dims=bounds.getSize(new THREE.Vector3());
-         if(dims.x>=dims.y&&dims.x>=dims.z)visual.rotation.z=Math.PI/2;
-         else if(dims.z>=dims.x&&dims.z>=dims.y)visual.rotation.x=Math.PI/2;
-         m17ReloadMag.updateMatrixWorld(true);
-         bounds=new THREE.Box3().setFromObject(visual,true);
-         dims=bounds.getSize(new THREE.Vector3());
-         const scale=.48/Math.max(.001,dims.y);
-         visual.scale.setScalar(scale);
-         m17ReloadMag.updateMatrixWorld(true);
-         bounds=new THREE.Box3().setFromObject(visual,true);
-         const center=bounds.getCenter(new THREE.Vector3());
-         visual.position.sub(center);
-         document.documentElement.dataset.m17MagazineGeometrySize=dims.toArray().map(v=>v.toFixed(3)).join(",");
-       }else{
-         // Never silently substitute fabricated magazine geometry.
-         document.documentElement.dataset.m17MagazineSourceError="GLB magazine node unavailable";
-       }
-       m17ReloadMag.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
-       m17ReloadMag.position.set(x,-.70,-.73);m17ReloadMag.rotation.set(-.10,0,0);
-       m17ReloadMag.userData.externalWeaponAsset=true;m17ReloadMag.userData.reloadOnly=true;
-       m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
-       gun.add(m17ReloadMag);
-       m17ReloadMag.traverse(o=>{if(o.isMesh)o.visible=true});
-       playerReloadPart=m17ReloadMag;
-       document.documentElement.dataset.m17IdleMagazine="seated-visible";
-       document.documentElement.dataset.m17SourceMagNodes=String(m17LooseProps.length);
+
+     if(originalMag&&seatedMagSource&&glbMagParent){
+       // These are sibling nodes in the actual source GLB. The loaded
+       // prop was exported on its side for display; replace ONLY its parent
+       // transform with the seated empty-mag pose. Keep EVERY child mesh.
+       originalMag.position.copy(seatedMagSource.position);
+       originalMag.quaternion.copy(seatedMagSource.quaternion);
+       originalMag.scale.copy(seatedMagSource.scale);
+       glbMagParent.add(originalMag);
+       gun.updateMatrixWorld(true);
+       // Convert measured model-local magwell into gun space, preserving
+       // scale/rotation/translation through the assembled model hierarchy.
+       gun.attach(originalMag);
+       originalMag.name="M17SourceLoadedMagazine";
+       originalMag.userData.externalWeaponAsset=true;
+       originalMag.userData.reloadOnly=true;
+       originalMag.userData.reloadHome=originalMag.position.clone();
+       originalMag.userData.reloadHomeQuat=originalMag.quaternion.clone();
+       originalMag.traverse(o=>{o.visible=true;o.userData.externalWeaponAsset=true;
+         if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+       playerReloadPart=originalMag;
+       // Diagnostics must be grounded in ORIGINAL imported pistol bounds.
+       gun.updateMatrixWorld(true);
+       const magBounds=new THREE.Box3().setFromObject(originalMag,true);
+       const pistolBounds=new THREE.Box3().setFromObject(m17Root,true);
+       const magDim=magBounds.getSize(new THREE.Vector3());
+       const pistolDim=pistolBounds.getSize(new THREE.Vector3());
+       document.documentElement.dataset.m17MagazineGeometrySize=magDim.toArray().map(n=>n.toFixed(4)).join(",");
+       document.documentElement.dataset.m17MagazineBoundsRatio=(magDim.length()/Math.max(.0001,pistolDim.length())).toFixed(4);
+       document.documentElement.dataset.m17MagazineSeat=originalMag.position.toArray().map(n=>n.toFixed(4)).join(",");
+       document.documentElement.dataset.m17MagazineSource=loadedMagSource.name;
        document.documentElement.dataset.m17MagazineCarrier="ready";
-       document.documentElement.dataset.m17MagazineMeshCount=String(originalMag?1:0);
-       document.documentElement.dataset.m17MagazineSource=sourceMag?.name||"missing";
+       document.documentElement.dataset.m17MagazineMeshCount=String(originalMag.children.filter(o=>o.isMesh).length);
+       document.documentElement.dataset.m17IdleMagazine="seated-visible";
+       delete document.documentElement.dataset.m17MagazineSourceError;
+     }else{
+       // No fabricated substitute. Surface an explicit asset failure.
+       document.documentElement.dataset.m17MagazineCarrier="missing";
+       document.documentElement.dataset.m17MagazineSourceError="M17 original seated/loaded magazine hierarchy unavailable";
+       playerReloadPart=null;
      }
    }
  }else if(weapon==='dmr'){
