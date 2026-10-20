@@ -1,3 +1,11 @@
+# v766 VERIFIED QA — 2026-10-20
+
+- Original-GLOBAL GLB-loaded M17 magazine now anchored to measured source seated-magazine pose (v763; sanitized GLB names v765). Real loaded 17rnd mag geometry retained. User-reported giant magazine behind/below gun no longer appears in automated view.
+- Fixed Playwright skyward camera bug by replacing pointer-locked ADS synthetic mouse event with webdriver-only direct `setAim` hook. Reload test deterministically freezes 20,40,55,65,75,85% and verifies loaded model name, natural bounds ratio, old-mag release and fresh-mag progress. **PASS** Playwright run `39491004881`; closeup thumbnail-crop version **PASS** `39492079788` (crop corrected to actual WebGL canvas dimensions). Human-reviewed close-ups at 20%,55%,75%; normal horizon throughout. Existing Pages for v766 deployed successfully run `39491029327`; latest test-only Pages also to check. Remaining: user must visually approve on their hardware; passing tests cannot prove hand-to-mag contact is perfect.
+- Gameplay index loader `./src/game.js?v=766`, M17-only spawn preserved, hands/ADS unchanged for real players, other weapons untouched, recovery v324 unchanged.
+
+---
+
 # v766 — eliminate Playwright skyward camera regression — 2026-10-20
 
 - Playwright v764 run 39490385837 PASSED geometry/stage checks and logged screenshot JPEGs, but actual 20/55/75% reload frames looked straight UP at sky. Cause: pointer-locked Playwright right-click for ADS and synthetic left-click prior to reload changed camera aim. Thus no useful visual validation, despite green test.
