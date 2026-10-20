@@ -1,11 +1,39 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 
 const base = process.env.CITY_TEST_URL || 'http://127.0.0.1:8765';
 const out = 'test-results/visual';
 await mkdir(out, { recursive: true });
+// Inspect the original GLB's actual node/skin/animation names. This audit is
+// independent of the browser so a failed source retarget cannot hide its cause.
+try {
+  const glb = await readFile('assets/animated_pistol.glb');
+  assert.equal(glb.toString('ascii', 0, 4), 'glTF', 'Expected original GLB');
+  const jsonLength = glb.readUInt32LE(12);
+  const json = JSON.parse(glb.subarray(20, 20 + jsonLength).toString('utf8'));
+  const jointIndices = new Set((json.skins || []).flatMap(s => s.joints || []));
+  const nodes = (json.nodes || []).map((n, i) => ({
+    name: n.name || '', isSkinJoint: jointIndices.has(i)
+  }));
+  const fingerNamePattern = /^[LR]_(thumb|point|middle|ring|pink)_/;
+  const audit = {
+    modelBytes: glb.length, nodeCount: nodes.length, skinCount: json.skins?.length || 0,
+    jointCount: jointIndices.size, animationNames: (json.animations || []).map(a => a.name || ''),
+    matchedFingerNodes: nodes.filter(n => fingerNamePattern.test(n.name)),
+    likelyHandNodes: nodes.filter(n => /thumb|point|middle|ring|pink|finger|hand|wrist/i.test(n.name)),
+    firstSkinJoints: nodes.filter(n => n.isSkinJoint).slice(0, 75)
+  };
+  await writeFile(`${out}/m17-source-asset-audit.json`, JSON.stringify(audit, null, 2));
+  console.log('M17 source audit: ' + JSON.stringify({
+    jointCount: audit.jointCount, matchedFingerCount: audit.matchedFingerNodes.length,
+    animationNames: audit.animationNames
+  }));
+} catch (error) {
+  await writeFile(`${out}/m17-source-asset-audit-error.txt`, String(error));
+  throw error;
+}
 const browser = await chromium.launch({ headless: true, args: ['--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader', '--disable-dev-shm-usage', '--ignore-gpu-blocklist'] });
 
 test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 180000 }, async () => {
@@ -69,18 +97,23 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     assert.equal(await page.locator('html').getAttribute('data-fps-arms-weapon-test-loadout'), 'm17-only');
     await page.waitForTimeout(1200);
     await capture('02-after-start-hip');
-    await page.mouse.move(800, 450);
+    // Pointer lock is already active after Start. Moving the mouse to an
+    // absolute screen coordinate rotates the camera unpredictably in CI.
     await page.mouse.down({ button: 'right' });
     await page.waitForTimeout(1500);
     await capture('03-ads');
     await page.mouse.up({ button: 'right' });
     // Consume some ammunition before testing reload; otherwise R can be a no-op.
-    await page.mouse.click(800, 450);
+    await page.mouse.down({ button: 'left' });
+    await page.waitForTimeout(70);
+    await page.mouse.up({ button: 'left' });
     await page.keyboard.press('r');
     await page.waitForTimeout(600);
     await capture('04-reload');
+    // Reload must finish before we can verify the trigger actually fires.
+    await page.waitForTimeout(2900);
     await page.mouse.down({ button: 'left' });
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(80);
     await capture('05-firing');
     await page.mouse.up({ button: 'left' });
     await writeFile(`${out}/diagnostics.json`, JSON.stringify({ build, errors, url: page.url(), m17Grip: await page.locator('html').getAttribute('data-fps-arms-m17-grip-correction'), sourceReady: await page.locator('html').getAttribute('data-fps-arms-m17-source-rig'), sourceError: await page.locator('html').getAttribute('data-fps-arms-m17-source-error') }, null, 2));
