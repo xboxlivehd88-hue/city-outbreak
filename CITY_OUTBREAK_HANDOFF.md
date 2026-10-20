@@ -1,3 +1,14 @@
+# v753 — M17 source bone-name mismatch fixed (requires screenshot approval) — 2026-10-20
+
+- Playwright visual CI is now PASSING with direct canvas.toDataURL() capture and CI-only preservedDrawingBuffer (run 39449715490 and following). Source-asset GLB audit run 39450384701 found 51 original skin joints but ZERO names matching controller's `^[LR]_(thumb|point|middle|ring|pink)_` regex. Actual uploaded GLB uses `R_middle1_...`, `R_middle2_...`, etc., while target FPS arms use `R_middle_034`, `R_middle_2_035`. The runtime source controller had been silently unavailable since v740 with error "Source finger bones or animation not found".
+- v753 maps original RIGHT middle, ring, pinky, and thumb joint ordinals 1–4 to the real target 47-bone finger names (15 joints expected), transfers the original clip t=0 local quaternion deltas, and records max clip delta in `data-fps-arms-m17-source-delta-degrees`. Existing v752 small fallback curls apply only if original source is unavailable; they no longer stack with successful source-retargeted grip.
+- The right index remains exclusively controlled by original trigger helper. Original left support-hand curls still apply via right-only retarget mode; no source left-hand mapping. NO pistol/gun transforms, ADS sights, reload sequence/timing, wrists, or other weapons changed.
+- CI run following commit MUST show `sourceReady=true`, mapped bone count > 0, no source error, and capture all hip/ADS/reload/firing PNGs. This fixes an actual silent code failure; proper finger-to-grip geometry and ADS are STILL NOT VISUALLY APPROVED. Do not report grip solved until close-up QA.
+- M17-only spawn preserved. Loader v753. Protected recovery v324 remains untouched.
+- Play link for future approval only: https://xboxlivehd88-hue.github.io/city-outbreak/?v=753-original-right-grip
+
+---
+
 # v752 — M17 distorted-fingers recovery (needs visual QA) — 2026-10-19
 
 - User v751 hip/ADS screenshots show clearly distorted right fingers and sight picture obscuration. Replaced high-amplitude root Y splay and excessive curls on right middle/ring/pinky with modest X flex without changing any gun, camera, sights, wrists, left hand, trigger index, source animation, or reload timing. Removed exaggerated thumb splay in favor of small distal flex.
