@@ -134,16 +134,33 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     });
     const started = await page.evaluate(() => window.__cityM17VisualTestStart?.() ?? false);
     assert.equal(started, true, 'CI must start a real M17 reload before sampling');
+    await page.waitForTimeout(900);
+    console.log('M17_QA_START_STATE:' + JSON.stringify(await page.evaluate(() => {
+      const d = document.documentElement.dataset;
+      return { carrier: d.m17MagazineCarrier, source: d.m17MagazineSource,
+        error: d.m17MagazineSourceError, progress: d.m17MagazineReloadProgress,
+        phase: d.m17VisualTestPhase, seat: d.m17MagazineSeat };
+    })));
     const samples = [0.20, 0.40, 0.55, 0.65, 0.75, 0.85];
     const reloadTelemetry = [];
     for (const target of samples) {
       await page.evaluate(p => {
         document.documentElement.dataset.m17VisualTestPhase = p.toFixed(2);
       }, target);
-      await page.waitForFunction(target => {
-        const d = document.documentElement.dataset;
-        return Math.abs(Number(d.m17MagazineReloadProgress) - target) < .018;
-      }, target, { timeout: 20000, polling: 100 });
+      try {
+        await page.waitForFunction(target => {
+          const d = document.documentElement.dataset;
+          return Math.abs(Number(d.m17MagazineReloadProgress) - target) < .018;
+        }, target, { timeout: 18000, polling: 100 });
+      } catch (err) {
+        console.log('M17_QA_STAGE_TIMEOUT:' + JSON.stringify(await page.evaluate(() => ({
+          phase: document.documentElement.dataset.m17VisualTestPhase,
+          progress: document.documentElement.dataset.m17MagazineReloadProgress,
+          carrier: document.documentElement.dataset.m17MagazineCarrier,
+          error: document.documentElement.dataset.m17MagazineSourceError
+        }))));
+        throw err;
+      }
       // Allow software WebGL to complete the render, not just update DOM.
       await page.waitForTimeout(340);
       const state = await page.evaluate(() => {
@@ -164,7 +181,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }
     await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
     assert.equal(reloadTelemetry[0].carrier, 'ready', 'Original M17 GLB magazine must be seated');
-    assert.match(reloadTelemetry[0].source || '', /17rnd mag_3/i);
+    assert.match(reloadTelemetry[0].source || '', /17rnd[ _]mag_3/i);
     assert.ok(Number(reloadTelemetry[0].boundsRatio) > .10 &&
       Number(reloadTelemetry[0].boundsRatio) < .90,
       'Original magazine must be proportionate to imported pistol bounds');
