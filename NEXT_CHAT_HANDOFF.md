@@ -1,3 +1,10 @@
+# v756 — M17 earlier magazine insertion (awaiting visual QA) — 2026-10-20
+
+- Fresh magazine previously stayed too far from gun until late reload. The gun-local approach now reaches 0.105 below reloadHome by 57% of reload and reaches home by 74%, rather than continuing to 89%. Preserved total reload time, gun/ADS pose, wrists, trigger and other weapons.
+- Runtime dataset m17MagazineInsertDistance and m17MagazineReloadProgress added for testing. Requires screenshot inspection; CI success alone is not proof of accurate appearance. Protected v324 unchanged.
+
+---
+
 # v755 — M17 reload magazine single gun-space path — 2026-10-20
 
 - User reports magazine moves far from pistol during reload. Inspected real Playwright v754 hip/ADS/reload/insertion captures in run 39459541688: reload frames looked skyward and did not establish correct mag alignment. Passing smoke test only checked actor visibility.
