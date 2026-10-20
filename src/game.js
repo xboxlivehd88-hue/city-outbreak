@@ -4360,7 +4360,7 @@ function clearReloadMagazineFX(showReal=true){
  if(launcherChamberRound)launcherChamberRound.visible=false;
  reloadOldMagDropped=false;reloadMagInserted=false;
  if(showReal&&playerReloadPart){
-   if(playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});
+   if(playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=weapon==="pistol"});
    else if(playerReloadPart.userData.externalWeaponAsset)playerReloadPart.traverse(o=>{o.visible=true});
    else playerReloadPart.visible=true;
    if(playerReloadPart.userData.reloadHome)playerReloadPart.position.copy(playerReloadPart.userData.reloadHome);
@@ -4880,16 +4880,17 @@ function updateReloadMagazineFX(rp){
    if(!reloadOldMagDropped&&home){
      playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
      playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
-     // Hold briefly under the grip, then visibly travel downward before detaching.
-     const ejectT=smoothReload01(Math.max(0,Math.min(1,(rp.p-.06)/.16)));
-     playerReloadPart.position.y-=.34*ejectT;
-     if(rp.p>=.24)tossOldReloadMagazine();
+     // The loaded magazine stays visible while seated; draw it out of the
+     // grip for a readable extraction stroke, then release it to gravity.
+     const ejectT=smoothReload01(THREE.MathUtils.clamp((rp.p-.08)/.20,0,1));
+     playerReloadPart.position.y-=.46*ejectT;
+     if(rp.p>=.29)tossOldReloadMagazine();
    }
    // Start retrieving the fresh magazine while the old one is still visibly falling.
    // v755: Do not mix the left hand's local coordinates and the gun's.
    // Fresh M17 magazine is born under gun and follows one gun-local path.
    document.documentElement.dataset.m17MagazineReloadProgress=rp.p.toFixed(3);
-   if(rp.p>=.30&&!reloadFreshMag&&!reloadMagInserted){
+   if(rp.p>=.36&&!reloadFreshMag&&!reloadMagInserted){
      const fresh=playerReloadPart.clone(true);
      fresh.name="M17FreshGunSpaceMagazine";
      fresh.traverse(o=>{o.visible=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
@@ -4903,10 +4904,11 @@ function updateReloadMagazineFX(rp){
      // magazine coaxial with the grip during the entire upward stroke.
      // Its geometry is 0.48 tall: inserting by 0.105 units previously kept
      // most of it inside the grip too early, then left it hovering for 15%.
-     const pickup=home.clone().add(new THREE.Vector3(-.18,-.55,.13));
+     // Rise from below the player camera rather than materializing next to the weapon.
+     const pickup=home.clone().add(new THREE.Vector3(-.30,-1.05,.30));
      const below=home.clone().add(new THREE.Vector3(0,-.42,0));
      if(rp.p<.52){
-       reloadFreshMag.position.lerpVectors(pickup,below,smoothReload01(THREE.MathUtils.clamp((rp.p-.30)/.22,0,1)));
+       reloadFreshMag.position.lerpVectors(pickup,below,smoothReload01(THREE.MathUtils.clamp((rp.p-.36)/.16,0,1)));
      }else{
        reloadFreshMag.position.lerpVectors(below,home,smoothReload01(THREE.MathUtils.clamp((rp.p-.52)/.33,0,1)));
      }
@@ -4917,7 +4919,7 @@ function updateReloadMagazineFX(rp){
        reloadFreshMag.parent?.remove(reloadFreshMag);
        reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
        playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
-       playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});
+       playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
        reloadMagInserted=true;
      }
    }
@@ -5324,9 +5326,9 @@ function rebuildGun(){
        m17ReloadMag.userData.externalWeaponAsset=true;m17ReloadMag.userData.reloadOnly=true;
        m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
        gun.add(m17ReloadMag);
-       m17ReloadMag.traverse(o=>{if(o.isMesh)o.visible=false});
+       m17ReloadMag.traverse(o=>{if(o.isMesh)o.visible=true});
        playerReloadPart=m17ReloadMag;
-       document.documentElement.dataset.m17IdleMagazine="hidden";
+       document.documentElement.dataset.m17IdleMagazine="seated-visible";
        document.documentElement.dataset.m17SourceMagNodes=String(m17LooseProps.length);
        document.documentElement.dataset.m17MagazineCarrier="ready";
        document.documentElement.dataset.m17MagazineMeshCount=String(m17ReloadMag.children.filter(o=>o.isMesh).length);
