@@ -11802,7 +11802,7 @@ setupKeyDown(onKeyDown);
  // magazine and making keyboard R a no-op. Real players never get this hook.
  if(navigator.webdriver){
    window.__cityM17VisualTestStart=()=>{
-     if(!running||weapon!=="pistol"||dying)return false;
+     if(!running||weapon!=="pistol"||dying||!playerReloadPart)return false;
      if(reloading)return true;
      ammoState.pistol.mag=Math.min(ammoState.pistol.mag,maxMag("pistol")-1);
      return reload("pistol");
