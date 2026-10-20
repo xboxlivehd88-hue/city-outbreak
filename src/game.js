@@ -5293,6 +5293,11 @@ function rebuildGun(){
        const n=(o.name||"").toLowerCase();
        if(n.includes("mag")||n==="9x19_1"||n==="919_2")m17LooseProps.push(o);
      });
+     // Save the ORIGINAL GLB magazine mesh before removing its loose
+     // presentation layout. Nested magazine children must not be counted twice.
+     const sourceMag=m17LooseProps.find(o=>/mag/i.test(o.name)&&
+       !m17LooseProps.some(p=>p!==o&&/mag/i.test(p.name)&&p.getObjectById(o.id)));
+     const originalMag=sourceMag?.clone(true)||null;
      for(const prop of m17LooseProps)if(prop.parent)prop.parent.remove(prop);
      // Preserve the complete assembled M17 hierarchy; only the four loose display props above are removed.
      m17Root.rotation.set(0,Math.PI/2,0);
@@ -5313,15 +5318,32 @@ function rebuildGun(){
        // has presentation transforms that have repeatedly made it unreliable as an
        // animation actor. Keep the real pistol model, but use simple visible geometry
        // for the moving magazine so the reload always reads clearly.
-       const m17ReloadMag=new THREE.Group();m17ReloadMag.name="M17ReloadMagazineCarrier";
-       // Oversized debug-readable magazine: keep it unmistakable in first person.
-       // Once placement is confirmed we can reduce it to exact scale.
-       const magBody=new THREE.Mesh(new THREE.BoxGeometry(.16,.48,.11),M(0x202326,.92));
-       const magBase=new THREE.Mesh(new THREE.BoxGeometry(.20,.045,.14),M(0x111315,.98));
-       magBase.position.y=-.255;
-       m17ReloadMag.add(magBody,magBase);
+       const m17ReloadMag=new THREE.Group();m17ReloadMag.name="M17OriginalGLBMagazineCarrier";
+       if(originalMag){
+         // The imported GLB ships the magazine in a presentation pose.
+         // Normalize only this detached magazine, preserving its mesh/materials.
+         const visual=originalMag;
+         m17ReloadMag.add(visual);
+         visual.position.set(0,0,0);visual.rotation.set(0,0,0);visual.scale.set(1,1,1);
+         visual.updateMatrixWorld(true);
+         const box=new THREE.Box3().setFromObject(visual,true);
+         const sz=box.getSize(new THREE.Vector3());
+         // Longest magazine dimension is its insertion axis. Align that axis
+         // with the M17's vertical grip; never change the pistol GLB itself.
+         if(sz.x>=sz.y&&sz.x>=sz.z)visual.rotation.z=Math.PI/2;
+         else if(sz.z>=sz.x&&sz.z>=sz.y)visual.rotation.x=Math.PI/2;
+         visual.updateMatrixWorld(true);
+         const alignedBox=new THREE.Box3().setFromObject(visual,true);
+         const alignedSize=alignedBox.getSize(new THREE.Vector3());
+         visual.scale.multiplyScalar(.48/Math.max(.00001,alignedSize.y));
+         visual.updateMatrixWorld(true);
+         const center=new THREE.Box3().setFromObject(visual,true).getCenter(new THREE.Vector3());
+         visual.position.sub(center);
+       }else{
+         // Never silently substitute fabricated magazine geometry.
+         document.documentElement.dataset.m17MagazineSourceError="GLB magazine node unavailable";
+       }
        m17ReloadMag.traverse(o=>{o.userData.externalWeaponAsset=true;if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
-       // Seat the animation actor directly under the visible grip.
        m17ReloadMag.position.set(x,-.70,-.73);m17ReloadMag.rotation.set(-.10,0,0);
        m17ReloadMag.userData.externalWeaponAsset=true;m17ReloadMag.userData.reloadOnly=true;
        m17ReloadMag.userData.reloadHome=m17ReloadMag.position.clone();m17ReloadMag.userData.reloadHomeQuat=m17ReloadMag.quaternion.clone();
@@ -5331,7 +5353,7 @@ function rebuildGun(){
        document.documentElement.dataset.m17IdleMagazine="seated-visible";
        document.documentElement.dataset.m17SourceMagNodes=String(m17LooseProps.length);
        document.documentElement.dataset.m17MagazineCarrier="ready";
-       document.documentElement.dataset.m17MagazineMeshCount=String(m17ReloadMag.children.filter(o=>o.isMesh).length);
+       document.documentElement.dataset.m17MagazineMeshCount=String(originalMag?1:0);\n       document.documentElement.dataset.m17MagazineSource=originalMag?"original-glb":"missing";
      }
    }
  }else if(weapon==='dmr'){
