@@ -15,8 +15,8 @@ import {formatRunTime} from "./format-utils.js?v=273";
 import {clearKeyState,setupGameContextMenuGuard,setupFocusSafety,setupPointerLockChange,setupKeyUp,setupKeyDown,setupMouseMove,setupMouseActions} from "./input-utils.js?v=285";
 import {createArmsInspector} from "./arms-inspector.mjs?v=701";
 import {nativeGripShift} from "./native-grip-contact.mjs?v=701";
-import {createM17SourceGrip} from "./m17-source-grip.mjs?v=740";
-import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=740";
+import {createM17SourceGrip} from "./m17-source-grip.mjs?v=753";
+import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-authored-fingers.mjs?v=753";
 import {getM17SourceReloadTravel,m17SourceReloadMotion} from "./pistol-source-travel.mjs?v=723";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
@@ -4267,7 +4267,7 @@ function poseOriginalFpsArms(){
    const shotAge=performance.now()-lastNativeTriggerShotAt;
    const shotPulse=shotAge>=0&&shotAge<145?Math.sin(Math.PI*shotAge/145):0;
    const sourceGripActive=m17OriginalSourceGrip.ready&&!reloading;
-   const authored=applyM17AuthoredPistolFingerClip(THREE,fpsNativeArms,rp.p,reloading,shotPulse,sourceGripActive);
+   const authored=applyM17AuthoredPistolFingerClip(THREE,fpsNativeArms,rp.p,reloading,shotPulse,sourceGripActive?"right-only":false);
    // Real original 51-joint clip finger pose replaces the hand-authored curl.
    // The existing target hands and original SIG remain the ONLY visible meshes.
    if(sourceGripActive)m17OriginalSourceGrip.apply(fpsNativeArms);
@@ -4276,7 +4276,7 @@ function poseOriginalFpsArms(){
    // v750: Always apply the corrected M17 firing grip. Previously this
    // entire block was skipped whenever the optional source GLB was not ready.
    // The source clip remains an optional pose layer, not a gate for the grip.
-   {
+   if(!sourceGripActive){
     // v747: Three separate grip arcs. The knuckles turn toward the frontstrap
     // before the proximal/middle/distal phalanges close under the trigger guard.
     // Apply AFTER source retargeting; never change wrist, palm, index, gun or ADS.
@@ -4296,10 +4296,11 @@ function poseOriginalFpsArms(){
     // No thumb splay: keep original source grip and a small natural flex.
     fpsNativeArms.getObjectByName("R_thumb_2_027")?.rotateX(-.12);
    }
-   document.documentElement.dataset.fpsArmsM17GripCorrection="v752-recovery-small-flex";
+   document.documentElement.dataset.fpsArmsM17GripCorrection="v753-source-name-retarget";
    document.documentElement.dataset.fpsArmsM17ActiveWeapon=weapon;
    document.documentElement.dataset.fpsArmsM17SourceRig=String(m17OriginalSourceGrip.ready);
    document.documentElement.dataset.fpsArmsM17SourceBones=String(m17OriginalSourceGrip.boneCount);
+   document.documentElement.dataset.fpsArmsM17SourceDeltaDegrees=m17OriginalSourceGrip.maxSourceDeltaDegrees.toFixed(2);
    if(m17OriginalSourceGrip.error)document.documentElement.dataset.fpsArmsM17SourceError=m17OriginalSourceGrip.error;
    document.documentElement.dataset.fpsArmsM17AuthoredWristDegrees=authored.wristDegrees.toFixed(1);
    document.documentElement.dataset.fpsArmsM17SourceForearmDegrees=authored.forearmDegrees.toFixed(1);
