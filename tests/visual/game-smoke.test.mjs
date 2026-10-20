@@ -86,7 +86,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
         const crop = await page.locator('#cv').evaluate(canvas => {
           const t = document.createElement('canvas');
           t.width = 640; t.height = 480;
-          t.getContext('2d').drawImage(canvas, 385, 235, 450, 338, 0, 0, 640, 480);
+          t.getContext('2d').drawImage(canvas, canvas.width * .43, canvas.height * .42, canvas.width * .43, canvas.height * .57, 0, 0, 640, 480);
           return t.toDataURL('image/jpeg', .72).split(',')[1];
         });
         console.log('M17_QA_CROP_' + name + ':' + crop);
