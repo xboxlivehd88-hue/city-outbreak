@@ -81,6 +81,16 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
         });
         console.log('M17_QA_JPEG_' + name + ':' + jpg);
       }
+      // Enlargement around the real grip, old drop, and approaching new mag.
+      if (['04-reload-20pct','04-reload-55pct','04-reload-75pct'].includes(name)) {
+        const crop = await page.locator('#cv').evaluate(canvas => {
+          const t = document.createElement('canvas');
+          t.width = 640; t.height = 480;
+          t.getContext('2d').drawImage(canvas, 385, 235, 450, 338, 0, 0, 640, 480);
+          return t.toDataURL('image/jpeg', .72).split(',')[1];
+        });
+        console.log('M17_QA_CROP_' + name + ':' + crop);
+      }
     } catch (error) {
       errors.push(`Canvas framebuffer ${name}: ${String(error)}`);
       await writeFile(`${out}/${name}-capture-error.txt`, String(error));
