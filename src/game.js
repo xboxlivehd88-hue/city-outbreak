@@ -4898,13 +4898,17 @@ function updateReloadMagazineFX(rp){
      reloadFreshMag=fresh;
    }
    if(reloadFreshMag&&!reloadMagInserted){
-     const from=home.clone().add(new THREE.Vector3(-.07,-.55,.10));
-     const near=home.clone().add(new THREE.Vector3(-.025,-.25,.025));
-     if(rp.p<.64){
-       reloadFreshMag.position.lerpVectors(from,near,smoothReload01((rp.p-.30)/.34));
+     // v756: align the fresh magazine with the magwell early, then seat it.
+     // This remains entirely in the pistol's gun-local coordinate space.
+     const from=home.clone().add(new THREE.Vector3(-.045,-.37,.065));
+     const aligned=home.clone().add(new THREE.Vector3(0,-.105,0));
+     if(rp.p<.57){
+       reloadFreshMag.position.lerpVectors(from,aligned,smoothReload01((rp.p-.30)/.27));
      }else{
-       reloadFreshMag.position.lerpVectors(near,home,smoothReload01((rp.p-.64)/.25));
+       reloadFreshMag.position.lerpVectors(aligned,home,smoothReload01((rp.p-.57)/.17));
      }
+     document.documentElement.dataset.m17MagazineInsertDistance=reloadFreshMag.position.distanceTo(home).toFixed(3);
+     document.documentElement.dataset.m17MagazineReloadProgress=rp.p.toFixed(3);
      reloadFreshMag.quaternion.copy(targetQ);
      if(rp.p>=.89){
        reloadFreshMag.parent?.remove(reloadFreshMag);
