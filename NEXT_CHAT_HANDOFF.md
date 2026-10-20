@@ -1,3 +1,10 @@
+# v757 — M17 full magazine insertion stroke (visual verification pending) — 2026-10-20
+
+- User continues to report v756 magazine broken. Targeted change in `updateReloadMagazineFX`: replacement magazine first approaches a point directly 0.42 units under `reloadHome` by p=.52; then inserts straight along the mag axis and reaches home at p=.85. Previously reached home at p=.74 after shallow 0.105 unit stroke and hovered there. All M17 animation duration/weapon/ADS/hands and other weapons unchanged. Progress telemetry now published from start of reload to prevent the first 20% Playwright sample timing out before the magazine spawns.
+- Updated Playwright stage check and loader marker to v757. This remains a candidate until screenshots actually show alignment. NEVER claim visual approval from passing CI alone. Protected v324 unchanged.
+
+---
+
 # v756 QA follow-up — magazine still visibly broken — 2026-10-20
 
 - User confirms v756 reload is STILL BROKEN; do NOT mark magazine approved. Root hypothesis: replacement carrier remains gun-parented along a fixed path while independently animated left hand cannot line up, plus home is a manually chosen point rather than measured imported magwell geometry. Needs actual screenshot and geometry verification before another motion adjustment.
