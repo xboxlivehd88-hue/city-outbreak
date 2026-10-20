@@ -1,3 +1,11 @@
+# v763 — measured GLB magazine seat and controlled visual QA — 2026-10-20
+
+- User authorized whatever it takes to fix recurring M17 magazine regressions. Inspected ORIGINAL GLB node hierarchy: seated `919 p320 17rnd empty mag_0` has source-model magwell pose; separate loaded `919 p320 17rnd mag_3` is stored sideways in display layout, not seated. This invalidated all prior guessed `x,-.70,-.73` placements and scale guesses.
+- v763 clones actual loaded four-mesh GLB magazine, copies exact seated sibling position/quaternion/scale, inserts into source-model parent after pistol normalization and attaches to gun preserving world transform. This yields true gun-local `reloadHome` anchored at the imported magwell; animation keeps existing reload timing and arm/ADS untouched.
+- Playwright test rewritten to use deterministic, webdriver-only reload freeze/staging for six phase frames; real-game timings unchanged. Exposes source mesh count, measured bounds and seated coordinates, and logs compact JPEG frames for actual human review alongside full PNG artifacts. Must inspect run and images before claiming visual success. Protected v324 unchanged.
+
+---
+
 # v762 — M17 imported magazine enormous detached prop regression — 2026-10-20
 
 - User screenshot of v761 shows giant magazine/prop at lower screen, detached from M17. Root cause: original GLB magazine presentation transform was retained on loose node while the carrier already had a separate gun-local position, compounding offsets. v762 resets *only* loose cloned magazine root TRS, retains all descendant geometry and materials, aligns its longest axis vertically, scales to 0.48 gun units, and centers visual within the carrier before applying carrier magwell transform. Loader v762. Must inspect rendered screenshots; not yet user approved. No hands/ADS/other weapons changed; protected v324 unchanged.
