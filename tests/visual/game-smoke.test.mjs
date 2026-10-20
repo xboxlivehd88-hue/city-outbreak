@@ -114,19 +114,32 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     await page.waitForTimeout(70);
     await page.mouse.up({ button: 'left' });
     await page.keyboard.press('r');
-    await page.waitForTimeout(600);
-    // Regression: the reload actor must exist and a fresh mag must appear.
-    assert.equal(await page.locator('html').getAttribute('data-m17-magazine-carrier'), 'ready',
-      'M17 detachable reload actor must not depend on a source GLB magazine name');
-    assert.equal(await page.locator('html').getAttribute('data-m17-magazine-fresh-visible'), 'true',
-      'Fresh M17 magazine must be parented and visible by mid-reload');
-    await capture('04-reload');
-    // p≈.73 of M17's 1750ms cycle: the spare magazine should be
-    // approaching the magwell, not hidden off-screen at the belt pouch.
-    await page.waitForTimeout(680);
-    assert.equal(await page.locator('html').getAttribute('data-m17-magazine-fresh-visible'), 'true',
-      'Fresh M17 magazine must still be visible while entering the grip');
-    await capture('04b-reload-insertion');
+    // Sample a complete reload at measured runtime progress, NOT assumed wall time.
+    // The animation is updated by the game loop and CI's software renderer is slow.
+    // Capture a single frame when its published progress first crosses each stage.
+    const samples = [0.20, 0.40, 0.55, 0.65, 0.75, 0.85];
+    const reloadTelemetry = [];
+    for (const target of samples) {
+      await page.waitForFunction(target => {
+        const d = document.documentElement.dataset;
+        return Number(d.m17MagazineReloadProgress || 0) >= target ||
+          d.m17MagazineInserted === 'true';
+      }, target, { timeout: 45000, polling: 50 });
+      const state = await page.evaluate(() => {
+        const d = document.documentElement.dataset;
+        return { progress: d.m17MagazineReloadProgress || null,
+          distance: d.m17MagazineInsertDistance || null,
+          freshVisible: d.m17MagazineFreshVisible || null,
+          inserted: d.m17MagazineInserted || null };
+      });
+      reloadTelemetry.push({ target, ...state });
+      await capture('04-reload-' + Math.round(target * 100).toString().padStart(2, '0') + 'pct');
+    }
+    await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
+    assert.equal(await page.locator('html').getAttribute('data-m17-magazine-carrier'), 'ready');
+    assert.ok(reloadTelemetry.some(t => t.freshVisible === 'true'), 'Must render a visible replacement magazine');
+    assert.ok(reloadTelemetry.some(t => Number(t.distance) <= 0.11 && t.freshVisible === 'true'),
+      'Magazine must approach the insertion point while still visible');
     // Reload must finish before we can verify the trigger actually fires.
     await page.waitForTimeout(2220);
     await page.mouse.down({ button: 'left' });
