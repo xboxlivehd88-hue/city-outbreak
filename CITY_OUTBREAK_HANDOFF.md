@@ -1,3 +1,12 @@
+# v754 — Fix missing M17 reload magazine — 2026-10-20
+
+- User reports no magazine visible during reload of v753. Found source bug: M17 reload carrier was constructed **only if** the imported SIG contained a node named exactly `919 p320 17rnd mag_3`. If the node is absent or renamed, `playerReloadPart=null` disables all M17 detachable-magazine FX.
+- v754 unconditionally creates the existing first-person magazine carrier once the SIG GLB is loaded; source loose-prop removal remains unchanged. Existing old-mag drop, fresh-mag hand pickup and insertion preserved; no gun, ADS, trigger, grip, left hand or reload timing edits.
+- DOM diagnostics record carrier existence, mesh count, dropped-old and visible-fresh magazine stages. Playwright test now asserts carrier exists and fresh magazine is visible 600ms into reload. Passing structural test does not prove rendered magazine position; inspect screenshot.
+- v754 loader and build marker; v324 checkpoint protected. https://xboxlivehd88-hue.github.io/city-outbreak/?v=754-m17-magazine
+
+---
+
 # v753 — M17 source bone-name mismatch fixed (requires screenshot approval) — 2026-10-20
 
 - Playwright visual CI is now PASSING with direct canvas.toDataURL() capture and CI-only preservedDrawingBuffer (run 39449715490 and following). Source-asset GLB audit run 39450384701 found 51 original skin joints but ZERO names matching controller's `^[LR]_(thumb|point|middle|ring|pink)_` regex. Actual uploaded GLB uses `R_middle1_...`, `R_middle2_...`, etc., while target FPS arms use `R_middle_034`, `R_middle_2_035`. The runtime source controller had been silently unavailable since v740 with error "Source finger bones or animation not found".
