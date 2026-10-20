@@ -1,3 +1,10 @@
+# v756 QA follow-up — magazine still visibly broken — 2026-10-20
+
+- User confirms v756 reload is STILL BROKEN; do NOT mark magazine approved. Root hypothesis: replacement carrier remains gun-parented along a fixed path while independently animated left hand cannot line up, plus home is a manually chosen point rather than measured imported magwell geometry. Needs actual screenshot and geometry verification before another motion adjustment.
+- Playwright test changed to capture six progress-based reload frames (20/40/55/65/75/85%) plus measured insertion-distance telemetry. Await visual artifact review. No gameplay transform or timing was changed in this QA commit. Checkpoint v324 untouched.
+
+---
+
 # v756 — M17 earlier magazine insertion (awaiting visual QA) — 2026-10-20
 
 - Fresh magazine previously stayed too far from gun until late reload. The gun-local approach now reaches 0.105 below reloadHome by 57% of reload and reaches home by 74%, rather than continuing to 89%. Preserved total reload time, gun/ADS pose, wrists, trigger and other weapons.
