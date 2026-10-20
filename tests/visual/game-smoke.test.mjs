@@ -72,7 +72,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
       // Human visual review without relying on the GitHub artifact viewer:
       // publish compact actual WebGL frame thumbnails in the job log. Retain
       // the original full-resolution PNG files in the artifact as well.
-      if (['02-after-start-hip','04-reload-20pct','04-reload-55pct','04-reload-75pct'].includes(name)) {
+      if (['02-after-start-hip','03-ads','04-reload-20pct','04-reload-55pct','04-reload-75pct'].includes(name)) {
         const jpg = await page.locator('#cv').evaluate(canvas => {
           const t = document.createElement('canvas');
           t.width = 640; t.height = 360;
@@ -115,16 +115,13 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }, null, { timeout: 16000, polling: 250 });
     await page.waitForTimeout(1200);
     await capture('02-after-start-hip');
-    // Pointer lock is already active after Start. Moving the mouse to an
-    // absolute screen coordinate rotates the camera unpredictably in CI.
-    await page.mouse.down({ button: 'right' });
-    await page.waitForTimeout(1500);
+    // Use genuine ADS without pointer-locked synthetic mouse events: the
+    // latter used to rotate the CI camera skyward before reload photos.
+    assert.equal(await page.evaluate(() => window.__cityM17VisualTestAim?.(true)), true);
+    await page.waitForTimeout(1100);
     await capture('03-ads');
-    await page.mouse.up({ button: 'right' });
-    // Consume some ammunition before testing reload; otherwise R can be a no-op.
-    await page.mouse.down({ button: 'left' });
-    await page.waitForTimeout(70);
-    await page.mouse.up({ button: 'left' });
+    await page.evaluate(() => window.__cityM17VisualTestAim?.(false));
+    await page.waitForTimeout(450);
     // QA-only deterministic staging keeps each first-person reload frame
     // frozen long enough for slow software WebGL to draw and be captured.
     // This doesn't change timing or controls in the actual game.
