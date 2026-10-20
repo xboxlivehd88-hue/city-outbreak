@@ -4888,6 +4888,7 @@ function updateReloadMagazineFX(rp){
    // Start retrieving the fresh magazine while the old one is still visibly falling.
    // v755: Do not mix the left hand's local coordinates and the gun's.
    // Fresh M17 magazine is born under gun and follows one gun-local path.
+   document.documentElement.dataset.m17MagazineReloadProgress=rp.p.toFixed(3);
    if(rp.p>=.30&&!reloadFreshMag&&!reloadMagInserted){
      const fresh=playerReloadPart.clone(true);
      fresh.name="M17FreshGunSpaceMagazine";
@@ -4898,14 +4899,16 @@ function updateReloadMagazineFX(rp){
      reloadFreshMag=fresh;
    }
    if(reloadFreshMag&&!reloadMagInserted){
-     // v756: align the fresh magazine with the magwell early, then seat it.
-     // This remains entirely in the pistol's gun-local coordinate space.
-     const from=home.clone().add(new THREE.Vector3(-.045,-.37,.065));
-     const aligned=home.clone().add(new THREE.Vector3(0,-.105,0));
-     if(rp.p<.57){
-       reloadFreshMag.position.lerpVectors(from,aligned,smoothReload01((rp.p-.30)/.27));
+     // v757: complete the lateral approach before insertion, then keep the
+     // magazine coaxial with the grip during the entire upward stroke.
+     // Its geometry is 0.48 tall: inserting by 0.105 units previously kept
+     // most of it inside the grip too early, then left it hovering for 15%.
+     const pickup=home.clone().add(new THREE.Vector3(-.18,-.55,.13));
+     const below=home.clone().add(new THREE.Vector3(0,-.42,0));
+     if(rp.p<.52){
+       reloadFreshMag.position.lerpVectors(pickup,below,smoothReload01(THREE.MathUtils.clamp((rp.p-.30)/.22,0,1)));
      }else{
-       reloadFreshMag.position.lerpVectors(aligned,home,smoothReload01((rp.p-.57)/.17));
+       reloadFreshMag.position.lerpVectors(below,home,smoothReload01(THREE.MathUtils.clamp((rp.p-.52)/.33,0,1)));
      }
      document.documentElement.dataset.m17MagazineInsertDistance=reloadFreshMag.position.distanceTo(home).toFixed(3);
      document.documentElement.dataset.m17MagazineReloadProgress=rp.p.toFixed(3);
