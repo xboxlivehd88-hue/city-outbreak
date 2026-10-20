@@ -132,7 +132,8 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
       document.documentElement.dataset.m17VisualTestHold = 'true';
       document.documentElement.dataset.m17VisualTestPhase = '0.20';
     });
-    await page.keyboard.press('r');
+    const started = await page.evaluate(() => window.__cityM17VisualTestStart?.() ?? false);
+    assert.equal(started, true, 'CI must start a real M17 reload before sampling');
     const samples = [0.20, 0.40, 0.55, 0.65, 0.75, 0.85];
     const reloadTelemetry = [];
     for (const target of samples) {
