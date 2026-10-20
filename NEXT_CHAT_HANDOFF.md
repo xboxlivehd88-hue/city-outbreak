@@ -1,3 +1,9 @@
+# v762 — M17 imported magazine enormous detached prop regression — 2026-10-20
+
+- User screenshot of v761 shows giant magazine/prop at lower screen, detached from M17. Root cause: original GLB magazine presentation transform was retained on loose node while the carrier already had a separate gun-local position, compounding offsets. v762 resets *only* loose cloned magazine root TRS, retains all descendant geometry and materials, aligns its longest axis vertically, scales to 0.48 gun units, and centers visual within the carrier before applying carrier magwell transform. Loader v762. Must inspect rendered screenshots; not yet user approved. No hands/ADS/other weapons changed; protected v324 unchanged.
+
+---
+
 # v761 — actual GLB loaded magazine selection — 2026-10-20
 
 - Directly decoded the real `assets/low-poly_sig_sauer_m17.glb` hierarchy: node 3 = `919 p320 17rnd empty mag_0`; node 11 = `919 p320 17rnd mag_3`. v759/v760 `find(/mag/)` chose EMPTY node 3 as its first hit, explaining ghost/incorrect magazine. v761 selects specifically loaded node `17rnd mag_3`, keeps source node local transform rather than zeroing it, and records exact source node name in DOM diagnostics. Procedural magazine still removed, v757/v758 timing retained; visual proof pending. Protected v324 unchanged.
