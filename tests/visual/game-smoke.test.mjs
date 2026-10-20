@@ -121,8 +121,14 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     assert.equal(await page.locator('html').getAttribute('data-m17-magazine-fresh-visible'), 'true',
       'Fresh M17 magazine must be parented and visible by mid-reload');
     await capture('04-reload');
+    // p≈.73 of M17's 1750ms cycle: the spare magazine should be
+    // approaching the magwell, not hidden off-screen at the belt pouch.
+    await page.waitForTimeout(680);
+    assert.equal(await page.locator('html').getAttribute('data-m17-magazine-fresh-visible'), 'true',
+      'Fresh M17 magazine must still be visible while entering the grip');
+    await capture('04b-reload-insertion');
     // Reload must finish before we can verify the trigger actually fires.
-    await page.waitForTimeout(2900);
+    await page.waitForTimeout(2220);
     await page.mouse.down({ button: 'left' });
     await page.waitForTimeout(80);
     await capture('05-firing');
