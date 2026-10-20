@@ -11801,6 +11801,9 @@ setupKeyDown(onKeyDown);
  // synthetic mouse-down can finish without a rendered shot, leaving a full
  // magazine and making keyboard R a no-op. Real players never get this hook.
  if(navigator.webdriver){
+   // Test ADS through the actual game function, not a pointer-locked
+   // Playwright mouse event that can whip the view straight into the sky.
+   window.__cityM17VisualTestAim=on=>{setAim(!!on);return true};
    window.__cityM17VisualTestStart=()=>{
      if(!running||weapon!=="pistol"||dying||!playerReloadPart)return false;
      if(reloading)return true;
