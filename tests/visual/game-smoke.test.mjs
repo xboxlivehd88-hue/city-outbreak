@@ -13,7 +13,20 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
   // GitHub Actions has no GPU. Use the game's existing LOWEST graphics preset
   // before the module reads settings so software WebGL can render promptly.
   // This affects only the temporary CI browser, NEVER saved player settings.
-  await page.addInitScript(() => localStorage.setItem('city-outbreak-graphics-v1', 'veryLow'));
+  await page.addInitScript(() => {
+    localStorage.setItem('city-outbreak-graphics-v1', 'veryLow');
+    // Freeze only the CI browser's animation loop while screenshots run.
+    // This avoids fighting a continuously-rendering software WebGL context.
+    const nativeRaf = window.requestAnimationFrame.bind(window);
+    window.__cityCiFreezeFrames = false;
+    window.requestAnimationFrame = function (callback) {
+      const tick = time => {
+        if (window.__cityCiFreezeFrames) nativeRaf(tick);
+        else callback(time);
+      };
+      return nativeRaf(tick);
+    };
+  });
   page.on('console', message => { if (message.type() === 'error') errors.push('console: '+message.text()); });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -21,12 +34,15 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     // Screen-space capture: locator.screenshot waits for animated canvas
     // geometry to become stable and timed out in v752 CI. page.screenshot
     // bypasses the element-stability/scroll-into-view check and includes HUD.
+    await page.evaluate(() => { window.__cityCiFreezeFrames = true; });
+    await page.waitForTimeout(300);
     try {
       await page.screenshot({ path: `${out}/${name}.png`, timeout: 15000, animations: 'disabled', fullPage: false });
     } catch (error) {
-      errors.push(`Canvas capture ${name}: ${error.message}`);
-      // Retain diagnostics even if the software WebGL renderer stalls.
+      errors.push(`Viewport capture ${name}: ${error.message}`);
       await writeFile(`${out}/${name}-capture-error.txt`, String(error));
+    } finally {
+      await page.evaluate(() => { window.__cityCiFreezeFrames = false; });
     }
   };
   try {
