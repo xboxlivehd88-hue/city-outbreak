@@ -1,3 +1,9 @@
+# v759 — restore actual M17 GLB magazine — 2026-10-20
+
+- User correctly rejects fabricated box magazine (v754-v758) and says it floats behind pistol. Replaced procedural carrier geometry with magazine hierarchy cloned from original `low-poly_sig_sauer_m17.glb` BEFORE removing loose presentation props; normalize detached copy to vertical gun-local magazine for reload. Do not create placeholder if source absent; emit `m17MagazineSource` diagnostic. v758 extraction and v757 insertion timing retained pending screenshot approval. No hand/ADS adjustments. Protected v324 unchanged. Needs Playwright screenshot inspection, not verified simply by CI pass.
+
+---
+
 # v758 — M17 old magazine visible, spare rises from player — 2026-10-20
 
 - User says v757 insertion very close but fresh mag materializes in air and empty mag is invisible. Root cause: M17 reload-only carrier meshes were set invisible whenever idle, so there was no visible loaded magazine to extract. v758 shows carrier when loaded, lowers old magazine 0.46 along grip before dropping at p=.29, and starts fresh magazine lower, in the player-side belt area, at p=.36 before preserving v757 coaxial insertion from p=.52 to .85. Seated mag appears after insertion. Other weapons, hands, ADS, and reload duration unchanged. Requires visual approval; automated CI is not visual proof. Protected v324 unchanged.
