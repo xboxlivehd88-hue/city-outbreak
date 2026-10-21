@@ -1,3 +1,9 @@
+# v768 — light-selection allocation cleanup after completed five CPU passes — 2026-10-21
+
+- The five requested CPU improvements are already delivered in v767 (ground barycentric precompute, zombie avoidance no temporary arrays, corpse scratch, ragdoll PBD touched-node reuse, gas canopy material change-only updates). This follow-up reuses scratch candidate ranking array and incumbent Set inside `chooseStreetLampHeads`, preserving the same sort/order, selected lamp IDs and lighting. v768 loader bumped. No new graphics settings or reductions; user FPS benefit must be benchmarked in performance dropdown. Protected v324 unchanged.
+
+---
+
 # v767 — Five safe gameplay CPU performance passes — 2026-10-21
 
 - User requested items 1–5 for smoother CITY OUTBREAK. Implemented FIVE isolated, behavior-preserving changes to `src/game.js`:
