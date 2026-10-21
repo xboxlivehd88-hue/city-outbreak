@@ -7,7 +7,7 @@ import {createSprinterZombieController} from "./sprinter-zombie.js?v=638";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {ZOMBIE_RIG_GLTF} from "./zombie-rig-data.js";
-import {createPerformanceGuard} from "./performance-hud.js?v=726";
+import {createPerformanceGuard} from "./performance-hud.js?v=772";
 import {createGpuFrameTimer} from "./gpu-frame-timer.js?v=677";
 import {showTransientMessage,setupResetButtons,setupPauseButtons,renderBossHud,hideBossHud,renderSprintHud,renderMainHud,renderDeathStats,showAnnouncement,hideAnnouncement,setupReadyNextButton,setupShopBuyButtons,showRuntimeErrorOverlay,setupRuntimeErrorListener,flashDamageOverlay,hideStartScreen,resetRunUiOverlays,renderShopNote,renderPauseUi,renderDeathScreenVisibility,renderShopVisibility} from "./ui-helpers.js?v=464";
 import {setupRendererResize,setupWebGLContextLossHandler} from "./render-utils.js?v=267";
@@ -11614,7 +11614,10 @@ function takeCityFrameProfile(){
   hitches:cityFrameProfile.hitches,
   navBuilds:perfNavBuilds,navDeferred:perfNavDeferred,
   navWorstMs:perfNavWorstMs,roofChecks:perfRainCoverChecks,
-  roofWorstMs:perfRainCoverWorstMs
+  roofWorstMs:perfRainCoverWorstMs,
+  lastHitch:cityHitchEvents.length?cityHitchEvents[cityHitchEvents.length-1]:null,
+  worstHitch:cityWorstHitch,
+  hitchHistory:cityHitchEvents.slice()
  };
  cityFrameProfile.frames=0;cityFrameProfile.updateMs=0;
  cityFrameProfile.generalMs=0;cityFrameProfile.corpsesMs=0;cityFrameProfile.livingMs=0;
@@ -11831,12 +11834,23 @@ try{
  if(stored){const data=JSON.parse(stored);if(data&&typeof data==="object")graphicsCustomOptions=normalizeGraphicsOptions(data)}
 }catch(_){}
 applyGraphicsQuality(savedQuality);
+// Record only actual long frames (>35ms synchronous or >50ms between RAFs).
+// One-off hitch snapshots avoid an allocation for each zombie/frame.
+const cityHitchEvents=[];
+let cityWorstHitch=null,lastCityFrameCpuMs=0,lastCityFrameEndAt=0;
+let lastCityFrameWasShop=false;
+function recordCityHitch(entry){
+ cityHitchEvents.push(entry);
+ if(cityHitchEvents.length>16)cityHitchEvents.shift();
+ if(!cityWorstHitch||entry.durationMs>cityWorstHitch.durationMs)cityWorstHitch=entry;
+}
 function frame(t){
  const cpuStart=performance.now();
  const wallDt=Math.max(0,(t-last)/1000);
  const dt=Math.min(.04,wallDt);last=t;
  if(shopLowPower){
   if(t-lastShopRenderAt>=250){lastShopRenderAt=t;ren.render(scene,cam)}
+  lastCityFrameWasShop=true;lastCityFrameEndAt=performance.now();
   setTimeout(()=>requestAnimationFrame(frame),250);return;
  }
  const updateStart=performance.now();
@@ -11855,6 +11869,36 @@ function frame(t){
  try{ren.render(scene,cam)}
  finally{if(gpuSample)cityGpuTimer.end()}
  const renderEnd=performance.now();
+ const cpuMs=renderEnd-cpuStart;
+ const wallMs=wallDt*1000;
+ const updateMs=updateEnd-updateStart,lightsMs=lightsEnd-updateEnd;
+ const rainMs=rainEnd-lightsEnd,renderMs=renderEnd-rainEnd;
+ // Keep the single-frame spikes visible; averages conceal a 1,500ms stall.
+ // A stall DURING render() differs from a delay BETWEEN frame callbacks.
+ if(running&&!paused&&!between&&!lastCityFrameWasShop){
+  let source=null,phase=null,durationMs=0;
+  if(cpuMs>35){
+   source="in-frame";durationMs=cpuMs;
+   const dominant=Math.max(updateMs,lightsMs,rainMs,renderMs);
+   phase=dominant===renderMs?"render-submit":dominant===updateMs?"game-update":
+    dominant===lightsMs?"lights":"rain";
+  }else if(wallMs>50&&lastCityFrameCpuMs<35){
+   source="between-frames";phase="browser/scheduling gap";durationMs=wallMs;
+  }
+  if(source)recordCityHitch({
+   time:new Date().toISOString(),source,phase,
+   durationMs:Math.round(durationMs*10)/10,
+   wallMs:Math.round(wallMs*10)/10,cpuMs:Math.round(cpuMs*10)/10,
+   updateMs:Math.round(updateMs*10)/10,lightsMs:Math.round(lightsMs*10)/10,
+   rainMs:Math.round(rainMs*10)/10,renderMs:Math.round(renderMs*10)/10,
+   gapSinceLastFrameEndMs:Math.round(Math.max(0,cpuStart-lastCityFrameEndAt)*10)/10,
+   priorFrameCpuMs:Math.round(lastCityFrameCpuMs*10)/10,
+   wave,zombies:livingCount(),explosions:activeExplosionBursts.length,
+   gpuWarmup:document.documentElement.dataset.explosionGpuWarmup||"waiting",
+   casingWarmup:document.documentElement.dataset.grenadeFragmentGpuWarmup||"waiting"
+  });
+ }
+ lastCityFrameWasShop=false;lastCityFrameCpuMs=cpuMs;lastCityFrameEndAt=renderEnd;
  if(!paused){
   cityFrameProfile.frames++;
   cityFrameProfile.updateMs+=updateEnd-updateStart;
@@ -11868,7 +11912,7 @@ function frame(t){
  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-function reset(){runSequence++;reloadSequence++;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];clearExplosionGlbs();clearCasingFragments();for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="pistol";magSize=16;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:6,reserve:4},m240:{mag:100,reserve:200}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){runSequence++;reloadSequence++;cityHitchEvents.length=0;cityWorstHitch=null;lastCityFrameCpuMs=0;lastCityFrameEndAt=0;lastCityFrameWasShop=false;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];clearExplosionGlbs();clearCasingFragments();for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="pistol";magSize=16;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:6,reserve:4},m240:{mag:100,reserve:200}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 rebuildGun();setupResetButtons(reset);
 // Controls are now a tab in the shared SETTINGS dialog.
 const weaponHotkeys={Digit1:"pistol",Digit2:"rifle",Digit3:"shotgun",Digit4:"smg",Digit5:"m240",Digit6:"dmr",Digit7:"grenadeLauncher"};

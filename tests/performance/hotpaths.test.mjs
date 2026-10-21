@@ -79,3 +79,16 @@ test('original grenade casing is prewarmed offscreen without touching live fragm
  const warm=shard.slice(shard.indexOf('export function createCasingFragmentWarmupGroup'),shard.indexOf('// Call this ONCE after the GLB'));
  assert.ok(!warm.includes('activeCasingPieces.push'));
 });
+
+test('diagnostic hitch recorder distinguishes frame render stalls from scheduler gaps',()=>{
+ assert.ok(src.includes('cityHitchEvents.length>16'));
+ assert.ok(src.includes('source="between-frames";phase="browser/scheduling gap"'));
+ assert.ok(src.includes('phase=dominant===renderMs?"render-submit"'));
+ assert.ok(src.includes('lastCityFrameWasShop=true'));
+ assert.ok(src.includes('lastHitch:cityHitchEvents.length'));
+ assert.ok(src.includes('cityHitchEvents.length=0;cityWorstHitch=null'));
+ const hud=readFileSync('src/performance-hud.js','utf8');
+ assert.ok(hud.includes('LAST SPIKE'));
+ assert.ok(hud.includes('WORST SPIKE'));
+ assert.ok(hud.includes('hitches:lastTimingReport?.hitchHistory||[]'));
+});

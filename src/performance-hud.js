@@ -8,7 +8,7 @@ export function createPerformanceGuard({
  enabled=true,
  consoleLogging=false
 }){
- let perfTick=0,perfFrames=0,perfTime=0,perfMaxMs=0,perfHud=null;
+ let perfTick=0,perfFrames=0,perfTime=0,perfMaxMs=0,perfHud=null,lastTimingReport=null;
  const reportSamples=[];
  // Twenty one-second real-device samples; no forced frame rate or synthetic load.
  if(enabled){
@@ -30,7 +30,8 @@ export function createPerformanceGuard({
     graphics:document.documentElement.dataset.graphicsQuality||"unknown",
     viewport:[window.innerWidth,window.innerHeight],pixelRatio:renderer.getPixelRatio(),
     notes:"Actual browser measurements; CI software WebGL is not a gaming-desktop benchmark.",
-    samples:reportSamples};
+    samples:reportSamples,hitches:lastTimingReport?.hitchHistory||[],
+    worstHitch:lastTimingReport?.worstHitch||null};
    const contents=JSON.stringify(report,null,2);
    try{await navigator.clipboard.writeText(contents);copy.textContent="COPIED REPORT";}
    catch(_){
@@ -49,7 +50,7 @@ export function createPerformanceGuard({
   perfTick+=dt;perfTime+=dt;perfFrames++;perfMaxMs=Math.max(perfMaxMs,dt*1000);
   if(perfTick>=1){
    const fps=Math.round(perfFrames/Math.max(.001,perfTime)),avg=(perfTime/perfFrames*1000).toFixed(1),ri=renderer.info.render,liveCount=livingCount(),fx=getFxCounts();
-   const p=getTimings();
+   const p=getTimings();lastTimingReport=p;
    reportSamples.push({time:new Date().toISOString(),fps,avgFrameMs:Number(avg),
     frameP95Ms:p?.frameP95Ms??null,frameMaxMs:p?.frameMaxMs??null,
     cpuUpdateMs:p?.updateMs??null,cpuGeneralMs:p?.generalMs??null,
@@ -59,9 +60,12 @@ export function createPerformanceGuard({
     gpuStatus:p?.gpu?.status??"unavailable",draws:ri.calls,
     triangles:ri.triangles,zombies:liveCount,explosions:fx.bursts||0,
     activeFx:(fx.parts||0)+(fx.impacts||0)+(fx.casings||0),
-    hitches:p?.hitches??null,navBuilds:p?.navBuilds??null});
+    hitches:p?.hitches??null,navBuilds:p?.navBuilds??null,
+    lastHitch:p?.lastHitch??null});
    if(reportSamples.length>20)reportSamples.shift();
    const fmt=n=>Number.isFinite(n)?n.toFixed(1):"–";
+   const hitchLabel=h=>h?fmt(h.durationMs)+"ms "+h.phase+
+    " [render "+fmt(h.renderMs)+"ms, update "+fmt(h.updateMs)+"ms]":"none captured";
    perfHud.textContent="PERFORMANCE\nFPS "+fps+
     "  AVG "+avg+"ms  MAX "+perfMaxMs.toFixed(1)+"ms"+
     "\nDRAWS "+ri.calls+"  TRIANGLES "+ri.triangles+
@@ -83,6 +87,8 @@ export function createPerformanceGuard({
        ?fmt(p.gpu.avgMs)+"ms AVG | "+fmt(p.gpu.p95Ms)+"ms P95 | "+fmt(p.gpu.worstMs)+"ms WORST"
        :p.gpu?.status==="unavailable"?"NOT EXPOSED BY BROWSER":String(p.gpu?.status||"collecting"))+
      "\nCPU WORST "+fmt(p.worstCpuMs)+"ms  HITCHES >50ms "+p.hitches+
+     "\nLAST SPIKE "+hitchLabel(p.lastHitch)+
+     "\nWORST SPIKE "+hitchLabel(p.worstHitch)+
      "\nAI REPATHS "+p.navBuilds+" / DEFERRED "+p.navDeferred+
      "  MAX "+fmt(p.navWorstMs)+"ms"+
      "\nROOF RAYS "+p.roofChecks+"  MAX "+fmt(p.roofWorstMs)+"ms":"");

@@ -1,3 +1,11 @@
+# v772 — Real single-frame hitch attribution after v771 desktop video — 2026-10-21
+
+- Reviewed **132.2-second 2560x1440 60fps user video of v771** (2026-10-21 19:24). HUD confirms both FX prewarms **READY**, normal FPS near **180**, and normal frame P95 near **5.7ms**. BUT major single frame hitches continue **without any active explosions**: at ~8s **317.8ms**, ~28s **255.9ms**, ~47s **734.2ms**, ~49s **1513.1ms**, ~53s **500.7ms**, and ~86s **372.7ms**. Only later at ~113s and ~126s did grenades detonate, with GPU prewarm ready and no corresponding large frame spike in sampled HUD. v771 first-blast mitigation is encouraging but **not proven as a cause of change**.
+- Average per-phase CPU numbers were misleadingly low during those long stalls. New diagnostic-only ring captures the **16 most recent and worst >35ms synchronous or >50ms between-frame spikes**, records individual game-update/lighting/rain/render-submit durations, prior frame CPU, scheduling gap, wave/zombie/explosion counts and timestamp. PERFORMANCE dropdown now shows **LAST SPIKE** and **WORST SPIKE** with phase breakdown, and COPY LAST 20s REPORT exports spike records. Distinguish actual synchronous render-submit/GLB shader work from browser/OS scheduling pauses rather than assuming GPU or grenade. Filter shop frame pacing and reset diagnostics on restart. Version query for performance-hud.js bumped to ensure fresh module load; removed stale hardcoded v767 splash label.
+- No weapon, M17 arms/ADS, zombie animation, scene, physics, explosion behavior or quality settings changed. Protected v324 recovery untouched. Node & Playwright assertions extended. **NO CLAIM of FPS/hitch improvement**: this is a measurement release to identify real cause for next targeted optimization.
+
+---
+
 # v771 — Prime original grenade casing shader variants following measured first-blast hitch — 2026-10-21
 
 - Reviewed user-provided 87.92s v770 gameplay video frame-by-frame. **At 41.45–41.85s the scene nearly freezes immediately ahead of the first grenade detonation.** HUD at 42.50s confirms MAX frame **428.3ms**, CPU WORST **428.7ms**, one hitch >50ms, and that reporting period FPS **104** (normally ~180). Grenade CPU only **3.9ms** (FX 1.8ms, shell .3ms, reaction 1.5ms), indicating graphics/render work instead of grenade physics. FX GPU smoke/spark prewarm was already "ready".
