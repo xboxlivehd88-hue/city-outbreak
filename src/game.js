@@ -1552,6 +1552,12 @@ const cityGroundBuckets=new Map();
 let newCityCollisionReady=false;
 function cityGroundKey(ix,iz){return ix+","+iz}
 function indexCityGroundTriangle(t){
+ // Compute triangle barycentric coefficients ONCE at city load. This is hot
+ // in zombie ground checks, spawn probes and ragdoll contacts.
+ const inv=1/((t.bz-t.cz)*(t.ax-t.cx)+(t.cx-t.bx)*(t.az-t.cz));
+ if(!Number.isFinite(inv))return;
+ t.waX=(t.bz-t.cz)*inv;t.waZ=(t.cx-t.bx)*inv;
+ t.wbX=(t.cz-t.az)*inv;t.wbZ=(t.ax-t.cx)*inv;
  const minX=Math.floor(t.minX/NEW_CITY_GROUND_BUCKET),maxX=Math.floor(t.maxX/NEW_CITY_GROUND_BUCKET);
  const minZ=Math.floor(t.minZ/NEW_CITY_GROUND_BUCKET),maxZ=Math.floor(t.maxZ/NEW_CITY_GROUND_BUCKET);
  for(let iz=minZ;iz<=maxZ;iz++)for(let ix=minX;ix<=maxX;ix++){
@@ -1565,10 +1571,9 @@ function sampleZombieGroundY(x,z,currentY){
  let found=false,best=-Infinity;
  for(const t of bucket){
    if(x<t.minX-.001||x>t.maxX+.001||z<t.minZ-.001||z>t.maxZ+.001)continue;
-   const den=(t.bz-t.cz)*(t.ax-t.cx)+(t.cx-t.bx)*(t.az-t.cz);
-   if(Math.abs(den)<1e-8)continue;
-   const wa=((t.bz-t.cz)*(x-t.cx)+(t.cx-t.bx)*(z-t.cz))/den;
-   const wb=((t.cz-t.az)*(x-t.cx)+(t.ax-t.cx)*(z-t.cz))/den;
+   const dx=x-t.cx,dz=z-t.cz;
+   const wa=t.waX*dx+t.waZ*dz;
+   const wb=t.wbX*dx+t.wbZ*dz;
    const wc=1-wa-wb;
    if(wa<-.002||wb<-.002||wc<-.002)continue;
    const y=wa*t.ay+wb*t.by+wc*t.cy;
@@ -1583,10 +1588,9 @@ function zombieSpawnGroundY(x,z){
  let found=false,best=-Infinity;
  for(const t of bucket){
    if(x<t.minX-.001||x>t.maxX+.001||z<t.minZ-.001||z>t.maxZ+.001)continue;
-   const den=(t.bz-t.cz)*(t.ax-t.cx)+(t.cx-t.bx)*(t.az-t.cz);
-   if(Math.abs(den)<1e-8)continue;
-   const wa=((t.bz-t.cz)*(x-t.cx)+(t.cx-t.bx)*(z-t.cz))/den;
-   const wb=((t.cz-t.az)*(x-t.cx)+(t.ax-t.cx)*(z-t.cz))/den;
+   const dx=x-t.cx,dz=z-t.cz;
+   const wa=t.waX*dx+t.waZ*dz;
+   const wb=t.wbX*dx+t.wbZ*dz;
    const wc=1-wa-wb;
    if(wa<-.002||wb<-.002||wc<-.002)continue;
    const y=wa*t.ay+wb*t.by+wc*t.cy;
@@ -1602,10 +1606,9 @@ function sampleRagdollGroundY(x,z,currentFloor,bodyY){
  let found=false,best=-Infinity;
  for(const t of bucket){
    if(x<t.minX-.001||x>t.maxX+.001||z<t.minZ-.001||z>t.maxZ+.001)continue;
-   const den=(t.bz-t.cz)*(t.ax-t.cx)+(t.cx-t.bx)*(t.az-t.cz);
-   if(Math.abs(den)<1e-8)continue;
-   const wa=((t.bz-t.cz)*(x-t.cx)+(t.cx-t.bx)*(z-t.cz))/den;
-   const wb=((t.cz-t.az)*(x-t.cx)+(t.ax-t.cx)*(z-t.cz))/den;
+   const dx=x-t.cx,dz=z-t.cz;
+   const wa=t.waX*dx+t.waZ*dz;
+   const wb=t.wbX*dx+t.wbZ*dz;
    const wc=1-wa-wb;
    if(wa<-.002||wb<-.002||wc<-.002)continue;
    const y=wa*t.ay+wb*t.by+wc*t.cy;
@@ -2232,6 +2235,8 @@ const gasCanopyFixtures=[],gasCanopyBulbs=[],gasCanopyGlassMaterials=[];
 const gasCanopyFlickerStates=[]; // One independent rare flicker state per fixture.
 let gasCanopyFillLight=null,gasCanopyBounds=null,gasCanopyFade=0;
 let gasCanopyGlowActive=null,gasCanopySharedBrightness=1;
+let gasCanopyPreviousFade=NaN;
+const gasCanopyPreviousBrightness=[];
 let gasCanopyFlickerEventCount=0,gasCanopyActiveFlickerCount=-1;
 let gasCanopyFirstApproachArmed=false;
 function syncGasCanopyLighting(){
@@ -2312,6 +2317,14 @@ function updateGasCanopyLighting(dt,instant=false,t=performance.now()){
  gasCanopyFade+=(target-gasCanopyFade)*follow;
  if(Math.abs(target-gasCanopyFade)<.002)gasCanopyFade=target;
  const bulbsOn=gasCanopyFade>.015;
+ let canopyMaterialsDirty=instant||gasCanopyPreviousFade!==gasCanopyFade;
+ for(let i=0;i<gasCanopyFlickerStates.length;i++){
+  const brightness=gasCanopyFlickerStates[i].brightness;
+  if(gasCanopyPreviousBrightness[i]!==brightness)canopyMaterialsDirty=true;
+  gasCanopyPreviousBrightness[i]=brightness;
+ }
+ gasCanopyPreviousFade=gasCanopyFade;
+ if(canopyMaterialsDirty){
  for(const bulb of gasCanopyBulbs){
   bulb.mesh.visible=bulbsOn;
   if(bulbsOn){
@@ -2329,6 +2342,7 @@ function updateGasCanopyLighting(dt,instant=false,t=performance.now()){
   if(item.color) item.material.color.copy(item.color)
    .multiplyScalar(gasCanopyFade*brightness);
   item.material.emissiveIntensity=item.intensity*gasCanopyFade*brightness;
+ }
  }
  // Shared light dims naturally with the 3 bulbs' average brightness, while
  // spotlight visibility stays constant so camera turns do not recompile shaders.
@@ -2632,16 +2646,15 @@ function moveZombieSmart(z,ox,oz,stepX,stepZ,r=ZOMBIE_COLLISION_RADIUS){
 
  const mag=Math.hypot(stepX,stepZ)||.001,nx=stepX/mag,nz=stepZ/mag;
  let side=z.avoidSide||z.side||1,sx=-nz*side,sz=nx*side;
- const tries=[
-   [ox+sx*mag*1.18+nx*mag*.12,oz+sz*mag*1.18+nz*mag*.12],
-   [ox+sx*mag*.92,oz+sz*mag*.92],
-   [ox-sx*mag*1.05+nx*mag*.08,oz-sz*mag*1.05+nz*mag*.08]
- ];
- for(let i=0;i<tries.length;i++){
-   const p=tries[i];
-   if(!zombiePointBlocked(p[0],p[1],r)){
+ for(let i=0;i<3;i++){
+   // Same three probe locations/order as before, but no per-probe arrays.
+   let testX,testZ;
+   if(i===0){testX=ox+sx*mag*1.18+nx*mag*.12;testZ=oz+sz*mag*1.18+nz*mag*.12;}
+   else if(i===1){testX=ox+sx*mag*.92;testZ=oz+sz*mag*.92;}
+   else{testX=ox-sx*mag*1.05+nx*mag*.08;testZ=oz-sz*mag*1.05+nz*mag*.08;}
+   if(!zombiePointBlocked(testX,testZ,r)){
      if(i===2)z.avoidSide=-side;
-     return{x:p[0],z:p[1],blocked:true};
+     return{x:testX,z:testZ,blocked:true};
    }
  }
  return{x:ox,z:oz,blocked:true};
@@ -7667,6 +7680,7 @@ function updateDrops(dt){
 
 const living=()=>zombies.filter(z=>!z.dead);
 const activeFrame=[];
+const settledCorpseScratch=[];
 function livingCount(){let n=0;for(const z of zombies)if(!z.dead)n++;return n}
 const MAX_ACTIVE_ZOMBIES=30;
 const RECENT_ZOMBIE_SPAWN_LIMIT=96;
@@ -8189,8 +8203,9 @@ function updateBodyPbd(z,rag,dt){
  const p=rag.bodyPbd;if(!p)return false;
  const infectedGunshot=p.rigKind==="infected"&&!rag.blast&&z.dead&&!z.infectedCrawler;
  const steps=Math.max(1,Math.min(3,Math.ceil(dt/(1/60)))),h=dt/steps;
+ const touched=p.touchedNodes||(p.touchedNodes=new Set());
  for(let step=0;step<steps;step++){
-   const touched=new Set();
+   touched.clear();
    for(const n of p.nodes.values()){
     n.old.copy(n.pos);
     n.vel.y-=9.81*h;
@@ -11192,11 +11207,12 @@ if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math
 }
 // Apply the visual body budget only to settled corpses, oldest first.
 // Living enemies, active ragdolls, navigation and combat never change.
-const settledCorpses=zombies.filter(z=>z.dead&&!z.cleaned&&z.ragdoll?.active===false&&z.g?.parent);
-const extraCorpses=settledCorpses.length-graphicsOptions.corpses;
+settledCorpseScratch.length=0;
+for(const z of zombies)if(z.dead&&!z.cleaned&&z.ragdoll?.active===false&&z.g?.parent)settledCorpseScratch.push(z);
+const extraCorpses=settledCorpseScratch.length-graphicsOptions.corpses;
 if(extraCorpses>0){
- settledCorpses.sort((a,b)=>b.corpseAge-a.corpseAge);
- for(let i=0;i<extraCorpses;i++){const z=settledCorpses[i];releaseZombieVisual(z);z.cleaned=true;}
+ settledCorpseScratch.sort((a,b)=>b.corpseAge-a.corpseAge);
+ for(let i=0;i<extraCorpses;i++){const z=settledCorpseScratch[i];releaseZombieVisual(z);z.cleaned=true;}
 }
 if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
 spawnQueuedZombies();
