@@ -2080,11 +2080,13 @@ function setupStreetLampLighting(placements){
 // Determine only a few plausible illuminating lamps, preferring lamps
 // in/just outside the view and keeping any already assigned lamp stable.
 // Lamps close enough to light visible nearby pavement may remain behind us.
+// Reuse selection storage: light selection runs throughout gameplay.
+const streetLampRankScratch=[],streetLampExistingScratch=new Set();
 function chooseStreetLampHeads(mode){
  const fx=-Math.sin(yaw),fz=-Math.cos(yaw);
  const halfFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(cam.fov)*.5)*cam.aspect);
- const chosen=[];
- const existing=new Set();
+ const chosen=streetLampRankScratch;chosen.length=0;
+ const existing=streetLampExistingScratch;existing.clear();
  for(const light of streetLampLightPool){
    if(light.userData.desiredHead>=0)existing.add(light.userData.desiredHead);
    if(light.userData.currentHead>=0)existing.add(light.userData.currentHead);
@@ -2113,8 +2115,12 @@ function chooseStreetLampHeads(mode){
    }
  }
  chosen.sort((a,b)=>a.score-b.score);
- return chosen.slice(0,mode==="full"?streetLampLightPool.length:
-   Math.min(STREET_LAMP_REDUCED_LIGHT_COUNT,streetLampLightPool.length)).map(x=>x.i);
+ // Return a fresh small selection because callers may retain it; only
+ // the often-large ranking array and incumbent Set are reused.
+ const count=mode==="full"?streetLampLightPool.length:
+   Math.min(STREET_LAMP_REDUCED_LIGHT_COUNT,streetLampLightPool.length);
+ const result=[];for(let i=0;i<count&&i<chosen.length;i++)result.push(chosen[i].i);
+ return result;
 }
 function assignStreetLampHeads(selected,activeBudget){
  streetLampCandidateIndices.clear();
