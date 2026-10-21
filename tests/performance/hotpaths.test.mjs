@@ -59,11 +59,11 @@ test('collision avoidance retains all three original candidate positions',()=>{
 
 
 test('runtime CPU phase report remains diagnostic-only',()=>{
- assert.match(src,/cityFrameProfile\\.corpsesMs\\+=performance\\.now\\(\\)-corpseStart/);
- assert.match(src,/cityFrameProfile\\.livingMs\\+=performance\\.now\\(\\)-livingStart/);
- assert.match(src,/cityFrameProfile\\.generalMs\\+=performance\\.now\\(\\)-generalStart/);
+ assert.ok(src.includes('cityFrameProfile.corpsesMs+=performance.now()-corpseStart'));
+ assert.ok(src.includes('cityFrameProfile.livingMs+=performance.now()-livingStart'));
+ assert.ok(src.includes('cityFrameProfile.generalMs+=performance.now()-generalStart'));
  const hud=readFileSync('src/performance-hud.js','utf8');
- assert.match(hud,/reportSamples\\.length>20/);
- assert.match(hud,/navigator\\.clipboard\\.writeText/);
- assert.match(hud,/cpuCorpsesMs:/);
+ assert.ok(hud.includes('reportSamples.length>20'));
+ assert.ok(hud.includes('navigator.clipboard.writeText'));
+ assert.ok(hud.includes('cpuCorpsesMs:'));
 });

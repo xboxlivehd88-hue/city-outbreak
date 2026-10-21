@@ -1,3 +1,11 @@
+# v770 — Profiler QA hardening — 2026-10-21
+
+- Follow-up to diagnostic v769: label first CPU phase correctly as FX/projectiles (not player movement); make clipboard-blocked report fallback show selectable newlines; correct static Node test regex escaping to exact-source invariant checks.
+- v769 profiling design and original gameplay are unchanged. Performance numbers are **not yet measured on the user's desktop**. GitHub software renderer cannot stand in for the user's GPU. v324 recovery untouched.
+- Do not repeat v767/768 optimizations. Collect real-hardware reports during idle, 30 living zombies, active corpse simulations and explosive combat; then optimize the measured bottleneck.
+
+---
+
 # v769 — Real-device CPU phase profiler and 20-second export — 2026-10-21
 
 - Verified GitHub `main` at v768 before changes. Performance HUD now distinguishes per-frame effects/player (`generalMs`), corpse/ragdoll (`corpsesMs`), and living-zombie AI/animation (`livingMs`) CPU time, alongside existing renderer, GPU, frame-pacing, navigation, and FX metrics.

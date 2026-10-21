@@ -34,7 +34,7 @@ export function createPerformanceGuard({
    const contents=JSON.stringify(report,null,2);
    try{await navigator.clipboard.writeText(contents);copy.textContent="COPIED REPORT";}
    catch(_){
-    perfHud.textContent+="\\n\\nCOPY BLOCKED — SELECT THIS REPORT:\\n"+contents;
+    perfHud.textContent+="\n\nCOPY BLOCKED — SELECT THIS REPORT:\n"+contents;
     copy.textContent="SELECT REPORT BELOW";
    }
   });
@@ -75,7 +75,7 @@ export function createPerformanceGuard({
     "\nPIXEL RATIO "+renderer.getPixelRatio().toFixed(2)+
     (p?"\nCPU GAME "+fmt(p.updateMs)+"ms | LIGHTS "+fmt(p.lightsMs)+
      " | RAIN "+fmt(p.rainMs)+" | RENDER SUBMIT "+fmt(p.renderSubmitMs)+
-     "\nCPU PHASES FX/MOVE "+fmt(p.generalMs)+"ms | CORPSES "+fmt(p.corpsesMs)+
+     "\nCPU PHASES FX/PROJECTILES "+fmt(p.generalMs)+"ms | CORPSES "+fmt(p.corpsesMs)+
      "ms | LIVING AI/ANIM "+fmt(p.livingMs)+"ms"+
      "\nFRAME "+(p.frameSamples>=5?"P50 "+fmt(p.frameMedianMs)+"ms | P95 "+fmt(p.frameP95Ms)+"ms | MAX "+fmt(p.frameMaxMs)+"ms":"PACING WARMUP ("+(p.frameSamples||0)+" FRAMES)") +
      "\nGPU RENDER "+(p.gpu?.status==="ready"
