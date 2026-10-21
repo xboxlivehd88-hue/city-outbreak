@@ -1,3 +1,11 @@
+# v771 — Prime original grenade casing shader variants following measured first-blast hitch — 2026-10-21
+
+- Reviewed user-provided 87.92s v770 gameplay video frame-by-frame. **At 41.45–41.85s the scene nearly freezes immediately ahead of the first grenade detonation.** HUD at 42.50s confirms MAX frame **428.3ms**, CPU WORST **428.7ms**, one hitch >50ms, and that reporting period FPS **104** (normally ~180). Grenade CPU only **3.9ms** (FX 1.8ms, shell .3ms, reaction 1.5ms), indicating graphics/render work instead of grenade physics. FX GPU smoke/spark prewarm was already "ready".
+- The existing idle prewarm covered custom smoke/sparks but not ORIGINAL spintop GLB casing fragment geometry/material variants, introduced on the first explosion frame. v771 adds a separate menu-only prewarm of representative original GLB fragment meshes with live scene light/fog shader defines, using an offscreen 1px render. The warm meshes are not live and never change damage, ragdolls, visual explosion configuration or fragment counts. PERFORMANCE panel now shows **CASING GPU PREWARM**.
+- This is a **targeted hypothesis to reduce the first-use shader/vertex-buffer compilation hitch**, not yet a measured fix on the user's desktop. Re-record/re-check first explosion with CASING GPU PREWARM = ready and compare MAX CPU/wall frame. Other rare stutters may have different causes. All seven guns, original arms, M17 mag, GLB enemies and graphics presets unchanged. Protected v324 checkpoint NOT TOUCHED.
+
+---
+
 # v770 — Profiler QA hardening — 2026-10-21
 
 - Follow-up to diagnostic v769: label first CPU phase correctly as FX/projectiles (not player movement); make clipboard-blocked report fallback show selectable newlines; correct static Node test regex escaping to exact-source invariant checks.

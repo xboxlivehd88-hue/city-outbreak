@@ -67,3 +67,15 @@ test('runtime CPU phase report remains diagnostic-only',()=>{
  assert.ok(hud.includes('navigator.clipboard.writeText'));
  assert.ok(hud.includes('cpuCorpsesMs:'));
 });
+
+test('original grenade casing is prewarmed offscreen without touching live fragments',()=>{
+ const shard=readFileSync('src/grenade-shatter.js','utf8');
+ assert.ok(shard.includes('export function createCasingFragmentWarmupGroup(model)'));
+ assert.ok(shard.includes('new THREE.Mesh(chunks[0].geometry,material)'));
+ assert.ok(src.includes('void prewarmGrenadeFragmentGpu()'));
+ assert.ok(src.includes('await ren.compileAsync(warmScene,cam)'));
+ assert.ok(src.includes('ren.render(warmScene,cam)'));
+ assert.ok(src.includes('warmScene.remove(shards)'));
+ const warm=shard.slice(shard.indexOf('export function createCasingFragmentWarmupGroup'),shard.indexOf('// Call this ONCE after the GLB'));
+ assert.ok(!warm.includes('activeCasingPieces.push'));
+});

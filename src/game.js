@@ -20,7 +20,7 @@ import {applyM17AuthoredPistolFingerClip,m17ActualSourceInfo} from "./m17-author
 import {getM17SourceReloadTravel,m17SourceReloadMotion} from "./pistol-source-travel.mjs?v=723";
 import {createMouseLookGuard} from "./mouse-look-guard.mjs?v=692";
 import {diff,isBossWave,bossTier,bossScaleFactor} from "./wave-utils.js?v=321";
-import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,activeCasingFragmentCount} from "./grenade-shatter.js?v=672";
+import {burstCasingIntoFragments,updateCasingFragments,clearCasingFragments,prepareCasingFragments,createCasingFragmentWarmupGroup,activeCasingFragmentCount} from "./grenade-shatter.js?v=771";
 import {createExplosionParticleBatch,drawExplosionParticleBatch,disposeExplosionParticleBatch,primeExplosionParticleBatch} from "./explosion-batch.js?v=676";
 // v567: suit boss model is selected only when its name is drawn on a normal
 // boss wave (every 10th wave); preserve the approved v566 rig and collision.
@@ -3270,6 +3270,11 @@ new GLTFLoader().load("assets/spintop.glb?v=391",gltf=>{
  holder.userData.bottomYPivot=true;
  grenadeModelTemplate=holder;
  document.documentElement.dataset.grenadePreparedFragmentTiers=String(prepareCasingFragments(holder));
+ // Warm the actual GLB casing-fragment renderer variants before the first blast.
+ const scheduleFragmentWarm=()=>{if(!running)void prewarmGrenadeFragmentGpu()};
+ if(typeof requestIdleCallback==="function")
+  requestIdleCallback(scheduleFragmentWarm,{timeout:2500});
+ else setTimeout(scheduleFragmentWarm,350);
 },undefined,err=>console.warn("Grenade GLB load failed; grenade unavailable",err));
 let playerHandRig=null,playerReloadPart=null,reloadStartedAt=0,reloadDurationMs=0,reloadWeapon="",reloadOldMagDropped=false,reloadFreshMag=null,reloadFreshInsertStart=null,reloadFreshInsertQuat=null,reloadFreshAttached=false,reloadMagInserted=false,reloadSequence=0,runSequence=0,launcherBreakRig=null,launcherFreshRound=null,launcherChamberRound=null,launcherRoundSeated=false;
 const FX={
@@ -3424,6 +3429,48 @@ async function prewarmExplosionGpu(){
 if(typeof requestIdleCallback==="function")
  requestIdleCallback(()=>{prewarmExplosionGpu()},{timeout:2500});
 else setTimeout(()=>{prewarmExplosionGpu()},350);
+// Video evidence: the first grenade incurred a 428.3ms rendering-frame hitch,
+// but its own CPU explosion logic took only 3.9ms. Smoke/sparks are already
+// prewarmed. This primes the missing GLB casing fragment shader/geometry with
+// current light/fog defines OFFSCREEN while the start screen is still open.
+let grenadeFragmentGpuWarmupPromise=null;
+async function prewarmGrenadeFragmentGpu(){
+ if(!grenadeModelTemplate||running||grenadeFragmentGpuWarmupPromise)return grenadeFragmentGpuWarmupPromise;
+ grenadeFragmentGpuWarmupPromise=(async()=>{
+  document.documentElement.dataset.grenadeFragmentGpuWarmup="running";
+  const started=performance.now();
+  const warmScene=new THREE.Scene();
+  warmScene.fog=scene.fog;
+  warmScene.environment=scene.environment;
+  const shards=createCasingFragmentWarmupGroup(grenadeModelTemplate);
+  document.documentElement.dataset.grenadeFragmentWarmupMeshes=String(shards.children.length);
+  let target=null;
+  try{
+   if(!shards.children.length)throw Error("No original casing fragment shader geometry");
+   warmScene.add(shards);
+   // Shader light count and shadow variants must match the live scene.
+   scene.traverse(node=>{if(node.isLight&&node.visible)warmScene.add(node.clone())});
+   if(typeof ren.compileAsync==="function")await ren.compileAsync(warmScene,cam);
+   else ren.compile(warmScene,cam);
+   if(!running){
+    const previous=ren.getRenderTarget();
+    target=new THREE.WebGLRenderTarget(1,1,{depthBuffer:false,stencilBuffer:false});
+    try{ren.setRenderTarget(target);ren.render(warmScene,cam)}
+    finally{ren.setRenderTarget(previous)}
+    document.documentElement.dataset.grenadeFragmentGpuWarmup="ready";
+   }else document.documentElement.dataset.grenadeFragmentGpuWarmup="interrupted-by-start";
+  }catch(error){
+   document.documentElement.dataset.grenadeFragmentGpuWarmup="failed";
+   document.documentElement.dataset.grenadeFragmentGpuWarmupError=String(error?.message||error);
+   console.warn("Grenade fragment prewarm failed",error);
+  }finally{
+   warmScene.remove(shards);
+   target?.dispose();
+   document.documentElement.dataset.grenadeFragmentGpuWarmupMs=(performance.now()-started).toFixed(1);
+  }
+ })();
+ return grenadeFragmentGpuWarmupPromise;
+}
 function clearExplosionBurst(burst){
  for(const batch of burst.particleBatches)disposeExplosionParticleBatch(batch);
  recycleExplosionSparkMesh(burst.sparkMesh);
@@ -11590,6 +11637,7 @@ const perfGuard=createPerformanceGuard({
   batchDraws:activeExplosionBursts.reduce((n,fx)=>n+fx.particleBatches.length,0),
   fragments:activeCasingFragmentCount(),
   gpuWarmup:document.documentElement.dataset.explosionGpuWarmup||"waiting",
+  casingWarmup:document.documentElement.dataset.grenadeFragmentGpuWarmup||"waiting",
   lastGrenade:performance.now()-Number(document.documentElement.dataset.lastGrenadeAtMs||0)<9000
    ?{total:Number(document.documentElement.dataset.lastGrenadeLogicMs||0),
     visual:Number(document.documentElement.dataset.lastGrenadeVisualMs||0),

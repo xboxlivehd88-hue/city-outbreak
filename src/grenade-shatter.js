@@ -60,6 +60,24 @@ function getChunks(geometry,sectors){
  return variants.get(sectors);
 }
 
+// Warm the real source GLB fragment shader/attribute layout before combat.
+// Temporary meshes are never entered in activeCasingPieces or shown in play.
+export function createCasingFragmentWarmupGroup(model){
+ const group=new THREE.Group();
+ model?.traverse(source=>{
+  if(!source.isMesh||!source.geometry?.attributes?.position)return;
+  const material=Array.isArray(source.material)?source.material[0]:source.material;
+  const chunks=getChunks(source.geometry,8);
+  // 4/6/8-sector tiers share the same vertex attributes and shader.
+  if(!material||!chunks.length)return;
+  const mesh=new THREE.Mesh(chunks[0].geometry,material);
+  mesh.name="CasingFragmentShaderPrewarm";
+  mesh.frustumCulled=false;mesh.castShadow=false;mesh.receiveShadow=false;
+  group.add(mesh);
+ });
+ return group;
+}
+
 // Call this ONCE after the GLB finishes loading, not on explosion.
 export function prepareCasingFragments(model){
  let prepared=0;
