@@ -1,3 +1,16 @@
+# v767 — Five safe gameplay CPU performance passes — 2026-10-21
+
+- User requested items 1–5 for smoother CITY OUTBREAK. Implemented FIVE isolated, behavior-preserving changes to `src/game.js`:
+  1. **Ground queries**: precompute X/Z barycentric weight coefficients during city-collision initialization; all three functions (walker ground height, spawn ground, ragdoll ground) now reuse those instead of dividing/multiplying triangle coefficients per probe.
+  2. **Zombie collision avoidance**: remove allocation of three 2-element arrays on every blocked movement; preserve the exact three candidates and original order.
+  3. **Corpse culling**: reuse `settledCorpseScratch` instead of allocating a new filtered array every gameplay frame; preserve corpse cap, age ordering, active ragdoll retention and removal.
+  4. **Dead-body PBD**: reuse/clear each body's `touchedNodes` Set across frames/substeps rather than allocating one per substep; preserve solver iterations, gravity, friction and joint responses.
+  5. **Gas station lighting**: avoid rewriting identical bulb and glass material colors/emissive values when fade and RNG brightness are unchanged; preserve every flicker and dynamic spotlight intensity.
+- Added deterministic Node hot-path regression tests and GitHub Actions step before Playwright; updated loader to v767. Existing performance dropdown already exposes FPS, CPU, GPU and draw calls for future device-specific measurement. These are **low-risk CPU/GC improvements, not a claimed measured FPS gain**; high-level batching/instancing and model LOD would require separate rendering/visual verification.
+- Preserve M17 v766 GLB mag and ADS alignment, all seven weapon systems, zombie count, difficulty and ragdoll behavior. Protected recovery v324 unchanged. Check Playwright screenshots, runtime smoke and Pages deployment; do NOT call visually verified before inspecting them.
+
+---
+
 # v766 VERIFIED QA — 2026-10-20
 
 - Original-GLOBAL GLB-loaded M17 magazine now anchored to measured source seated-magazine pose (v763; sanitized GLB names v765). Real loaded 17rnd mag geometry retained. User-reported giant magazine behind/below gun no longer appears in automated view.
