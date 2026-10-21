@@ -1,3 +1,12 @@
+# v769 — Real-device CPU phase profiler and 20-second export — 2026-10-21
+
+- Verified GitHub `main` at v768 before changes. Performance HUD now distinguishes per-frame effects/player (`generalMs`), corpse/ragdoll (`corpsesMs`), and living-zombie AI/animation (`livingMs`) CPU time, alongside existing renderer, GPU, frame-pacing, navigation, and FX metrics.
+- PERFORMANCE dropdown now adds **COPY LAST 20s REPORT**: timestamped one-second FPS, frame P95, CPU phases, GPU availability, draw calls, triangles, zombies, explosion counts, and hitches. Gather actual device data; CI deliberately paces software WebGL and is NOT a desktop FPS benchmark.
+- No gameplay rules, zombie rigs, animation timing, M17, shaders, graphics presets, or streetlight lighting behavior changed. Extend performance invariants and Playwright smoke tests. **v324 checkpoint untouched.**
+- Next measure live gameplay, 30-zombie combat, active ragdolls and grenades, then prioritize structural optimization from the dominant measured phase. No FPS gain is claimed by this diagnostic build.
+
+---
+
 # v768 — light-selection allocation cleanup after completed five CPU passes — 2026-10-21
 
 - The five requested CPU improvements are already delivered in v767 (ground barycentric precompute, zombie avoidance no temporary arrays, corpse scratch, ragdoll PBD touched-node reuse, gas canopy material change-only updates). This follow-up reuses scratch candidate ranking array and incumbent Set inside `chooseStreetLampHeads`, preserving the same sort/order, selected lamp IDs and lighting. v768 loader bumped. No new graphics settings or reductions; user FPS benefit must be benchmarked in performance dropdown. Protected v324 unchanged.

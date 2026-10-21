@@ -11127,7 +11127,10 @@ stepTimer-=dt;if(stepTimer<=0){stepS(sprinting);stepTimer=sprinting?.19:.38}}els
  scopeOverlay.classList.toggle("m4Scope",false);
  gun.visible=true;for(let k of kits){if(k.used)continue;k.g.rotation.y+=dt*.8;if(Math.hypot(px-k.g.position.x,pz-k.g.position.z)<1.5&&health<100){k.used=true;scene.remove(k.g);health=Math.min(100,health+40);pickupS();ui();show("+40 HEALTH")}}}
 function update(dt,wallDt=dt){
-perfGuard(wallDt);capFX();updateExplosionGlbs(dt);updateCasingFragments(dt);
+perfGuard(wallDt);
+// Phase timestamps are recorded once each, not for each zombie or fragment.
+const generalStart=performance.now();
+capFX();updateExplosionGlbs(dt);updateCasingFragments(dt);
 for(let i=thrown.length-1;i>=0;i--){let g=thrown[i];g.fuse-=dt;
  const grenadeOldPos=g.q.position.clone();
  g.v.y-=8.5*dt;g.q.position.addScaledVector(g.v,dt);
@@ -11200,7 +11203,7 @@ if(p.limb||p.reloadMag){
    }
  }
 }
-if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}if(dying){cam.rotation.z=Math.min(1.2,cam.rotation.z+dt*.5);cam.position.y=Math.max(.25,cam.position.y-dt*.55);return}if(!running)return;updateHealthRegen(dt);move(dt);updateDrops(dt);if(between){return}for(let z of zombies){
+if(p.life<=0){scene.remove(p.q);parts.splice(i,1)}}cityFrameProfile.generalMs+=performance.now()-generalStart;if(dying){cam.rotation.z=Math.min(1.2,cam.rotation.z+dt*.5);cam.position.y=Math.max(.25,cam.position.y-dt*.55);return}if(!running)return;updateHealthRegen(dt);move(dt);updateDrops(dt);if(between){return}const corpseStart=performance.now();for(let z of zombies){
  if(!z.dead)continue;
  z.corpseAge+=dt;
  // v414: keep Hairibar-style unpowered simulation alive until body-contact
@@ -11221,6 +11224,8 @@ if(extraCorpses>0){
  for(let i=0;i<extraCorpses;i++){const z=settledCorpseScratch[i];releaseZombieVisual(z);z.cleaned=true;}
 }
 if(zombies.some(z=>z.cleaned))zombies=zombies.filter(z=>!z.cleaned);
+cityFrameProfile.corpsesMs+=performance.now()-corpseStart;
+const livingStart=performance.now();
 spawnQueuedZombies();
 zombieNavBuildsThisFrame=0;
 zombieNavBudgetActive=true;
@@ -11530,12 +11535,13 @@ resolveZombiePlayerContact(z,ox,oz);
  syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);if(z.infectedCrawler)poseOriginalInfectedCrawler(z);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}
  zombieNavBudgetActive=false;
+ cityFrameProfile.livingMs+=performance.now()-livingStart;
  if(active.length===0&&waveSpawned>=waveTarget)beginBreak()}
 // v674: lightweight per-second CPU frame breakdown, analogous to a small
 // Unreal Insights summary. This measures JS/render SUBMISSION time, not GPU
 // execution, and never calls blocking GPU timer/query operations.
 const cityFrameProfile={
- frames:0,updateMs:0,lightsMs:0,rainMs:0,renderSubmitMs:0,
+ frames:0,updateMs:0,generalMs:0,corpsesMs:0,livingMs:0,lightsMs:0,rainMs:0,renderSubmitMs:0,
  maxCpuMs:0,hitches:0,wallFrames:[]
 };
 function takeCityFrameProfile(){
@@ -11551,6 +11557,9 @@ function takeCityFrameProfile(){
   frameMedianMs:at(.5),frameP95Ms:at(.95),frameMaxMs:at(1),
   gpu:cityGpuTimer.snapshot(),
   updateMs:cityFrameProfile.updateMs/n,
+  generalMs:cityFrameProfile.generalMs/n,
+  corpsesMs:cityFrameProfile.corpsesMs/n,
+  livingMs:cityFrameProfile.livingMs/n,
   lightsMs:cityFrameProfile.lightsMs/n,
   rainMs:cityFrameProfile.rainMs/n,
   renderSubmitMs:cityFrameProfile.renderSubmitMs/n,
@@ -11561,6 +11570,7 @@ function takeCityFrameProfile(){
   roofWorstMs:perfRainCoverWorstMs
  };
  cityFrameProfile.frames=0;cityFrameProfile.updateMs=0;
+ cityFrameProfile.generalMs=0;cityFrameProfile.corpsesMs=0;cityFrameProfile.livingMs=0;
  cityFrameProfile.lightsMs=0;cityFrameProfile.rainMs=0;
  cityFrameProfile.renderSubmitMs=0;cityFrameProfile.maxCpuMs=0;
  cityFrameProfile.hitches=0;cityFrameProfile.wallFrames.length=0;

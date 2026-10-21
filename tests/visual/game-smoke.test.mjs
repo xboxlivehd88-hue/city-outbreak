@@ -116,6 +116,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
       throw error;
     }
     assert.match(await page.locator('#weaponName').textContent(), /M17/i, 'M17 must be the spawned weapon');
+    assert.equal(await page.locator('#city-performance-copy').count(), 1, 'Performance report button must exist');
     assert.equal(await page.locator('html').getAttribute('data-fps-arms-weapon-test-loadout'), 'm17-only');
     // v753 fix is real only if the ORIGINAL imported source clip retargets.
     // Either readiness or an explicit error ends waiting; an error fails QA.
