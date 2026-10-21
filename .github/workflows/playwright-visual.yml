@@ -8,6 +8,7 @@ on:
       - 'src/**'
       - 'assets/**'
       - 'tests/visual/**'
+      - 'tests/performance/**'
       - '.github/workflows/playwright-visual.yml'
 permissions:
   contents: read
@@ -27,6 +28,8 @@ jobs:
       - name: Serve exact checked-out commit
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/city-http.log 2>&1 &
+      - name: Verify performance hotpath invariants
+        run: node --test tests/performance/hotpaths.test.mjs
       - name: Run visual smoke tests
         env:
           CITY_TEST_URL: http://127.0.0.1:8765
