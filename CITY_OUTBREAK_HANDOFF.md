@@ -1,3 +1,11 @@
+# v773 WINDOWS PORTABLE BUILD VERIFIED IN CI — 2026-10-21
+
+- Windows Development Edition job **39698872961** PASSED on windows-latest. Runtime dependency installation, 4 offline server tests, original GLB checks, electron-builder portable Windows x64 packaging, executable existence verification, and artifact upload all PASSED. Exact Windows build: `CityOutbreak-WindowsDev-0.1.0-x64.exe`, **249,718,126 bytes**; downloaded from workflow artifact `city-outbreak-windows-dev` (GitHub artifact ID **12390859944**, ~249.8 MB). Run: https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/39698872961
+- Existing v773 browser Playwright smoke run **39698872962** PASSED and Pages run **39698872423** PASSED. Original v772 gameplay code and graphics preserved. IMPORTANT: **portable executable build success does NOT equal the app visually played or tested on user's desktop**. User acceptance is milestone-1 gate: download zip, extract exe, launch Windows locally, verify M17 start/ADS/reload, zombies, wave and FPS diagnostics, compare same settings with browser and offline functionality.
+- No auto-update, code signing or native engine yet. No FPS gain claimed. Protected v324 unchanged. Once Windows acceptance passes, announce Milestone 1 done and proceed to cause-based hitch remediation using v772 diagnostics, plus standardized visual tests.
+
+---
+
 # v773 — Windows Development Edition shell, Milestone 1 (2026-10-21)
 
 - User confirmed CITY OUTBREAK's long-term goal is a downloadable PC zombie FPS created substantially through AI collaboration. The agreed sequence is: **1. desktop development prototype**, **2. compare and eliminate real frame stalls**, **3. automated QA and update tooling**, **4. release polishing/Steam readiness**. Each phase must be demonstrably complete before the next.
