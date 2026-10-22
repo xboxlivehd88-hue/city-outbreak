@@ -23,12 +23,23 @@ These tools are for local testing, not silent over-the-air updates.
 
 ## Windows portable .exe
 
-- In GitHub, open **Actions → Windows Development Edition**.
-- Open a successful workflow run and download the **city-outbreak-windows-dev**
+- In GitHub, open **Actions → Windows Development Edition — Security Gate**.
+- Open a successful workflow run and download **city-outbreak-windows-security-checked**
   artifact. Unzip it to obtain a Windows portable executable.
 - Or run `npm run build:windows` on Windows; output appears in `desktop-dist/`.
 
-This is an **unsigned experimental build**. Windows SmartScreen may warn.
+This remains an **unsigned experimental build**, so Chrome or SmartScreen
+can still block it on reputation grounds **even if the security scans pass**.
+Do not disable protections or assume that a malware warning is a false positive.
+
+The new build workflow blocks releases when the full npm dependency audit
+finds high/critical vulnerabilities or Microsoft Defender is unavailable,
+disabled, too outdated, or reports a threat. A successful artifact includes
+`SHA256SUMS.txt` and `SECURITY-REPORT.json` alongside the executable.
+You can verify the downloaded file with PowerShell:
+`Get-FileHash .\\CityOutbreak-WindowsDev-0.1.1-x64.exe -Algorithm SHA256`.
+A matching hash confirms integrity against the published record, not safety.
+
 Do not disable Windows security globally. There is no auto-updater or installer
 yet; those are separate milestones. The Windows Actions job validates asset
 serving, copies the game's 200MB+ GLB/texture assets, and produces the .exe.

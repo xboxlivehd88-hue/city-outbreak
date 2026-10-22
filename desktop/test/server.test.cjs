@@ -45,6 +45,9 @@ test('blocks repo source disclosure, unsupported files and cross-root paths',asy
   assert.equal((await fetch(origin+'/assets/%5csecret.glb')).status,403);
   assert.equal((await fetch(origin+'/src/does-not-exist.js')).status,404);
   assert.equal((await fetch(origin+'/index.html',{method:'POST'})).status,405);
+  assert.equal((await fetch(origin+'/',{headers:{Origin:'https://attacker.example'}})).status,403);
+  assert.equal((await fetch(origin+'/',{headers:{Host:'attacker.example'}})).status,403);
+  assert.equal((await fetch(origin+'/',{headers:{'Sec-Fetch-Site':'cross-site'}})).status,403);
 });
 test('missing CDN import map fails rather than silently requiring internet',()=>{
   assert.throws(()=>replaceDesktopImportMap('<h1>bad import map</h1>'),/Expected pinned Three.js/);

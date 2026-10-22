@@ -40,6 +40,7 @@ async function openGame(){
     webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,
       webSecurity:true,allowRunningInsecureContent:false}
   });
+  win.webContents.on('will-attach-webview',event=>event.preventDefault());
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('will-navigate',(event,url)=>{
     if(!url.startsWith(origin+'/'))event.preventDefault();

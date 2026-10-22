@@ -4,7 +4,6 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const { promisify } = require('node:util');
 
 const MIME = Object.freeze({
   '.html':'text/html; charset=utf-8',
@@ -62,6 +61,13 @@ function createGameServer({gameRoot,threeRoot}){
     }catch(_){return sendError(res,400,'Invalid URL')}
     if(pathname.includes('\\')||pathname.includes('\0')||pathname.split('/').includes('..'))
       return sendError(res,403,'Forbidden');
+    // Reject external webpages attempting to request localhost game assets.
+    const expectedHost='127.0.0.1:'+req.socket.localPort;
+    if(req.headers.host!==expectedHost)return sendError(res,403,'Invalid host');
+    if(req.headers.origin&&req.headers.origin!=='http://'+expectedHost)
+      return sendError(res,403,'External origin denied');
+    if(req.headers['sec-fetch-site']==='cross-site')
+      return sendError(res,403,'Cross-site request denied');
     const isVendor=pathname.startsWith('/vendor/three/');
     const relativePath=pathname==='/'?'index.html':
       isVendor?pathname.slice('/vendor/three/'.length):pathname.slice(1);

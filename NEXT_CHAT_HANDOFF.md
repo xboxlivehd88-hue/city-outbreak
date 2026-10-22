@@ -1,3 +1,13 @@
+# v774 — Windows security gate after Chrome dangerous-download warning — 2026-10-21
+
+- Chrome blocked `city-outbreak-windows-dev.zip` from the unsigned v773 Windows build with **"This file is dangerous"**. Treat that old artifact as **unverified**; user should not bypass the browser warning.
+- Added fail-closed desktop Windows security CI: `npm audit --audit-level=high` across all dependencies incl. build tools, offline server tests, Microsoft Defender active/signature checks, explicit scan of the finished EXE, recent threat check, SHA-256 checksum and SECURITY-REPORT.json. Only successful scans can upload **city-outbreak-windows-security-checked**. If GitHub Windows runner has Defender disabled, the build is deliberately BLOCKED; do not misrepresent it as scanned.
+- Hardened localhost server Host / Origin / Sec-Fetch-Site restrictions and test coverage; disabled Electron webview attachment. Windows shell version 0.1.1. Browser loader v774, no actual gameplay/M17/zombie/map/audio/physics alterations. Protected recovery v324 unchanged.
+- **Even a scanned unsigned EXE may still trigger Chrome warnings** because malware detection and publisher reputation/signing are different. A clean scan doesn't guarantee safety, and this is not yet a signed release.
+- Next: review actual security CI results, address audit issues/scanner availability without disabling protection; verify successful downloadable artifact and perform hands-on Windows game test.
+
+---
+
 # v773 WINDOWS PORTABLE BUILD VERIFIED IN CI — 2026-10-21
 
 - Windows Development Edition job **39698872961** PASSED on windows-latest. Runtime dependency installation, 4 offline server tests, original GLB checks, electron-builder portable Windows x64 packaging, executable existence verification, and artifact upload all PASSED. Exact Windows build: `CityOutbreak-WindowsDev-0.1.0-x64.exe`, **249,718,126 bytes**; downloaded from workflow artifact `city-outbreak-windows-dev` (GitHub artifact ID **12390859944**, ~249.8 MB). Run: https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/39698872961
