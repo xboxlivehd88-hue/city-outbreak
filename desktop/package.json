@@ -1,0 +1,54 @@
+{
+  "name": "city-outbreak-windows-dev",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CITY OUTBREAK Windows Development Edition, same gameplay as GitHub Pages",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "build:windows": "electron-builder --win portable --x64 --publish never"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "electron": "44.9.3",
+    "electron-builder": "26.17.0"
+  },
+  "build": {
+    "appId": "com.cityoutbreak.desktopdev",
+    "productName": "CITY OUTBREAK Development",
+    "asar": true,
+    "directories": {
+      "output": "../desktop-dist"
+    },
+    "files": [
+      "main.cjs",
+      "server.cjs",
+      "package.json",
+      "node_modules/three/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../index.html",
+        "to": "game/index.html"
+      },
+      {
+        "from": "../src",
+        "to": "game/src"
+      },
+      {
+        "from": "../assets",
+        "to": "game/assets"
+      }
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "artifactName": "CityOutbreak-WindowsDev-${version}-${arch}.${ext}"
+    },
+    "publish": null
+  }
+}

@@ -1,0 +1,49 @@
+name: Windows Development Edition
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/windows-development.yml'
+permissions:
+  contents: read
+jobs:
+  portable:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+      - name: Test offline desktop asset server
+        working-directory: desktop
+        run: npm test
+      - name: Verify runtime and packaged assets
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'assets/chicken_gun_fruzer_-_city.glb')) { throw 'Original city GLB missing' }
+          if (!(Test-Path 'assets/low-poly_sig_sauer_m17.glb')) { throw 'Original M17 GLB missing' }
+          if (!(Test-Path 'desktop/node_modules/three/build/three.module.js')) { throw 'Offline Three.js missing' }
+      - name: Build portable Windows exe
+        working-directory: desktop
+        run: npm run build:windows
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify portable exe exists
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem 'desktop-dist/*.exe' -ErrorAction SilentlyContinue
+          if (!$exe) { throw 'Portable Windows exe missing' }
+          $exe | Select-Object Name,Length
+      - name: Upload Windows development build
+        uses: actions/upload-artifact@v4
+        with:
+          name: city-outbreak-windows-dev
+          path: desktop-dist/*.exe
+          if-no-files-found: error
+          retention-days: 14

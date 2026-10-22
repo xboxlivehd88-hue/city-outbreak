@@ -1,0 +1,5 @@
+# Windows desktop development build/cache (assets are committed separately)
+desktop/node_modules/
+desktop/dist/
+desktop-dist/
+desktop/npm-debug.log
