@@ -1,3 +1,14 @@
+# v774 WINDOWS SECURITY CHECK — VERIFIED PASS — October 21, 2026
+
+- **User concern:** Chrome flagged the original unsigned v773 ZIP as **"This file is dangerous"**. Do **NOT** instruct to bypass Chrome warnings. Old unscanned artifact is not an approved release. User frustrated by conversation truncation; keep GitHub handoffs current and don't ask repetitive questions.
+- Latest source HEAD before this note: `9677701860215f6668d621f0560dfd5658fb4f52`. Actual gameplay loader is **v774**; protected v324 remains **untouched**.
+- Security-gated Windows workflow run **39703880023** completed **SUCCESS**, all steps: npm install; `npm audit --audit-level=high` (0 high/critical, **8 moderate** transitive vulnerabilities that still require follow-up), 4 local security/asset tests; original asset verification; Windows x64 Electron portable EXE build; Microsoft Defender custom executable scan (**Normal, AV enabled, service enabled, no new detections**); SHA-256 record; artifact upload. Actual executable SHA-256 from logs: `72b3036d2e147eb517901f066028cf284158786283d3526c29d679ec7b66689e`. Run: https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/39703880023
+- New artifact: **city-outbreak-windows-security-checked**, ID **12393789453**, ~249.7MB ZIP; contains portable EXE + `SHA256SUMS.txt` + `SECURITY-REPORT.json`; expires 2026-11-05. Still unsigned and may trigger Chrome SmartScreen/reputation warnings; malware scan is not proof of safety and does not remove browser blocks.
+- Security changes: locked local server against external Host/Origin/cross-site requests, Electron webview blocked, antivirus scanning & fail-closed upload. `desktop/package.json` v0.1.1. Desktop Windows app has not yet been launched/tested on actual user's PC, so Milestone 1 NOT COMPLETE.
+- Next: do not pressure user to override a dangerous-download warning. Review/sign package with trusted certificate or offer source-based development method after security review; remediate 8 moderate dependencies if feasible; safely test on user's Windows PC if browser accepts legitimate signed build. Later compare desktop/browser hitch diagnostics.
+- Browser Playwright v774 run **39703681814** passed, no gameplay changes.
+---
+
 # v774 — Windows Defender-scanned executable verified (2026-10-21)
 
 - GitHub Actions security-gated Windows build **39703880023 PASSED** on commit `2d3de5f11d01c9d109b89455b41cb23d81f2f8e8`. Windows Defender scan log: `mode=Normal, AntivirusEnabled=True, AMServiceEnabled=True`; `Defender scan completed` with no new detections. Build uploaded artifact **city-outbreak-windows-security-checked** (artifact ID 12393789453) containing executable, SHA256SUMS.txt and SECURITY-REPORT.json.
