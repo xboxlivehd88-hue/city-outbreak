@@ -46,7 +46,16 @@ test('blocks repo source disclosure, unsupported files and cross-root paths',asy
   assert.equal((await fetch(origin+'/src/does-not-exist.js')).status,404);
   assert.equal((await fetch(origin+'/index.html',{method:'POST'})).status,405);
   assert.equal((await fetch(origin+'/',{headers:{Origin:'https://attacker.example'}})).status,403);
-  assert.equal((await fetch(origin+'/',{headers:{Host:'attacker.example'}})).status,403);
+  // undici fetch ignores a custom Host header; use raw HTTP to test spoofing.
+  const http=require('node:http');
+  const target=new URL(origin);
+  const forgedHostStatus=await new Promise((resolve,reject)=>{
+    const req=http.request({hostname:target.hostname,port:target.port,path:'/',headers:{Host:'attacker.example'}},res=>{
+      res.resume();resolve(res.statusCode);
+    });
+    req.on('error',reject);req.end();
+  });
+  assert.equal(forgedHostStatus,403);
   assert.equal((await fetch(origin+'/',{headers:{'Sec-Fetch-Site':'cross-site'}})).status,403);
 });
 test('missing CDN import map fails rather than silently requiring internet',()=>{
