@@ -1,3 +1,13 @@
+# v774 — SECURITY-GATED WINDOWS EXE PASSED — 2026-10-21
+
+- **Current verified GitHub Windows workflow:** `Windows Development Edition — Security Gate`, run **39703880023**, PASSED: https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/39703880023 . Commit tested `2d3de5f11d01c9d109b89455b41cb23d81f2f8e8` (v774 browser loader; Windows shell version 0.1.1).
+- **Microsoft Defender actually scanned the finished executable on GitHub Windows runner.** Log: `Defender mode=Normal, AV enabled=True, service=True`; `Defender scan completed` and no reported new detections. SHA-256 **72b3036d2e147eb517901f066028cf284158786283d3526c29d679ec7b66689e**. Security gate uploaded **city-outbreak-windows-security-checked** artifact ID **12393789453**, ~250 MB, containing EXE, SHA256SUMS.txt, SECURITY-REPORT.json.
+- npm audit `--audit-level=high` PASSED: **no high/critical advisories**, but **eight MODERATE advisories** remain among electron-builder transitive dev dependencies (sprintf-js/roarr/global-agent etc.) and need remediation. All four localhost server boundary tests PASSED, original city/M17 GLBs found, Windows exe built, Playwright visual smoke also passed for v774 (`39703681814`), Pages deployed.
+- Prior v773 unscanned artifact is obsolete: tell user to use only new security-checked artifact. **Still unsigned**: Chrome and SmartScreen may continue to warn for download reputation, which neither Defender scanning nor checksum fixes. Do not instruct user to disable protections or override a malware warning. Proper signing and real Windows user playtest remain future acceptance gates; a clean scan is not a guarantee of safety.
+- Protected recovery v324 unchanged; gameplay / M17 / zombies / physics / assets unchanged.
+
+---
+
 # v774 — Windows security gate after Chrome dangerous-download warning — 2026-10-21
 
 - Chrome blocked `city-outbreak-windows-dev.zip` from the unsigned v773 Windows build with **"This file is dangerous"**. Treat that old artifact as **unverified**; user should not bypass the browser warning.

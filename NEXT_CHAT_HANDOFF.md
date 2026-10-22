@@ -1,3 +1,12 @@
+# v774 — Windows Defender-scanned executable verified (2026-10-21)
+
+- GitHub Actions security-gated Windows build **39703880023 PASSED** on commit `2d3de5f11d01c9d109b89455b41cb23d81f2f8e8`. Windows Defender scan log: `mode=Normal, AntivirusEnabled=True, AMServiceEnabled=True`; `Defender scan completed` with no new detections. Build uploaded artifact **city-outbreak-windows-security-checked** (artifact ID 12393789453) containing executable, SHA256SUMS.txt and SECURITY-REPORT.json.
+- Executable SHA-256: `72b3036d2e147eb517901f066028cf284158786283d3526c29d679ec7b66689e`. Download from https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/39703880023 ; old v773 artifact was NOT malware-scanned.
+- Desktop server tests **4/4 passed**; `npm audit --audit-level=high` passed (no high/critical, **eight MODERATE** dependency advisory findings remain in build tools). Playwright visual v774 run 39703681814 PASSED.
+- **Unsigned game** still may be blocked by Chrome/SmartScreen; do not advise bypassing security warnings. Security scan is not proof of safety. Actual Windows hands-on gameplay test still needed to complete desktop milestone. No gameplay changes; v324 checkpoint protected and untouched.
+
+---
+
 # v774 — Windows security gate after Chrome dangerous-download warning — 2026-10-21
 
 - Chrome blocked `city-outbreak-windows-dev.zip` from the unsigned v773 Windows build with **"This file is dangerous"**. Treat that old artifact as **unverified**; user should not bypass the browser warning.
