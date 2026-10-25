@@ -37,9 +37,21 @@ jobs:
         run: npm run build:windows
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Real packaged Windows game startup test (START GAME must work)
+        working-directory: desktop
+        run: node test/windows-startup-smoke.cjs
+        timeout-minutes: 5
       - name: Microsoft Defender scan and SHA-256 evidence (FAIL CLOSED)
         shell: pwsh
         run: ./desktop/scripts/verify-windows-release.ps1
+      - name: Save Windows startup screenshots and errors
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: city-outbreak-windows-startup-diagnostics
+          path: test-results/windows/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload ONLY security-checked Windows development build
         uses: actions/upload-artifact@v4
         with:
