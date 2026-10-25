@@ -32,15 +32,20 @@ jobs:
           if (!(Test-Path 'assets/chicken_gun_fruzer_-_city.glb')) { throw 'Original city GLB missing' }
           if (!(Test-Path 'assets/low-poly_sig_sauer_m17.glb')) { throw 'Original M17 GLB missing' }
           if (!(Test-Path 'desktop/node_modules/three/build/three.module.js')) { throw 'Offline Three.js missing' }
-      - name: Build portable Windows executable (not yet trusted)
+      - name: Package unpacked Windows app for REAL startup test
         working-directory: desktop
-        run: npm run build:windows
+        run: npx electron-builder --dir --win --x64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Real packaged Windows game startup test (START GAME must work)
         working-directory: desktop
         run: node test/windows-startup-smoke.cjs
         timeout-minutes: 5
+      - name: Build portable Windows executable ONLY after startup succeeds
+        working-directory: desktop
+        run: npm run build:windows
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Microsoft Defender scan and SHA-256 evidence (FAIL CLOSED)
         shell: pwsh
         run: ./desktop/scripts/verify-windows-release.ps1
