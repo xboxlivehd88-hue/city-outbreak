@@ -28,7 +28,10 @@ test('offline desktop server serves same game with LOCAL Three.js import map',as
   assert.ok(html.includes('/vendor/three/examples/jsm/'));
   assert.ok(!html.includes('cdn.jsdelivr.net'));
   assert.equal(fs.readFileSync(path.join(game,'index.html'),'utf8'),original);
-  assert.ok(response.headers.get('content-security-policy'));
+  const policy=response.headers.get('content-security-policy');
+  assert.ok(policy);
+  assert.ok(policy.includes("connect-src 'self' data: blob:"), 'Embedded original GLTF data buffers must load offline');
+  assert.ok(!policy.includes('https:'), 'Do not allow arbitrary external networks');
 });
 test('serves versioned JavaScript, local Three.js and original model bytes',async()=>{
   const js=await fetch(origin+'/src/game.js?v=773');

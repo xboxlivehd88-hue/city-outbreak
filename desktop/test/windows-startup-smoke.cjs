@@ -59,8 +59,8 @@ async function getFreePort(){
  }
  if(!page)throw Error('Electron opened no local game page. Logs: '+childLogs.join(' | ').slice(-4000));
  page.on('pageerror',e=>problems.push('pageerror: '+e.stack));
- page.on('console',m=>{if(m.type()==='error')problems.push('console: '+m.text())});
- page.on('requestfailed',req=>problems.push('requestfailed: '+req.url()+' '+req.failure()?.errorText));
+ page.on('console',m=>{if(m.type()==='error')problems.push('console: '+m.text().slice(0,450))});
+ page.on('requestfailed',req=>problems.push('requestfailed: '+req.url().slice(0,360)+' '+req.failure()?.errorText));
  page.on('response',res=>{if(res.status()>=400)problems.push('http '+res.status()+' '+res.url())});
  await page.waitForLoadState('domcontentloaded',{timeout:15000});
  console.log('CITY_DESKTOP_LAUNCH '+JSON.stringify({url:page.url(),title:await page.title()}));
@@ -72,7 +72,10 @@ async function getFreePort(){
  }catch(e){
   throw Error('The game module did not initialize (performance HUD absent). '+problems.join(' | '));
  }
- await page.locator('#start').click({timeout:15000});
+ // Win CI software WebGL can cause constant layout repaint, so the normal
+ // stability wait never finishes. Force an actual click without waiting for
+ // CSS box stability; do not invoke a test-only game reset hook.
+ await page.locator('#start').click({force:true,timeout:15000});
  await page.waitForTimeout(6500);
  const state=await page.evaluate(()=>({
   startScreenDisplay:getComputedStyle(document.querySelector('#startScreen')).display,
