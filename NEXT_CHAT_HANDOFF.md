@@ -1,3 +1,15 @@
+# Windows Development Edition 0.1.5 — START GAME FIX VERIFIED (2026-10-25)
+
+- User installed/extracted Windows portable v0.1.1 but clicking START GAME did nothing. This was a genuine Windows packaging defect, not a gameplay/UI handler bug.
+- New Windows packaged-app smoke test added (Playwright via loopback Chrome DevTools Protocol; tests the actual packed app's Start button, not a mocked browser). First failing CI run **40175902114** showed 404 missing `/vendor/three/examples/jsm/loaders/GLTFLoader.js`, `SkeletonUtils.js`, `BufferGeometryUtils.js` because electron-builder's app.asar lacked Three.js addon modules.
+- Fixed by including the **full pinned node_modules/three package** as `extraResources/vendor/three`, and packaged app now points local server at that resource directory; added explicit CI checks for all essential addons. Next smoke caught `connect-src 'self'` CSP blocking `data:application/octet-stream;base64,...` embedded GLTF rig buffers. Fixed only the desktop CSP to `connect-src 'self' data: blob:` (external origins remain blocked). Playwright force-clicks actual Start under CI software WebGL (no backdoor or CI-only game reset).
+- **FINAL VERIFIED success:** workflow **40176315176** (source commit `eccc161f7c0d8985c25427e37fb3bad0bacc16b2`) PASSED all steps: npm audit found **zero vulnerabilities**, 4 offline server/security tests, asset checks, real packaged Windows smoke, portable EXE build, and Defender antivirus scan. Captured actual `CITY_DESKTOP_START_RESULT {"startScreenDisplay":"none","gameBuild":"774","weapon":"M17 SIG","wave":"WAVE 1","hud":true}` and `CITY_DESKTOP_SMOKE_PASS`. Defender enabled, no new detections. Windows desktop version **0.1.5**, game browser loader remains **v774** with no changes to gameplay.
+- Download GitHub Actions artifact **city-outbreak-windows-security-checked** (ID **12592151874**, ~254MB ZIP, expires **2026-11-08**), run https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/40176315176 . EXE SHA-256 **054a6ad13f16c2667ea8e3a50dd52a532390c27c569d850b54ed1bac2811f9cb**; also inside artifact's `SHA256SUMS.txt`.
+- Still unsigned; Chrome/SmartScreen may warn. Never tell the user to disable/bypass dangerous-file warnings. Security scan is not proof of safety. Full human PC gameplay/ADS/reload and performance benchmarking STILL NEEDED for desktop milestone sign-off.
+- Protected v324 checkpoint untouched. Do not repeat first-pass attempts: the failed Playwright Electron.launch path and unpacked executable path test harness were fixed in earlier diagnostic runs. Going forward packaged-app START GAME smoke must pass BEFORE security-gated executable artifact is uploaded.
+
+---
+
 # v774 WINDOWS SECURITY CHECK — VERIFIED PASS — October 21, 2026
 
 - **User concern:** Chrome flagged the original unsigned v773 ZIP as **"This file is dangerous"**. Do **NOT** instruct to bypass Chrome warnings. Old unscanned artifact is not an approved release. User frustrated by conversation truncation; keep GitHub handoffs current and don't ask repetitive questions.
