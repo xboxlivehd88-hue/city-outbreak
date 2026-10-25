@@ -1,5 +1,11 @@
 # CITY OUTBREAK — Windows Development Edition (Milestone 1)
 
+The first PC install opened the title screen but START GAME did nothing
+because electron-builder omitted required Three.js addon modules from
+app.asar. Windows version 0.1.4 now packages the full pinned local Three.js
+package under `resources/vendor/three`. A Windows CI test must open the
+ACTUAL packaged application and click START GAME before an EXE can be released.
+
 This is a **separate desktop shell around the exact browser game**. It is a
 development/testing build, not a native engine rewrite and not evidence of an
 FPS increase. The GitHub Pages game and protected v324 recovery stay intact.

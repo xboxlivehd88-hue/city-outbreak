@@ -16,6 +16,8 @@ fs.writeFileSync(path.join(game,'index.html'),original);
 fs.writeFileSync(path.join(game,'src','game.js'),'export const loaded = true;');
 fs.writeFileSync(path.join(game,'assets','model.glb'),Buffer.from([1,2,3,4]));
 fs.writeFileSync(path.join(three,'build','three.module.js'),'export const THREE = true;');
+fs.mkdirSync(path.join(three,'examples','jsm','loaders'),{recursive:true});
+fs.writeFileSync(path.join(three,'examples','jsm','loaders','GLTFLoader.js'),'export const GLTFLoader = true;');
 let server,origin;
 test('offline desktop server serves same game with LOCAL Three.js import map',async()=>{
   ({server,origin}=await startGameServer({gameRoot:game,threeRoot:three}));
@@ -35,6 +37,9 @@ test('serves versioned JavaScript, local Three.js and original model bytes',asyn
   const vendor=await fetch(origin+'/vendor/three/build/three.module.js');
   assert.equal(vendor.status,200);
   assert.match(await vendor.text(),/THREE = true/);
+  const loader=await fetch(origin+'/vendor/three/examples/jsm/loaders/GLTFLoader.js');
+  assert.equal(loader.status,200,'Real Three.js loader directory must resolve');
+  assert.match(await loader.text(),/GLTFLoader = true/);
   const asset=await fetch(origin+'/assets/model.glb?v=1');
   assert.deepEqual([...new Uint8Array(await asset.arrayBuffer())],[1,2,3,4]);
 });

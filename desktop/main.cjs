@@ -24,7 +24,12 @@ function enableLocalDevelopmentReload(root){
 }
 async function openGame(){
   const gameRoot=app.isPackaged?path.join(process.resourcesPath,'game'):path.resolve(__dirname,'..');
-  const threeRoot=path.join(app.getAppPath(),'node_modules','three');
+  // electron-builder's production dependency pruning omitted examples/jsm
+  // from app.asar. Load the complete, separately copied original Three.js
+  // package (including GLTFLoader and SkeletonUtils) from extraResources.
+  const threeRoot=app.isPackaged
+    ?path.join(process.resourcesPath,'vendor','three')
+    :path.join(app.getAppPath(),'node_modules','three');
   const started=await startGameServer({gameRoot,threeRoot});
   gameServer=started.server;origin=started.origin;
   session.defaultSession.setPermissionRequestHandler((webContents,permission,callback)=>{
