@@ -10,7 +10,7 @@ const path=require('node:path');
 const net=require('node:net');
 const assert=require('node:assert/strict');
 const base=path.resolve(__dirname,'../../test-results/windows');
-const exe=path.resolve(__dirname,'../dist/win-unpacked/CITY OUTBREAK Development.exe');
+const exe=path.resolve(__dirname,'../../desktop-dist/win-unpacked/CITY OUTBREAK Development.exe');
 let proc=null,browser=null,page=null,childLogs=[];
 const problems=[];
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
