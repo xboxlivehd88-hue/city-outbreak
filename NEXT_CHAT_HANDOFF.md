@@ -1,3 +1,11 @@
+# Windows Development 0.1.6 — live gameplay updates with offline fallback (2026-10-26)
+
+- User **confirmed 0.1.5 START GAME works perfectly on Windows**. User asked to stop redownloading giant EXEs for each future gameplay fix. Implemented optional **GAME → Play latest online (updates on launch)** desktop mode: game loads exclusively from the official `https://xboxlivehd88-hue.github.io/city-outbreak/` in the same fully sandboxed Electron renderer (no preload/Node native APIs) while `GAME → Play offline` serves original packaged copy (safe fallback if offline). Preferred mode stored in local app userData; switching requires confirmation and resets current round, refresh F5. **Only allow main-frame navigations to exact pinned GitHub Pages game index or local loopback index; popups/webviews blocked**. Security-sensitive native code stays offline/packaged. Desktop policy unit tests cover origin/path/URL spoofing and safe defaults. EXE version 0.1.6, browser loader v775 (cache bust only). Gameplay core and 3D assets unchanged; protected v324 checkpoint untouched.
+- This solves regular **gameplay/content update friction**: when online mode selected, Github Pages updates reach the Windows app on restart/F5, using normal browser caching (only changed files usually transferred). Does **NOT** self-replace/auto-update the Windows EXE, does not cryptographically sign releases or bypass security reputation protections. Changes to Electron runtime still require a new separately verified/signed EXE. Future full native auto-updater must rely on signed installer and trusted signed update metadata, never untrusted unsigned executable downloads. Published GitHub releases currently absent.
+- Must verify packaging of new `mode-policy.cjs`, Windows offline START GAME packaged-app smoke, unit/security audit, Defender security scan, Pages deploy, and ideally a real Windows hands-on LIVE/OFFLINE switch before milestone approval. The existing v0.1.5 accepted PC start is preserved.
+
+---
+
 # Windows Development Edition 0.1.5 — START GAME FIX VERIFIED (2026-10-25)
 
 - User installed/extracted Windows portable v0.1.1 but clicking START GAME did nothing. This was a genuine Windows packaging defect, not a gameplay/UI handler bug.

@@ -1,6 +1,6 @@
 {
   "name": "city-outbreak-windows-dev",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "CITY OUTBREAK Windows Development Edition, same gameplay as GitHub Pages",
   "main": "main.cjs",
@@ -27,6 +27,7 @@
     "files": [
       "main.cjs",
       "server.cjs",
+      "mode-policy.cjs",
       "package.json",
       "node_modules/three/**/*"
     ],

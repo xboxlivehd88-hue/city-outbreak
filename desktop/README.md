@@ -1,14 +1,38 @@
 # CITY OUTBREAK — Windows Development Edition (Milestone 1)
 
-The first PC install opened the title screen but START GAME did nothing
-because electron-builder omitted required Three.js addon modules from
-app.asar. Windows version 0.1.4 now packages the full pinned local Three.js
-package under `resources/vendor/three`. A Windows CI test must open the
-ACTUAL packaged application and click START GAME before an EXE can be released.
+Original desktop 0.1.1 START GAME failure was fixed in 0.1.5 by bundling the full Three.js source addons and permitting local GLTF data buffers. CI runs the actual packaged app and clicks START before uploading. Desktop 0.1.6 adds selectable LIVE/OFFLINE game modes.
 
 This is a **separate desktop shell around the exact browser game**. It is a
 development/testing build, not a native engine rewrite and not evidence of an
 FPS increase. The GitHub Pages game and protected v324 recovery stay intact.
+
+## Live gameplay updates — no repeated full EXE downloads
+
+**NEW in desktop 0.1.6:** The GAME menu (visible above the game) has:
+
+- **Play latest online (updates on launch)** — loads the official
+  `https://xboxlivehd88-hue.github.io/city-outbreak/` game in the
+  sandboxed Windows window. When changes are deployed to GitHub Pages,
+  restart or choose **GAME → Refresh current game (F5)**. The latest game
+  code and changed assets are retrieved by normal HTTPS browser caching;
+  no full 250 MB EXE download is needed for each gameplay tweak.
+- **Play offline (built-in version)** — runs the exact bundled version,
+  even without internet access. If online mode cannot load, the app
+  falls back to this local copy and displays an explanation.
+
+You choose LIVE mode once; the preference persists across app restarts.
+Changing modes restarts your current round, and does not run arbitrary
+programs. The online game window has **no native preload API, Node.js,
+file access, or unsafe popup support**. Navigation is locked to the
+official game page. Other browser resources continue to obey Chromium
+security/CORS rules. Note that online games use separate origin-based
+browser storage, so settings may not carry between offline and online.
+
+**Important:** This updates **gameplay/content**, not Electron itself.
+For future desktop runtime or installer/security changes, a separately
+distributed and code-signed Windows update will still be necessary.
+We have not enabled unsigned native code auto-updates, and this
+feature does not circumvent Chrome or SmartScreen warnings.
 
 ## Run locally (Windows)
 
@@ -43,7 +67,7 @@ finds high/critical vulnerabilities or Microsoft Defender is unavailable,
 disabled, too outdated, or reports a threat. A successful artifact includes
 `SHA256SUMS.txt` and `SECURITY-REPORT.json` alongside the executable.
 You can verify the downloaded file with PowerShell:
-`Get-FileHash .\\CityOutbreak-WindowsDev-0.1.1-x64.exe -Algorithm SHA256`.
+`Get-FileHash .\\CityOutbreak-WindowsDev-0.1.6-x64.exe -Algorithm SHA256`.
 A matching hash confirms integrity against the published record, not safety.
 
 Do not disable Windows security globally. There is no auto-updater or installer
