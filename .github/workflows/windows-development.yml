@@ -8,21 +8,29 @@ on:
       - '.github/workflows/windows-development.yml'
 permissions:
   contents: read
+  id-token: write
+  attestations: write
 jobs:
   portable:
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
+      - name: Enforce project security policy before building
+        run: node scripts/security/release-guard.cjs
+      - name: Verify policy rejects unsafe changes
+        run: node --test scripts/security/release-guard.test.cjs
       - name: Install desktop dependencies
         working-directory: desktop
         run: npm install --no-audit --no-fund
       - name: Audit ALL desktop dependencies including build tooling
         working-directory: desktop
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=moderate
       - name: Test offline desktop asset server and boundaries
         working-directory: desktop
         run: npm test
@@ -56,16 +64,20 @@ jobs:
       - name: Microsoft Defender scan and SHA-256 evidence (FAIL CLOSED)
         shell: pwsh
         run: ./desktop/scripts/verify-windows-release.ps1
+      - name: Attest security-checked Windows executable provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: 'desktop-dist/*.exe'
       - name: Save Windows startup screenshots and errors
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: city-outbreak-windows-startup-diagnostics
           path: test-results/windows/
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload ONLY security-checked Windows development build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: city-outbreak-windows-security-checked
           path: |

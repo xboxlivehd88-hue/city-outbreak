@@ -58,6 +58,13 @@ These tools are for local testing, not silent over-the-air updates.
   artifact. Unzip it to obtain a Windows portable executable.
 - Or run `npm run build:windows` on Windows; output appears in `desktop-dist/`.
 
+PUBLIC RELEASE SECURITY: Do not distribute an EXE to other players yet.
+See [the release security checklist](../docs/SECURITY_RELEASE_CHECKLIST.md):
+GitHub main branch protection, account 2FA, reviewed package lockfile,
+code signing, and independent security review are still required. CI now
+runs a source-security policy, CodeQL, dependency monitoring and provenance
+attestation alongside Windows Defender; these are defenses, not a guarantee.
+
 This remains an **unsigned experimental build**, so Chrome or SmartScreen
 can still block it on reputation grounds **even if the security scans pass**.
 Do not disable protections or assume that a malware warning is a false positive.

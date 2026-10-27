@@ -1,0 +1,51 @@
+name: CITY OUTBREAK source security audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'src/**'
+      - 'index.html'
+      - 'assets/**'
+      - 'scripts/security/**'
+      - '.github/workflows/**'
+      - '.github/dependabot.yml'
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '26 12 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-policy:
+    name: Release policy and regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Check desktop security invariants and disallow tracked Windows binaries
+        run: node scripts/security/release-guard.cjs
+      - name: Test that unsafe changes fail closed
+        run: node --test scripts/security/release-guard.test.cjs
+  codeql:
+    name: CodeQL JavaScript security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
