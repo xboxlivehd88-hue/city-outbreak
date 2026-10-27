@@ -2,6 +2,10 @@
 
 Browser-based first-person zombie survival game built with Three.js and hosted on GitHub Pages.
 
+## Windows Update Notifications
+
+Windows Development Edition v0.1.7 runs the **bundled offline game** and checks a small, official HTTPS version manifest **once on startup**. A newer approved package produces a nonblocking notification and Help menu link (copied by the player). It does NOT download, execute or install anything automatically. See `desktop/README.md` for release gates and security requirements.
+
 ## Live Game
 
 https://xboxlivehd88-hue.github.io/city-outbreak/

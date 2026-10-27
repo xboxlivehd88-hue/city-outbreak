@@ -1,3 +1,13 @@
+# v777 — User-selected read-only Windows update check; LIVE gameplay mode removed — 2026-10-27
+
+- User chose **one-time update check on app launch**, not a continuously connected LIVE game, not a hot-updating renderer, and not an automatic EXE downloader. Preserve security posture (no remote control, no native updater, no launch bypass), preserve bundled offline gameplay and protected v324. Windows desktop version **0.1.7**, browser loader v777. No actual M17, zombies, physics, city or performance game code changed.
+- Removed opt-in LIVE website from desktop navigation. Even existing persisted `play-mode.json` preferences are ignored and always load local bundled game. No privileged Electron preloads, Node integration, automatic downloads, or stream of gameplay. New `desktop/update-check.cjs` makes **one** 5s max, 4KiB max, no-redirect HTTPS GET of a pinned JSON manifest `https://xboxlivehd88-hue.github.io/city-outbreak/updates/windows.json` after startup; validates version and official-repository GitHub release/run URL, and fails closed/offline gracefully.
+- When a NEWER approved Windows version is listed, Windows title says UPDATE AVAILABLE and a nonblocking OS toast indicates **HELP → View available update**. User can request a manual check and click Copy official GitHub link, never installs anything remotely or without explicit action. Current manifest remains **0.1.6** pointing to previously verified security-gated run `40563474180`, pending new 0.1.7 verified build. Only publish newer update metadata **after security CI success**, with verified official release page.
+- Security source guard updated to prevent live-mode regression or intervals, Windows test coverage added for malicious manifest and old live preference. Browser playable unaffected, v324 untampered. **Still unsigned, branch protection not enabled**, so current artifact is developer-only; no Chrome/Defender bypass instructions.
+- Next: verify CI Windows packaged START GAME & Defender, security guard, Pages deploy; only then edit update manifest with verified Windows 0.1.7 run. Windows user must download/install *one* new executable to receive notification capability; future updates are only announced, not installed.
+
+---
+
 # v776 — SECURITY BUILD + CODEQL + PROVENANCE VERIFIED — 2026-10-27
 
 - New code-security release controls merged into `main` (first implementation `598084ef48c11d8fcd72f908c26857534500804c`, false-positive policy comment check fixed `decfb494d30bb7b09a1bffceba726a6a9ee0e776`, Windows path trigger fixed `9726c1311c58d0125215efcf402eba9245731bc4`). Protected v324 recovery untouched, actual gameplay/weapon/zombie/graphics code unchanged; browser loader v776.

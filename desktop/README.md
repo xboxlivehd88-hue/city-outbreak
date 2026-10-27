@@ -1,38 +1,39 @@
 # CITY OUTBREAK — Windows Development Edition (Milestone 1)
 
-Original desktop 0.1.1 START GAME failure was fixed in 0.1.5 by bundling the full Three.js source addons and permitting local GLTF data buffers. CI runs the actual packaged app and clicks START before uploading. Desktop 0.1.6 adds selectable LIVE/OFFLINE game modes.
+Original desktop 0.1.1 START GAME failure was fixed in 0.1.5 by bundling the full Three.js source addons and permitting local GLTF data buffers. CI runs the actual packaged app and clicks START before uploading. Desktop 0.1.7 replaces LIVE mode with a one-time notification-only version check.
 
 This is a **separate desktop shell around the exact browser game**. It is a
 development/testing build, not a native engine rewrite and not evidence of an
 FPS increase. The GitHub Pages game and protected v324 recovery stay intact.
 
-## Live gameplay updates — no repeated full EXE downloads
+## Offline gameplay and a one-time update notification (desktop 0.1.7)
 
-**NEW in desktop 0.1.6:** The GAME menu (visible above the game) has:
+The packaged Windows game **always runs its bundled local** `index.html`,
+`src/`, and original models. Previously offered "Play latest online" is removed.
+Any older saved preference for LIVE mode is ignored.
 
-- **Play latest online (updates on launch)** — loads the official
-  `https://xboxlivehd88-hue.github.io/city-outbreak/` game in the
-  sandboxed Windows window. When changes are deployed to GitHub Pages,
-  restart or choose **GAME → Refresh current game (F5)**. The latest game
-  code and changed assets are retrieved by normal HTTPS browser caching;
-  no full 250 MB EXE download is needed for each gameplay tweak.
-- **Play offline (built-in version)** — runs the exact bundled version,
-  even without internet access. If online mode cannot load, the app
-  falls back to this local copy and displays an explanation.
+On startup, the Windows app performs **one short, read-only HTTPS GET** of the
+official version metadata: `https://xboxlivehd88-hue.github.io/city-outbreak/updates/windows.json`.
+The response must be small valid JSON with a strictly parsed semver and an
+official GitHub Actions run/release page. No stream, open socket, continuous
+polling, remote JS execution, or background download/install is used.
 
-You choose LIVE mode once; the preference persists across app restarts.
-Changing modes restarts your current round, and does not run arbitrary
-programs. The online game window has **no native preload API, Node.js,
-file access, or unsafe popup support**. Navigation is locked to the
-official game page. Other browser resources continue to obey Chromium
-security/CORS rules. Note that online games use separate origin-based
-browser storage, so settings may not carry between offline and online.
+If there is a newer approved Windows version, a Windows notification and
+window title tell the user **"UPDATE AVAILABLE"**. From **HELP → View
+available update**, choose **Copy official GitHub link** to paste into a
+browser. The user manually verifies and downloads any new EXE; no file runs
+automatically. **HELP → Check for updates now** is an explicit one-shot retry.
+No connection / invalid manifest simply means the offline game continues.
 
-**Important:** This updates **gameplay/content**, not Electron itself.
-For future desktop runtime or installer/security changes, a separately
-distributed and code-signed Windows update will still be necessary.
-We have not enabled unsigned native code auto-updates, and this
-feature does not circumvent Chrome or SmartScreen warnings.
+The static `updates/windows.json` version MUST ONLY be incremented once a
+new Windows package passes *all* startup, security, antivirus, and provenance
+checks and its official download page has been confirmed. Today's metadata
+continues to identify the previously verified 0.1.6 build; the new 0.1.7
+version is not advertised until CI passes.
+
+The game code can still be updated on GitHub Pages independently, but this
+offline-first EXE does not silently load that code. Any accepted future
+Windows fixes need a new package, ideally code-signed before public release.
 
 ## Run locally (Windows)
 
@@ -74,7 +75,7 @@ finds high/critical vulnerabilities or Microsoft Defender is unavailable,
 disabled, too outdated, or reports a threat. A successful artifact includes
 `SHA256SUMS.txt` and `SECURITY-REPORT.json` alongside the executable.
 You can verify the downloaded file with PowerShell:
-`Get-FileHash .\\CityOutbreak-WindowsDev-0.1.6-x64.exe -Algorithm SHA256`.
+`Get-FileHash .\\CityOutbreak-WindowsDev-0.1.7-x64.exe -Algorithm SHA256`.
 A matching hash confirms integrity against the published record, not safety.
 
 Do not disable Windows security globally. There is no auto-updater or installer

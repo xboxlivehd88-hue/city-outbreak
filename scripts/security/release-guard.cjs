@@ -42,11 +42,14 @@ function checkProject(root=ROOT,trackedPaths=null){
    [/\bwebviewTag\s*:\s*true/,'Unsafe webview enabled']
  ])fail(!expression.test(main),label);
  const mode=read('desktop/mode-policy.cjs',root);
- fail(mode.includes("const LIVE_URL='https://xboxlivehd88-hue.github.io/city-outbreak/'"),
-     'Official live URL changed; manual security review required');
- fail(/url\.hostname===['"]xboxlivehd88-hue\.github\.io['"]/.test(mode),
-     'Online hostname restriction missing');
- fail(/url\.protocol===['"]https:['"]/.test(mode),'Online content must require HTTPS');
+ fail(!/https?:\/\//.test(mode), 'Packaged renderer must never navigate to an online game page');
+ fail(mode.includes("local.hostname==='127.0.0.1'"), 'Offline navigation must be restricted to loopback');
+ fail(!/\bLIVE_URL\b|\bchooseMode\b|\bloadSelectedMode\b/.test(main), 'Live gameplay streaming is not approved');
+ fail(main.includes("await win.loadURL(origin+'/index.html')"), 'Packaged renderer must use bundled local game');
+ const updates=read('desktop/update-check.cjs',root);
+ fail(updates.includes("const MANIFEST_URL='https://xboxlivehd88-hue.github.io/city-outbreak/updates/windows.json'"),'Update check must use pinned HTTPS metadata endpoint');
+ fail(!/\bhttps?:\/\//.test(main), 'Desktop entrypoint must not embed arbitrary remote endpoints');
+ fail(!/autoUpdater|electron-updater|setInterval\s*\(/.test(main+updates),'No continuous polling or code auto-updates permitted');
  const server=read('desktop/server.cjs',root);
  fail(server.includes("server.listen(0,'127.0.0.1',resolve)"),'Local asset server must bind loopback only');
  fail(server.includes('req.headers.host!==expectedHost'),'Local asset server host filtering missing');
