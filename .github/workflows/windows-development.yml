@@ -2,7 +2,7 @@ name: Windows Development Edition — Security Gate
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, toby/windows-lockfile-security]
     paths:
       - 'desktop/**'
       - 'scripts/security/**'
@@ -28,7 +28,7 @@ jobs:
         run: node --test scripts/security/release-guard.test.cjs
       - name: Install desktop dependencies
         working-directory: desktop
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Audit ALL desktop dependencies including build tooling
         working-directory: desktop
         run: npm audit --audit-level=moderate
