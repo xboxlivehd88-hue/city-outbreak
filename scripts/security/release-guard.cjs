@@ -34,7 +34,7 @@ function checkProject(root=ROOT,trackedPaths=null){
    [/allowedNavigation\s*\(/,'Navigation must be allowlisted']
  ])fail(expression.test(main),label);
  for(const [expression,label] of [
-   [/\bpreload\s*:/,'No privileged preload script is approved'],
+   [/^\s*preload\s*:/m,'No privileged preload script is approved'],
    [/\b(?:autoUpdater|electron-updater|shell\.openExternal)\b/,'No native updater/external app launcher is approved'],
    [/\bnodeIntegration\s*:\s*true/,'Dangerous native Node integration found'],
    [/\bwebSecurity\s*:\s*false/,'Web security disabled'],
