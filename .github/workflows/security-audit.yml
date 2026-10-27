@@ -33,6 +33,11 @@ jobs:
         run: node scripts/security/release-guard.cjs
       - name: Test that unsafe changes fail closed
         run: node --test scripts/security/release-guard.test.cjs
+      - name: Verify committed Windows dependency lockfile
+        working-directory: desktop
+        run: |
+          npm ci --ignore-scripts --no-fund
+          npm audit --audit-level=moderate
   codeql:
     name: CodeQL JavaScript security scan
     runs-on: ubuntu-latest

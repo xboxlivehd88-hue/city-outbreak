@@ -1,6 +1,12 @@
 name: Windows Development Edition — Security Gate
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'scripts/security/**'
+      - '.github/workflows/windows-development.yml'
   push:
     branches: [main]
     paths:
@@ -28,7 +34,7 @@ jobs:
         run: node --test scripts/security/release-guard.test.cjs
       - name: Install desktop dependencies
         working-directory: desktop
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Audit ALL desktop dependencies including build tooling
         working-directory: desktop
         run: npm audit --audit-level=moderate
@@ -58,14 +64,17 @@ jobs:
         run: node test/windows-startup-smoke.cjs
         timeout-minutes: 5
       - name: Build portable Windows executable ONLY after startup succeeds
+        if: github.event_name != 'pull_request'
         working-directory: desktop
         run: npm run build:windows
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Microsoft Defender scan and SHA-256 evidence (FAIL CLOSED)
+        if: github.event_name != 'pull_request'
         shell: pwsh
         run: ./desktop/scripts/verify-windows-release.ps1
       - name: Attest security-checked Windows executable provenance
+        if: github.event_name != 'pull_request'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: 'desktop-dist/*.exe'
@@ -78,6 +87,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload ONLY security-checked Windows development build
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: city-outbreak-windows-security-checked
