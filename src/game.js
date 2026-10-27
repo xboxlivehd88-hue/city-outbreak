@@ -10497,7 +10497,7 @@ function readyNextWave(){
  if(isBossWave(wave)){ensureBossWaveName(wave);waveTitle="WAVE "+wave+" — BOSS FIGHT";waveSubtitle=bossWaveName+" IS COMING"}else{waveTitle="WAVE "+wave;waveSubtitle=diff(wave).count+" ZOMBIES INCOMING"}
  showAnnouncement({container:announce,titleEl:big,subtitleEl:small,title:waveTitle,subtitle:waveSubtitle});
  tone(440,.08,"square",.13);tone(660,.1,"square",.14,.1);tone(880,.16,"square",.15,.22);
- spawnWave();ui();cv.focus();
+ if(!cityEmptyBenchmark)spawnWave();else{waveTarget=0;waveSpawned=0;}ui();cv.focus();
  setTimeout(()=>hideAnnouncement(announce),750);
 }
 setupReadyNextButton(readyNextWave);
@@ -11834,6 +11834,15 @@ try{
  if(stored){const data=JSON.parse(stored);if(data&&typeof data==="object")graphicsCustomOptions=normalizeGraphicsOptions(data)}
 }catch(_){}
 applyGraphicsQuality(savedQuality);
+// v778: diagnostic-only rendering baseline, enabled with ?benchmark=empty.
+const cityEmptyBenchmark=new URLSearchParams(location.search).get("benchmark")==="empty";
+if(cityEmptyBenchmark){
+ document.documentElement.dataset.cityBenchmark="empty";
+ const el=document.createElement("div");
+ el.style.cssText="position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99999;background:#101820e8;color:white;padding:8px;border-radius:6px;pointer-events:none;font:12px Arial";
+ el.textContent="EMPTY CITY BASELINE — START, turn camera, WASD, open PERFORMANCE report";
+ document.body.appendChild(el);
+}
 // Record only actual long frames (>35ms synchronous or >50ms between RAFs).
 // One-off hitch snapshots avoid an allocation for each zombie/frame.
 const cityHitchEvents=[];
@@ -11854,12 +11863,19 @@ function frame(t){
   setTimeout(()=>requestAnimationFrame(frame),250);return;
  }
  const updateStart=performance.now();
- if(!paused)update(dt,wallDt);
+ if(cityEmptyBenchmark&&running&&!paused&&!between){
+  const fwd=(keys.w?1:0)-(keys.s?1:0),strafe=(keys.d?1:0)-(keys.a?1:0);
+  const step=(keys.shift?8:4)*dt;
+  px+=(-Math.sin(yaw)*fwd+Math.cos(yaw)*strafe)*step;
+  pz+=(-Math.cos(yaw)*fwd-Math.sin(yaw)*strafe)*step;
+  cam.position.set(px,playerGroundY+PLAYER_EYE_HEIGHT,pz);
+  cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;cam.rotation.z=0;
+  perfGuard(wallDt);
+ }else if(!paused)update(dt,wallDt);
  const updateEnd=performance.now();
- updateStreetLampLighting(t);
- updateGasCanopyLighting(dt,false,t);
+ if(!cityEmptyBenchmark){updateStreetLampLighting(t);updateGasCanopyLighting(dt,false,t);}
  const lightsEnd=performance.now();
- updateRainEffect(dt,t);
+ if(!cityEmptyBenchmark)updateRainEffect(dt,t);
  const rainEnd=performance.now();
  earlyNightSky.position.copy(cam.position);
  earlyNightSkyUniforms.uTime.value=t*.001;
