@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'desktop/**'
+      - 'scripts/security/**'
       - '.github/workflows/windows-development.yml'
 permissions:
   contents: read
