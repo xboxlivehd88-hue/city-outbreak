@@ -11,7 +11,7 @@ test('actual repository passes the security policy',()=>assert.deepEqual(checkPr
 test('tampering with security-sensitive settings or adding executables breaks the policy',()=>{
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'city-security-'));
  try{
-  for(const name of ['desktop/package.json','desktop/main.cjs','desktop/mode-policy.cjs','desktop/server.cjs','index.html']){
+  for(const name of ['desktop/package.json','desktop/main.cjs','desktop/mode-policy.cjs','desktop/update-check.cjs','desktop/server.cjs','index.html']){
     const full=path.join(temp,name);
     fs.mkdirSync(path.dirname(full),{recursive:true});
     fs.copyFileSync(path.join(root,name),full);
