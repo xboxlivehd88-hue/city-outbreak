@@ -66,7 +66,14 @@ eliminate malware or instantly guarantee SmartScreen trust.
 in CI, verify the lockfile and package integrity. Current package versions are
 pinned at the top level, but transitive dependencies can change across builds.
 
-**6. Before first public beta**, perform a third-party security review,
+**6. Review third-party browser module delivery.** The live HTML currently loads
+pinned-version Three.js ES modules from a public CDN (jsDelivr), but does not
+carry a complete content-integrity pin for all modules. Before public release,
+self-host an audited Three.js package under the official GitHub Pages origin
+(or use an equivalent fully verified dependency strategy) so a compromised
+third-party script delivery path cannot silently change live game code.
+
+**7. Before first public beta**, perform a third-party security review,
 fresh malware scans and a real-PC acceptance test of both LIVE/OFFLINE modes.
 Only publish through an official, clearly documented download channel.
 Do not instruct people to disable Microsoft Defender, SmartScreen or Chrome
