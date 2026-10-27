@@ -1,3 +1,10 @@
+# v778 — OPT-IN EMPTY CITY PERFORMANCE BASELINE — 2026-10-27 (PR validation pending)
+
+- Diagnostic URL parameter `?benchmark=empty` skips spawning zombies and bypasses game update, active street-light update and rain update while still rendering the existing city scene; enables mouse look and WASD camera translation. `PERFORMANCE` dropdown captures CPU frame-time, GPU when available, draws, triangles and hitch history. This is an isolation measurement, **not** a measured performance improvement; preserved original rendering quality and map, no normal-play change intended.
+- Source branch `toby-v778-empty-city-benchmark`, loader v778. Do not merge until browser/Windows regression verified. v324 checkpoint stays intact; other gameplay assets, weapons, and enemy behavior unchanged. Benchmark URL must only be used on a preview build before merging.
+
+---
+
 # v777 — Windows 0.1.7 offline-first update notifications VERIFIED — 2026-10-27
 
 - **User requested no persistent game connection.** Desktop 0.1.7 ALWAYS loads the bundled offline game and makes a single short, bounded, read-only HTTPS metadata check after launch (5-second timeout; 4-KiB limit; exact official GitHub Pages manifest URL; no redirected network requests; strict semver and official GitHub release-run URL validation). Existing v0.1.6 opt-in LIVE mode / saved LIVE preference was intentionally disabled. No automatic EXE download, silent installation, remote JavaScript rendering, remote-control API, polling loop, or privileged preload. User can manually check via HELP, copy GitHub URL, and decide whether to download a future verified build.
