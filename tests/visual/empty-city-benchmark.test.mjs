@@ -63,17 +63,25 @@ test('v778 empty city starts with zero zombies, moves and reports rendering', {t
   // Headless Chromium can reject pointer lock even when actual desktop Chromium grants it.
   // In that case, exercise the real document mousemove handler with a synthetic event,
   // rather than claiming an actual pointer-locked mouse test passed.
-  if(!rotated&&!pointerLocked){
-   inputMethod='synthetic-event-fallback-no-headless-pointerlock';
+  if(!rotated){
+   // Playwright's headless mouse driver may produce zero relative deltas
+   // EVEN when Chromium reports a valid pointer lock. Check the unchanged
+   // game's document mousemove handler with explicit non-zero movement data.
+   inputMethod='synthetic-relative-event-fallback';
    await page.evaluate(()=>{
-    Object.defineProperty(document,'pointerLockElement',{configurable:true,value:document.querySelector('#cv')});
-    document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,movementX:12,movementY:7}));
+    if(document.pointerLockElement?.id!=='cv')
+     Object.defineProperty(document,'pointerLockElement',{configurable:true,value:document.querySelector('#cv')});
+    const ev=new MouseEvent('mousemove',{bubbles:true});
+    Object.defineProperty(ev,'movementX',{value:12});
+    Object.defineProperty(ev,'movementY',{value:7});
+    document.dispatchEvent(ev);
    });
    await page.waitForTimeout(450);
    afterLook=await page.evaluate(()=>window.__cityEmptyBenchmarkState());
    rotated=Math.abs(afterLook.yaw-beforeLook.yaw)+Math.abs(afterLook.pitch-beforeLook.pitch)>.0001;
   }
   await writeFile(out+'/camera-input-diagnostic.json',JSON.stringify({pointerLocked,inputMethod,beforeLook,afterLook,rotated},null,2));
+  console.log('EMPTY_CITY_CAMERA_DIAGNOSTIC',JSON.stringify({pointerLocked,inputMethod,beforeLook,afterLook,rotated}));
   assert.ok(rotated,'Mouse-look input handler should rotate camera. Pointer locked='+pointerLocked+'; method='+inputMethod);
   console.log('EMPTY_CITY_CAMERA_INPUT',JSON.stringify({pointerLocked,inputMethod,rotated}));
   // Release pointer lock to interact with the visible reporting UI.
