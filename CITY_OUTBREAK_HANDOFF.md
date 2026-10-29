@@ -1,7 +1,8 @@
-# v778 — OPT-IN EMPTY CITY PERFORMANCE BASELINE — 2026-10-27 (PR validation pending)
+# v778 — EMPTY CITY BASELINE CHROMIUM SMOKE PASS — 2026-10-29
 
-- Diagnostic URL parameter `?benchmark=empty` skips spawning zombies and bypasses game update, active street-light update and rain update while still rendering the existing city scene; enables mouse look and WASD camera translation. `PERFORMANCE` dropdown captures CPU frame-time, GPU when available, draws, triangles and hitch history. This is an isolation measurement, **not** a measured performance improvement; preserved original rendering quality and map, no normal-play change intended.
-- Source branch `toby-v778-empty-city-benchmark`, loader v778. Do not merge until browser/Windows regression verified. v324 checkpoint stays intact; other gameplay assets, weapons, and enemy behavior unchanged. Benchmark URL must only be used on a preview build before merging.
+- Fixed the benchmark reset path: original first draft accidentally spawned zombies; now START explicitly skips spawn in `?benchmark=empty`, skips game update and lighting/weather updates, hides rain/splashes and dynamic street/canopy lights. Normal gameplay uses original spawn, movement and graphics paths.
+- **Dedicated browser CI Playwright PASSED:** `40903699542` (https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/40903699542), Chromium smoke checks START, ZERO zombies, no rain/optional dynamic lighting, WASD movement, performance HUD draw calls/triangles/zero zombies. On Linux software headless, Playwright's mouse driver reported pointer lock but sent no useful relative delta; test explicitly fell back to a synthetic relative `mousemove` to confirm handler. **Real pointer-locked mouse play on user hardware remains unverified. CI FPS is not a real-hardware benchmark.**
+- v778 branch `toby-v778-empty-city-benchmark`, PR #10. Do not alter protected v324. Collect user's real-device 20-second PERFORMANCE report once Pages deployment verified. Do not claim an actual FPS improvement yet.
 
 ---
 
