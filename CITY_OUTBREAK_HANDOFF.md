@@ -1,3 +1,11 @@
+# v779 — LOCAL-ONLY FRAME FLIGHT RECORDER — 2026-10-29 (PR TESTING)
+
+- New `src/frame-flight-recorder.mjs`: **automatic frame-spike detection**, ring-buffer **480 recent frames**, at most **24 spike events**, 12 pre-spike and up to 12 post-spike samples per event, bounded typed arrays. Records wall-frame, CPU update, render-submit, light and rain timings, plus scene counts only on spikes. Self-overhead sampled one call in 120; provides a quick recorder OFF switch to compare normal gameplay. No screen/video/audio capture, networking, auto-upload, disk writes during gameplay or new permanent overlays.
+- Existing PERFORMANCE collapsed menu: `RECORDER: ON/OFF`, `SAVE FLIGHT REPORT (.JSON)`, `CLEAR HISTORY`. Manual download only; no data leaves the PC until the user shares the file. Scene logic and protected v324 unchanged. Normal game and `?benchmark=empty` supported. Windows Electron **0.1.7 does not automatically receive browser changes**; rebuild required for a future Windows edition.
+- Browser loader bumped to **v779**; branch `toby-v779-flight-recorder`. Tests: `tests/performance/flight-recorder.test.mjs`, `tests/visual/flight-recorder-smoke.test.mjs` with dedicated PR GitHub Actions workflow. **Not yet claimed verified**; check CI, real browser export and source audit before merging. Baseline CI uses software WebGL and cannot quantify real-PC FPS; user must provide locally exported report.
+
+---
+
 # v778 — EMPTY CITY BASELINE CHROMIUM SMOKE PASS — 2026-10-29
 
 - Fixed the benchmark reset path: original first draft accidentally spawned zombies; now START explicitly skips spawn in `?benchmark=empty`, skips game update and lighting/weather updates, hides rain/splashes and dynamic street/canopy lights. Normal gameplay uses original spawn, movement and graphics paths.
