@@ -26,7 +26,7 @@ test('v778 empty city starts with zero zombies, moves and reports rendering', {t
   await page.goto(base+'/?benchmark=empty',{waitUntil:'domcontentloaded',timeout:30000});
   await page.waitForFunction(()=>{
    const d=document.documentElement.dataset;
-   return d.cityBenchmark==='empty'&&d.cityOutbreakBuild==='778'&&typeof window.__cityEmptyBenchmarkState==='function';
+   return d.cityBenchmark==='empty'&&Number(d.cityOutbreakBuild)>=778&&typeof window.__cityEmptyBenchmarkState==='function';
   },null,{polling:250,timeout:90000});
   await page.locator('#start').click({noWaitAfter:true,timeout:45000});
   await page.waitForFunction(()=>document.querySelector('#startScreen')?.style.display==='none',
