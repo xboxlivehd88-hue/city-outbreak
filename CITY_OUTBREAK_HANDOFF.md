@@ -1,3 +1,11 @@
+# v778 — EMPTY CITY BASELINE CHROMIUM SMOKE PASS — 2026-10-29
+
+- Fixed the benchmark reset path: original first draft accidentally spawned zombies; now START explicitly skips spawn in `?benchmark=empty`, skips game update and lighting/weather updates, hides rain/splashes and dynamic street/canopy lights. Normal gameplay uses original spawn, movement and graphics paths.
+- **Dedicated browser CI Playwright PASSED:** `40903699542` (https://github.com/xboxlivehd88-hue/city-outbreak/actions/runs/40903699542), Chromium smoke checks START, ZERO zombies, no rain/optional dynamic lighting, WASD movement, performance HUD draw calls/triangles/zero zombies. On Linux software headless, Playwright's mouse driver reported pointer lock but sent no useful relative delta; test explicitly fell back to a synthetic relative `mousemove` to confirm handler. **Real pointer-locked mouse play on user hardware remains unverified. CI FPS is not a real-hardware benchmark.**
+- v778 branch `toby-v778-empty-city-benchmark`, PR #10. Do not alter protected v324. Collect user's real-device 20-second PERFORMANCE report once Pages deployment verified. Do not claim an actual FPS improvement yet.
+
+---
+
 # v777 — Windows 0.1.7 offline-first update notifications VERIFIED — 2026-10-27
 
 - **User requested no persistent game connection.** Desktop 0.1.7 ALWAYS loads the bundled offline game and makes a single short, bounded, read-only HTTPS metadata check after launch (5-second timeout; 4-KiB limit; exact official GitHub Pages manifest URL; no redirected network requests; strict semver and official GitHub release-run URL validation). Existing v0.1.6 opt-in LIVE mode / saved LIVE preference was intentionally disabled. No automatic EXE download, silent installation, remote JavaScript rendering, remote-control API, polling loop, or privileged preload. User can manually check via HELP, copy GitHub URL, and decide whether to download a future verified build.
