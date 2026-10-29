@@ -33,7 +33,10 @@ test('v778 empty city starts with zero zombies, moves and reports rendering', {t
     null,{polling:250,timeout:90000});
   await page.waitForFunction(()=>window.__cityEmptyBenchmarkState()?.running===true,
     null,{polling:250,timeout:30000});
-  await page.waitForTimeout(900);
+  // Original city GLB must be present, not just a successfully drawn sky.
+  await page.waitForFunction(()=>window.__cityEmptyBenchmarkState()?.mapReady===true,
+    null,{polling:250,timeout:60000});
+  await page.waitForTimeout(1100);
   const first=await page.evaluate(()=>window.__cityEmptyBenchmarkState());
   assert.equal(first.zombies,0,'Empty baseline MUST NOT spawn zombies');
   assert.equal(first.rainVisible,false,'Rain geometry must be hidden');
@@ -91,6 +94,10 @@ test('v778 empty city starts with zero zombies, moves and reports rendering', {t
   assert.match(performance,/DRAWS\s+\d+/,'Performance report must show draw calls');
   assert.match(performance,/TRIANGLES\s+\d+/,'Performance report must show triangles');
   assert.match(performance,/ZOMBIES\s+0/,'Performance report must confirm zero zombies');
+  const geometry=performance.match(/DRAWS\\s+(\\d+)\\s+TRIANGLES\\s+(\\d+)/);
+  assert.ok(geometry&&Number(geometry[1])>0&&Number(geometry[2])>100,
+    'City must render nonzero original map geometry and draw calls');
+  console.log('EMPTY_CITY_RENDER_GEOMETRY',JSON.stringify({draws:Number(geometry[1]),triangles:Number(geometry[2])}));
   const report={first,moved,afterLook,performance,errors};
   await writeFile(out+'/baseline-ci-report.json',JSON.stringify(report,null,2));
   // Save a real image from the WebGL canvas when the CI driver permits readback.
