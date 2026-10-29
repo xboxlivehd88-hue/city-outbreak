@@ -30,13 +30,19 @@ test('v779 flight recorder runs inside game, exports offline JSON and disables c
   await page.waitForTimeout(1800);
   assert.equal(await page.locator('#city-flight-toggle').count(),1);
   await page.keyboard.press('Escape');
-  await page.locator('#city-performance-dropdown summary').click({timeout:30000});
-  await page.waitForTimeout(500);
+  // Keyboard control avoids Linux software-WebGL compositor/pointer lock
+  // intercepting Playwright's synthetic mouse click on the HTML dropdown.
+  // Still exercises real DOM focus, Enter key events and the buttons.
+  await page.locator('#city-performance-dropdown summary').focus();
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(450);
   assert.match(await page.locator('#city-flight-status').textContent(),/Recording locally/);
-  await page.locator('#city-flight-toggle').click({timeout:30000});
+  await page.locator('#city-flight-toggle').focus();
+  await page.keyboard.press('Enter');
   assert.match(await page.locator('#city-flight-status').textContent(),/Recording disabled/);
   const downloadPromise=page.waitForEvent('download',{timeout:30000});
-  await page.locator('#city-flight-save').click({timeout:30000});
+  await page.locator('#city-flight-save').focus();
+  await page.keyboard.press('Enter');
   const download=await downloadPromise;
   assert.equal(download.suggestedFilename(),'city-outbreak-flight-report.json');
   const report=JSON.parse(await readFile(await download.path(),'utf8'));
