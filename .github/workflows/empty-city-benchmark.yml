@@ -1,0 +1,45 @@
+name: v778 Empty City Benchmark Playwright
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'tests/visual/empty-city-benchmark.test.mjs'
+      - '.github/workflows/empty-city-benchmark.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  empty-city-playwright:
+    name: Empty city START and camera Playwright smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Check game module syntax
+        run: node --check src/game.js
+      - name: Install pinned Playwright and Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Serve the exact pull request code
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/city-http.log 2>&1 &
+      - name: Run empty city real Chromium start and movement test
+        env:
+          CITY_TEST_URL: http://127.0.0.1:8765
+        run: node --test tests/visual/empty-city-benchmark.test.mjs
+      - name: Upload diagnostic screenshots and report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: empty-city-v778-${{ github.run_number }}
+          path: test-results/empty-city/
+          if-no-files-found: warn
+          retention-days: 14
