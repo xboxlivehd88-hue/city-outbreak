@@ -94,7 +94,7 @@ test('v778 empty city starts with zero zombies, moves and reports rendering', {t
   assert.match(performance,/DRAWS\s+\d+/,'Performance report must show draw calls');
   assert.match(performance,/TRIANGLES\s+\d+/,'Performance report must show triangles');
   assert.match(performance,/ZOMBIES\s+0/,'Performance report must confirm zero zombies');
-  const geometry=performance.match(/DRAWS\\s+(\\d+)\\s+TRIANGLES\\s+(\\d+)/);
+  const geometry=performance.match(/DRAWS\s+(\d+)\s+TRIANGLES\s+(\d+)/);
   assert.ok(geometry&&Number(geometry[1])>0&&Number(geometry[2])>100,
     'City must render nonzero original map geometry and draw calls');
   console.log('EMPTY_CITY_RENDER_GEOMETRY',JSON.stringify({draws:Number(geometry[1]),triangles:Number(geometry[2])}));
