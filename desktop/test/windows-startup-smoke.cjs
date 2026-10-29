@@ -82,7 +82,9 @@ async function getFreePort(){
   gameBuild:document.documentElement.dataset.cityOutbreakBuild,
   weapon:document.querySelector('#weaponName')?.textContent,
   wave:document.querySelector('#wave')?.textContent,
-  hud:!!document.querySelector('#city-performance-dropdown')
+  hud:!!document.querySelector('#city-performance-dropdown'),
+  flightRecorder:!!document.querySelector('#city-flight-recorder-controls'),
+  recorderOn:document.querySelector('#city-flight-toggle')?.textContent?.includes('RECORDER: ON')||false
  }));
  await fs.writeFile(path.join(base,'state.json'),JSON.stringify({state,problems,childLogs},null,2));
  await page.screenshot({path:path.join(base,'02-after-start.png'),timeout:10000}).catch(e=>problems.push('game screenshot: '+e.message));
@@ -90,6 +92,7 @@ async function getFreePort(){
  assert.equal(state.startScreenDisplay,'none','START GAME did not dismiss the title screen');
  assert.match(state.weapon||'',/M17/i,'M17 must be equipped after startup');
  assert.ok(state.hud,'Game performance HUD must be initialized');
+ assert.ok(state.flightRecorder&&state.recorderOn,'Packaged Windows app must include default-on v779 flight recorder');
  assert.equal(problems.filter(s=>s.startsWith('pageerror:')).length,0,'Game JavaScript error: '+problems.join(' | '));
  console.log('CITY_DESKTOP_SMOKE_PASS');
 })().catch(async err=>{

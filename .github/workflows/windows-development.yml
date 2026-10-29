@@ -5,12 +5,18 @@ on:
     branches: [main]
     paths:
       - 'desktop/**'
+      - 'src/**'
+      - 'index.html'
+      - 'assets/**'
       - 'scripts/security/**'
       - '.github/workflows/windows-development.yml'
   push:
     branches: [main]
     paths:
       - 'desktop/**'
+      - 'src/**'
+      - 'index.html'
+      - 'assets/**'
       - 'scripts/security/**'
       - '.github/workflows/windows-development.yml'
 permissions:
