@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Inspect actual uploaded GLB material, texture and color attributes
         run: node scripts/parasite-original-material-audit.cjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: parasite-original-material-audit
           path: PARASITE_ORIGINAL_MATERIAL_AUDIT.json

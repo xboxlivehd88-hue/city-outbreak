@@ -28,7 +28,7 @@ jobs:
           sleep 2
           node scripts/sprinter-v611-smoke.cjs
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sprinter-v658-audit
           path: SPRINTER_V658_AUDIT.json
