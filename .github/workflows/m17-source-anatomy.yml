@@ -9,6 +9,6 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Inspect original skinned source asset
         run: node scripts/m17-source-anatomy.cjs

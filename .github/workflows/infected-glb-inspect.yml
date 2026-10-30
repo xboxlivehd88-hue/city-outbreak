@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Inspect original user-uploaded GLB JSON chunk
         run: node scripts/inspect-infected-glb.cjs
       - if: always()
