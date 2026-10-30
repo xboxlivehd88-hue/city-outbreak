@@ -1,3 +1,13 @@
+# v780 — CITY COLLISION / ENVIRONMENT ISOLATION (2026-10-30)
+
+- **Purpose:** Compare real-user v779 `?benchmark=empty` (~75 FPS final frame history, 4 early hitches) to full gameplay (~38 FPS) without wrongly treating disabled collision as a no-cost system.
+- **Opt-in only:** `?benchmark=empty` unchanged in intent (no wall collision, weather/lights off, 0 zombies). **NEW** `?benchmark=collision` executes original `carPointCollision`, `slideBuilding`, and `samplePlayerGroundY` (walls, cars, floor), but keeps weather/dynamic lights and zombies off. **NEW** `?benchmark=environment` has original collision and normal dynamic lighting + rain on (per graphics preset), but keeps zombies and their gameplay updates off. Normal gameplay code (`move(dt)`, waves, AI, weapons) is not modified.
+- Flight-recorder exports include exact `benchmark` mode and `benchmarkDetail` (collision enabled, environment effects enabled, GLB ready, collision steps, blocking events, GLB ground samples). All modes keep their normal on/off and JSON save controls. Collision mode's W/S/A/D speed matches regular 5 / sprint 9.5, including diagonal normalization. The original render-only mode preserves 4 / 8 baseline speed.
+- Browser loader `index.html` **v780**; PR branch `toby-v780-collision-environment-benchmarks`, test `tests/visual/v780-comparison.test.mjs`. The existing Playwright benchmark regression workflow checks all 3 modes. The protected **v324 recovery is untouched**. PR checks, WebGL smoke and Windows START must pass before merging. Software CI GPU numbers are not a substitute for real-device report. Next collect 3 Medium-quality JSON reports using same viewport and camera path, preferably after first 10 seconds to separate shader warmup.
+- Note: v780 does **not** yet test frozen/static zombie visual load; add it in a subsequent isolated test after collision and environment measurements.
+
+---
+
 # v779 — LOCAL-ONLY FRAME FLIGHT RECORDER — 2026-10-29 (TESTED)
 
 - New `src/frame-flight-recorder.mjs`: **automatic frame-spike detection**, ring-buffer **480 recent frames**, at most **24 spike events**, 12 pre-spike and up to 12 post-spike samples per event, bounded typed arrays. Records wall-frame, CPU update, render-submit, light and rain timings, plus scene counts only on spikes. Self-overhead sampled one call in 120; provides a quick recorder OFF switch to compare normal gameplay. No screen/video/audio capture, networking, auto-upload, disk writes during gameplay or new permanent overlays.
