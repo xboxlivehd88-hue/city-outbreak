@@ -22,7 +22,7 @@ test('v779 flight recorder runs inside game, exports offline JSON and disables c
    window.requestAnimationFrame=cb=>setTimeout(()=>raf(cb),150);
   });
   await page.goto(base+'/?benchmark=empty',{waitUntil:'domcontentloaded',timeout:30000});
-  await page.waitForFunction(()=>document.documentElement.dataset.cityOutbreakBuild==='779',
+  await page.waitForFunction(()=>Number(document.documentElement.dataset.cityOutbreakBuild)>=779,
     null,{timeout:90000,polling:250});
   await page.locator('#start').click({noWaitAfter:true,timeout:30000});
   await page.waitForFunction(()=>document.querySelector('#startScreen')?.style.display==='none',
@@ -47,7 +47,7 @@ test('v779 flight recorder runs inside game, exports offline JSON and disables c
   assert.equal(download.suggestedFilename(),'city-outbreak-flight-report.json');
   const report=JSON.parse(await readFile(await download.path(),'utf8'));
   assert.equal(report.schema,'city-outbreak-flight-recorder-v1');
-  assert.equal(report.build,'779');
+  assert.ok(Number(report.build)>=779,'Recorder must work with later game builds');
   assert.equal(report.benchmark,'empty-city');
   assert.equal(report.enabled,false,'OFF switch stops recorder');
   assert.ok(report.framesRecorded>0,'Frame observations were collected');
