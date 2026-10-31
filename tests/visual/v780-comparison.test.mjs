@@ -30,7 +30,7 @@ for(const scenario of scenarios){
     window.requestAnimationFrame=cb=>setTimeout(()=>raf(cb),120);
    });
    await page.goto(base+'/?benchmark='+scenario.mode,{waitUntil:'domcontentloaded',timeout:30000});
-   await page.waitForFunction(()=>document.documentElement.dataset.cityOutbreakBuild==='780'&&
+   await page.waitForFunction(()=>Number(document.documentElement.dataset.cityOutbreakBuild)>=780&&
     typeof window.__cityEmptyBenchmarkState==='function',null,{timeout:90000,polling:250});
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.cityBenchmark),scenario.mode);
    await page.locator('#start').click({noWaitAfter:true,timeout:45000});
