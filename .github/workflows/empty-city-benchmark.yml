@@ -1,4 +1,4 @@
-name: v780 City Benchmark Comparison Playwright
+name: v781 Render Isolation Playwright
 on:
   pull_request:
     branches: [main]
@@ -7,6 +7,7 @@ on:
       - 'index.html'
       - 'tests/visual/empty-city-benchmark.test.mjs'
       - 'tests/visual/v780-comparison.test.mjs'
+      - 'tests/visual/v781-effects-zombies.test.mjs'
       - '.github/workflows/empty-city-benchmark.yml'
   workflow_dispatch:
 permissions:
@@ -15,7 +16,7 @@ jobs:
   empty-city-playwright:
     name: City render, collision and environment Playwright smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -40,13 +41,18 @@ jobs:
         env:
           CITY_TEST_URL: http://127.0.0.1:8765
         run: node --test tests/visual/v780-comparison.test.mjs
+      - name: Verify rain lights and stationary models
+        env:
+          CITY_TEST_URL: http://127.0.0.1:8765
+        run: node --test tests/visual/v781-effects-zombies.test.mjs
       - name: Upload diagnostic screenshots and report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: city-benchmark-v780-${{ github.run_number }}
+          name: city-benchmark-v781-${{ github.run_number }}
           path: |
             test-results/empty-city/
             test-results/v780-comparison/
+            test-results/v781-effects-zombies/
           if-no-files-found: warn
           retention-days: 14
