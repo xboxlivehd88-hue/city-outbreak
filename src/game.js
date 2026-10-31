@@ -11897,13 +11897,11 @@ function spawnCityBenchmarkStaticZombies(){
  if(!cityBenchmarkUsesZombieVisuals||cityBenchmarkStaticSpawnComplete||
   !running||!newCityCollisionReady)return;
  cityBenchmarkStaticSpawnAttempts++;
- const angle=Math.atan2(-Math.cos(yaw),-Math.sin(yaw));
+ // Use exactly the tested normal Wave-1 spawn algorithm and real model
+ // creator. The previous near-field-only placement could find no legal city
+ // cells, producing an invalid zero-model benchmark.
  for(let i=zombies.length;i<CITY_BENCHMARK_STATIC_ZOMBIE_TARGET;i++){
-  const offset=(i-(CITY_BENCHMARK_STATIC_ZOMBIE_TARGET-1)/2)*.19;
-  const p=findReachableZombieSpawn(9,23,true,angle+offset);
-  if(!p)break;
-  rememberZombieSpawn(p);
-  makeZombie(p.x,p.z,i,"shambler");
+  if(!spawnOneZombie(i))break;
  }
  if(zombies.length>=CITY_BENCHMARK_STATIC_ZOMBIE_TARGET||
     cityBenchmarkStaticSpawnAttempts>=4)cityBenchmarkStaticSpawnComplete=true;
