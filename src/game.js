@@ -2251,7 +2251,7 @@ function syncGasCanopyLighting(){
  // Shader-light count only changes when graphics presets change, never from
  // movement or a rapid turn (v538 FPS protection).
  const mode=graphicsOptions.lights;
- gasCanopyFillLight.visible=mode!=="off";
+ gasCanopyFillLight.visible=mode!=="off"&&!["empty","collision","rain","zombies"].includes(document.documentElement.dataset.cityBenchmark);
  gasCanopyFillLight.intensity=(mode==="full"?355:mode==="half"?210:0)*
   gasCanopyFade*gasCanopySharedBrightness;
 }
