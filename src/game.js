@@ -11664,6 +11664,10 @@ mountFlightRecorderControls(flightRecorder,{getMeta:()=>({
  benchmark:cityEmptyBenchmark?(cityBenchmarkMode==='empty'?'empty-city':cityBenchmarkMode):'normal-game',
  benchmarkDetail:cityEmptyBenchmark?{
   collisionEnabled:cityBenchmarkUsesCollision,environmentEffectsEnabled:cityBenchmarkUsesEffects,
+  rainEnabled:cityBenchmarkUsesRain,lightingEnabled:cityBenchmarkUsesLights,
+  zombieVisualsOnly:cityBenchmarkUsesZombieVisuals,zombieAIEnabled:false,
+  staticZombieCount:cityBenchmarkUsesZombieVisuals?zombies.length:0,
+  staticSpawnComplete:cityBenchmarkStaticSpawnComplete,
   mapReady:!!newCityRoot,collisionChecks:cityBenchmarkCollisionChecks,
   wallOrCarBlocks:cityBenchmarkWallOrCarBlocks,groundSamples:cityBenchmarkGroundSamples
  }:null,
@@ -11854,25 +11858,56 @@ try{
  if(stored){const data=JSON.parse(stored);if(data&&typeof data==="object")graphicsCustomOptions=normalizeGraphicsOptions(data)}
 }catch(_){}
 applyGraphicsQuality(savedQuality);
-// v780: controlled opt-in diagnostics. Normal gameplay is untouched.
-// "empty" preserves v778/v779 render-only behavior and camera speed;
-// "collision" enables normal city wall/car/floor collision but no world effects;
-// "environment" adds normal lighting/weather to collision, still zero zombies.
-// All variants skip zombie AI and weapon gameplay. URL mode is chosen at page load.
+// v781: opt-in source-isolation benchmarks, no changes to normal gameplay.
+// Collision-only is our control; rain-only and lights-only measure individual
+// effects. "zombies" adds eight stationary Wave-1 zombie render models with no
+// AI, navigation, combat, skeletal updates or gameplay update() calls.
+// Modes are selected once at startup by explicit URL query.
 const requestedCityBenchmark=new URLSearchParams(location.search).get("benchmark");
-const cityBenchmarkMode=["empty","collision","environment"].includes(requestedCityBenchmark)?requestedCityBenchmark:null;
+const cityBenchmarkMode=["empty","collision","rain","lights","environment","zombies"].includes(requestedCityBenchmark)
+ ?requestedCityBenchmark:null;
 const cityEmptyBenchmark=!!cityBenchmarkMode;
-const cityBenchmarkUsesCollision=cityBenchmarkMode==="collision"||cityBenchmarkMode==="environment";
-const cityBenchmarkUsesEffects=cityBenchmarkMode==="environment";
+const cityBenchmarkUsesCollision=!!cityBenchmarkMode&&cityBenchmarkMode!=="empty";
+const cityBenchmarkUsesRain=cityBenchmarkMode==="rain"||cityBenchmarkMode==="environment";
+const cityBenchmarkUsesLights=cityBenchmarkMode==="lights"||cityBenchmarkMode==="environment";
+const cityBenchmarkUsesEffects=cityBenchmarkUsesRain||cityBenchmarkUsesLights;
+const cityBenchmarkUsesZombieVisuals=cityBenchmarkMode==="zombies";
+const CITY_BENCHMARK_STATIC_ZOMBIE_TARGET=8;
+let cityBenchmarkStaticSpawnComplete=false,cityBenchmarkStaticSpawnAttempts=0;
 let cityBenchmarkCollisionChecks=0,cityBenchmarkWallOrCarBlocks=0,cityBenchmarkGroundSamples=0;
 if(cityEmptyBenchmark){
  document.documentElement.dataset.cityBenchmark=cityBenchmarkMode;
+ const labels={
+  empty:"EMPTY CITY — no collisions, rain, lights or zombies",
+  collision:"COLLISION ONLY — rain, lights and zombies OFF",
+  rain:"RAIN ONLY — collision + rain; lights and zombies OFF",
+  lights:"LIGHTS ONLY — collision + dynamic lights; rain and zombies OFF",
+  environment:"ENVIRONMENT — collision, rain and lights; zombies OFF",
+  zombies:"STATIC ZOMBIES — collision + 8 stationary Wave-1 models; rain/lights/AI OFF"
+ };
  const el=document.createElement("div");
  el.style.cssText="position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99999;background:#101820e8;color:white;padding:8px;border-radius:6px;pointer-events:none;font:12px Arial";
- el.textContent=cityBenchmarkMode==="empty"?"EMPTY CITY BASELINE — no collision / no environment effects":
-  cityBenchmarkMode==="collision"?"COLLISION BASELINE — city walls, cars and ground ON; effects and zombies OFF":
-  "ENVIRONMENT BASELINE — collision, lighting and weather ON; zombies OFF";
+ el.textContent=labels[cityBenchmarkMode];
  document.body.appendChild(el);
+}
+// The static models are actual Wave-1 models, using the unmodified zombie
+// creator. Only their initialization occurs here; gameplay and AI update
+// are never called while a diagnostic URL is active. No synthetic stand-ins.
+function spawnCityBenchmarkStaticZombies(){
+ if(!cityBenchmarkUsesZombieVisuals||cityBenchmarkStaticSpawnComplete||
+  !running||!newCityCollisionReady)return;
+ cityBenchmarkStaticSpawnAttempts++;
+ const angle=Math.atan2(-Math.cos(yaw),-Math.sin(yaw));
+ for(let i=zombies.length;i<CITY_BENCHMARK_STATIC_ZOMBIE_TARGET;i++){
+  const offset=(i-(CITY_BENCHMARK_STATIC_ZOMBIE_TARGET-1)/2)*.19;
+  const p=findReachableZombieSpawn(9,23,true,angle+offset);
+  if(!p)break;
+  rememberZombieSpawn(p);
+  makeZombie(p.x,p.z,i,"shambler");
+ }
+ if(zombies.length>=CITY_BENCHMARK_STATIC_ZOMBIE_TARGET||
+    cityBenchmarkStaticSpawnAttempts>=4)cityBenchmarkStaticSpawnComplete=true;
+ if(cityBenchmarkStaticSpawnComplete)ui();
 }
 // Keep this path separate from approved normal gameplay movement. Using the
 // exact same spatial collision, parked-car and ground-raycast functions lets
@@ -11929,22 +11964,31 @@ function frame(t){
   setTimeout(()=>requestAnimationFrame(frame),250);return;
  }
  const updateStart=performance.now();
- if(cityEmptyBenchmark&&!cityBenchmarkUsesEffects){
-  // Render-only/collision-only baselines exclude all weather/dynamic lighting.
-  rainLines.visible=false;rainSplashes.visible=false;
-  for(const light of streetLampLightPool)light.visible=false;
-  if(gasCanopyFillLight)gasCanopyFillLight.visible=false;
+ if(cityEmptyBenchmark){
+  // Exactly one effect can be enabled without the other (v781). Preserve
+  // graphics-preset counts; no change to the active normal-game renderer.
+  if(!cityBenchmarkUsesRain){
+   rainLines.visible=false;rainSplashes.visible=false;
+  }else{
+   rainLines.visible=graphicsRainCount>0;
+   rainSplashes.visible=graphicsRainCount>0&&graphicsOptions.splashes;
+  }
+  if(!cityBenchmarkUsesLights){
+   for(const light of streetLampLightPool)light.visible=false;
+   if(gasCanopyFillLight)gasCanopyFillLight.visible=false;
+  }
  }
  if(cityEmptyBenchmark&&running&&!paused&&!between){
+  if(cityBenchmarkUsesZombieVisuals)spawnCityBenchmarkStaticZombies();
   moveCityDiagnosticCamera(dt);
   perfGuard(wallDt);
  }else if(!paused)update(dt,wallDt);
  const updateEnd=performance.now();
- if(!cityEmptyBenchmark||cityBenchmarkUsesEffects){
+ if(!cityEmptyBenchmark||cityBenchmarkUsesLights){
   updateStreetLampLighting(t);updateGasCanopyLighting(dt,false,t);
  }
  const lightsEnd=performance.now();
- if(!cityEmptyBenchmark||cityBenchmarkUsesEffects)updateRainEffect(dt,t);
+ if(!cityEmptyBenchmark||cityBenchmarkUsesRain)updateRainEffect(dt,t);
  const rainEnd=performance.now();
  earlyNightSky.position.copy(cam.position);
  earlyNightSkyUniforms.uTime.value=t*.001;
@@ -12001,11 +12045,14 @@ function frame(t){
  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-function reset(){flightRecorder.reset();cityBenchmarkCollisionChecks=0;cityBenchmarkWallOrCarBlocks=0;cityBenchmarkGroundSamples=0;runSequence++;reloadSequence++;cityHitchEvents.length=0;cityWorstHitch=null;lastCityFrameCpuMs=0;lastCityFrameEndAt=0;lastCityFrameWasShop=false;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];clearExplosionGlbs();clearCasingFragments();for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="pistol";magSize=16;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:6,reserve:4},m240:{mag:100,reserve:200}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");if(cityEmptyBenchmark){waveTarget=0;waveSpawned=0;}else spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
+function reset(){flightRecorder.reset();cityBenchmarkStaticSpawnComplete=false;cityBenchmarkStaticSpawnAttempts=0;cityBenchmarkCollisionChecks=0;cityBenchmarkWallOrCarBlocks=0;cityBenchmarkGroundSamples=0;runSequence++;reloadSequence++;cityHitchEvents.length=0;cityWorstHitch=null;lastCityFrameCpuMs=0;lastCityFrameEndAt=0;lastCityFrameWasShop=false;paused=false;pauseStartedAt=0;pausedAccumulatedMs=0;shopLowPower=false;shopPauseStartedAt=0;shopPausedAccumulatedMs=0;lastShopRenderAt=0;pauseOverlay.classList.remove("show");initAudio();stopAuto();clearKeys();runStartTime=gameTimeNow();for(let z of zombies)releaseZombieVisual(z);zombies=[];for(let p of parts)scene.remove(p.q);parts=[];for(let c of casings)scene.remove(c.q);casings=[];for(let g of thrown)scene.remove(g.q);thrown.length=0;for(let p of impacts)scene.remove(p.q);impacts=[];clearExplosionGlbs();clearCasingFragments();for(let d of drops)if(d.g.parent)scene.remove(d.g);drops=[];for(let k of kits){if(k.used){scene.add(k.g);k.used=false}}px=0;pz=-15;playerGroundY=0;yaw=0;pitch=0;playerVX=0;playerVZ=0;lastPX=0;lastPZ=-15;recoil=0;stepTimer=0;aimX=0;aimY=0;health=100;healthRegenCooldown=0;healthRegenShown=100;kills=0;heads=0;cash=0;wave=1;weapon="pistol";magSize=16;damageLevel=1;reloadLevel=0;unlocked={rifle:false,smg:false,shotgun:false,pistol:true,dmr:false,grenadeLauncher:false,m240:false};ammoState={rifle:{mag:12,reserve:72},smg:{mag:30,reserve:90},shotgun:{mag:8,reserve:30},pistol:{mag:16,reserve:999999},dmr:{mag:10,reserve:30},grenadeLauncher:{mag:6,reserve:4},m240:{mag:100,reserve:200}};grenades=2;nukes=0;nukeInProgress=false;waveTarget=0;waveSpawned=0;aiming=false;aimBlend=0;cam.fov=70;cam.updateProjectionMatrix();gun.scale.setScalar(1);scopeOverlay.classList.remove("show");cross.style.opacity="1";currentBoss=null;bossWaveName="";usedBossNames=[];hideBossHud(bossHUD);sprintEnergy=100;sprintLocked=false;sprintUiPct=-1;sprintUiColor="";sprintUiState="";updateSprintUI();renderShopNote(shopNote,"Take your time. The next wave will not start until you press Ready.");rebuildGun();dying=false;between=false;reloading=false;reloadStartedAt=0;reloadDurationMs=0;reloadWeapon="";resetRunUiOverlays({death,announce,shop,hitmarker,damage,nukeFlash,nukeShock,msg});clearTimeout(hitTimer);hideStartScreen(startScreen);document.body.style.cursor="";running=true;pauseBtn.classList.add("show");if(cityEmptyBenchmark){waveTarget=0;waveSpawned=0;}else spawnWave();ui();cv.focus();if(document.pointerLockElement!==cv){try{cv.requestPointerLock?.()}catch(_){}}}
 // Test-only readout: no mutation hooks or gameplay API exposed to players.
 if(cityEmptyBenchmark&&navigator.webdriver){
  window.__cityEmptyBenchmarkState=()=>({running,paused,between,mode:cityBenchmarkMode,
   collisionEnabled:cityBenchmarkUsesCollision,effectsEnabled:cityBenchmarkUsesEffects,
+  rainEnabled:cityBenchmarkUsesRain,lightingEnabled:cityBenchmarkUsesLights,
+  zombieVisualsOnly:cityBenchmarkUsesZombieVisuals,zombieAIEnabled:false,
+  staticSpawnComplete:cityBenchmarkStaticSpawnComplete,staticSpawnAttempts:cityBenchmarkStaticSpawnAttempts,
   collisionChecks:cityBenchmarkCollisionChecks,wallBlocks:cityBenchmarkWallOrCarBlocks,groundChecks:cityBenchmarkGroundSamples,
   zombies:livingCount(),mapReady:!!scene.getObjectByName("ChickenGunCityMap"),x:px,z:pz,yaw,pitch,
   rainVisible:rainLines.visible,splashVisible:rainSplashes.visible,
