@@ -1,5 +1,7 @@
 name: Temporary v781 dependency audit diagnostic
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [toby-v781-audit-diagnostic]
 permissions:
