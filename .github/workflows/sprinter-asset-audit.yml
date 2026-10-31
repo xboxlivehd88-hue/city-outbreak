@@ -21,7 +21,7 @@ jobs:
       - name: Inspect animation tracks, skeletons, geometry and textures
         run: node scripts/sprinter-asset-audit.cjs
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sprinter-model-inspection
           path: SPRINTER_ASSET_AUDIT.json
