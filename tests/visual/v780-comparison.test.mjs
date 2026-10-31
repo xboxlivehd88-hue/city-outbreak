@@ -68,7 +68,7 @@ for(const scenario of scenarios){
    await page.keyboard.press('Enter');
    const dl=await downloadWait;
    const report=JSON.parse(await readFile(await dl.path(),'utf8'));
-   assert.equal(report.build,'780');
+   assert.ok(Number(report.build)>=780,'Keep comparisons valid after loader upgrades');
    assert.equal(report.benchmark,scenario.mode);
    assert.equal(report.benchmarkDetail.collisionEnabled,true);
    assert.equal(report.benchmarkDetail.environmentEffectsEnabled,scenario.effects);
