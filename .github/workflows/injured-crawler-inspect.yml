@@ -17,7 +17,7 @@ jobs:
       - name: Inspect newly uploaded original GLB
         run: node scripts/inspect-injured-crawler-glb.cjs
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: injured-crawler-asset-audit
           path: INJURED_CRAWLER_GLB_AUDIT.json
