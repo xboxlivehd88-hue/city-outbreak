@@ -21,8 +21,13 @@ jobs:
         shell: bash
         working-directory: desktop
         run: |
-          npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));p.overrides={...(p.overrides||{}),minimatch:'11.0.1'};fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')"
+          npm install --package-lock-only --ignore-scripts --no-fund || true
           npm audit --audit-level=moderate || true
+          echo PACKAGE_JSON_BASE64_START
+          base64 -w 4000 package.json
+          echo
+          echo PACKAGE_JSON_BASE64_END
           echo LOCKFILE_BASE64_START
           base64 -w 4000 package-lock.json
           echo
