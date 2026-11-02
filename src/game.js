@@ -6254,6 +6254,7 @@ function attachBasicWalkerVisual(z,g){
  holder.scale.setScalar(1.92/sourceHeight);
  holder.rotation.y=Math.PI;
  holder.add(model);g.add(holder);
+ model.traverse(o=>{if(o.isMesh)o.receiveShadow=false});
  z.walkerVisual=holder;z.walkerModel=model;z.walkerSourceHeight=sourceHeight;z.walkerBones=new Map();
  for(const key of BASIC_WALKER_BONE_KEYS){
    const b=model.getObjectByName("Walker"+key);if(b)z.walkerBones.set(key,b);
@@ -7205,6 +7206,22 @@ const PLAYER_WORLD_SCALE=1.20;
 const PLAYER_EYE_HEIGHT=1.75*PLAYER_WORLD_SCALE; // previously 1.65 * 1.20
 const ZOMBIE_WORLD_SCALE=1.15;
 
+const v782ShamblerGeometryCache=new Map();
+function v782ShareShamblerGeometry(root){
+ const stale=new Set();
+ root.traverse(o=>{
+  if(!o.isMesh||!o.geometry)return;
+  const geo=o.geometry,p=geo.parameters;
+  if(!p||(geo.type!=="BoxGeometry"&&geo.type!=="CylinderGeometry"))return;
+  const key=geo.type+"|"+JSON.stringify(p);
+  let shared=v782ShamblerGeometryCache.get(key);
+  if(!shared){shared=geo;v782ShamblerGeometryCache.set(key,geo)}
+  else if(shared!==geo){o.geometry=shared;stale.add(geo)}
+  o.userData.sharedGeometry=true;
+ });
+ const used=new Set();root.traverse(o=>{if(o.isMesh)used.add(o.geometry)});
+ for(const g of stale)if(!used.has(g))g.dispose();
+}
 function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  let d=diff(wave),g=new THREE.Group(),scale=(.90+rnd()*.045)*ZOMBIE_WORLD_SCALE;
  let roll=rnd(),kind=forcedKind||rolledZombieKind(wave,roll);
@@ -7545,6 +7562,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    g.rotation.x=-.14;
  }
 
+ if(kind==="shambler")v782ShareShamblerGeometry(g);
  const ownedGeometrySet=new Set();
  g.traverse(o=>{if(o.isMesh&&o.geometry&&!o.userData.sharedGeometry)ownedGeometrySet.add(o.geometry)});
  zz.ownedGeometries=[...ownedGeometrySet];
@@ -11656,6 +11674,7 @@ const flightRecorder=createFrameFlightRecorder({
  getContext:()=>({wave,zombies:livingCount(),explosions:activeExplosionBursts.length,
   casings:casings.length,particles:parts.length+impacts.length,
   draws:ren.info.render.calls,triangles:ren.info.render.triangles,
+   pooledShamblerGeometries:v782ShamblerGeometryCache.size,
   gpu:cityGpuTimer.snapshot()?.avgMs??null})
 });
 mountFlightRecorderControls(flightRecorder,{getMeta:()=>({
@@ -11673,6 +11692,8 @@ mountFlightRecorderControls(flightRecorder,{getMeta:()=>({
  }:null,
  viewport:[window.innerWidth,window.innerHeight],
  pixelRatio:ren.getPixelRatio(),
+ zombieRenderOptimization:'v782-shambler-geometries-and-received-shadow',
+ pooledShamblerGeometries:v782ShamblerGeometryCache.size,
  notes:'Local performance numbers only. One in 120 recorder calls timed for diagnostic overhead. Run ON/OFF comparisons on the same hardware. No network upload or screen capture.'
 })});
 setupWebGLContextLossHandler(cv,()=>show("GRAPHICS RESET — REFRESH IF NEEDED"));
