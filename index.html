@@ -132,6 +132,13 @@
 <!-- v688: M17 skinned two-hand grip and ADS forearm sightline clearance; other guns unchanged -->
 <!-- v687: per-weapon native original FPS palm/finger IK, authored source finger animation and wrist grips -->
 <!-- v689: restore closest v687 M17 animated hands after v688 sleeve/ADS regression; preserve gun -->
-<script type="module" src="./src/game.js?v=781"></script>
+<script type="module">
+const preview=new URLSearchParams(location.search).get("preview");
+if(preview==="v782"){
+ await import("https://cdn.jsdelivr.net/gh/xboxlivehd88-hue/city-outbreak@5c3e66bec847acc6fb0250adaba9f87ab5bf62f3/src/game.js");
+}else{
+ await import("./src/game.js?v=781");
+}
+</script>
 </body>
 </html>
