@@ -6254,7 +6254,7 @@ function attachBasicWalkerVisual(z,g){
  holder.scale.setScalar(1.92/sourceHeight);
  holder.rotation.y=Math.PI;
  holder.add(model);g.add(holder);
- model.traverse(o=>{if(o.isMesh)o.receiveShadow=false});
+ if(v782ZombiePreview)model.traverse(o=>{if(o.isMesh)o.receiveShadow=false});
  z.walkerVisual=holder;z.walkerModel=model;z.walkerSourceHeight=sourceHeight;z.walkerBones=new Map();
  for(const key of BASIC_WALKER_BONE_KEYS){
    const b=model.getObjectByName("Walker"+key);if(b)z.walkerBones.set(key,b);
@@ -7206,6 +7206,7 @@ const PLAYER_WORLD_SCALE=1.20;
 const PLAYER_EYE_HEIGHT=1.75*PLAYER_WORLD_SCALE; // previously 1.65 * 1.20
 const ZOMBIE_WORLD_SCALE=1.15;
 
+const v782ZombiePreview=new URLSearchParams(location.search).get('preview')==='v782';
 const v782ShamblerGeometryCache=new Map();
 function v782ShareShamblerGeometry(root){
  const stale=new Set();
@@ -7562,7 +7563,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
    g.rotation.x=-.14;
  }
 
- if(kind==="shambler")v782ShareShamblerGeometry(g);
+ if(v782ZombiePreview&&kind==="shambler")v782ShareShamblerGeometry(g);
  const ownedGeometrySet=new Set();
  g.traverse(o=>{if(o.isMesh&&o.geometry&&!o.userData.sharedGeometry)ownedGeometrySet.add(o.geometry)});
  zz.ownedGeometries=[...ownedGeometrySet];
@@ -11692,7 +11693,7 @@ mountFlightRecorderControls(flightRecorder,{getMeta:()=>({
  }:null,
  viewport:[window.innerWidth,window.innerHeight],
  pixelRatio:ren.getPixelRatio(),
- zombieRenderOptimization:'v782-shambler-geometries-and-received-shadow',
+ zombieRenderOptimization:v782ZombiePreview?'v782-on':'v782-off-baseline',
  pooledShamblerGeometries:v782ShamblerGeometryCache.size,
  notes:'Local performance numbers only. One in 120 recorder calls timed for diagnostic overhead. Run ON/OFF comparisons on the same hardware. No network upload or screen capture.'
 })});
