@@ -1,3 +1,10 @@
+# v782 — EXPERIMENTAL SHAMBLER RENDER OPTIMIZATION (NOT APPROVED) — 2026-11-02
+
+- Branch `toby-v782-zombie-render-optimization-test`, not merged. Pool identical BoxGeometry/CylinderGeometry created for procedural shambler parts; preserve per-mesh transforms and exclude pooled geometries from per-zombie disposal. Preserve GLB shambler shadow casting but disable receiving dynamic shadows on visual meshes. Add pooledShamblerGeometries and optimization label to local flight JSON.
+- No proven FPS gain yet. Must run Playwright zombie and normal-game regressions, then user A/B test against v781 before merge. Protected v324 remains untouched.
+
+---
+
 # v781 — ISOLATED RAIN, DYNAMIC LIGHT AND STATIONARY ZOMBIE RENDERING — 2026-10-31
 
 - **Verified and merged v781:** PR #14 squash commit `5cbce467ad164b5be56d13699ce1ebc391d71b88`. Chromium render-isolation suite `41218935863` PASSED (original empty, collision, full environment, rain-only, lights-only, **8 static Wave-1 models**); flight recorder `41218935833` PASSED; release policy and CodeQL `41218935899` PASSED, including **0 moderate+ npm audit findings** with pinned `minimatch@11.0.1` override; packaged Windows offline START smoke `41218935877` PASSED. This Windows PR smoke did NOT distribute or scan the final portable EXE—release workflow must still validate Defender/attestation for any downloadable Windows build. Browser `main` verified loader v781; actual Pages deployment and user-PC FPS remain separately unverified.
