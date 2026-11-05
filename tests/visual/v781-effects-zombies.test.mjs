@@ -125,3 +125,39 @@ test('v783 preview prebuilds an off-scene reserve, activates eight static models
   console.log('V783_RESERVE_PASS',JSON.stringify({built:active.v783ReserveBuilt,used:active.v783ReserveUsed,full:active.v783ShadowFull,reduced:active.v783ShadowReduced}));
  }finally{await page.close();await browser.close();}
 });
+
+test('v784 RAF-only benchmark skips rendering while still recording frame intervals',{timeout:180000},async()=>{
+ const browser=await chromium.launch({headless:true,args:[
+  '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',
+  '--disable-dev-shm-usage','--ignore-gpu-blocklist'
+ ]});
+ const page=await browser.newPage({viewport:{width:1024,height:576},deviceScaleFactor:1,acceptDownloads:true});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ try{
+  await page.addInitScript(()=>{
+   localStorage.setItem('city-outbreak-graphics-v1','medium');
+   const raf=window.requestAnimationFrame.bind(window);
+   window.requestAnimationFrame=cb=>setTimeout(()=>raf(cb),130);
+  });
+  await page.goto(base+'/?benchmark=raf',{waitUntil:'domcontentloaded',timeout:30000});
+  await page.waitForFunction(()=>Number(document.documentElement.dataset.cityOutbreakBuild)>=784
+   && typeof window.__cityEmptyBenchmarkState==='function',null,{timeout:90000,polling:250});
+  await page.locator('#start').click({noWaitAfter:true,timeout:45000});
+  await page.waitForFunction(()=>window.__cityEmptyBenchmarkState()?.running,null,{timeout:60000,polling:250});
+  await page.waitForTimeout(1250);
+  const state=await page.evaluate(()=>window.__cityEmptyBenchmarkState());
+  assert.equal(state.mode,'raf');assert.equal(state.zombies,0);
+  assert.equal(state.collisionEnabled,false);assert.equal(state.rainEnabled,false);
+  await page.locator('#city-performance-dropdown summary').focus();await page.keyboard.press('Enter');
+  const downloadEvent=page.waitForEvent('download',{timeout:30000});
+  await page.locator('#city-flight-save').focus();await page.keyboard.press('Enter');
+  const download=await downloadEvent,report=JSON.parse(await readFile(await download.path(),'utf8'));
+  assert.equal(report.build,'784');assert.equal(report.benchmark,'raf');
+  assert.equal(report.renderSubmissionEnabled,false);
+  assert.equal(report.gpuFrameTimer.status,'not-sampled-render-disabled');
+  assert.ok(report.framesRecorded>3);
+  assert.ok(report.recentFrames.every(f=>f.render<1),'No GPU frame submission should occur');
+  assert.equal(errors.length,0,'No runtime errors');
+  console.log('V784_RAF_CADENCE_PASS',JSON.stringify({frames:report.framesRecorded,median:report.summary.p50FrameMs}));
+ }finally{await page.close();await browser.close();}
+});
