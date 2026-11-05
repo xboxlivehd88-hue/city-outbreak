@@ -1,3 +1,11 @@
+# v783 — OPT-IN PREBUILT ZOMBIE RESERVE & CAMERA-AWARE SHADOW BUDGET — 2026-11-05
+
+- Branch `toby-v783-prebuilt-zombie-reserve-visibility-preview`, experimental `?preview=v783`. Construct up to 10 real rigged Wave-1 shambler entities one per title-screen frame once collision ready, store OFF scene, activate at original validated spawn points. Preserve boss/later waves; if reserve empty, normal construction. Do not touch protected v324. No corpse/ragdoll reuse.
+- Camera view + 25-degree buffer stays full detail. Only nonessential shadow casting on zombies outside buffered view beyond 24 units, or very distant beyond 105, is toggled. Meshes, collision, animations, AI remain unchanged. No actual mesh LOD yet; would require authored low-detail models and explicit visual validation. Add v783 metrics to local recorder, bump loader v783, update v781 CI version assertion. Default gameplay unchanged and v782 original preview separately available.
+- CI and actual deploy must be verified. Next compare v783 vs standard on same machine for static and normal-wave tests; investigate persistent 13.3/26.7 ms pacing independent of these experiments. Last user v782 ON/OFF showed ~44 FPS each. Do not claim improvement without playtest.
+
+---
+
 # v782 — EXPERIMENTAL SHAMBLER RENDER OPTIMIZATION (NOT APPROVED) — 2026-11-02
 
 - Branch `toby-v782-zombie-render-optimization-test`, not merged. Pool identical BoxGeometry/CylinderGeometry created for procedural shambler parts; preserve per-mesh transforms and exclude pooled geometries from per-zombie disposal. Preserve GLB shambler shadow casting but disable receiving dynamic shadows on visual meshes. Add pooledShamblerGeometries and optimization label to local flight JSON.

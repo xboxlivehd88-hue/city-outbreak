@@ -7207,6 +7207,54 @@ const PLAYER_EYE_HEIGHT=1.75*PLAYER_WORLD_SCALE; // previously 1.65 * 1.20
 const ZOMBIE_WORLD_SCALE=1.15;
 
 const v782ZombiePreview=new URLSearchParams(location.search).get('preview')==='v782';
+// v783: opt-in fully constructed, off-scene Wave-1 reserve + guarded shadow detail.
+const v783Preview=new URLSearchParams(location.search).get('preview')==='v783';
+const v783Reserve=[],V783_RESERVE_LIMIT=10;
+let v783ReserveBuilt=0,v783ReserveUsed=0,v783ShadowReduced=0,v783ShadowFull=0;
+const v783CameraDirection=new THREE.Vector3();
+function v783PrimeReserve(){
+ if(!v783Preview||running||!newCityCollisionReady||!basicWalkerTemplate||v783ReserveBuilt>=V783_RESERVE_LIMIT)return;
+ const z=makeZombie(-10000,-10000,v783ReserveBuilt,"shambler",null,true);
+ if(z){v783Reserve.push(z);v783ReserveBuilt++;}
+}
+function v783ActivateReservedZombie(x,z){
+ if(!v783Preview||wave!==1||!v783Reserve.length)return false;
+ const standby=v783Reserve.pop(),safe=pushOutsideBuilding(x,z,.50);
+ standby.g.position.set(safe.x,0,safe.z);
+ standby.g.visible=true;standby.targetX=px;standby.targetZ=pz;
+ standby.navGoalX=px;standby.navGoalZ=pz;
+ standby.lastNavX=safe.x;standby.lastNavZ=safe.z;
+ standby.walkerLastX=safe.x;standby.walkerLastZ=safe.z;
+ standby.navPath=null;standby.navIndex=0;standby.groundY=0;
+ scene.add(standby.g);zombies.push(standby);v783ReserveUsed++;
+ return true;
+}
+function v783UpdateVisibleQuality(){
+ if(!v783Preview||!running||paused)return;
+ // Keep every mesh fully detailed in the view and a 25 degree edge margin.
+ // Only reduce shadow rendering outside the view or at extreme distance.
+ cam.getWorldDirection(v783CameraDirection);
+ const fx=v783CameraDirection.x,fz=v783CameraDirection.z;
+ const threshold=Math.cos(THREE.MathUtils.degToRad(cam.fov*.5+25));
+ let reduced=0,full=0;
+ for(const z of zombies){
+  if(z.dead||!z.g||!z.g.parent)continue;
+  const dx=z.g.position.x-cam.position.x,dz=z.g.position.z-cam.position.z;
+  const distance=Math.hypot(dx,dz);
+  const inSafeView=distance<.01||((dx*fx+dz*fz)/distance)>threshold;
+  const degrade=distance>105||(distance>24&&!inSafeView);
+  if(z.v783ShadowState!==degrade){
+   if(!z.v783ShadowMeshes){
+    z.v783ShadowMeshes=[];
+    z.g.traverse(o=>{if(o.isMesh&&o.castShadow)z.v783ShadowMeshes.push(o)});
+   }
+   for(const mesh of z.v783ShadowMeshes)mesh.castShadow=!degrade;
+   z.v783ShadowState=degrade;
+  }
+  if(degrade)reduced++;else full++;
+ }
+ v783ShadowReduced=reduced;v783ShadowFull=full;
+}
 const v782ShamblerGeometryCache=new Map();
 function v782ShareShamblerGeometry(root){
  const stale=new Set();
@@ -7223,7 +7271,7 @@ function v782ShareShamblerGeometry(root){
  const used=new Set();root.traverse(o=>{if(o.isMesh)used.add(o.geometry)});
  for(const g of stale)if(!used.has(g))g.dispose();
 }
-function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
+function makeZombie(x,z,i,forcedKind=null,bossSpec=null,v783Standby=false){
  let d=diff(wave),g=new THREE.Group(),scale=(.90+rnd()*.045)*ZOMBIE_WORLD_SCALE;
  let roll=rnd(),kind=forcedKind||rolledZombieKind(wave,roll);
  // v671: both visually approved natural crawler GLBs share the EXISTING
@@ -7358,7 +7406,7 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(torsoPatch!==wound&&torsoPatch!==patchMat)ownedMaterials.push(torsoPatch);
 
  let marker=null;
- let safe=pushOutsideBuilding(x,z,.50);g.position.set(safe.x,0,safe.z);scene.add(g);
+ let safe=v783Standby?{x:-10000,z:-10000}:pushOutsideBuilding(x,z,.50);g.position.set(safe.x,0,safe.z);if(!v783Standby)scene.add(g);
 
  const baseArmLX=.22+rnd()*.045,baseArmRX=.20+rnd()*.045,
        gait=kind==="sprinter"||kind==="infected"||kind==="acidic"?.95+rnd()*.10:kind==="boss"?.72+rnd()*.07:.84+rnd()*.10,
@@ -7608,7 +7656,8 @@ function makeZombie(x,z,i,forcedKind=null,bossSpec=null){
  if(kind==="shambler")buildBasicWalkerHitboxes(zz);
  if(naturalCrawlerSpawn)attachNaturalCrawlerVisual(zz);
  if(injuredCrawlerSpawn)attachInjuredCrawlerVisual(zz);
- zombies.push(zz);if(kind==="boss"){currentBoss=zz;attachSuitBossVisual(zz);attachPanzerBossVisual(zz);attachParasiteBossVisual(zz)}
+ if(!v783Standby)zombies.push(zz);if(kind==="boss"){currentBoss=zz;attachSuitBossVisual(zz);attachPanzerBossVisual(zz);attachParasiteBossVisual(zz)}
+ return zz;
 }
 
 function medkit(x,z){let g=new THREE.Group();box(1,.38,.72,M(0xe7e4da),0,.35,0,g);box(.18,.05,.5,M(0xa52c2c),0,.56,0,g);box(.5,.05,.18,M(0xa52c2c),0,.56,0,g);g.position.set(x,0,z);scene.add(g);kits.push({g,used:false})}medkit(-10,8);medkit(16,56);medkit(-17,91);
@@ -7888,7 +7937,7 @@ function spawnOneZombie(i){
  const p=findReachableZombieSpawn(30,64,true,targetAngle);
  if(!p)return false;
  rememberZombieSpawn(p);
- makeZombie(p.x,p.z,i);
+ if(!v783ActivateReservedZombie(p.x,p.z))makeZombie(p.x,p.z,i);
  return true;
 }
 function spawnQueuedZombies(){
@@ -11695,6 +11744,8 @@ mountFlightRecorderControls(flightRecorder,{getMeta:()=>({
  pixelRatio:ren.getPixelRatio(),
  zombieRenderOptimization:v782ZombiePreview?'v782-on':'v782-off-baseline',
  pooledShamblerGeometries:v782ShamblerGeometryCache.size,
+ v783PreviewEnabled:v783Preview,v783ReserveBuilt,v783ReserveUsed,
+ v783ReserveAvailable:v783Reserve.length,v783ShadowReduced,v783ShadowFull,
  notes:'Local performance numbers only. One in 120 recorder calls timed for diagnostic overhead. Run ON/OFF comparisons on the same hardware. No network upload or screen capture.'
 })});
 setupWebGLContextLossHandler(cv,()=>show("GRAPHICS RESET — REFRESH IF NEEDED"));
@@ -11984,6 +12035,7 @@ function frame(t){
   setTimeout(()=>requestAnimationFrame(frame),250);return;
  }
  const updateStart=performance.now();
+ if(!running)v783PrimeReserve();
  if(cityEmptyBenchmark){
   // Exactly one effect can be enabled without the other (v781). Preserve
   // graphics-preset counts; no change to the active normal-game renderer.
@@ -12012,6 +12064,7 @@ function frame(t){
  const rainEnd=performance.now();
  earlyNightSky.position.copy(cam.position);
  earlyNightSkyUniforms.uTime.value=t*.001;
+ v783UpdateVisibleQuality();
  // Asynchronous GPU timing is sampled at most once per six gameplay frames;
  // result collection only polls availability and never blocks on GPU work.
  const gpuSample=running&&!paused&&!between&&cityGpuTimer.begin();
@@ -12075,6 +12128,7 @@ if(cityEmptyBenchmark&&navigator.webdriver){
   staticSpawnComplete:cityBenchmarkStaticSpawnComplete,staticSpawnAttempts:cityBenchmarkStaticSpawnAttempts,
   collisionChecks:cityBenchmarkCollisionChecks,wallBlocks:cityBenchmarkWallOrCarBlocks,groundChecks:cityBenchmarkGroundSamples,
   zombies:livingCount(),mapReady:!!scene.getObjectByName("ChickenGunCityMap"),x:px,z:pz,yaw,pitch,
+   v783PreviewEnabled:v783Preview,v783ReserveBuilt,v783ReserveUsed,v783ReserveAvailable:v783Reserve.length,v783ShadowReduced,v783ShadowFull,
   rainVisible:rainLines.visible,splashVisible:rainSplashes.visible,
   streetLightsVisible:streetLampLightPool.filter(light=>light.visible).length,
   canopyVisible:!!gasCanopyFillLight?.visible});
