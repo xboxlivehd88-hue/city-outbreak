@@ -70,7 +70,7 @@ for(const mode of ['rain','lights','zombies']){
    const download=await downloadEvent;
    const report=JSON.parse(await readFile(await download.path(),'utf8'));
    assert.equal(report.schema,'city-outbreak-flight-recorder-v1');
-   assert.equal(report.build,'781');
+   assert.equal(report.build,'782','Current approved loader must record v782');
    assert.equal(report.benchmark,mode);
    assert.equal(report.benchmarkDetail.collisionEnabled,true);
    assert.equal(report.benchmarkDetail.rainEnabled,mode==='rain');
