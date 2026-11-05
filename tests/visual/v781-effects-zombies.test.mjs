@@ -92,3 +92,36 @@ for(const mode of ['rain','lights','zombies']){
   }finally{await page.close();await browser.close()}
  });
 }
+
+
+test('v783 preview prebuilds an off-scene reserve, activates eight static models, and preserves visual count',{timeout:180000},async()=>{
+ const browser=await chromium.launch({headless:true,args:[
+  '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',
+  '--disable-dev-shm-usage','--ignore-gpu-blocklist'
+ ]});
+ const page=await browser.newPage({viewport:{width:1024,height:576},deviceScaleFactor:1});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ try{
+  await page.addInitScript(()=>{
+   localStorage.setItem('city-outbreak-graphics-v1','medium');
+   const raf=window.requestAnimationFrame.bind(window);
+   window.requestAnimationFrame=cb=>setTimeout(()=>raf(cb),130);
+  });
+  await page.goto(base+'/?benchmark=zombies&preview=v783',{waitUntil:'domcontentloaded',timeout:30000});
+  await page.waitForFunction(()=>window.__cityEmptyBenchmarkState?.()?.v783ReserveBuilt>=8,null,{timeout:120000,polling:250});
+  const staged=await page.evaluate(()=>window.__cityEmptyBenchmarkState());
+  assert.equal(staged.v783PreviewEnabled,true);
+  assert.equal(staged.zombies,0,'Prebuilt zombies must be OFF-scene, not hidden below the map');
+  assert.ok(staged.v783ReserveAvailable>=8);
+  await page.locator('#start').click({noWaitAfter:true,timeout:45000});
+  await page.waitForFunction(()=>window.__cityEmptyBenchmarkState?.()?.staticSpawnComplete,null,{timeout:60000,polling:250});
+  await page.waitForTimeout(900);
+  const active=await page.evaluate(()=>window.__cityEmptyBenchmarkState());
+  assert.equal(active.zombies,8,'Eight authentic models must be visible in benchmark');
+  assert.equal(active.v783ReserveUsed,8,'Preconstructed reserve must supply Wave-1 models');
+  assert.equal(active.v783ShadowFull+active.v783ShadowReduced,8,'Only visual shadow tier changes; no zombies vanish');
+  assert.equal(active.zombieAIEnabled,false);
+  assert.equal(errors.length,0,'No v783 runtime errors');
+  console.log('V783_RESERVE_PASS',JSON.stringify({built:active.v783ReserveBuilt,used:active.v783ReserveUsed,full:active.v783ShadowFull,reduced:active.v783ShadowReduced}));
+ }finally{await page.close();await browser.close();}
+});
