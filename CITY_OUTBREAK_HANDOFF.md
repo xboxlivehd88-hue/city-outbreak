@@ -1,3 +1,11 @@
+# v784 — FRAME-SCHEDULING VS GPU SUBMISSION ISOLATION — 2026-11-05
+
+- User v783 actual eight-stationary-zombie report: 10 prebuilt, eight used, six shadow-reduced/two full. Frame intervals still cluster ~13.3 and 26.7 ms despite measured CPU usually ~2–8 ms, median ~26.6 ms; v783 FPS around 45. No demonstrated substantial FPS increase. First render (~296 ms) and later (~66 ms) spikes observed.
+- New **`?benchmark=raf`** opt-in diagnostic: after START keep native `requestAnimationFrame` loop and local frame recorder but skip `ren.render(scene,cam)` / GPU timer queries. No collision, lighting, rain, zombies or physics. Screen deliberately blank after START; HTML PERFORMANCE menu still functions. Normal game, v783 preview, gameplay and camera unchanged. This is an isolation test, NOT an FPS fix. If cadence remains 13.3/26.7 ms without GPU submissions, investigate browser/display/OS scheduling. If cadence improves substantially, focus actual GPU/display pipeline.
+- Frame report now explicitly records `renderSubmissionEnabled` and asynchronous `gpuFrameTimer` snapshot (unsupported or empty is not evidence of low GPU cost). Existing frame history continues storing wall and CPU times. New Chromium regression verifies no-render path & JSON, existing render tests continue. Loader updated to v784. Keep v324 recovery untouched. PR/CI/deployment verification and one user-device diagnostic report required before conclusions.
+
+---
+
 # v783 — OPT-IN PREBUILT ZOMBIE RESERVE & CAMERA-AWARE SHADOW BUDGET — 2026-11-05
 
 - Preview flag `?preview=v783` only: build up to 10 fully rigged, real Wave-1 shambler zombie entities incrementally on title screen once GLB collision is ready. Keep them **outside the Three.js scene**, not visibly parked below the map. Activate at the original validated Wave-1 spawn points, preserving original collision/navigation/combat. If player starts before reserve is full, original live construction remains fallback. No reuse of corpses or altered ragdoll. Later waves and bosses retain original spawner.
