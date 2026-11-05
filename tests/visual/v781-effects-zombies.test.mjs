@@ -152,7 +152,7 @@ test('v784 RAF-only benchmark skips rendering while still recording frame interv
   const downloadEvent=page.waitForEvent('download',{timeout:30000});
   await page.locator('#city-flight-save').focus();await page.keyboard.press('Enter');
   const download=await downloadEvent,report=JSON.parse(await readFile(await download.path(),'utf8'));
-  assert.equal(report.build,'784');assert.equal(report.benchmark,'raf');
+  assert.ok(Number(report.build)>=784,'RAF diagnostic requires loader v784 or newer');assert.equal(report.benchmark,'raf');
   assert.equal(report.renderSubmissionEnabled,false);
   assert.equal(report.gpuFrameTimer.status,'not-sampled-render-disabled');
   assert.ok(report.framesRecorded>3);
@@ -160,4 +160,30 @@ test('v784 RAF-only benchmark skips rendering while still recording frame interv
   assert.equal(errors.length,0,'No runtime errors');
   console.log('V784_RAF_CADENCE_PASS',JSON.stringify({frames:report.framesRecorded,median:report.summary.p50FrameMs}));
  }finally{await page.close();await browser.close();}
+});
+
+test('v785 standalone frame cadence page cannot load or launch the game',{timeout:60000},async()=>{
+ const browser=await chromium.launch({headless:true});
+ const page=await browser.newPage({viewport:{width:1024,height:576},acceptDownloads:true});
+ const errors=[],gameRequests=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ page.on('request',request=>{if(/game\\.js|\\.glb|three(\\.min)?\\.js/.test(request.url()))gameRequests.push(request.url())});
+ try{
+  const response=await page.goto(base+'/raf-cadence.html',{waitUntil:'load',timeout:30000});
+  assert.equal(response.status(),200);
+  assert.match(await page.title(),/v785 Frame Cadence Test/);
+  assert.equal(await page.locator('#start').count(),1);
+  assert.equal(await page.getByRole('button',{name:'START OUTBREAK'}).count(),0,'No game start button on standalone page');
+  await page.locator('#start').click();
+  await page.waitForFunction(()=>window.__cityRafDiagnostic?.().framesRecorded>=6,null,{timeout:20000});
+  const downloadEvent=page.waitForEvent('download',{timeout:15000});
+  await page.locator('#save').click();
+  const download=await downloadEvent,report=JSON.parse(await readFile(await download.path(),'utf8'));
+  assert.equal(report.build,'785');assert.equal(report.benchmark,'standalone-raf-no-render');
+  assert.equal(report.renderSubmissionEnabled,false);assert.equal(report.webglCreated,false);
+  assert.ok(report.framesRecorded>=6);assert.equal(report.recentFrames.length,report.historyFrames);
+  assert.equal(gameRequests.length,0,'No game code, GLBs or three.js should load');
+  assert.equal(errors.length,0,'No runtime errors in standalone test');
+  console.log('V785_RAF_STANDALONE_PASS',JSON.stringify({frames:report.framesRecorded,median:report.summary.p50FrameMs}));
+ }finally{await page.close();await browser.close()}
 });

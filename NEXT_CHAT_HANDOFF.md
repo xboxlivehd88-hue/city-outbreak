@@ -1,3 +1,11 @@
+# v785 — STANDALONE RAF CADENCE PAGE — 2026-11-05
+
+- Reason: user twice reported full game from v784 `?benchmark=raf`; uploaded flight report says build **783**, ten live zombies, so it wasn't the v784 no-render benchmark. Do not claim solved. Github main has v784; remote Pages state not verified.
+- Branch `toby-v785-standalone-frame-cadence-test`. Introduce `raf-cadence.html` as separate top-level static HTML page: NO city game, no Three.js, no WebGL, no asset loading, no rendering. Button START TEST, wait approx 60s while tab visible, SAVE REPORT (.JSON). Records 480 rAF callback gaps, median/p95/estimated FPS, hidden tab count, local download only. New Playwright checks zero game asset requests, captures JSON. Loader v785 for provenance. Both docs updated, v324 untouched.
+- Once PR tests pass and merged, verify actual Pages deployment before claiming live, send `https://xboxlivehd88-hue.github.io/city-outbreak/raf-cadence.html?v=785`. If 404, fix Pages source rather than ask to retest. Compare recorder with full game; only then diagnose GPU vs scheduler.
+
+---
+
 # v784 — RAF CADENCE / GPU SUBMISSION DIAGNOSTIC — 2026-11-05
 
 - Branch `toby-v784-raf-cadence-isolation`; new opt-in `?benchmark=raf`, plus loader v784. Diagnostic mode retains frame callback timing and local flight recorder, skips WebGL `ren.render` and GPU queries only after START (so 3D scene goes blank intentionally); disabled collision/weather/lights/zombies. No modification to real game, v783 reserve, weapons, ragdolls or v324. Report metadata `renderSubmissionEnabled`, `gpuFrameTimer` (asynchronous GPU samples for other modes).
