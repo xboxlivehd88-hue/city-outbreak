@@ -1,3 +1,11 @@
+# v785 — STANDALONE RAF TEST TO AVOID STALE GAME PAGE — 2026-11-05
+
+- User opened v784 query repeatedly but still saw full game; uploaded JSON explicitly **build 783** with 10 zombies, no v784 diagnostic metadata. Conclusion: user did not reach v784 RAF-only diagnostic; do NOT treat this as render-off test. v783-style full game showed median 26.7 ms and 293.5 ms worst recent interval. GitHub main contains v784 code and loader, but live Pages could not be inspected through available web access, and PR checks don't certify Pages deployment. Main v784 merge commit also showed an unrelated failure on old Hazmat status check.
+- v785 creates new path **`raf-cadence.html`**. This completely standalone, no imports, no assets, no WebGL, no game CSS/JS, native `requestAnimationFrame` timer + local JSON download. Can NEVER start game even if parameters are stripped. Shows its own build v785; status records up to 480 frame intervals, median/p95/p99, elapsed time, number of frames over 20ms, visibility/hidden events, no network upload. HTML status updates at most every 500ms. Use this instead of `?benchmark=raf` if deployed. New Playwright test asserts no 3D game requests and verifies download. Loader bumped 785, both handoffs updated, protected v324 untouched.
+- If Pages /raf-cadence.html displays 404 or game, deployment may be using another directory/branch or pending; investigate actual Pages publishing before asking user to test. No claims about cause of stuttering without native user-device JSON.
+
+---
+
 # v784 — FRAME-SCHEDULING VS GPU SUBMISSION ISOLATION — 2026-11-05
 
 - User v783 actual eight-stationary-zombie report: 10 prebuilt, eight used, six shadow-reduced/two full. Frame intervals still cluster ~13.3 and 26.7 ms despite measured CPU usually ~2–8 ms, median ~26.6 ms; v783 FPS around 45. No demonstrated substantial FPS increase. First render (~296 ms) and later (~66 ms) spikes observed.
