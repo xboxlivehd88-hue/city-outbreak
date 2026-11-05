@@ -11731,6 +11731,8 @@ mountFlightRecorderControls(flightRecorder,{getMeta:()=>({
  build:document.documentElement.dataset.cityOutbreakBuild||'unknown',
  graphics:document.documentElement.dataset.graphicsQuality||'unknown',
  benchmark:cityEmptyBenchmark?(cityBenchmarkMode==='empty'?'empty-city':cityBenchmarkMode):'normal-game',
+ renderSubmissionEnabled:!cityRafOnlyBenchmark,
+ gpuFrameTimer:cityRafOnlyBenchmark?{status:'not-sampled-render-disabled'}:cityGpuTimer.snapshot(),
  benchmarkDetail:cityEmptyBenchmark?{
   collisionEnabled:cityBenchmarkUsesCollision,environmentEffectsEnabled:cityBenchmarkUsesEffects,
   rainEnabled:cityBenchmarkUsesRain,lightingEnabled:cityBenchmarkUsesLights,
@@ -11937,10 +11939,12 @@ applyGraphicsQuality(savedQuality);
 // AI, navigation, combat, skeletal updates or gameplay update() calls.
 // Modes are selected once at startup by explicit URL query.
 const requestedCityBenchmark=new URLSearchParams(location.search).get("benchmark");
-const cityBenchmarkMode=["empty","collision","rain","lights","environment","zombies"].includes(requestedCityBenchmark)
+const cityBenchmarkMode=["empty","collision","rain","lights","environment","zombies","raf"].includes(requestedCityBenchmark)
  ?requestedCityBenchmark:null;
 const cityEmptyBenchmark=!!cityBenchmarkMode;
-const cityBenchmarkUsesCollision=!!cityBenchmarkMode&&cityBenchmarkMode!=="empty";
+// v784 opt-in: keep RAF and frame recording, skip WebGL frame submissions only after START.
+const cityRafOnlyBenchmark=cityBenchmarkMode==="raf";
+const cityBenchmarkUsesCollision=!!cityBenchmarkMode&&cityBenchmarkMode!=="empty"&&cityBenchmarkMode!=="raf";
 const cityBenchmarkUsesRain=cityBenchmarkMode==="rain"||cityBenchmarkMode==="environment";
 const cityBenchmarkUsesLights=cityBenchmarkMode==="lights"||cityBenchmarkMode==="environment";
 const cityBenchmarkUsesEffects=cityBenchmarkUsesRain||cityBenchmarkUsesLights;
@@ -11952,6 +11956,7 @@ if(cityEmptyBenchmark){
  document.documentElement.dataset.cityBenchmark=cityBenchmarkMode;
  const labels={
   empty:"EMPTY CITY — no collisions, rain, lights or zombies",
+   raf:"FRAME CADENCE — loop ON, WebGL render OFF; scene intentionally blank",
   collision:"COLLISION ONLY — rain, lights and zombies OFF",
   rain:"RAIN ONLY — collision + rain; lights and zombies OFF",
   lights:"LIGHTS ONLY — collision + dynamic lights; rain and zombies OFF",
@@ -12067,8 +12072,9 @@ function frame(t){
  v783UpdateVisibleQuality();
  // Asynchronous GPU timing is sampled at most once per six gameplay frames;
  // result collection only polls availability and never blocks on GPU work.
- const gpuSample=running&&!paused&&!between&&cityGpuTimer.begin();
- try{ren.render(scene,cam)}
+ const skipRender=cityRafOnlyBenchmark&&running;
+ const gpuSample=!skipRender&&running&&!paused&&!between&&cityGpuTimer.begin();
+ try{if(!skipRender)ren.render(scene,cam)}
  finally{if(gpuSample)cityGpuTimer.end()}
  const renderEnd=performance.now();
  const cpuMs=renderEnd-cpuStart;

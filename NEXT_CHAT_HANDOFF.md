@@ -1,3 +1,11 @@
+# v784 — RAF CADENCE / GPU SUBMISSION DIAGNOSTIC — 2026-11-05
+
+- Branch `toby-v784-raf-cadence-isolation`; new opt-in `?benchmark=raf`, plus loader v784. Diagnostic mode retains frame callback timing and local flight recorder, skips WebGL `ren.render` and GPU queries only after START (so 3D scene goes blank intentionally); disabled collision/weather/lights/zombies. No modification to real game, v783 reserve, weapons, ragdolls or v324. Report metadata `renderSubmissionEnabled`, `gpuFrameTimer` (asynchronous GPU samples for other modes).
+- User v783 flight report: eight real zombies, all eight from ten prebuilt, six shadow-reduced/two full, ~44.8 FPS, 26.6ms median; still mostly 13.3/26.7ms frame cadence with 2–8ms measured CPU. No proof GPU or browser specifically responsible yet.
+- Run CI and Pages checks, then request user compares the render-free `?benchmark=raf` report against normal empty scene. Blank 3D after clicking START is intentional; DOM performance menu remains. No GPU reading in render-free mode. If frame pacing persists, investigate display refresh/scheduler/driver. This is a controlled measurement, not performance optimization.
+
+---
+
 # v783 — OPT-IN PREBUILT ZOMBIE RESERVE & CAMERA-AWARE SHADOW BUDGET — 2026-11-05
 
 - Branch `toby-v783-prebuilt-zombie-reserve-visibility-preview`, experimental `?preview=v783`. Construct up to 10 real rigged Wave-1 shambler entities one per title-screen frame once collision ready, store OFF scene, activate at original validated spawn points. Preserve boss/later waves; if reserve empty, normal construction. Do not touch protected v324. No corpse/ragdoll reuse.
