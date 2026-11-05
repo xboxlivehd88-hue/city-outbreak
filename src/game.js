@@ -12127,6 +12127,7 @@ if(cityEmptyBenchmark&&navigator.webdriver){
   staticSpawnComplete:cityBenchmarkStaticSpawnComplete,staticSpawnAttempts:cityBenchmarkStaticSpawnAttempts,
   collisionChecks:cityBenchmarkCollisionChecks,wallBlocks:cityBenchmarkWallOrCarBlocks,groundChecks:cityBenchmarkGroundSamples,
   zombies:livingCount(),mapReady:!!scene.getObjectByName("ChickenGunCityMap"),x:px,z:pz,yaw,pitch,
+   v783PreviewEnabled:v783Preview,v783ReserveBuilt,v783ReserveUsed,v783ReserveAvailable:v783Reserve.length,v783ShadowReduced,v783ShadowFull,
   rainVisible:rainLines.visible,splashVisible:rainSplashes.visible,
   streetLightsVisible:streetLampLightPool.filter(light=>light.visible).length,
   canopyVisible:!!gasCanopyFillLight?.visible});
