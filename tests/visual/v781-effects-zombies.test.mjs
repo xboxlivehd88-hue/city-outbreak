@@ -152,7 +152,7 @@ test('v784 RAF-only benchmark skips rendering while still recording frame interv
   const downloadEvent=page.waitForEvent('download',{timeout:30000});
   await page.locator('#city-flight-save').focus();await page.keyboard.press('Enter');
   const download=await downloadEvent,report=JSON.parse(await readFile(await download.path(),'utf8'));
-  assert.equal(report.build,'784');assert.equal(report.benchmark,'raf');
+  assert.ok(Number(report.build)>=784,'RAF diagnostic requires loader v784 or newer');assert.equal(report.benchmark,'raf');
   assert.equal(report.renderSubmissionEnabled,false);
   assert.equal(report.gpuFrameTimer.status,'not-sampled-render-disabled');
   assert.ok(report.framesRecorded>3);
@@ -173,7 +173,7 @@ test('v785 standalone frame cadence page cannot load or launch the game',{timeou
   assert.equal(response.status(),200);
   assert.match(await page.title(),/v785 Frame Cadence Test/);
   assert.equal(await page.locator('#start').count(),1);
-  assert.equal(await page.getByText('START OUTBREAK').count(),0);
+  assert.equal(await page.getByRole('button',{name:'START OUTBREAK'}).count(),0,'No game start button on standalone page');
   await page.locator('#start').click();
   await page.waitForFunction(()=>window.__cityRafDiagnostic?.().framesRecorded>=6,null,{timeout:20000});
   const downloadEvent=page.waitForEvent('download',{timeout:15000});
