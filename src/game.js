@@ -7213,7 +7213,7 @@ const v783Reserve=[],V783_RESERVE_LIMIT=10;
 let v783ReserveBuilt=0,v783ReserveUsed=0,v783ShadowReduced=0,v783ShadowFull=0;
 const v783CameraDirection=new THREE.Vector3();
 function v783PrimeReserve(){
- if(!v783Preview||running||!newCityCollisionReady||v783ReserveBuilt>=V783_RESERVE_LIMIT)return;
+ if(!v783Preview||running||!newCityCollisionReady||!basicWalkerTemplate||v783ReserveBuilt>=V783_RESERVE_LIMIT)return;
  const z=makeZombie(-10000,-10000,v783ReserveBuilt,"shambler",null,true);
  if(z){v783Reserve.push(z);v783ReserveBuilt++;}
 }
@@ -7224,6 +7224,7 @@ function v783ActivateReservedZombie(x,z){
  standby.g.visible=true;standby.targetX=px;standby.targetZ=pz;
  standby.navGoalX=px;standby.navGoalZ=pz;
  standby.lastNavX=safe.x;standby.lastNavZ=safe.z;
+ standby.walkerLastX=safe.x;standby.walkerLastZ=safe.z;
  standby.navPath=null;standby.navIndex=0;standby.groundY=0;
  scene.add(standby.g);zombies.push(standby);v783ReserveUsed++;
  return true;
