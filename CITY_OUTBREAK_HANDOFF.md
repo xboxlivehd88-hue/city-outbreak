@@ -1,3 +1,11 @@
+# v783 — OPT-IN PREBUILT ZOMBIE RESERVE & CAMERA-AWARE SHADOW BUDGET — 2026-11-05
+
+- Preview flag `?preview=v783` only: build up to 10 fully rigged, real Wave-1 shambler zombie entities incrementally on title screen once GLB collision is ready. Keep them **outside the Three.js scene**, not visibly parked below the map. Activate at the original validated Wave-1 spawn points, preserving original collision/navigation/combat. If player starts before reserve is full, original live construction remains fallback. No reuse of corpses or altered ragdoll. Later waves and bosses retain original spawner.
+- Preview-only visibility-aware shadow budget: **never reduce mesh geometry, textures or animation inside full camera view + 25-degree margin**. For zombie beyond 24 units and outside that margin, or beyond 105 units, turn off their originally-enabled shadow casting until return. Does not change animation, AI, physics, gameplay, zombie meshes or visibility. This is a limited visual-quality experiment, not general multi-mesh LOD. Existing v782 experimental geometry pooling stays on `?preview=v782` only; v783 isolates new behavior.
+- Local flight report records v783 preview, prebuilt count, used reserve count, remaining reserve, full/reduced shadow entities. No network upload. `index.html` loader v783; original default behavior untouched, v324 recovery untouched. PR/CI/Pages/user benchmark still required before claiming success. Next: compare v783 vs standard build on same hardware with same benchmark then separately test actual spawning; check rendering, visible-edge popping, and frame scheduling.
+
+---
+
 # v782 — EXPERIMENTAL SHAMBLER RENDER OPTIMIZATION (NOT APPROVED) — 2026-11-02
 
 - Branch `toby-v782-zombie-render-optimization-test`, not merged. Pool identical BoxGeometry/CylinderGeometry created for procedural shambler parts; preserve per-mesh transforms and exclude pooled geometries from per-zombie disposal. Preserve GLB shambler shadow casting but disable receiving dynamic shadows on visual meshes. Add pooledShamblerGeometries and optimization label to local flight JSON.
