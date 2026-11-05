@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CITY OUTBREAK — v785 Frame Cadence Test</title>
+<style>
+html,body{margin:0;min-height:100%;background:#101921;color:#f1f6fb;font:16px/1.55 system-ui,Arial,sans-serif}
+main{max-width:690px;margin:5vh auto;padding:22px}
+h1{font-size:clamp(24px,5vw,35px);line-height:1.15}
+p{color:#c1d0d8}button{padding:12px 17px;border:1px solid #80a8bf;background:#24475c;color:white;border-radius:7px;font:inherit;cursor:pointer;margin-right:8px;margin-bottom:8px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.readout{background:#1a2e3b;border:1px solid #456276;padding:15px;border-radius:10px;min-height:90px}
+strong{color:#8ce4c1}code{color:#b3e1ff}small{color:#a8bbc6}
+</style></head>
+<body><main>
+<h1>CITY OUTBREAK <strong>v785</strong></h1>
+<h2>Frame cadence diagnostic — no game, no graphics</h2>
+<p>This is a separate test page. It does not load the city, models, zombies, game code, WebGL, or external scripts. It measures the browser's native animation-frame callback intervals. No screen recorder or uploads.</p>
+<p><strong>Keep this tab visible</strong> for approximately 60 seconds after pressing Start, then save the JSON report.</p>
+<div>
+<button id="start" type="button">START TEST</button>
+<button id="save" type="button" disabled>SAVE REPORT (.JSON)</button>
+<button id="stop" type="button" disabled>STOP</button>
+</div>
+<div class="readout" id="state" role="status">Ready. The page should stay completely still while recording.</div>
+<p><small>Expected: this page only, without a START OUTBREAK button or any 3D game. Save the file and upload it to Toby in ChatGPT.</small></p>
+</main>
+<script>
+(()=>{'use strict';
+const max=480,buf=new Float32Array(max),start=document.getElementById('start'),save=document.getElementById('save'),stop=document.getElementById('stop'),state=document.getElementById('state');
+let active=false,token=0,previous=0,count=0,at=0,total=0,t0=0,hidden=0,lastUi=0,min=Infinity,maxInterval=0;
+function sortedHistory(){const n=Math.min(count,max),out=[];for(let i=0;i<n;i++)out.push(Math.round(buf[(at-n+i+max)%max]*100)/100);return out;}
+function report(){const history=sortedHistory(),values=[...history].sort((a,b)=>a-b),sum=history.reduce((a,b)=>a+b,0);
+ const percentile=p=>values.length?values[Math.max(0,Math.min(values.length-1,Math.ceil(p*values.length)-1))]:null;
+ return {schema:'city-outbreak-raf-cadence-v1',build:'785',benchmark:'standalone-raf-no-render',
+  renderSubmissionEnabled:false,webglCreated:false,externalScripts:false,
+  framesRecorded:count,historyFrames:history.length,elapsedSeconds:Math.round(total/1000*100)/100,
+  viewport:[innerWidth,innerHeight],pixelRatio:devicePixelRatio,
+  documentHiddenEvents:hidden,visibilityState:document.visibilityState,
+  summary:{averageFrameMs:history.length?Math.round(sum/history.length*100)/100:null,
+   p50FrameMs:percentile(.5),p95FrameMs:percentile(.95),p99FrameMs:percentile(.99),
+   worstHistoryFrameMs:percentile(1),framesOver20Ms:history.filter(n=>n>20).length,
+   framesOver35Ms:history.filter(n=>n>35).length,
+   estimatedFps:sum>0?Math.round(history.length/sum*100000)/100:null},
+  recentFrames:history.map((wall,i)=>({index:i,wall})),
+  note:'Native browser requestAnimationFrame callbacks only. The page does not render WebGL or run game logic. Keep browser tab visible. Data is saved locally only.'};}
+function status(){const r=report(),s=r.summary;
+ state.textContent=(active?'Recording':'Stopped')+' · '+Math.round(total/1000)+' seconds · '+count+' frames · latest '+(s.p50FrameMs??'—')+' ms median · '+(s.estimatedFps??'—')+' estimated FPS'+(hidden?' · tab was hidden '+hidden+' time(s)':'');
+}
+function tick(t){if(!active)return;if(previous>0){const dt=t-previous;if(Number.isFinite(dt)&&dt>=0&&dt<5000){buf[at]=dt;at=(at+1)%max;count++;total+=dt;} }previous=t;
+ if(t-lastUi>=500){lastUi=t;status();}
+ token=requestAnimationFrame(tick);}
+function stopTest(){active=false;cancelAnimationFrame(token);start.disabled=false;stop.disabled=true;status();}
+start.addEventListener('click',()=>{if(active)return;active=true;previous=0;count=0;at=0;total=0;hidden=0;lastUi=0;t0=performance.now();min=Infinity;maxInterval=0;start.disabled=true;stop.disabled=false;save.disabled=false;state.textContent='Recording native browser callbacks…';token=requestAnimationFrame(tick);});
+stop.addEventListener('click',stopTest);
+save.addEventListener('click',()=>{const data=JSON.stringify(report(),null,2),blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='city-outbreak-raf-cadence-v785.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);});
+document.addEventListener('visibilitychange',()=>{if(active&&document.hidden)hidden++;});
+window.__cityRafDiagnostic=()=>report();
+})();
+</script></body></html>
