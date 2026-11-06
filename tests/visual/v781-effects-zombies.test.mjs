@@ -187,3 +187,36 @@ test('v785 standalone frame cadence page cannot load or launch the game',{timeou
   console.log('V785_RAF_STANDALONE_PASS',JSON.stringify({frames:report.framesRecorded,median:report.summary.p50FrameMs}));
  }finally{await page.close();await browser.close()}
 });
+
+test('v786 standalone GPU isolation completes all stages and never requests game assets',{timeout:75000},async()=>{
+ const browser=await chromium.launch({headless:true,args:[
+  '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',
+  '--disable-dev-shm-usage','--ignore-gpu-blocklist'
+ ]});
+ const page=await browser.newPage({viewport:{width:1024,height:576},deviceScaleFactor:1,acceptDownloads:true});
+ const errors=[],gameRequests=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ page.on('request',r=>{if(/game\\.js|\\.glb|three(\\.min)?\\.js/.test(r.url()))gameRequests.push(r.url())});
+ try{
+  const response=await page.goto(base+'/gpu-isolation.html?stageMs=1600',{waitUntil:'load',timeout:30000});
+  assert.equal(response.status(),200);
+  assert.match(await page.title(),/v786 WebGL Isolation/);
+  assert.equal(await page.getByRole('button',{name:'START OUTBREAK'}).count(),0);
+  await page.locator('#start').click();
+  await page.waitForFunction(()=>window.__cityWebglIsolation?.().completed,{timeout:45000,polling:250});
+  const downloadEvent=page.waitForEvent('download',{timeout:12000});
+  await page.locator('#save').click();
+  const d=await downloadEvent,report=JSON.parse(await readFile(await d.path(),'utf8'));
+  assert.equal(report.build,'786');
+  assert.equal(report.benchmark,'standalone-webgl-three-stage');
+  assert.equal(report.gameLoaded,false);assert.equal(report.externalScripts,false);
+  assert.equal(report.stageDurationMs,1600);
+  assert.equal(report.completed,true);
+  assert.deepEqual(report.stages.map(s=>s.name),['raf-only','webgl-clear','webgl-fullscreen-shader']);
+  assert.ok(report.stages.every(s=>s.framesRecorded>=3),'Each stage needs frame records');
+  assert.equal(report.failures.length,0,'No GPU initialization errors');
+  assert.equal(gameRequests.length,0,'No game scripts or GLBs requested');
+  assert.equal(errors.length,0,'No runtime errors');
+  console.log('V786_GPU_ISOLATION_PASS',JSON.stringify(report.stages.map(s=>({name:s.name,frames:s.framesRecorded,median:s.frameTimes.p50Ms}))));
+ }finally{await page.close();await browser.close();}
+});
