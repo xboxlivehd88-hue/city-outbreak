@@ -21,7 +21,8 @@ small{color:#bdcdd6}code{color:#a8e5e8}
 </main>
 <script>
 (()=>{'use strict';
-const DURATION_MS=20000,RECENT=480,STAGE_NAMES=['raf-only','webgl-clear','webgl-fullscreen-shader'];
+const requestedStageMs=Number(new URLSearchParams(location.search).get('stageMs'));
+const DURATION_MS=requestedStageMs>=500&&requestedStageMs<=20000?requestedStageMs:20000,RECENT=480,STAGE_NAMES=['raf-only','webgl-clear','webgl-fullscreen-shader'];
 const start=document.getElementById('start'),save=document.getElementById('save'),stop=document.getElementById('stop');
 const title=document.getElementById('stage'),status=document.getElementById('status'),canvas=document.getElementById('glCanvas');
 const records=()=>STAGE_NAMES.map(name=>({name,frames:0,intervals:[],elapsedMs:0,beginAt:null,endAt:null,gpuSamples:[],gpuStatus:'not-requested'}));
@@ -34,7 +35,7 @@ p95Ms:percentile(sorted,.95),p99Ms:percentile(sorted,.99),maximumMs:sorted.lengt
 over20Ms:values.filter(x=>x>20).length,over35Ms:values.filter(x=>x>35).length,
 estimatedFps:sum>0?round(values.length*1000/sum):null};}
 function exportData(){return {schema:'city-outbreak-webgl-isolation-v1',build:'786',benchmark:'standalone-webgl-three-stage',
-renderer:'native-webgl2',gameLoaded:false,externalScripts:false,reportCreatedAt:new Date().toISOString(),
+renderer:'native-webgl2',gameLoaded:false,externalScripts:false,stageDurationMs:DURATION_MS,reportCreatedAt:new Date().toISOString(),
 display:[innerWidth,innerHeight],pixelRatio:devicePixelRatio,canvasResolution:[canvas.width,canvas.height],
 tabHiddenEvents:hidden,visibilityState:document.visibilityState,completed:finished,
 failures:failures.slice(),stages:phases.map(p=>({name:p.name,framesRecorded:p.frames,
@@ -117,7 +118,7 @@ function tick(t){
   p.endAt=t;if(stage===2){finished=true;stopTest();return;}
   beginStage(stage+1,t);if(!active)return;
  }
- if(frameCount%30===0)status.textContent=STAGE_NAMES[stage]+' · '+Math.round((t-phaseStarted)/1000)+' / 20 seconds · '+(p.frames?stats(p.intervals).estimatedFps:'—')+' FPS';
+ if(frameCount%30===0)status.textContent=STAGE_NAMES[stage]+' · '+Math.round((t-phaseStarted)/1000)+' / '+Math.round(DURATION_MS/1000)+' seconds · '+(p.frames?stats(p.intervals).estimatedFps:'—')+' FPS';
  raf=requestAnimationFrame(tick);
 }
 function stopTest(){active=false;cancelAnimationFrame(raf);stop.disabled=true;start.disabled=false;save.disabled=false;
