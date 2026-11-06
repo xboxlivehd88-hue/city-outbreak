@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CITY OUTBREAK — v786 WebGL Isolation</title>
+<style>
+html,body{margin:0;background:#101921;color:#eef6fc;font:16px/1.5 system-ui,Arial,sans-serif}main{max-width:800px;margin:3vh auto;padding:22px}
+h1{font-size:clamp(24px,4vw,34px);margin:0 0 12px}p{color:#c6d3dd}
+button{border:1px solid #88aabc;color:#fff;background:#255069;padding:12px 18px;border-radius:8px;font:inherit;cursor:pointer;margin:0 7px 9px 0}
+button:disabled{opacity:.5;cursor:not-allowed}
+#stage{font-size:18px;font-weight:700;padding:10px;background:#203443;border-radius:8px}
+#status{padding:9px}canvas{display:block;width:100%;height:230px;border:1px solid #537086;border-radius:8px;background:#14212a}
+small{color:#bdcdd6}code{color:#a8e5e8}
+</style></head><body><main>
+<h1>CITY OUTBREAK <strong>v786</strong> — GPU Isolation</h1>
+<p>This is a separate performance test, NOT the game. It automatically compares three stages on your computer. No city assets, no game code, no external scripts, no video capture and no uploads.</p>
+<p>Keep this tab <strong>visible</strong> for the entire test. The image changes during the last two stages on purpose.</p>
+<button id="start" type="button">START 3-STAGE TEST</button><button id="save" type="button" disabled>SAVE REPORT (.JSON)</button><button id="stop" type="button" disabled>STOP</button>
+<div id="stage" role="status">Ready — approximately 60 seconds total</div>
+<div id="status">Stage 1: native browser frame scheduling without WebGL</div>
+<canvas id="glCanvas" width="960" height="540" aria-label="Performance-only WebGL diagnostic canvas"></canvas>
+<p><small>Stage 1: no WebGL context or draw calls. Stage 2: WebGL clears the screen. Stage 3: WebGL renders a fullscreen animated shader. Synthetic workload only; not a simulation of CITY OUTBREAK geometry. If WebGL is unsupported, the JSON identifies the limitation.</small></p>
+</main>
+<script>
+(()=>{'use strict';
+const DURATION_MS=20000,RECENT=480,STAGE_NAMES=['raf-only','webgl-clear','webgl-fullscreen-shader'];
+const start=document.getElementById('start'),save=document.getElementById('save'),stop=document.getElementById('stop');
+const title=document.getElementById('stage'),status=document.getElementById('status'),canvas=document.getElementById('glCanvas');
+const records=()=>STAGE_NAMES.map(name=>({name,frames:0,intervals:[],elapsedMs:0,beginAt:null,endAt:null,gpuSamples:[],gpuStatus:'not-requested'}));
+let phases=records(),active=false,stage=-1,raf=0,previous=0,phaseStarted=0,hidden=0,gl=null,shaderProgram=null,shaderPosition=null,shaderTime=null,buffer=null,ext=null,pending=[],gpuQuery=null,frameCount=0,failures=[],startWall=0,finished=false;
+const round=v=>Math.round(v*100)/100;
+function percentile(a,p){return a.length?a[Math.min(a.length-1,Math.max(0,Math.ceil(p*a.length)-1))]:null;}
+function stats(values){const sorted=[...values].sort((a,b)=>a-b),sum=values.reduce((a,b)=>a+b,0);
+return {samples:values.length,averageMs:values.length?round(sum/values.length):null,p50Ms:percentile(sorted,.50),
+p95Ms:percentile(sorted,.95),p99Ms:percentile(sorted,.99),maximumMs:sorted.length?sorted[sorted.length-1]:null,
+over20Ms:values.filter(x=>x>20).length,over35Ms:values.filter(x=>x>35).length,
+estimatedFps:sum>0?round(values.length*1000/sum):null};}
+function exportData(){return {schema:'city-outbreak-webgl-isolation-v1',build:'786',benchmark:'standalone-webgl-three-stage',
+renderer:'native-webgl2',gameLoaded:false,externalScripts:false,reportCreatedAt:new Date().toISOString(),
+display:[innerWidth,innerHeight],pixelRatio:devicePixelRatio,canvasResolution:[canvas.width,canvas.height],
+tabHiddenEvents:hidden,visibilityState:document.visibilityState,completed:finished,
+failures:failures.slice(),stages:phases.map(p=>({name:p.name,framesRecorded:p.frames,
+elapsedSeconds:round(p.elapsedMs/1000),frameTimes:stats(p.intervals),recentFrameMs:p.intervals.slice(-RECENT),
+gpuTimerStatus:p.gpuStatus,gpuTimes:stats(p.gpuSamples)})),
+note:'Native RAF, then WebGL clear, then a synthetic fullscreen shader. No game/WebGL context in first stage; subsequent stages share one WebGL2 context. GPU query results are asynchronous; unsupported means unavailable, not fast.'};}
+function makeShader(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error('Shader compile: '+gl.getShaderInfoLog(s));return s;}
+function prepareGl(){
+ if(gl)return;
+ gl=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false,powerPreference:'high-performance'});
+ if(!gl)throw Error('WebGL2 not supported in this browser');
+ const vs=makeShader(gl.VERTEX_SHADER,`#version 300 es
+ in vec2 aPosition;
+ void main(){gl_Position=vec4(aPosition,0.0,1.0);}`);
+ const fs=makeShader(gl.FRAGMENT_SHADER,`#version 300 es
+ precision highp float;
+ uniform float uTime;
+ out vec4 fragColor;
+ void main(){
+  vec2 p=gl_FragCoord.xy/vec2(960.0,540.0);
+  float x=p.x*10.0+uTime*0.25,y=p.y*8.0-uTime*0.2;
+  float v=0.0;
+  for(int i=0;i<6;i++){v+=0.085*sin(x*float(i+1)+cos(y*float(i+2)));}
+  fragColor=vec4(0.17+v+p.x*0.2,0.27-v+p.y*0.1,0.38+v*0.3,1.0);
+ }`);
+ shaderProgram=gl.createProgram();gl.attachShader(shaderProgram,vs);gl.attachShader(shaderProgram,fs);gl.linkProgram(shaderProgram);
+ if(!gl.getProgramParameter(shaderProgram,gl.LINK_STATUS))throw Error('Shader link: '+gl.getProgramInfoLog(shaderProgram));
+ gl.deleteShader(vs);gl.deleteShader(fs);shaderPosition=gl.getAttribLocation(shaderProgram,'aPosition');
+ shaderTime=gl.getUniformLocation(shaderProgram,'uTime');
+ buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+ gl.viewport(0,0,canvas.width,canvas.height);
+ ext=gl.getExtension('EXT_disjoint_timer_query_webgl2');
+}
+function gpuPoll(p){
+ if(!gl||!ext)return;
+ try{
+  if(gl.getParameter(ext.GPU_DISJOINT_EXT)){p.gpuStatus='disjoint';for(const q of pending)gl.deleteQuery(q.query);pending=[];return;}
+  for(let i=pending.length-1;i>=0;i--){
+   const q=pending[i];if(!gl.getQueryParameter(q.query,gl.QUERY_RESULT_AVAILABLE))continue;
+   const ms=gl.getQueryParameter(q.query,gl.QUERY_RESULT)/1000000;
+   if(ms>=0&&ms<1000&&Number.isFinite(ms))phases[q.stage].gpuSamples.push(round(ms));
+   gl.deleteQuery(q.query);pending.splice(i,1);
+  }
+ }catch(e){p.gpuStatus='error';failures.push(String(e).slice(0,150));}
+}
+function gpuBegin(p){
+ if(!ext||frameCount%6!==0||pending.length>=4)return null;
+ try{const q=gl.createQuery();gl.beginQuery(ext.TIME_ELAPSED_EXT,q);p.gpuStatus='sampling';return q;}
+ catch(e){p.gpuStatus='error';return null;}
+}
+function gpuEnd(q){if(!q)return;try{gl.endQuery(ext.TIME_ELAPSED_EXT);pending.push({query:q,stage});}catch(e){failures.push(String(e).slice(0,150));}}
+function render(p,t){
+ if(stage===0)return;
+ const q=gpuBegin(p);
+ gl.clearColor(0.06,0.12,0.17,1);gl.clear(gl.COLOR_BUFFER_BIT);
+ if(stage===2){gl.useProgram(shaderProgram);gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+ gl.enableVertexAttribArray(shaderPosition);gl.vertexAttribPointer(shaderPosition,2,gl.FLOAT,false,0,0);
+ gl.uniform1f(shaderTime,t*.001);gl.drawArrays(gl.TRIANGLES,0,3);}
+ gpuEnd(q);gpuPoll(p);
+}
+function beginStage(n,t){
+ stage=n;previous=0;phaseStarted=t;phases[n].beginAt=t;frameCount=0;
+ title.textContent='Stage '+(n+1)+' of 3 — '+STAGE_NAMES[n];
+ if(n===0)status.textContent='Browser callback timing; no WebGL context created.';
+ if(n===1||n===2){
+  try{prepareGl();status.textContent=n===1?'WebGL screen clearing each frame.':'WebGL fullscreen shader drawing each frame.';}
+  catch(e){failures.push('Stage '+(n+1)+': '+String(e));status.textContent='WebGL unavailable: '+e.message;stopTest();return;}
+  phases[n].gpuStatus=ext?'collecting':'unsupported';
+ }
+}
+function tick(t){
+ if(!active)return;
+ if(stage<0)beginStage(0,t);
+ if(!active)return;
+ const p=phases[stage];
+ if(previous){const dt=t-previous;if(dt>=0&&dt<5000&&Number.isFinite(dt)){p.intervals.push(round(dt));p.frames++;p.elapsedMs+=dt;}}
+ previous=t;frameCount++;render(p,t);
+ if(t-phaseStarted>=DURATION_MS){
+  p.endAt=t;if(stage===2){finished=true;stopTest();return;}
+  beginStage(stage+1,t);if(!active)return;
+ }
+ if(frameCount%30===0)status.textContent=STAGE_NAMES[stage]+' · '+Math.round((t-phaseStarted)/1000)+' / 20 seconds · '+(p.frames?stats(p.intervals).estimatedFps:'—')+' FPS';
+ raf=requestAnimationFrame(tick);
+}
+function stopTest(){active=false;cancelAnimationFrame(raf);stop.disabled=true;start.disabled=false;save.disabled=false;
+ title.textContent=(finished?'Finished — all 3 stages completed':'Stopped — partial report')+' · v786';
+ status.textContent='Save the report JSON and upload it to Toby. The game was not loaded.';}
+start.addEventListener('click',()=>{
+ if(active)return;phases=records();failures=[];hidden=0;stage=-1;previous=0;finished=false;startWall=performance.now();
+ active=true;start.disabled=true;stop.disabled=false;save.disabled=true;
+ // A fresh WebGL context is only created when Stage 2 begins, after Stage 1.
+ if(gl){for(const q of pending)try{gl.deleteQuery(q.query)}catch(_){ }pending=[];gl.getExtension('WEBGL_lose_context')?.loseContext();}
+ gl=null;ext=null;shaderProgram=null;buffer=null;canvas.style.display='block';
+ raf=requestAnimationFrame(tick);
+});
+stop.addEventListener('click',stopTest);
+save.addEventListener('click',()=>{const blob=new Blob([JSON.stringify(exportData(),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='city-outbreak-webgl-isolation-v786.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);});
+document.addEventListener('visibilitychange',()=>{if(active&&document.hidden)hidden++;});
+window.__cityWebglIsolation=()=>exportData();
+})();
+</script></body></html>
