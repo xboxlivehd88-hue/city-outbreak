@@ -1,3 +1,11 @@
+# v786 — STANDALONE THREE-STAGE WEBGL DIAGNOSTIC — 2026-11-06
+
+- User approved continuing after actual v785 report measured near-perfect native browser rAF: 74.97 FPS, median 13.3 ms, p95 13.5, worst 13.8, 0 / 480 frames >20ms, 0 hidden. Previous full game ~44 FPS, median 26.7ms, GPU extension sampled ~23ms; isolate GPU and presentation.
+- Branch `toby-v786-webgl-stage-isolation`; `gpu-isolation.html` is a separate standalone HTML: 20 sec RAF-only (no context), 20 sec WebGL2 screen clearing, 20 sec animated fullscreen shader. Automatically cycles, exports one `city-outbreak-webgl-isolation-v786.json` with per-stage all frame intervals, GPU timer samples if supported, visibility events. No game imports, no network upload. Tests use `?stageMs=1600` to keep CI quick, production defaults 20 sec/stage. Normal game is not changed except loader v786.
+- CI must pass, merge and verify Pages before giving user dedicated link. Next inspect incoming GPU stage comparison and decide whether context/presentation vs actual game scene is culprit; existing v783 prebuild and shadow changes remain opt-in. Protected v324 untouched.
+
+---
+
 # v785 — STANDALONE RAF CADENCE PAGE — 2026-11-05
 
 - Reason: user twice reported full game from v784 `?benchmark=raf`; uploaded flight report says build **783**, ten live zombies, so it wasn't the v784 no-render benchmark. Do not claim solved. Github main has v784; remote Pages state not verified.
