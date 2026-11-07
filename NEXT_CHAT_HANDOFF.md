@@ -1,3 +1,14 @@
+# v788 — SHAMBLER GPU DRAW-CALL / DISTANCE PROXY PREVIEW — 2026-11-07
+
+- User approved all proposed zombie-rendering optimization work after playing v787 through Wave 12. The measured v787 report showed recurring 26.5 ms median frame times, ~44 FPS estimate, 14–23 zombies in spike snapshots and as many as ~700 draw calls / 1.9 million triangles. v787 preview animation budgeting was active, but measured FPS improvement against baseline was not established.
+- New branch `toby-v788-shambler-render-proxy`; opt-in `?preview=v788` combines v787 offscreen animation batching with a simple shared low-geometry shambler stand-in. This is a one-draw-call, shared-geometry/material replacement solely when a living standard shambler is more than 35 world units away and outside camera horizontal FOV + 25° safety margin, OR beyond 130 units even if within FOV. At 130+ units the stand-in is intentionally low fidelity, and the gameplay/visual impression must be reviewed before approval.
+- The real GLB skinned mesh, animations, hitboxes, bone hierarchy, AI, navigation, physics, pursuit and combat remain loaded and active; mesh visibility switches back before a zombie crosses buffered view or approaches the player. For death and nuke death, restore GLB before ragdoll. All specials, bosses and crawlers excluded. Original/default game unchanged. The v324 protected recovery stays untouched.
+- Stand-in built as a shared low-poly merged box/head/limb mesh with one material and no shadows; avoids separate skinned mesh draw calls only for qualifying distant/offscreen shamblers. This is an experimental quality tradeoff, NOT yet an approved GLB mesh reducer, and does not change city/map rendering.
+- Local recorder now includes v788 preview state, proxy/full counts and switch counts; `window.__cityZombieRenderBudgetState()` provides read-only diagnostics. Loader v788, v788 real-Wave-1 Playwright smoke added to v781 test suite; full CI, PR merge, Pages deployment and same-hardware default-vs-preview user flight report required. Do not claim FPS gains prior to comparable measurements.
+- Next: check Playwright visual transitions and runtime errors, round 10–12 ragdoll, draw calls/GPU time and inspect whether offscreen proxy has meaningful impact. Do not expand to other zombie types until validated.
+
+---
+
 # v787 — ZOMBIE ANIMATION BUDGET PREVIEW — 2026-11-07
 
 - User picked zombies first for real performance changes. Branch `toby-v787-zombie-offscreen-animation-preview`, opt-in `?preview=v787`, loader v787. Distant regular GLB shamblers only: if >24 units AND outside camera horizontal FOV + 25° safety margin, run mixer+visible pose in ~15Hz batches using accumulated time. Nearby or in view update at full rate immediately; any combat reactions, hits, knockdowns, death, bosses, crawlers, specials never throttled. AI/collision/movement/spawns remain normal 75Hz. No mesh model quality reduction. Counts in recorder & diagnostic global.
