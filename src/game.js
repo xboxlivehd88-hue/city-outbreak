@@ -7209,6 +7209,39 @@ const ZOMBIE_WORLD_SCALE=1.15;
 const v782ZombiePreview=new URLSearchParams(location.search).get('preview')==='v782';
 // v783: opt-in fully constructed, off-scene Wave-1 reserve + guarded shadow detail.
 const v783Preview=new URLSearchParams(location.search).get('preview')==='v783';
+// v787 preview: reduce only distant, offscreen shambler visual rig animation work.
+// Keep all AI, navigation, attacks, collision, hitboxes and every visible walker at full rate.
+const v787Preview=new URLSearchParams(location.search).get('preview')==='v787';
+const V787_VISUAL_STEP=1/15;
+let v787AnimationFull=0,v787AnimationSkipped=0,v787AnimationBatched=0;
+function v787WalkerAnimationBudget(z,dt,dist){
+ if(!v787Preview||z.kind!=='shambler'||!z.walkerVisual||z.dead||
+    z.knockdown||z.stagger>0||z.attackAnim>0||z.blastT>0||
+    z.rigTransientT>0||dist<=24){
+  const sum=(z.v787VisualAccum||0)+dt;z.v787VisualAccum=0;
+  if(v787Preview)v787AnimationFull++;
+  return {run:true,elapsed:sum};
+ }
+ // Respect horizontal camera FOV + 25-degree buffer; camera turns restore full rate immediately.
+ const dx=z.g.position.x-px,dz=z.g.position.z-pz,d=Math.max(.001,Math.hypot(dx,dz));
+ const hfov=Math.atan(Math.tan(THREE.MathUtils.degToRad(cam.fov)*.5)*cam.aspect);
+ const threshold=Math.cos(Math.min(Math.PI,hfov+THREE.MathUtils.degToRad(25)));
+ const inView=(dx*(-Math.sin(yaw))+dz*(-Math.cos(yaw)))/d>=threshold;
+ if(inView){
+  const sum=(z.v787VisualAccum||0)+dt;z.v787VisualAccum=0;
+  v787AnimationFull++;return {run:true,elapsed:sum};
+ }
+ z.v787VisualAccum=(z.v787VisualAccum||0)+dt;
+ if(z.v787VisualAccum<V787_VISUAL_STEP){v787AnimationSkipped++;return {run:false,elapsed:0};}
+ const elapsed=z.v787VisualAccum;z.v787VisualAccum=0;
+ v787AnimationBatched++;return {run:true,elapsed};
+}
+window.__cityZombieVisualBudgetState=()=>({
+ enabled:v787Preview,full:v787AnimationFull,skipped:v787AnimationSkipped,
+ batched:v787AnimationBatched,kind:'shambler-only',offscreenStepHz:15,
+ nearFullDistance:24,viewMarginDegrees:25
+});
+
 const v783Reserve=[],V783_RESERVE_LIMIT=10;
 let v783ReserveBuilt=0,v783ReserveUsed=0,v783ShadowReduced=0,v783ShadowFull=0;
 const v783CameraDirection=new THREE.Vector3();
@@ -11378,6 +11411,7 @@ for(let z of active){
 
 z.cool=Math.max(0,z.cool-dt);z.stagger=Math.max(0,(z.stagger||0)-dt);z.attackAnim=Math.max(0,z.attackAnim-dt);
 const playerDistToZombie=Math.hypot(px-z.g.position.x,pz-z.g.position.z);
+const v787Visual=v787WalkerAnimationBudget(z,dt,playerDistToZombie);
 const huntMode=highlightLast&&z.kind!=="boss";
 const huntRun=huntMode&&z.kind!=="crawler"&&z.kind!=="boss";
 if(z.mixer&&!z.infectedCrawler){
@@ -11389,8 +11423,10 @@ if(z.mixer&&!z.infectedCrawler){
  const rigScale=huntRun&&!naturalRunner?huntRigScale:naturalRunner?Math.max(.95,z.speed*.74):z.kind==="boss"?bossRigScale:Math.max(.66,z.speed*.61);
  if(z.rigBase)z.rigBase.timeScale=rigScale;
  if(z.rigTransientT>0){z.rigTransientT-=dt;if(z.rigTransientT<=0){if(z.rigTransient)z.rigTransient.fadeOut(.08);if(z.rigBase)z.rigBase.reset().fadeIn(.10).play();z.rigTransient=null;}}
- z.mixer.update(dt);
- applyRigLocomotionPolish(z,huntRun,dt);
+ if(v787Visual.run){
+  z.mixer.update(v787Visual.elapsed);
+  applyRigLocomotionPolish(z,huntRun,v787Visual.elapsed);
+ }
 }
 if(z.infectedVisual&&!z.infectedCrawler)syncInfectedGLB(z,dt);
 z.groan-=dt;z.step-=dt;z.surgeT-=dt;z.pauseClock-=dt;
@@ -11648,7 +11684,7 @@ resolveZombiePlayerContact(z,ox,oz);
    }
  }
  updateNaturalCrawlerVisual(z,dt);updateInjuredCrawlerVisual(z,dt);
- syncRadiatedGreenGuy(z,dt);syncBasicWalkerVisual(z,dt);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);if(z.infectedCrawler)poseOriginalInfectedCrawler(z);
+ syncRadiatedGreenGuy(z,dt);if(v787Visual.run)syncBasicWalkerVisual(z,v787Visual.elapsed);hazmatZombie.sync(z,dt);sprinterZombie.sync(z,dt);if(z.crawlerUpperVisual&&z.crawlerUpperVisual===z.sprinterVisual)syncCrawlerUpperVisual(z);if(z.infectedCrawler)poseOriginalInfectedCrawler(z);
  if(z.groan<=0&&d<30){groan(Math.max(.025,.19*(1-d/32)));z.groan=Math.max(.8,1.7-wave*.04)+rnd()*2.8}}
  zombieNavBudgetActive=false;
  cityFrameProfile.livingMs+=performance.now()-livingStart;
@@ -11748,6 +11784,7 @@ mountFlightRecorderControls(flightRecorder,{getMeta:()=>({
  pooledShamblerGeometries:v782ShamblerGeometryCache.size,
  v783PreviewEnabled:v783Preview,v783ReserveBuilt,v783ReserveUsed,
  v783ReserveAvailable:v783Reserve.length,v783ShadowReduced,v783ShadowFull,
+ v787PreviewEnabled:v787Preview,v787AnimationFull,v787AnimationSkipped,v787AnimationBatched,
  notes:'Local performance numbers only. One in 120 recorder calls timed for diagnostic overhead. Run ON/OFF comparisons on the same hardware. No network upload or screen capture.'
 })});
 setupWebGLContextLossHandler(cv,()=>show("GRAPHICS RESET — REFRESH IF NEEDED"));
