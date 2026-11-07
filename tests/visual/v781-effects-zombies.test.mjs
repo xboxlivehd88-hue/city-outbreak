@@ -285,3 +285,42 @@ test('v788 real-wave render budget keeps gameplay and full-quality fallback',{ti
   console.log('V788_RENDER_PASS',JSON.stringify(state));
  }finally{await page.close();await browser.close();}
 });
+
+test('v789 asynchronous zombie preparation and reserved Wave-1 spawns',{timeout:180000},async()=>{
+ const browser=await chromium.launch({headless:true,args:[
+  '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',
+  '--disable-dev-shm-usage','--ignore-gpu-blocklist'
+ ]});
+ const page=await browser.newPage({viewport:{width:1024,height:576},deviceScaleFactor:1});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ try{
+  await page.addInitScript(()=>{
+   localStorage.setItem('city-outbreak-graphics-v1','medium');
+   const raf=window.requestAnimationFrame.bind(window);
+   window.requestAnimationFrame=cb=>setTimeout(()=>raf(cb),130);
+  });
+  await page.goto(base+'/?preview=v789',{waitUntil:'domcontentloaded',timeout:30000});
+  await page.waitForFunction(()=>Number(document.documentElement.dataset.cityOutbreakBuild)>=789&&
+   typeof window.__cityZombiePrewarmState==='function',null,{timeout:60000,polling:250});
+  await page.waitForFunction(()=>{
+   const s=window.__cityZombiePrewarmState?.();
+   return s&&['ready','unsupported-async','failed'].includes(s.state);
+  },null,{timeout:90000,polling:250});
+  const prewarm=await page.evaluate(()=>window.__cityZombiePrewarmState());
+  assert.equal(prewarm.enabled,true);
+  assert.equal(prewarm.runs,1);
+  assert.notEqual(prewarm.state,'failed','Shambler GPU shader prewarm failed: '+prewarm.error);
+  await page.locator('#start').click({noWaitAfter:true,timeout:45000});
+  await page.waitForFunction(()=>window.__cityZombieVisualBudgetState?.().full>0,
+   null,{timeout:90000,polling:250});
+  const state=await page.evaluate(()=>({
+   prewarm:window.__cityZombiePrewarmState(),
+   render:window.__cityZombieRenderBudgetState(),
+   animation:window.__cityZombieVisualBudgetState()
+  }));
+  assert.equal(state.render.enabled,true);
+  assert.equal(state.animation.enabled,true);
+  assert.equal(errors.length,0,'No runtime errors in live Wave 1');
+  console.log('V789_PREWARM_PASS',JSON.stringify(state));
+ }finally{await page.close();await browser.close();}
+});

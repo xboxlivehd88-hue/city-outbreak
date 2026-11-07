@@ -7208,10 +7208,10 @@ const ZOMBIE_WORLD_SCALE=1.15;
 
 const v782ZombiePreview=new URLSearchParams(location.search).get('preview')==='v782';
 // v783: opt-in fully constructed, off-scene Wave-1 reserve + guarded shadow detail.
-const v783Preview=new URLSearchParams(location.search).get('preview')==='v783';
+const v783Preview=new URLSearchParams(location.search).get('preview')==='v783'||new URLSearchParams(location.search).get('preview')==='v789';
 // v787 preview: reduce only distant, offscreen shambler visual rig animation work.
 // Keep all AI, navigation, attacks, collision, hitboxes and every visible walker at full rate.
-const v787Preview=new URLSearchParams(location.search).get('preview')==='v787'||new URLSearchParams(location.search).get('preview')==='v788';
+const v787Preview=new URLSearchParams(location.search).get('preview')==='v787'||new URLSearchParams(location.search).get('preview')==='v788'||new URLSearchParams(location.search).get('preview')==='v789';
 const V787_VISUAL_STEP=1/15;
 let v787AnimationFull=0,v787AnimationSkipped=0,v787AnimationBatched=0;
 function v787WalkerAnimationBudget(z,dt,dist){
@@ -7244,7 +7244,7 @@ window.__cityZombieVisualBudgetState=()=>({
 
 // v788 optional combined visual budget: far/offscreen simple shambler geometry.
 // Hitboxes, animated skeleton, gameplay and corpse/ragdoll geometry are untouched.
-const v788Preview=new URLSearchParams(location.search).get('preview')==='v788';
+const v788Preview=new URLSearchParams(location.search).get('preview')==='v788'||new URLSearchParams(location.search).get('preview')==='v789';
 let v788ProxyActive=0,v788FullActive=0,v788ProxySwitches=0;
 let v788SharedGeometry=null,v788SharedMaterial=null;
 function v788ProxyGeometry(){
@@ -7305,6 +7305,51 @@ window.__cityZombieRenderBudgetState=()=>({
  enabled:v788Preview,proxies:v788ProxyActive,full:v788FullActive,
  switches:v788ProxySwitches,proxyTriangles:v788SharedGeometry?.getIndex()?.count/3||0,
  nearFullDistance:35,farInViewThreshold:130,viewMarginDegrees:25
+});
+
+// v789: only while the title screen is idle, asynchronously prepare the actual
+// shambler GLB shader and the v788 proxy shader before their first live draw.
+// Never run a blocking compile/render on the active gameplay frame.
+const v789Preview=new URLSearchParams(location.search).get('preview')==='v789';
+let v789WarmupState='waiting-for-model',v789WarmupMs=0,v789WarmupError='';
+let v789WarmupStart=0,v789WarmupRuns=0;
+let v789WarmupPromise=null;
+function v789PrewarmShambler(){
+ if(!v789Preview||v789WarmupPromise||!basicWalkerTemplate||running)return v789WarmupPromise;
+ v789WarmupState='compiling';v789WarmupStart=performance.now();v789WarmupRuns++;
+ v789WarmupPromise=(async()=>{
+  const warmScene=new THREE.Scene();
+  const model=SkeletonUtils.clone(basicWalkerTemplate);
+  const holder=new THREE.Group();holder.scale.setScalar(1.92/(basicWalkerTemplate.userData.sourceHeight||9.46));
+  holder.rotation.y=Math.PI;holder.add(model);warmScene.add(holder);
+  // Use the same renderer, camera and supported light count as live play.
+  scene.traverse(node=>{if(node.isLight&&node.visible)warmScene.add(node.clone())});
+  // Also precompile the distant stand-in, with its real shared materials.
+  const proxy=new THREE.Mesh(v788ProxyGeometry(),v788SharedMaterial);
+  warmScene.add(proxy);
+  try{
+   if(typeof ren.compileAsync==='function'){
+    await ren.compileAsync(warmScene,cam);
+    v789WarmupState='ready';
+   }else{
+    // Avoid ren.compile() on the main thread: that can itself cause a hitch.
+    v789WarmupState='unsupported-async';
+   }
+  }catch(err){v789WarmupState='failed';v789WarmupError=String(err?.message||err);
+   console.warn('CITY OUTBREAK v789 shambler shader warmup unavailable',err);
+  }finally{
+   warmScene.remove(proxy,holder);
+   v789WarmupMs=performance.now()-v789WarmupStart;
+   document.documentElement.dataset.zombieShaderWarmup=v789WarmupState;
+  }
+ })();
+ return v789WarmupPromise;
+}
+window.__cityZombiePrewarmState=()=>({
+ enabled:v789Preview,state:v789WarmupState,ms:Math.round(v789WarmupMs),
+ error:v789WarmupError,runs:v789WarmupRuns,
+ reserveBuilt:v783ReserveBuilt,reserveUsed:v783ReserveUsed,
+ reserveAvailable:v783Reserve.length
 });
 
 const v783Reserve=[],V783_RESERVE_LIMIT=10;
@@ -11825,6 +11870,10 @@ const flightRecorder=createFrameFlightRecorder({
  getContext:()=>({wave,zombies:livingCount(),explosions:activeExplosionBursts.length,
   casings:casings.length,particles:parts.length+impacts.length,
   draws:ren.info.render.calls,triangles:ren.info.render.triangles,
+  gpuProgramCount:ren.info.programs?.length??null,
+  gpuGeometryCount:ren.info.memory.geometries,gpuTextureCount:ren.info.memory.textures,
+  zombieProxyActive:v788ProxyActive,zombieProxySwitches:v788ProxySwitches,
+  shaderWarmup:v789WarmupState,prebuiltShamblersUsed:v783ReserveUsed,
    pooledShamblerGeometries:v782ShamblerGeometryCache.size,
   gpu:cityGpuTimer.snapshot()?.avgMs??null})
 });
@@ -11851,6 +11900,7 @@ mountFlightRecorderControls(flightRecorder,{getMeta:()=>({
  v783ReserveAvailable:v783Reserve.length,v783ShadowReduced,v783ShadowFull,
  v787PreviewEnabled:v787Preview,v787AnimationFull,v787AnimationSkipped,v787AnimationBatched,
  v788PreviewEnabled:v788Preview,v788ProxyActive,v788FullActive,v788ProxySwitches,
+ v789PreviewEnabled:v789Preview,v789WarmupState,v789WarmupMs,v789WarmupError,v789WarmupRuns,
  notes:'Local performance numbers only. One in 120 recorder calls timed for diagnostic overhead. Run ON/OFF comparisons on the same hardware. No network upload or screen capture.'
 })});
 setupWebGLContextLossHandler(cv,()=>show("GRAPHICS RESET — REFRESH IF NEEDED"));
@@ -12143,7 +12193,7 @@ function frame(t){
   setTimeout(()=>requestAnimationFrame(frame),250);return;
  }
  const updateStart=performance.now();
- if(!running)v783PrimeReserve();
+ if(!running){v783PrimeReserve();v789PrewarmShambler();}
  if(cityEmptyBenchmark){
   // Exactly one effect can be enabled without the other (v781). Preserve
   // graphics-preset counts; no change to the active normal-game renderer.

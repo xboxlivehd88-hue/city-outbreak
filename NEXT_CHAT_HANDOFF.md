@@ -1,3 +1,15 @@
+# v789 — ZOMBIE GPU SHADER PREWARM + FIRST-WAVE RESERVE — 2026-11-07
+
+- User asked to implement recommendations after v788 Wave-4 report. That report showed large in-render JS stalls (~422.7ms, ~356.2ms, ~465.5ms) and frame callbacks delayed comparably, along with GPU load and 75Hz pacing artifacts. Source of stalls remains UNPROVEN; likely GPU synchronization / shader or buffer processing requires A/B diagnosis.
+- Branch `toby-v789-zombie-prewarm-stall-diagnostics`; opt-in `?preview=v789`, combines v787 animation budget, v788 offscreen/very-far proxy, and v783 first-wave prebuilt shambler reserve.
+- v789 prewarms only the actual base shambler template and v788 proxy materials, via nonblocking `ren.compileAsync` before game start. No forced blocking fallback. It does not claim all zombie types, GLBs or shaders are prewarmed; that is further work after effect is measured. Existing grenade/explosion prewarming remains unchanged.
+- Reserve builds up to ten complete shamblers one per idle frame after city collision and model assets are available; they activate for Wave 1 when available. Other waves and boss / crawler / specials spawning behavior remains unchanged, to avoid unsafe gameplay changes or resource leaks.
+- Recorder includes v789 warmup state, elapsed ms and errors. Console debugging via `window.__cityZombiePrewarmState()` exposes warmup status plus reserve used / available; failures are nonfatal.
+- Loader v789 and Playwright preview smoke added. Compare v788-v789 performance at equivalent waves/graphics/camera conditions. Do not assume prewarm fixes GPU driver stalls; measure render submission spikes and frame-gap events.
+- Protected v324 recovery unchanged. Work through PR, CI and Pages verification; do not claim unmeasured benefits.
+
+---
+
 # v788 — SHAMBLER GPU DRAW-CALL / DISTANCE PROXY PREVIEW — 2026-11-07
 
 - User approved all proposed zombie-rendering optimization work after playing v787 through Wave 12. The measured v787 report showed recurring 26.5 ms median frame times, ~44 FPS estimate, 14–23 zombies in spike snapshots and as many as ~700 draw calls / 1.9 million triangles. v787 preview animation budgeting was active, but measured FPS improvement against baseline was not established.
