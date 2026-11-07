@@ -11870,6 +11870,10 @@ const flightRecorder=createFrameFlightRecorder({
  getContext:()=>({wave,zombies:livingCount(),explosions:activeExplosionBursts.length,
   casings:casings.length,particles:parts.length+impacts.length,
   draws:ren.info.render.calls,triangles:ren.info.render.triangles,
+  gpuProgramCount:ren.info.programs?.length??null,
+  gpuGeometryCount:ren.info.memory.geometries,gpuTextureCount:ren.info.memory.textures,
+  zombieProxyActive:v788ProxyActive,zombieProxySwitches:v788ProxySwitches,
+  shaderWarmup:v789WarmupState,prebuiltShamblersUsed:v783ReserveUsed,
    pooledShamblerGeometries:v782ShamblerGeometryCache.size,
   gpu:cityGpuTimer.snapshot()?.avgMs??null})
 });
