@@ -1,3 +1,11 @@
+# v787 — ZOMBIE ANIMATION BUDGET PREVIEW — 2026-11-07
+
+- User picked zombies first for real performance changes. Branch `toby-v787-zombie-offscreen-animation-preview`, opt-in `?preview=v787`, loader v787. Distant regular GLB shamblers only: if >24 units AND outside camera horizontal FOV + 25° safety margin, run mixer+visible pose in ~15Hz batches using accumulated time. Nearby or in view update at full rate immediately; any combat reactions, hits, knockdowns, death, bosses, crawlers, specials never throttled. AI/collision/movement/spawns remain normal 75Hz. No mesh model quality reduction. Counts in recorder & diagnostic global.
+- Existing v783 separate experimental reserve/shadow flag is unchanged, not automatically combined with v787. Tests & Pages deployment required before linking. Compare default normal waves vs v787 normal waves on user hardware with medium preset; user specifically does not want visual downgrade while zombie visible. Protected v324 untouched.
+- v786 user's standalone GPU test reported 75 FPS in all synthetic modes, ~0.63ms shader GPU. No conclusion on actual city draw-call workload; optimization may only change CPU.
+ 
+---
+
 # v786 — STANDALONE THREE-STAGE WEBGL DIAGNOSTIC — 2026-11-06
 
 - User approved continuing after actual v785 report measured near-perfect native browser rAF: 74.97 FPS, median 13.3 ms, p95 13.5, worst 13.8, 0 / 480 frames >20ms, 0 hidden. Previous full game ~44 FPS, median 26.7ms, GPU extension sampled ~23ms; isolate GPU and presentation.

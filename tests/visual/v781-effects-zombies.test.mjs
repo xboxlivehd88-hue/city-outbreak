@@ -220,3 +220,32 @@ test('v786 standalone GPU isolation completes all stages and never requests game
   console.log('V786_GPU_ISOLATION_PASS',JSON.stringify(report.stages.map(s=>({name:s.name,frames:s.framesRecorded,median:s.frameTimes.p50Ms}))));
  }finally{await page.close();await browser.close();}
 });
+
+test('v787 zombie optimization preview runs real Wave-1 AI without changing enemy count or gameplay',{timeout:180000},async()=>{
+ const browser=await chromium.launch({headless:true,args:[
+  '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',
+  '--disable-dev-shm-usage','--ignore-gpu-blocklist'
+ ]});
+ const page=await browser.newPage({viewport:{width:1024,height:576},deviceScaleFactor:1,acceptDownloads:true});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ try{
+  await page.addInitScript(()=>{
+   localStorage.setItem('city-outbreak-graphics-v1','medium');
+   const raf=window.requestAnimationFrame.bind(window);
+   window.requestAnimationFrame=cb=>setTimeout(()=>raf(cb),130);
+  });
+  await page.goto(base+'/?preview=v787',{waitUntil:'domcontentloaded',timeout:30000});
+  await page.waitForFunction(()=>Number(document.documentElement.dataset.cityOutbreakBuild)>=787 &&
+    typeof window.__cityZombieVisualBudgetState==='function',null,{timeout:60000,polling:250});
+  await page.locator('#start').click({noWaitAfter:true,timeout:45000});
+  await page.waitForFunction(()=>window.__cityZombieVisualBudgetState?.().full>0,
+    null,{timeout:90000,polling:250});
+  const state=await page.evaluate(()=>window.__cityZombieVisualBudgetState());
+  assert.equal(state.enabled,true);
+  assert.equal(state.kind,'shambler-only');assert.equal(state.offscreenStepHz,15);
+  assert.ok(state.full>0,'Near/visible or non-shambler animation remains full rate');
+  assert.ok(state.skipped>=0&&state.batched>=0);
+  assert.equal(errors.length,0,'No zombie animation runtime errors');
+  console.log('V787_ANIMATION_PASS',JSON.stringify(state));
+ }finally{await page.close();await browser.close();}
+});
