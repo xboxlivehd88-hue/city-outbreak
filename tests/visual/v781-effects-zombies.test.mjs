@@ -249,3 +249,39 @@ test('v787 zombie optimization preview runs real Wave-1 AI without changing enem
   console.log('V787_ANIMATION_PASS',JSON.stringify(state));
  }finally{await page.close();await browser.close();}
 });
+
+test('v788 real-wave render budget keeps gameplay and full-quality fallback',{timeout:180000},async()=>{
+ const browser=await chromium.launch({headless:true,args:[
+  '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',
+  '--disable-dev-shm-usage','--ignore-gpu-blocklist'
+ ]});
+ const page=await browser.newPage({viewport:{width:1024,height:576},
+  deviceScaleFactor:1,acceptDownloads:true});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ try{
+  await page.addInitScript(()=>{
+   localStorage.setItem('city-outbreak-graphics-v1','medium');
+   const raf=window.requestAnimationFrame.bind(window);
+   window.requestAnimationFrame=cb=>setTimeout(()=>raf(cb),130);
+  });
+  await page.goto(base+'/?preview=v788',{waitUntil:'domcontentloaded',timeout:30000});
+  await page.waitForFunction(()=>Number(document.documentElement.dataset.cityOutbreakBuild)>=788&&
+    typeof window.__cityZombieRenderBudgetState==='function',null,{timeout:60000,polling:250});
+  await page.locator('#start').click({noWaitAfter:true,timeout:45000});
+  await page.waitForFunction(()=>window.__cityZombieVisualBudgetState?.().full>0,
+   null,{timeout:90000,polling:250});
+  await page.waitForTimeout(1000);
+  const state=await page.evaluate(()=>({
+   rendering:window.__cityZombieRenderBudgetState(),
+   animation:window.__cityZombieVisualBudgetState()
+  }));
+  assert.equal(state.rendering.enabled,true);
+  assert.equal(state.animation.enabled,true);
+  assert.ok(state.rendering.proxies+state.rendering.full>0,'Real shamblers evaluated');
+  assert.ok(state.animation.full>0,'Visible enemies retain full visual animation');
+  assert.equal(state.rendering.nearFullDistance,35);
+  assert.equal(state.rendering.viewMarginDegrees,25);
+  assert.equal(errors.length,0,'No runtime errors');
+  console.log('V788_RENDER_PASS',JSON.stringify(state));
+ }finally{await page.close();await browser.close();}
+});
