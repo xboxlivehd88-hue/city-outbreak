@@ -7211,7 +7211,7 @@ const v782ZombiePreview=new URLSearchParams(location.search).get('preview')==='v
 const v783Preview=new URLSearchParams(location.search).get('preview')==='v783';
 // v787 preview: reduce only distant, offscreen shambler visual rig animation work.
 // Keep all AI, navigation, attacks, collision, hitboxes and every visible walker at full rate.
-const v787Preview=new URLSearchParams(location.search).get('preview')==='v787';
+const v787Preview=new URLSearchParams(location.search).get('preview')==='v787'||new URLSearchParams(location.search).get('preview')==='v788';
 const V787_VISUAL_STEP=1/15;
 let v787AnimationFull=0,v787AnimationSkipped=0,v787AnimationBatched=0;
 function v787WalkerAnimationBudget(z,dt,dist){
@@ -7240,6 +7240,71 @@ window.__cityZombieVisualBudgetState=()=>({
  enabled:v787Preview,full:v787AnimationFull,skipped:v787AnimationSkipped,
  batched:v787AnimationBatched,kind:'shambler-only',offscreenStepHz:15,
  nearFullDistance:24,viewMarginDegrees:25
+});
+
+// v788 optional combined visual budget: far/offscreen simple shambler geometry.
+// Hitboxes, animated skeleton, gameplay and corpse/ragdoll geometry are untouched.
+const v788Preview=new URLSearchParams(location.search).get('preview')==='v788';
+let v788ProxyActive=0,v788FullActive=0,v788ProxySwitches=0;
+let v788SharedGeometry=null,v788SharedMaterial=null;
+function v788ProxyGeometry(){
+ if(v788SharedGeometry)return v788SharedGeometry;
+ const parts=[];
+ const add=(g,x,y,z,sx,sy,sz)=>{g.scale(sx,sy,sz);g.translate(x,y,z);parts.push(g)};
+ add(new THREE.BoxGeometry(1,1,1),0,1.03,0,.51,.70,.31);
+ add(new THREE.SphereGeometry(1,8,6),0,1.66,0,.23,.28,.22);
+ for(const side of [-1,1]){
+  add(new THREE.CylinderGeometry(1,1,1,6),side*.4,1.03,0,.105,.72,.105);
+  add(new THREE.CylinderGeometry(1,1,1,6),side*.16,.37,0,.14,.74,.14);
+ }
+ v788SharedGeometry=mergeGeometries(parts,false);
+ for(const part of parts)part.dispose();
+ v788SharedMaterial=new THREE.MeshStandardMaterial({color:0x666a59,roughness:1});
+ return v788SharedGeometry;
+}
+function v788RestoreWalker(z){
+ if(!z?.v788Proxy?.visible)return;
+ z.v788Proxy.visible=false;
+ for(const m of z.v788OriginalMeshes)m.visible=true;
+ v788ProxySwitches++;
+}
+function v788UpdateRenderBudget(){
+ if(!v788Preview)return;
+ v788ProxyActive=0;v788FullActive=0;
+ const halfFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(cam.fov)*.5)*cam.aspect);
+ const minDot=Math.cos(Math.min(Math.PI,halfFov+THREE.MathUtils.degToRad(25)));
+ const fx=-Math.sin(yaw),fz=-Math.cos(yaw);
+ for(const z of zombies){
+  if(z.kind!=='shambler'||!z.walkerModel||!z.g.parent)continue;
+  if(!z.v788Proxy&&!z.dead){
+   const original=[];z.walkerModel.traverse(o=>{if(o.isMesh&&o.visible)original.push(o)});
+   if(original.length){
+    const proxy=new THREE.Mesh(v788ProxyGeometry(),v788SharedMaterial);
+    proxy.name='v788SingleDrawShambler';proxy.visible=false;
+    proxy.castShadow=false;proxy.receiveShadow=false;proxy.raycast=()=>{};
+    proxy.userData.visualOnly=true;z.g.add(proxy);
+    z.v788Proxy=proxy;z.v788OriginalMeshes=original;
+   }
+  }
+  if(!z.v788Proxy)continue;
+  const dx=z.g.position.x-px,dz=z.g.position.z-pz;
+  const d=Math.max(.001,Math.hypot(dx,dz));
+  const visibleAngle=(dx*fx+dz*fz)/d>=minDot;
+  const cheap=!z.dead&&!z.knockdown&&!z.cleaned&&!z.stagger&&!z.attackAnim&&
+    !z.rigTransientT&&!z.blastT&&d>35&&(!visibleAngle||d>130);
+  if(cheap){
+   if(!z.v788Proxy.visible){
+    for(const mesh of z.v788OriginalMeshes)mesh.visible=false;
+    z.v788Proxy.visible=true;v788ProxySwitches++;
+   }
+   v788ProxyActive++;
+  }else{v788RestoreWalker(z);v788FullActive++;}
+ }
+}
+window.__cityZombieRenderBudgetState=()=>({
+ enabled:v788Preview,proxies:v788ProxyActive,full:v788FullActive,
+ switches:v788ProxySwitches,proxyTriangles:v788SharedGeometry?.getIndex()?.count/3||0,
+ nearFullDistance:35,farInViewThreshold:130,viewMarginDegrees:25
 });
 
 const v783Reserve=[],V783_RESERVE_LIMIT=10;
@@ -10349,7 +10414,7 @@ function updateRagdoll(z,dt){
 }
 function killZ(z,hs,p,ragForce=1,ragOrigin=null){
  if(z.dead)return;
- z.dead=true;if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;
+ z.dead=true;v788RestoreWalker(z);if(z.marker)z.marker.visible=false;z.corpseAge=0;z.knockdown=null;
  // v421: dead bodies have no navigation state at all. The active-zombie loop
  // already excludes them; clear any cached route too so nothing can steer a corpse.
  z.navPath=null;z.navIndex=0;z.navForceRepath=false;z.navCheckT=0;
@@ -10867,7 +10932,7 @@ function detonateNuke(){
    for(const z of victims){
      if(z.dead)continue;
      if(rnd()<DROP_CHANCE*.42)spawnZombieDrop(z.g.position);
-     z.dead=true;if(z.marker)z.marker.visible=false;
+     z.dead=true;v788RestoreWalker(z);if(z.marker)z.marker.visible=false;
      z.corpseAge=3.5;
      z.fallDir=rnd()>.5?1:-1;z.fallAxis=rnd()>.5?"x":"z";
      beginRagdoll(z,1.35);
@@ -11785,6 +11850,7 @@ mountFlightRecorderControls(flightRecorder,{getMeta:()=>({
  v783PreviewEnabled:v783Preview,v783ReserveBuilt,v783ReserveUsed,
  v783ReserveAvailable:v783Reserve.length,v783ShadowReduced,v783ShadowFull,
  v787PreviewEnabled:v787Preview,v787AnimationFull,v787AnimationSkipped,v787AnimationBatched,
+ v788PreviewEnabled:v788Preview,v788ProxyActive,v788FullActive,v788ProxySwitches,
  notes:'Local performance numbers only. One in 120 recorder calls timed for diagnostic overhead. Run ON/OFF comparisons on the same hardware. No network upload or screen capture.'
 })});
 setupWebGLContextLossHandler(cv,()=>show("GRAPHICS RESET — REFRESH IF NEEDED"));
@@ -12107,6 +12173,7 @@ function frame(t){
  earlyNightSky.position.copy(cam.position);
  earlyNightSkyUniforms.uTime.value=t*.001;
  v783UpdateVisibleQuality();
+ v788UpdateRenderBudget();
  // Asynchronous GPU timing is sampled at most once per six gameplay frames;
  // result collection only polls availability and never blocks on GPU work.
  const skipRender=cityRafOnlyBenchmark&&running;
