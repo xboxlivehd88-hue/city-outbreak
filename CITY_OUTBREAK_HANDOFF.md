@@ -1,3 +1,12 @@
+# v790 — M17 MAGAZINE ONLY — 2026-11-17
+
+- User screenshot of v788 shows the M17 magazine detached behind/above the grip during reload. User explicitly says the reload animation works and asks to change ONLY the magazine.
+- v790 clones the actual seated GLB magazine node rather than copying the seated node's root transform onto the differently authored loose loaded prop. Preserves source mesh transforms and exact assembled pose. The same genuine seated magazine geometry is used for the old and replacement actors (no loose loaded presentation prop; no fabricated replacement).
+- M17-only magazine path: 0.32-unit downward extraction and straight insertion, lower pickup position, align beneath the grip by 62% and seat by 85%; restore seated magazine at 89%. Hands, gun, ADS, reload duration, all other weapons, graphics, performance and zombie code unchanged.
+- Loader v790. Await browser visual confirmation; source binary could not be independently decoded with this connector. Do not claim visual approval from automated checks alone. Protected v324 untouched.
+
+---
+
 # v789 — ZOMBIE GPU SHADER PREWARM + FIRST-WAVE RESERVE — 2026-11-07
 
 - User asked to implement recommendations after v788 Wave-4 report. That report showed large in-render JS stalls (~422.7ms, ~356.2ms, ~465.5ms) and frame callbacks delayed comparably, along with GPU load and 75Hz pacing artifacts. Source of stalls remains UNPROVEN; likely GPU synchronization / shader or buffer processing requires A/B diagnosis.
