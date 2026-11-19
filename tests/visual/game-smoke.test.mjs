@@ -190,7 +190,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }
     await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
     assert.equal(reloadTelemetry[0].carrier, 'ready', 'Original M17 GLB magazine must be seated');
-    assert.match(reloadTelemetry[0].source || '', /17rnd[ _]mag_3/i);
+    assert.match(reloadTelemetry[0].source || '', /17rnd[ _]empty[ _]mag_0/i);
     assert.ok(Number(reloadTelemetry[0].boundsRatio) > .10 &&
       Number(reloadTelemetry[0].boundsRatio) < .90,
       'Original magazine must be proportionate to imported pistol bounds');
