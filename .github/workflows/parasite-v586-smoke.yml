@@ -27,7 +27,7 @@ jobs:
           sleep 2
           node scripts/parasite-v586-smoke.cjs
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: parasite-v658-audit
           path: PARASITE_V658_AUDIT.json
