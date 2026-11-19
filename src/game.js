@@ -4961,7 +4961,7 @@ function updateReloadMagazineFX(rp){
      // The loaded magazine stays visible while seated; draw it out of the
      // grip for a readable extraction stroke, then release it to gravity.
      const ejectT=smoothReload01(THREE.MathUtils.clamp((rp.p-.08)/.20,0,1));
-     playerReloadPart.position.y-=.46*ejectT;
+     playerReloadPart.position.y-=.32*ejectT;
      if(rp.p>=.29)tossOldReloadMagazine();
    }
    // Start retrieving the fresh magazine while the old one is still visibly falling.
@@ -4983,12 +4983,12 @@ function updateReloadMagazineFX(rp){
      // Its geometry is 0.48 tall: inserting by 0.105 units previously kept
      // most of it inside the grip too early, then left it hovering for 15%.
      // Rise from below the player camera rather than materializing next to the weapon.
-     const pickup=home.clone().add(new THREE.Vector3(-.30,-1.05,.30));
-     const below=home.clone().add(new THREE.Vector3(0,-.42,0));
-     if(rp.p<.52){
-       reloadFreshMag.position.lerpVectors(pickup,below,smoothReload01(THREE.MathUtils.clamp((rp.p-.36)/.16,0,1)));
+     const pickup=home.clone().add(new THREE.Vector3(-.12,-.79,.08));
+     const below=home.clone().add(new THREE.Vector3(0,-.32,0));
+     if(rp.p<.62){
+       reloadFreshMag.position.lerpVectors(pickup,below,smoothReload01(THREE.MathUtils.clamp((rp.p-.36)/.26,0,1)));
      }else{
-       reloadFreshMag.position.lerpVectors(below,home,smoothReload01(THREE.MathUtils.clamp((rp.p-.52)/.33,0,1)));
+       reloadFreshMag.position.lerpVectors(below,home,smoothReload01(THREE.MathUtils.clamp((rp.p-.62)/.23,0,1)));
      }
      document.documentElement.dataset.m17MagazineInsertDistance=reloadFreshMag.position.distanceTo(home).toFixed(3);
      document.documentElement.dataset.m17MagazineReloadProgress=rp.p.toFixed(3);
@@ -5378,7 +5378,7 @@ function rebuildGun(){
      const loadedMagSource=m17MagNodes.find(o=>compact(o.name).includes("17rndmag3")&&
        !compact(o.name).includes("empty"));
      const glbMagParent=seatedMagSource?.parent;
-     const originalMag=loadedMagSource?.clone(true)||null;
+     const originalMag=seatedMagSource?.clone(true)||null;
      const m17LooseProps=[];
      m17Root.traverse(o=>{
        const n=(o.name||"").toLowerCase();
@@ -5401,12 +5401,10 @@ function rebuildGun(){
      gun.add(m17Root);
 
      if(originalMag&&seatedMagSource&&glbMagParent){
-       // These are sibling nodes in the actual source GLB. The loaded
-       // prop was exported on its side for display; replace ONLY its parent
-       // transform with the seated empty-mag pose. Keep EVERY child mesh.
-       originalMag.position.copy(seatedMagSource.position);
-       originalMag.quaternion.copy(seatedMagSource.quaternion);
-       originalMag.scale.copy(seatedMagSource.scale);
+       // v790: keep the original seated node AND its own mesh transforms.
+       // The loose loaded prop has different baked mesh coordinates; copying
+       // root TRS alone can leave the magazine floating behind the pistol.
+       // Preserve the actual assembled magazine body, not the display prop.
        glbMagParent.add(originalMag);
        gun.updateMatrixWorld(true);
        // Convert measured model-local magwell into gun space, preserving
@@ -5429,7 +5427,7 @@ function rebuildGun(){
        document.documentElement.dataset.m17MagazineGeometrySize=magDim.toArray().map(n=>n.toFixed(4)).join(",");
        document.documentElement.dataset.m17MagazineBoundsRatio=(magDim.length()/Math.max(.0001,pistolDim.length())).toFixed(4);
        document.documentElement.dataset.m17MagazineSeat=originalMag.position.toArray().map(n=>n.toFixed(4)).join(",");
-       document.documentElement.dataset.m17MagazineSource=loadedMagSource.name;
+       document.documentElement.dataset.m17MagazineSource=seatedMagSource.name;
        document.documentElement.dataset.m17MagazineCarrier="ready";
        document.documentElement.dataset.m17MagazineMeshCount=String(originalMag.children.filter(o=>o.isMesh).length);
        document.documentElement.dataset.m17IdleMagazine="seated-visible";
