@@ -5378,7 +5378,7 @@ function rebuildGun(){
      const loadedMagSource=m17MagNodes.find(o=>compact(o.name).includes("17rndmag3")&&
        !compact(o.name).includes("empty"));
      const glbMagParent=seatedMagSource?.parent;
-     const originalMag=seatedMagSource?.clone(true)||null;
+     const originalMag=loadedMagSource?.clone(true)||null;
      const m17LooseProps=[];
      m17Root.traverse(o=>{
        const n=(o.name||"").toLowerCase();
@@ -5401,10 +5401,16 @@ function rebuildGun(){
      gun.add(m17Root);
 
      if(originalMag&&seatedMagSource&&glbMagParent){
-       // v790: keep the original seated node AND its own mesh transforms.
-       // The loose loaded prop has different baked mesh coordinates; copying
-       // root TRS alone can leave the magazine floating behind the pistol.
-       // Preserve the actual assembled magazine body, not the display prop.
+       // v791: Source-model vertex inspection showed BOTH magazine props are
+       // unseated presentation objects with mesh vertices centered at origin:
+       // raw mag Y -0.60..+0.63 versus frame Y -0.68..+0.44.
+       // Neither prop's parent transform represents the gun's magwell.
+       // Seat the genuine four-mesh LOADED source magazine inside the rear
+       // grip (raw barrel points +X) before attaching it to the FPS gun.
+       // Preserve every original magazine mesh, texture and material.
+       originalMag.position.set(-.57,-.30,0);
+       originalMag.rotation.set(0,0,-.28);
+       originalMag.scale.setScalar(.56);
        glbMagParent.add(originalMag);
        gun.updateMatrixWorld(true);
        // Convert measured model-local magwell into gun space, preserving
@@ -5427,7 +5433,7 @@ function rebuildGun(){
        document.documentElement.dataset.m17MagazineGeometrySize=magDim.toArray().map(n=>n.toFixed(4)).join(",");
        document.documentElement.dataset.m17MagazineBoundsRatio=(magDim.length()/Math.max(.0001,pistolDim.length())).toFixed(4);
        document.documentElement.dataset.m17MagazineSeat=originalMag.position.toArray().map(n=>n.toFixed(4)).join(",");
-       document.documentElement.dataset.m17MagazineSource=seatedMagSource.name;
+       document.documentElement.dataset.m17MagazineSource=loadedMagSource.name;
        document.documentElement.dataset.m17MagazineCarrier="ready";
        document.documentElement.dataset.m17MagazineMeshCount=String(originalMag.children.filter(o=>o.isMesh).length);
        document.documentElement.dataset.m17IdleMagazine="seated-visible";
