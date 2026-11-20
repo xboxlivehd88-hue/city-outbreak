@@ -45,6 +45,14 @@ try {
  const chosen=nodes.map((n,i)=>({i,name:n.name||'',parent:parentMap[i],t:n.translation,r:n.rotation,s:n.scale,mesh:n.mesh,children:n.children}))
   .filter(n=>/mag|grip|pistol|slide|frame|919|9x19/i.test(n.name));
  console.log('M17_SOURCE_MAG_NODE_HIERARCHY:'+JSON.stringify(chosen));
+ const inspected=nodes.map((n,i)=>({i,name:n.name||'',mesh:n.mesh,children:n.children}))
+  .filter(n=>/mag|frame|slide/i.test(n.name))
+  .map(n=>({name:n.name,children:(n.children||[]).map(j=>{
+   const c=nodes[j],mesh=gltf.meshes?.[c.mesh];
+   return {name:c.name,translation:c.translation,rotation:c.rotation,scale:c.scale,
+    primitives:mesh?.primitives?.map(p=>({min:gltf.accessors?.[p.attributes.POSITION]?.min,max:gltf.accessors?.[p.attributes.POSITION]?.max}))};
+  })}));
+ console.log('M17_SOURCE_MAG_MESH_BOUNDS:'+JSON.stringify(inspected));
 } catch(error){console.log('M17_SOURCE_INSPECT_ERROR:'+String(error));}
 const browser = await chromium.launch({ headless: true, args: ['--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader', '--disable-dev-shm-usage', '--ignore-gpu-blocklist'] });
 
