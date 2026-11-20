@@ -203,6 +203,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
           carrier: d.m17MagazineCarrier || null,
           seat: d.m17MagazineSeat || null,
           boundsRatio: d.m17MagazineBoundsRatio || null,
+          withinFrame: d.m17MagazineWithinFrame || null,
           dimensions: d.m17MagazineGeometrySize || null };
       });
       reloadTelemetry.push({ target, ...state });
@@ -210,6 +211,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }
     await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
     assert.equal(reloadTelemetry[0].carrier, 'ready', 'Original M17 GLB magazine must be seated');
+    assert.equal(reloadTelemetry[0].withinFrame, 'true', 'Loaded M17 magazine must fit inside source gun frame bounds at idle');
     assert.match(reloadTelemetry[0].source || '', /17rnd[ _]mag_3/i);
     assert.ok(Number(reloadTelemetry[0].boundsRatio) > .10 &&
       Number(reloadTelemetry[0].boundsRatio) < .90,
