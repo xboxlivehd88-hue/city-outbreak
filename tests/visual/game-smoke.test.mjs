@@ -34,6 +34,26 @@ try {
   await writeFile(`${out}/m17-source-asset-audit-error.txt`, String(error));
   throw error;
 }
+// v791 inspect imported M17 pistol and magazine nodes, including source TRS.
+try {
+ const bytes = await readFile('assets/low-poly_sig_sauer_m17.glb');
+ const jsonLength = bytes.readUInt32LE(12);
+ const gltf = JSON.parse(bytes.subarray(20,20+jsonLength).toString('utf8'));
+ const nodes = gltf.nodes || [];
+ const parentMap = {};
+ nodes.forEach((n,i)=>(n.children||[]).forEach(c=>{parentMap[c]=i;}));
+ const chosen=nodes.map((n,i)=>({i,name:n.name||'',parent:parentMap[i],t:n.translation,r:n.rotation,s:n.scale,mesh:n.mesh,children:n.children}))
+  .filter(n=>/mag|grip|pistol|slide|frame|919|9x19/i.test(n.name));
+ console.log('M17_SOURCE_MAG_NODE_HIERARCHY:'+JSON.stringify(chosen));
+ const inspected=nodes.map((n,i)=>({i,name:n.name||'',mesh:n.mesh,children:n.children}))
+  .filter(n=>/mag|frame|slide/i.test(n.name))
+  .map(n=>({name:n.name,children:(n.children||[]).map(j=>{
+   const c=nodes[j],mesh=gltf.meshes?.[c.mesh];
+   return {name:c.name,translation:c.translation,rotation:c.rotation,scale:c.scale,
+    primitives:mesh?.primitives?.map(p=>({min:gltf.accessors?.[p.attributes.POSITION]?.min,max:gltf.accessors?.[p.attributes.POSITION]?.max}))};
+  })}));
+ console.log('M17_SOURCE_MAG_MESH_BOUNDS:'+JSON.stringify(inspected));
+} catch(error){console.log('M17_SOURCE_INSPECT_ERROR:'+String(error));}
 const browser = await chromium.launch({ headless: true, args: ['--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader', '--disable-dev-shm-usage', '--ignore-gpu-blocklist'] });
 
 test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 180000 }, async () => {
@@ -183,6 +203,7 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
           carrier: d.m17MagazineCarrier || null,
           seat: d.m17MagazineSeat || null,
           boundsRatio: d.m17MagazineBoundsRatio || null,
+          withinFrame: d.m17MagazineWithinFrame || null,
           dimensions: d.m17MagazineGeometrySize || null };
       });
       reloadTelemetry.push({ target, ...state });
@@ -190,7 +211,8 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }
     await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
     assert.equal(reloadTelemetry[0].carrier, 'ready', 'Original M17 GLB magazine must be seated');
-    assert.match(reloadTelemetry[0].source || '', /17rnd[ _]empty[ _]mag_0/i);
+    assert.equal(reloadTelemetry[0].withinFrame, 'true', 'Loaded M17 magazine must fit inside source gun frame bounds at idle');
+    assert.match(reloadTelemetry[0].source || '', /17rnd[ _]mag_3/i);
     assert.ok(Number(reloadTelemetry[0].boundsRatio) > .10 &&
       Number(reloadTelemetry[0].boundsRatio) < .90,
       'Original magazine must be proportionate to imported pistol bounds');
