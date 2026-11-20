@@ -1,3 +1,12 @@
+# v792 — M17 MAGAZINE FIT TO IMPORTED GRIP GEOMETRY — 2026-11-20
+
+- User confirms deployed v791 is wrong: separate smaller magazine still behind the M17 grip in their real browser screenshot. Previous overall pistol Box3 containment is an invalid proof of seating; do NOT claim resolved from that check.
+- Original GLB decoded in actual GitHub runner: frame Object_24 grip lower Y -0.70 to -0.56, X approx -1.01..-0.50; upper Y -0.20..-0.08, X approx -0.458..-0.393. Magazine loaded source mesh has Y approx -0.60..+0.63. All magazine loose presentation prop transforms must not be treated as assembled seat.
+- v792 measures these real frame vertex slices at runtime, builds source grip base and mouth midpoints, derives magazine scale, tilt, X/Y/Z position from measured axis and loaded mesh bounding endpoints, and verifies tip-to-grip positional error in QA. M17-only magazine extraction/replacement path now travels along the actual transformed magazine local axis using actual body length. Preserves gun, ADS, hand animation, reload timing, and every other system. Diagnostic data-m17-magwell-fit-error, angle and measured grip endpoints.
+- Added Playwright assertion of real grip-tip alignment (not only broad bounding box) and source hierarchy audit. Must visually inspect closeups, run all CI, deploy Pages then ask user to verify. Protected v324 unchanged.
+
+---
+
 # v791 — ACTUAL M17 MAGAZINE GEOMETRY SEATING — 2026-11-20
 
 - User screenshot of deployed v790 confirms a large black M17 magazine still extending vertically past the pistol. This is a real unresolved regression; do not describe v790 as fixed.
