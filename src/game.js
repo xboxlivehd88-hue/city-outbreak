@@ -5432,6 +5432,9 @@ function rebuildGun(){
        const pistolDim=pistolBounds.getSize(new THREE.Vector3());
        document.documentElement.dataset.m17MagazineGeometrySize=magDim.toArray().map(n=>n.toFixed(4)).join(",");
        document.documentElement.dataset.m17MagazineBoundsRatio=(magDim.length()/Math.max(.0001,pistolDim.length())).toFixed(4);
+       // A seated magazine should be inside the imported pistol silhouette
+       // rather than sticking above the slide or outside the bottom of the grip.
+       document.documentElement.dataset.m17MagazineWithinFrame=String(pistolBounds.containsBox(magBounds));
        document.documentElement.dataset.m17MagazineSeat=originalMag.position.toArray().map(n=>n.toFixed(4)).join(",");
        document.documentElement.dataset.m17MagazineSource=loadedMagSource.name;
        document.documentElement.dataset.m17MagazineCarrier="ready";
