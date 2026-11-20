@@ -4438,7 +4438,7 @@ function clearReloadMagazineFX(showReal=true){
  if(launcherChamberRound)launcherChamberRound.visible=false;
  reloadOldMagDropped=false;reloadMagInserted=false;
  if(showReal&&playerReloadPart){
-   if(playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=weapon==="pistol"});
+   if(playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});
    else if(playerReloadPart.userData.externalWeaponAsset)playerReloadPart.traverse(o=>{o.visible=true});
    else playerReloadPart.visible=true;
    if(playerReloadPart.userData.reloadHome)playerReloadPart.position.copy(playerReloadPart.userData.reloadHome);
@@ -4452,7 +4452,7 @@ function clearReloadMagazineFX(showReal=true){
 function beginReloadMagazineFX(){
  clearReloadMagazineFX(true);
  reloadOldMagDropped=false;reloadMagInserted=false;
- if(playerReloadPart&&playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
+ if(playerReloadPart&&playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=reloadWeapon!=="pistol"});
 }
 function makeLauncherReloadRound(parent){
  const round=new THREE.Group();
@@ -4957,7 +4957,10 @@ function updateReloadMagazineFX(rp){
    // already reaching for the replacement. This keeps the two actions visually separate.
    if(!reloadOldMagDropped&&home){
      playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
-     playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
+     // The original grip is opaque. Reveal the real inserted magazine
+     // only after extraction clears its own measured magwell; otherwise a
+     // separately drawn magazine face can show through as a floating strip.
+     playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=rp.p>=.17});
      // The loaded magazine stays visible while seated; draw it out of the
      // grip for a readable extraction stroke, then release it to gravity.
      const ejectT=smoothReload01(THREE.MathUtils.clamp((rp.p-.08)/.20,0,1));
@@ -4998,11 +5001,14 @@ function updateReloadMagazineFX(rp){
      document.documentElement.dataset.m17MagazineInsertDistance=reloadFreshMag.position.distanceTo(home).toFixed(3);
      document.documentElement.dataset.m17MagazineReloadProgress=rp.p.toFixed(3);
      reloadFreshMag.quaternion.copy(targetQ);
+     // A flush magazine should disappear into the opaque source grip,
+     // not remain as a second visible bar along the backstrap.
+     reloadFreshMag.traverse(o=>{if(o.isMesh)o.visible=rp.p<.85});
      if(rp.p>=.89){
        reloadFreshMag.parent?.remove(reloadFreshMag);
        reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
        playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
-       playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
+       playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});
        reloadMagInserted=true;
      }
    }
@@ -5480,7 +5486,7 @@ function rebuildGun(){
          .applyQuaternion(originalMag.quaternion).normalize();
        originalMag.userData.m17MagazineStroke=Math.max(.001,bodyLength*originalMag.scale.y);
        originalMag.traverse(o=>{o.visible=true;o.userData.externalWeaponAsset=true;
-         if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+         if(o.isMesh){o.castShadow=false;o.receiveShadow=false;o.visible=false}});
        playerReloadPart=originalMag;
        // Diagnostics must be grounded in ORIGINAL imported pistol bounds.
        gun.updateMatrixWorld(true);
