@@ -34,6 +34,18 @@ try {
   await writeFile(`${out}/m17-source-asset-audit-error.txt`, String(error));
   throw error;
 }
+// v791 inspect imported M17 pistol and magazine nodes, including source TRS.
+try {
+ const bytes = await readFile('assets/low-poly_sig_sauer_m17.glb');
+ const jsonLength = bytes.readUInt32LE(12);
+ const gltf = JSON.parse(bytes.subarray(20,20+jsonLength).toString('utf8'));
+ const nodes = gltf.nodes || [];
+ const parentMap = {};
+ nodes.forEach((n,i)=>(n.children||[]).forEach(c=>{parentMap[c]=i;}));
+ const chosen=nodes.map((n,i)=>({i,name:n.name||'',parent:parentMap[i],t:n.translation,r:n.rotation,s:n.scale,mesh:n.mesh,children:n.children}))
+  .filter(n=>/mag|grip|pistol|slide|frame|919|9x19/i.test(n.name));
+ console.log('M17_SOURCE_MAG_NODE_HIERARCHY:'+JSON.stringify(chosen));
+} catch(error){console.log('M17_SOURCE_INSPECT_ERROR:'+String(error));}
 const browser = await chromium.launch({ headless: true, args: ['--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader', '--disable-dev-shm-usage', '--ignore-gpu-blocklist'] });
 
 test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 180000 }, async () => {
