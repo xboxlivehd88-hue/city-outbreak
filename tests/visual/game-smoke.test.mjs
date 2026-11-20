@@ -180,6 +180,9 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }, null, { timeout: 16000, polling: 250 });
     await page.waitForTimeout(1200);
     await capture('02-after-start-hip');
+    assert.equal(await page.evaluate(()=>document.documentElement.dataset.m17IdleMagazine),
+      'seated-occluded-in-original-grip',
+      'Magazine must be inside opaque M17 grip at idle, not a visible bar outside it');
     // Use genuine ADS without pointer-locked synthetic mouse events: the
     // latter used to rotate the CI camera skyward before reload photos.
     assert.equal(await page.evaluate(() => window.__cityM17VisualTestAim?.(true)), true);
