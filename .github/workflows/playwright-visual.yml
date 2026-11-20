@@ -10,6 +10,10 @@ on:
       - 'tests/visual/**'
       - 'tests/performance/**'
       - '.github/workflows/playwright-visual.yml'
+      - '.github/workflows/parasite-v586-smoke.yml'
+      - '.github/workflows/hazmat-v599-smoke.yml'
+      - '.github/workflows/arms-contact-audit.yml'
+      - '.github/workflows/sprinter-v611-smoke.yml'
   push:
     branches: [main]
     paths:
@@ -19,6 +23,10 @@ on:
       - 'tests/visual/**'
       - 'tests/performance/**'
       - '.github/workflows/playwright-visual.yml'
+      - '.github/workflows/parasite-v586-smoke.yml'
+      - '.github/workflows/hazmat-v599-smoke.yml'
+      - '.github/workflows/arms-contact-audit.yml'
+      - '.github/workflows/sprinter-v611-smoke.yml'
 permissions:
   contents: read
 jobs:
