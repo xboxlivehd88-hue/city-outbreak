@@ -53,6 +53,39 @@ try {
     primitives:mesh?.primitives?.map(p=>({min:gltf.accessors?.[p.attributes.POSITION]?.min,max:gltf.accessors?.[p.attributes.POSITION]?.max}))};
   })}));
  console.log('M17_SOURCE_MAG_MESH_BOUNDS:'+JSON.stringify(inspected));
+ // Inspect the precise POSITION buffer of the pistol frame near the bottom
+ // of its grip. The frame is the target; its mesh bounds, not the loose
+ // magazine's presentation layout, define the measured magazine seat.
+ const binStart=20+jsonLength+8;
+ const readPositions=index=>{
+  const a=gltf.accessors[index],v=gltf.bufferViews[a.bufferView],n=a.count;
+  const elem=a.componentType===5126?4:2,stride=v.byteStride||3*elem;
+  const pos=binStart+(v.byteOffset||0)+(a.byteOffset||0);
+  const points=[];
+  for(let k=0;k<n;k++){
+   const offset=pos+k*stride;
+   points.push(a.componentType===5126
+    ?[bytes.readFloatLE(offset),bytes.readFloatLE(offset+4),bytes.readFloatLE(offset+8)]
+    :[bytes.readInt16LE(offset),bytes.readInt16LE(offset+2),bytes.readInt16LE(offset+4)]);
+  }
+  return points;
+ };
+ const frameNode=nodes.find(n=>/m17fs frame/i.test(n.name||''));
+ const bodyNode=nodes[(frameNode?.children||[])[0]];
+ const frameMesh=gltf.meshes[bodyNode.mesh];
+ const positions=frameMesh.primitives.flatMap(p=>readPositions(p.attributes.POSITION));
+ const sliceBounds=(minY,maxY)=>{
+  const pts=positions.filter(p=>p[1]>=minY&&p[1]<maxY);
+  const q=(axis,p)=>{
+   const values=pts.map(v=>v[axis]).sort((a,b)=>a-b);
+   return Number(values[Math.min(values.length-1,Math.floor(values.length*p))]?.toFixed(4));
+  };
+  return {y:[minY,maxY],n:pts.length,x:[q(0,.02),q(0,.10),q(0,.25),q(0,.50),q(0,.75),q(0,.90),q(0,.98)],z:[q(2,.02),q(2,.5),q(2,.98)]};
+ };
+ console.log('M17_FRAME_GRIP_SECTION_GEOMETRY:'+JSON.stringify({
+  sourceNode0: nodes.slice(0,3).map(n=>({name:n.name,t:n.translation,r:n.rotation,s:n.scale,m:n.matrix})),
+  frameSections:[[-.70,-.56],[-.56,-.44],[-.44,-.32],[-.32,-.20],[-.20,-.08],[-.08,.04],[.04,.16],[.16,.28]].map(([a,b])=>sliceBounds(a,b))
+ }));
 } catch(error){console.log('M17_SOURCE_INSPECT_ERROR:'+String(error));}
 const browser = await chromium.launch({ headless: true, args: ['--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader', '--disable-dev-shm-usage', '--ignore-gpu-blocklist'] });
 
@@ -147,6 +180,9 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }, null, { timeout: 16000, polling: 250 });
     await page.waitForTimeout(1200);
     await capture('02-after-start-hip');
+    assert.equal(await page.evaluate(()=>document.documentElement.dataset.m17IdleMagazine),
+      'seated-occluded-in-original-grip',
+      'Magazine must be inside opaque M17 grip at idle, not a visible bar outside it');
     // Use genuine ADS without pointer-locked synthetic mouse events: the
     // latter used to rotate the CI camera skyward before reload photos.
     assert.equal(await page.evaluate(() => window.__cityM17VisualTestAim?.(true)), true);
@@ -168,7 +204,9 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
       const d = document.documentElement.dataset;
       return { carrier: d.m17MagazineCarrier, source: d.m17MagazineSource,
         error: d.m17MagazineSourceError, progress: d.m17MagazineReloadProgress,
-        phase: d.m17VisualTestPhase, seat: d.m17MagazineSeat };
+        phase: d.m17VisualTestPhase, seat: d.m17MagazineSeat,
+        magwellFit: d.m17MagwellFit, magwellFitError: d.m17MagwellFitError,
+        magwellScale: d.m17MagwellScale, magwellTilt: d.m17MagwellTilt };
     })));
     const samples = [0.20, 0.40, 0.55, 0.65, 0.75, 0.85];
     const reloadTelemetry = [];
@@ -211,6 +249,19 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }
     await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
     assert.equal(reloadTelemetry[0].carrier, 'ready', 'Original M17 GLB magazine must be seated');
+    const gripFit=await page.evaluate(()=>{
+      const d=document.documentElement.dataset;
+      return {error:Number(d.m17MagwellFitError),source:d.m17MagwellFit,
+        scale:Number(d.m17MagwellScale),tilt:Number(d.m17MagwellTilt),
+        sourceError:d.m17MagazineSourceError||''};
+    });
+    assert.ok(gripFit.source?.includes('|'),'Imported frame grip sections must be measured');
+    assert.ok(Number.isFinite(gripFit.error)&&gripFit.error<.015,
+      'Actual magazine mesh endpoints must coincide with real GLB grip mouth/base: '+JSON.stringify(gripFit));
+    assert.ok(gripFit.scale>.20&&gripFit.scale<.80,
+      'Magazine must be sized from source geometry, not fixed estimate');
+    assert.equal(gripFit.sourceError,'','No M17 magwell source geometry error');
+    console.log('M17_MAGWELL_CALCULATED_FIT:'+JSON.stringify(gripFit));
     assert.equal(reloadTelemetry[0].withinFrame, 'true', 'Loaded M17 magazine must fit inside source gun frame bounds at idle');
     assert.match(reloadTelemetry[0].source || '', /17rnd[ _]mag_3/i);
     assert.ok(Number(reloadTelemetry[0].boundsRatio) > .10 &&

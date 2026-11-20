@@ -4438,7 +4438,7 @@ function clearReloadMagazineFX(showReal=true){
  if(launcherChamberRound)launcherChamberRound.visible=false;
  reloadOldMagDropped=false;reloadMagInserted=false;
  if(showReal&&playerReloadPart){
-   if(playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=weapon==="pistol"});
+   if(playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});
    else if(playerReloadPart.userData.externalWeaponAsset)playerReloadPart.traverse(o=>{o.visible=true});
    else playerReloadPart.visible=true;
    if(playerReloadPart.userData.reloadHome)playerReloadPart.position.copy(playerReloadPart.userData.reloadHome);
@@ -4452,7 +4452,7 @@ function clearReloadMagazineFX(showReal=true){
 function beginReloadMagazineFX(){
  clearReloadMagazineFX(true);
  reloadOldMagDropped=false;reloadMagInserted=false;
- if(playerReloadPart&&playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
+ if(playerReloadPart&&playerReloadPart.userData.reloadOnly)playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=reloadWeapon!=="pistol"});
 }
 function makeLauncherReloadRound(parent){
  const round=new THREE.Group();
@@ -4957,11 +4957,16 @@ function updateReloadMagazineFX(rp){
    // already reaching for the replacement. This keeps the two actions visually separate.
    if(!reloadOldMagDropped&&home){
      playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
-     playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
+     // The original grip is opaque. Reveal the real inserted magazine
+     // only after extraction clears its own measured magwell; otherwise a
+     // separately drawn magazine face can show through as a floating strip.
+     playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=rp.p>=.17});
      // The loaded magazine stays visible while seated; draw it out of the
      // grip for a readable extraction stroke, then release it to gravity.
      const ejectT=smoothReload01(THREE.MathUtils.clamp((rp.p-.08)/.20,0,1));
-     playerReloadPart.position.y-=.32*ejectT;
+     const magAxis=playerReloadPart.userData.m17MagazineAxis||new THREE.Vector3(0,1,0);
+     const magStroke=playerReloadPart.userData.m17MagazineStroke||.12;
+     playerReloadPart.position.addScaledVector(magAxis,-magStroke*ejectT);
      if(rp.p>=.29)tossOldReloadMagazine();
    }
    // Start retrieving the fresh magazine while the old one is still visibly falling.
@@ -4983,8 +4988,11 @@ function updateReloadMagazineFX(rp){
      // Its geometry is 0.48 tall: inserting by 0.105 units previously kept
      // most of it inside the grip too early, then left it hovering for 15%.
      // Rise from below the player camera rather than materializing next to the weapon.
-     const pickup=home.clone().add(new THREE.Vector3(-.12,-.79,.08));
-     const below=home.clone().add(new THREE.Vector3(0,-.32,0));
+     const magAxis=playerReloadPart.userData.m17MagazineAxis||new THREE.Vector3(0,1,0);
+     const magStroke=playerReloadPart.userData.m17MagazineStroke||.12;
+     const below=home.clone().addScaledVector(magAxis,-magStroke);
+     const pickup=below.clone().addScaledVector(magAxis,-2*magStroke)
+       .add(new THREE.Vector3(-.08,0,.08));
      if(rp.p<.62){
        reloadFreshMag.position.lerpVectors(pickup,below,smoothReload01(THREE.MathUtils.clamp((rp.p-.36)/.26,0,1)));
      }else{
@@ -4993,11 +5001,14 @@ function updateReloadMagazineFX(rp){
      document.documentElement.dataset.m17MagazineInsertDistance=reloadFreshMag.position.distanceTo(home).toFixed(3);
      document.documentElement.dataset.m17MagazineReloadProgress=rp.p.toFixed(3);
      reloadFreshMag.quaternion.copy(targetQ);
+     // A flush magazine should disappear into the opaque source grip,
+     // not remain as a second visible bar along the backstrap.
+     reloadFreshMag.traverse(o=>{if(o.isMesh)o.visible=rp.p<.85});
      if(rp.p>=.89){
        reloadFreshMag.parent?.remove(reloadFreshMag);
        reloadFreshMag=null;reloadFreshInsertStart=null;reloadFreshInsertQuat=null;reloadFreshAttached=false;
        playerReloadPart.position.copy(home);playerReloadPart.quaternion.copy(targetQ);
-       playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=true});
+       playerReloadPart.traverse(o=>{if(o.isMesh)o.visible=false});
        reloadMagInserted=true;
      }
    }
@@ -5401,16 +5412,63 @@ function rebuildGun(){
      gun.add(m17Root);
 
      if(originalMag&&seatedMagSource&&glbMagParent){
-       // v791: Source-model vertex inspection showed BOTH magazine props are
-       // unseated presentation objects with mesh vertices centered at origin:
-       // raw mag Y -0.60..+0.63 versus frame Y -0.68..+0.44.
-       // Neither prop's parent transform represents the gun's magwell.
-       // Seat the genuine four-mesh LOADED source magazine inside the rear
-       // grip (raw barrel points +X) before attaching it to the FPS gun.
-       // Preserve every original magazine mesh, texture and material.
-       originalMag.position.set(-.57,-.30,0);
-       originalMag.rotation.set(0,0,-.28);
-       originalMag.scale.setScalar(.56);
+       // v792: Fit ORIGINAL magazine mesh to ORIGINAL GLB grip, not its
+       // overall pistol bounds. Source-audited frame Object_24 contains
+       // grip bottom geometry at Y=-.70..-.56 and grip mouth at -.20..-.08.
+       // Measure each actual vertex slice rather than guessing a gun offset.
+       const frameBody=m17Root.getObjectByName("Object_24");
+       const framePos=frameBody?.geometry?.getAttribute("position");
+       const section=(low,high)=>{
+         if(!framePos)return null;
+         let left=Infinity,right=-Infinity,depthMin=Infinity,depthMax=-Infinity,sumY=0,n=0;
+         for(let i=0;i<framePos.count;i++){
+           const py=framePos.getY(i);
+           if(py<low||py>=high)continue;
+           const xx=framePos.getX(i),zz=framePos.getZ(i);
+           left=Math.min(left,xx);right=Math.max(right,xx);
+           depthMin=Math.min(depthMin,zz);depthMax=Math.max(depthMax,zz);
+           sumY+=py;n++;
+         }
+         return n>0?new THREE.Vector3((left+right)/2,sumY/n,(depthMin+depthMax)/2):null;
+       };
+       const gripBase=section(-.70,-.56),gripMouth=section(-.20,-.08);
+       const sourceMagBounds=new THREE.Box3().makeEmpty();
+       originalMag.traverse(o=>{
+         if(!o.isMesh||!o.geometry)return;
+         if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
+         sourceMagBounds.union(o.geometry.boundingBox);
+       });
+       const magLength=sourceMagBounds.max.y-sourceMagBounds.min.y;
+       if(!gripBase||!gripMouth||magLength<=.001){
+         document.documentElement.dataset.m17MagazineSourceError="Original M17 magwell vertices unavailable";
+         console.error("M17 magazine cannot be aligned: original grip geometry unavailable");
+       }else{
+         const gripAxis=gripMouth.clone().sub(gripBase);
+         const axisLength=Math.hypot(gripAxis.x,gripAxis.y);
+         const sourceScale=axisLength/magLength;
+         const sourceAngle=-Math.atan2(gripAxis.x,gripAxis.y);
+         const sourceCenter=sourceMagBounds.getCenter(new THREE.Vector3());
+         const targetCenter=gripBase.clone().add(gripMouth).multiplyScalar(.5);
+         const orientedCenter=sourceCenter.clone().multiplyScalar(sourceScale);
+         orientedCenter.applyAxisAngle(new THREE.Vector3(0,0,1),sourceAngle);
+         originalMag.position.copy(targetCenter.sub(orientedCenter));
+         originalMag.rotation.set(0,0,sourceAngle);
+         originalMag.scale.setScalar(sourceScale);
+         // Expose the measured GLB endpoints for regression proof.
+         document.documentElement.dataset.m17MagwellFit=
+           [gripBase,gripMouth].map(p=>p.toArray().map(v=>v.toFixed(4)).join(",")).join("|");
+         document.documentElement.dataset.m17MagwellScale=sourceScale.toFixed(4);
+         document.documentElement.dataset.m17MagwellTilt=sourceAngle.toFixed(4);
+         // Confirm the transformed physical magazine tips coincide with
+         // the measured frame grip mouth/base, not just overall pistol bounds.
+         const magCenter=sourceMagBounds.getCenter(new THREE.Vector3());
+         const tip=(y)=>new THREE.Vector3(magCenter.x,y,magCenter.z)
+           .multiplyScalar(sourceScale).applyAxisAngle(new THREE.Vector3(0,0,1),sourceAngle)
+           .add(originalMag.position);
+         const lowError=tip(sourceMagBounds.min.y).distanceTo(gripBase);
+         const highError=tip(sourceMagBounds.max.y).distanceTo(gripMouth);
+         document.documentElement.dataset.m17MagwellFitError=Math.max(lowError,highError).toFixed(5);
+       }
        glbMagParent.add(originalMag);
        gun.updateMatrixWorld(true);
        // Convert measured model-local magwell into gun space, preserving
@@ -5421,8 +5479,14 @@ function rebuildGun(){
        originalMag.userData.reloadOnly=true;
        originalMag.userData.reloadHome=originalMag.position.clone();
        originalMag.userData.reloadHomeQuat=originalMag.quaternion.clone();
+       // Gun-space axial stroke: derived from real magazine length and
+       // assembled orientation, not a fixed world-Y offset.
+       const bodyLength=sourceMagBounds.max.y-sourceMagBounds.min.y;
+       originalMag.userData.m17MagazineAxis=new THREE.Vector3(0,1,0)
+         .applyQuaternion(originalMag.quaternion).normalize();
+       originalMag.userData.m17MagazineStroke=Math.max(.001,bodyLength*originalMag.scale.y);
        originalMag.traverse(o=>{o.visible=true;o.userData.externalWeaponAsset=true;
-         if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+         if(o.isMesh){o.castShadow=false;o.receiveShadow=false;o.visible=false}});
        playerReloadPart=originalMag;
        // Diagnostics must be grounded in ORIGINAL imported pistol bounds.
        gun.updateMatrixWorld(true);
@@ -5439,7 +5503,7 @@ function rebuildGun(){
        document.documentElement.dataset.m17MagazineSource=loadedMagSource.name;
        document.documentElement.dataset.m17MagazineCarrier="ready";
        document.documentElement.dataset.m17MagazineMeshCount=String(originalMag.children.filter(o=>o.isMesh).length);
-       document.documentElement.dataset.m17IdleMagazine="seated-visible";
+       document.documentElement.dataset.m17IdleMagazine="seated-occluded-in-original-grip";
        delete document.documentElement.dataset.m17MagazineSourceError;
      }else{
        // No fabricated substitute. Surface an explicit asset failure.
