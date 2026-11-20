@@ -5453,6 +5453,15 @@ function rebuildGun(){
            [gripBase,gripMouth].map(p=>p.toArray().map(v=>v.toFixed(4)).join(",")).join("|");
          document.documentElement.dataset.m17MagwellScale=sourceScale.toFixed(4);
          document.documentElement.dataset.m17MagwellTilt=sourceAngle.toFixed(4);
+         // Confirm the transformed physical magazine tips coincide with
+         // the measured frame grip mouth/base, not just overall pistol bounds.
+         const magCenter=sourceMagBounds.getCenter(new THREE.Vector3());
+         const tip=(y)=>new THREE.Vector3(magCenter.x,y,magCenter.z)
+           .multiplyScalar(sourceScale).applyAxisAngle(new THREE.Vector3(0,0,1),sourceAngle)
+           .add(originalMag.position);
+         const lowError=tip(sourceMagBounds.min.y).distanceTo(gripBase);
+         const highError=tip(sourceMagBounds.max.y).distanceTo(gripMouth);
+         document.documentElement.dataset.m17MagwellFitError=Math.max(lowError,highError).toFixed(5);
        }
        glbMagParent.add(originalMag);
        gun.updateMatrixWorld(true);
