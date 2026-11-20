@@ -1,3 +1,13 @@
+# v791 — ACTUAL M17 MAGAZINE GEOMETRY SEATING — 2026-11-20
+
+- User screenshot of deployed v790 confirms a large black M17 magazine still extending vertically past the pistol. This is a real unresolved regression; do not describe v790 as fixed.
+- Investigated the original SIG GLB directly in Playwright test by reading GLB JSON/accessors. BOTH loose magazine props are display-layout models with mesh coordinates around raw X=-0.32..+0.31, Y=-0.60..+0.63, Z=-0.15..+0.14, versus pistol frame raw X=-1.03..+1.02 and Y=-0.68..+0.44. The node root has NO seated transform. Prior attempts copying source magazine parent transforms therefore left magazine floating or overlong.
+- v791 seats the original loaded 4-mesh GLB magazine (not the empty 2-mesh display prop), raw source local x=-0.57, y=-0.30, z=0, tilted -0.28 rad about Z with scale .56 so it fits within the imported frame's grip vertical extent; retains original mesh hierarchy and original FPS reload code from v790. Only M17 magazine model initial transform/source changed.
+- Existing reload duration, hand animation, gun/ADS, and all other systems untouched. Browser loader v791. Original source inspection JSON audit added to Playwright.
+- Require actual visual review of idle and reload screenshots at stages and test gates before claiming this resolves magazine; user acceptance required. v324 protected recovery untouched.
+
+---
+
 # v790 — M17 MAGAZINE ONLY — 2026-11-17
 
 - User screenshot of v788 shows the M17 magazine detached behind/above the grip during reload. User explicitly says the reload animation works and asks to change ONLY the magazine.
