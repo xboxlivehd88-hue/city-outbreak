@@ -53,6 +53,39 @@ try {
     primitives:mesh?.primitives?.map(p=>({min:gltf.accessors?.[p.attributes.POSITION]?.min,max:gltf.accessors?.[p.attributes.POSITION]?.max}))};
   })}));
  console.log('M17_SOURCE_MAG_MESH_BOUNDS:'+JSON.stringify(inspected));
+ // Inspect the precise POSITION buffer of the pistol frame near the bottom
+ // of its grip. The frame is the target; its mesh bounds, not the loose
+ // magazine's presentation layout, define the measured magazine seat.
+ const binStart=20+jsonLength+8;
+ const readPositions=index=>{
+  const a=gltf.accessors[index],v=gltf.bufferViews[a.bufferView],n=a.count;
+  const elem=a.componentType===5126?4:2,stride=v.byteStride||3*elem;
+  const pos=binStart+(v.byteOffset||0)+(a.byteOffset||0);
+  const points=[];
+  for(let k=0;k<n;k++){
+   const offset=pos+k*stride;
+   points.push(a.componentType===5126
+    ?[bytes.readFloatLE(offset),bytes.readFloatLE(offset+4),bytes.readFloatLE(offset+8)]
+    :[bytes.readInt16LE(offset),bytes.readInt16LE(offset+2),bytes.readInt16LE(offset+4)]);
+  }
+  return points;
+ };
+ const frameNode=nodes.find(n=>/m17fs frame/i.test(n.name||''));
+ const bodyNode=nodes[(frameNode?.children||[])[0]];
+ const frameMesh=gltf.meshes[bodyNode.mesh];
+ const positions=frameMesh.primitives.flatMap(p=>readPositions(p.attributes.POSITION));
+ const sliceBounds=(minY,maxY)=>{
+  const pts=positions.filter(p=>p[1]>=minY&&p[1]<maxY);
+  const q=(axis,p)=>{
+   const values=pts.map(v=>v[axis]).sort((a,b)=>a-b);
+   return Number(values[Math.min(values.length-1,Math.floor(values.length*p))]?.toFixed(4));
+  };
+  return {y:[minY,maxY],n:pts.length,x:[q(0,.02),q(0,.10),q(0,.25),q(0,.50),q(0,.75),q(0,.90),q(0,.98)],z:[q(2,.02),q(2,.5),q(2,.98)]};
+ };
+ console.log('M17_FRAME_GRIP_SECTION_GEOMETRY:'+JSON.stringify({
+  sourceNode0: nodes.slice(0,3).map(n=>({name:n.name,t:n.translation,r:n.rotation,s:n.scale,m:n.matrix})),
+  frameSections:[[-.70,-.56],[-.56,-.44],[-.44,-.32],[-.32,-.20],[-.20,-.08],[-.08,.04],[.04,.16],[.16,.28]].map(([a,b])=>sliceBounds(a,b))
+ }));
 } catch(error){console.log('M17_SOURCE_INSPECT_ERROR:'+String(error));}
 const browser = await chromium.launch({ headless: true, args: ['--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader', '--disable-dev-shm-usage', '--ignore-gpu-blocklist'] });
 
