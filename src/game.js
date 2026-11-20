@@ -5503,7 +5503,7 @@ function rebuildGun(){
        document.documentElement.dataset.m17MagazineSource=loadedMagSource.name;
        document.documentElement.dataset.m17MagazineCarrier="ready";
        document.documentElement.dataset.m17MagazineMeshCount=String(originalMag.children.filter(o=>o.isMesh).length);
-       document.documentElement.dataset.m17IdleMagazine="seated-visible";
+       document.documentElement.dataset.m17IdleMagazine="seated-occluded-in-original-grip";
        delete document.documentElement.dataset.m17MagazineSourceError;
      }else{
        // No fabricated substitute. Surface an explicit asset failure.
