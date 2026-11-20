@@ -201,7 +201,9 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
       const d = document.documentElement.dataset;
       return { carrier: d.m17MagazineCarrier, source: d.m17MagazineSource,
         error: d.m17MagazineSourceError, progress: d.m17MagazineReloadProgress,
-        phase: d.m17VisualTestPhase, seat: d.m17MagazineSeat };
+        phase: d.m17VisualTestPhase, seat: d.m17MagazineSeat,
+        magwellFit: d.m17MagwellFit, magwellFitError: d.m17MagwellFitError,
+        magwellScale: d.m17MagwellScale, magwellTilt: d.m17MagwellTilt };
     })));
     const samples = [0.20, 0.40, 0.55, 0.65, 0.75, 0.85];
     const reloadTelemetry = [];
@@ -244,6 +246,19 @@ test('CITY OUTBREAK loads, starts and captures pistol hip and ADS', { timeout: 1
     }
     await writeFile(`${out}/m17-reload-stages.json`, JSON.stringify(reloadTelemetry, null, 2));
     assert.equal(reloadTelemetry[0].carrier, 'ready', 'Original M17 GLB magazine must be seated');
+    const gripFit=await page.evaluate(()=>{
+      const d=document.documentElement.dataset;
+      return {error:Number(d.m17MagwellFitError),source:d.m17MagwellFit,
+        scale:Number(d.m17MagwellScale),tilt:Number(d.m17MagwellTilt),
+        sourceError:d.m17MagazineSourceError||''};
+    });
+    assert.ok(gripFit.source?.includes('|'),'Imported frame grip sections must be measured');
+    assert.ok(Number.isFinite(gripFit.error)&&gripFit.error<.015,
+      'Actual magazine mesh endpoints must coincide with real GLB grip mouth/base: '+JSON.stringify(gripFit));
+    assert.ok(gripFit.scale>.20&&gripFit.scale<.80,
+      'Magazine must be sized from source geometry, not fixed estimate');
+    assert.equal(gripFit.sourceError,'','No M17 magwell source geometry error');
+    console.log('M17_MAGWELL_CALCULATED_FIT:'+JSON.stringify(gripFit));
     assert.equal(reloadTelemetry[0].withinFrame, 'true', 'Loaded M17 magazine must fit inside source gun frame bounds at idle');
     assert.match(reloadTelemetry[0].source || '', /17rnd[ _]mag_3/i);
     assert.ok(Number(reloadTelemetry[0].boundsRatio) > .10 &&
