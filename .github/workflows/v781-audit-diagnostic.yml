@@ -1,0 +1,34 @@
+name: Temporary v781 dependency audit diagnostic
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [toby-v781-audit-diagnostic]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Try safe audit remediation in scratch checkout
+        shell: bash
+        working-directory: desktop
+        run: |
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));p.overrides={...(p.overrides||{}),minimatch:'11.0.1'};fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')"
+          npm install --package-lock-only --ignore-scripts --no-fund || true
+          npm audit --audit-level=moderate || true
+          echo PACKAGE_JSON_BASE64_START
+          base64 -w 4000 package.json
+          echo
+          echo PACKAGE_JSON_BASE64_END
+          echo LOCKFILE_BASE64_START
+          base64 -w 4000 package-lock.json
+          echo
+          echo LOCKFILE_BASE64_END
